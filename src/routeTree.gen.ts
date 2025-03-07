@@ -14,6 +14,7 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as AboutImport } from './routes/about'
 import { Route as IndexImport } from './routes/index'
 import { Route as TransactionsIndexImport } from './routes/transactions/index'
+import { Route as SettingsIndexImport } from './routes/settings/index'
 import { Route as PortfolioIndexImport } from './routes/portfolio/index'
 import { Route as DashboardIndexImport } from './routes/dashboard/index'
 import { Route as BudgetsIndexImport } from './routes/budgets/index'
@@ -36,6 +37,12 @@ const IndexRoute = IndexImport.update({
 const TransactionsIndexRoute = TransactionsIndexImport.update({
   id: '/transactions/',
   path: '/transactions/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const SettingsIndexRoute = SettingsIndexImport.update({
+  id: '/settings/',
+  path: '/settings/',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -109,6 +116,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortfolioIndexImport
       parentRoute: typeof rootRoute
     }
+    '/settings/': {
+      id: '/settings/'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsIndexImport
+      parentRoute: typeof rootRoute
+    }
     '/transactions/': {
       id: '/transactions/'
       path: '/transactions'
@@ -128,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/budgets': typeof BudgetsIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/portfolio': typeof PortfolioIndexRoute
+  '/settings': typeof SettingsIndexRoute
   '/transactions': typeof TransactionsIndexRoute
 }
 
@@ -138,6 +153,7 @@ export interface FileRoutesByTo {
   '/budgets': typeof BudgetsIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/portfolio': typeof PortfolioIndexRoute
+  '/settings': typeof SettingsIndexRoute
   '/transactions': typeof TransactionsIndexRoute
 }
 
@@ -149,6 +165,7 @@ export interface FileRoutesById {
   '/budgets/': typeof BudgetsIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/portfolio/': typeof PortfolioIndexRoute
+  '/settings/': typeof SettingsIndexRoute
   '/transactions/': typeof TransactionsIndexRoute
 }
 
@@ -161,6 +178,7 @@ export interface FileRouteTypes {
     | '/budgets'
     | '/dashboard'
     | '/portfolio'
+    | '/settings'
     | '/transactions'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -170,6 +188,7 @@ export interface FileRouteTypes {
     | '/budgets'
     | '/dashboard'
     | '/portfolio'
+    | '/settings'
     | '/transactions'
   id:
     | '__root__'
@@ -179,6 +198,7 @@ export interface FileRouteTypes {
     | '/budgets/'
     | '/dashboard/'
     | '/portfolio/'
+    | '/settings/'
     | '/transactions/'
   fileRoutesById: FileRoutesById
 }
@@ -190,6 +210,7 @@ export interface RootRouteChildren {
   BudgetsIndexRoute: typeof BudgetsIndexRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   PortfolioIndexRoute: typeof PortfolioIndexRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
   TransactionsIndexRoute: typeof TransactionsIndexRoute
 }
 
@@ -200,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   BudgetsIndexRoute: BudgetsIndexRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   PortfolioIndexRoute: PortfolioIndexRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
   TransactionsIndexRoute: TransactionsIndexRoute,
 }
 
@@ -219,6 +241,7 @@ export const routeTree = rootRoute
         "/budgets/",
         "/dashboard/",
         "/portfolio/",
+        "/settings/",
         "/transactions/"
       ]
     },
@@ -239,6 +262,9 @@ export const routeTree = rootRoute
     },
     "/portfolio/": {
       "filePath": "portfolio/index.tsx"
+    },
+    "/settings/": {
+      "filePath": "settings/index.tsx"
     },
     "/transactions/": {
       "filePath": "transactions/index.tsx"
