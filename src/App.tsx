@@ -1,16 +1,15 @@
-import { invoke } from "@tauri-apps/api/core";
 import { useState } from "react";
+import { useTransactionList } from "./api/transactions";
 import "./App.css";
 import reactLogo from "./assets/react.svg";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
   const [name, setName] = useState("");
 
-  async function greet() {
-    // Learn more about Tauri commands at https://v1.tauri.app/v1/guides/features/command
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  const { data, isLoading, isError, fetchNextPage, hasNextPage, error } =
+    useTransactionList();
+
+  console.log(data, isLoading, isError, error);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
@@ -54,7 +53,6 @@ function App() {
               className="flex flex-col sm:flex-row gap-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                greet();
               }}
             >
               <input
@@ -70,11 +68,6 @@ function App() {
                 Greet
               </button>
             </form>
-            {greetMsg && (
-              <p className="mt-4 text-lg text-gray-700 dark:text-gray-300">
-                {greetMsg}
-              </p>
-            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
