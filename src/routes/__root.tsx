@@ -1,20 +1,33 @@
-import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
+import { cn } from "@/lib/utils";
+import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+import "../App.css";
+
+const MainContent = () => {
+  const { isCollapsed } = useSidebar();
+
+  return (
+    <main
+      className={cn(
+        "flex-1 p-8 transition-all duration-300",
+        isCollapsed ? "ml-16" : "ml-64"
+      )}
+    >
+      <Outlet />
+    </main>
+  );
+};
 
 export const Route = createRootRoute({
   component: () => (
-    <>
-      <div className="p-2 flex gap-2">
-        <Link to="/" className="[&.active]:font-bold">
-          Home
-        </Link>{" "}
-        <Link to="/about" className="[&.active]:font-bold">
-          About
-        </Link>
+    <SidebarProvider>
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <MainContent />
+        <TanStackRouterDevtools />
       </div>
-      <hr />
-      <Outlet />
-      <TanStackRouterDevtools />
-    </>
+    </SidebarProvider>
   ),
 });

@@ -18,14 +18,18 @@
     "@tauri-apps/api": "^2.3.0",
     "@tauri-apps/plugin-shell": "~2",
     "@tauri-apps/plugin-sql": "~2",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.479.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.0.2"
   },
   "devDependencies": {
     "@tanstack/router-cli": "^1.112.19",
     "@tanstack/router-devtools": "^1.112.18",
     "@tanstack/router-plugin": "^1.112.19",
     "@tauri-apps/cli": "^2.3.1",
+    "@types/node": "^22.13.9",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
