@@ -15,7 +15,7 @@ export const Sidebar = () => {
       )}
     >
       <div className="flex h-full flex-col">
-        <nav className="flex-1 space-y-1 p-4">
+        <nav className="flex-1 space-y-1 p-3">
           {navigationItems.map((item: NavItem) => (
             <SidebarLink
               key={item.href}
