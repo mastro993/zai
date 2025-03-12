@@ -9,7 +9,8 @@
     "dev": "vite",
     "build": "bun generate-routes && tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "clean-db": "bun scripts/clean-db.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.0.11",

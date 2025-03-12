@@ -17,11 +17,15 @@
       "icons/icon.ico"
     ]
   },
-  "productName": "myfin-app",
+  "productName": "MyFin",
   "mainBinaryName": "myfin-app",
   "version": "0.1.0",
   "identifier": "dev.fedemas.myfin.app",
-  "plugins": {},
+  "plugins": {
+    "sql": {
+      "preload": ["sqlite:myfin.db"]
+    }
+  },
   "app": {
     "security": {
       "csp": null

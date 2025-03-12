@@ -21,7 +21,7 @@ export const useTransactionList = () =>
     queryFn: async ({ pageParam = 0 }) => {
       const page = pageParam as number;
 
-      const db = await Database.load("sqlite:test.db");
+      const db = await Database.load("sqlite:myfin.db");
       const dbTransactions = await db.select<Transaction[]>(
         "SELECT * FROM transactions ORDER BY date DESC LIMIT $1 OFFSET $2",
         [PAGE_SIZE, page * PAGE_SIZE]
