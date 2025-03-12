@@ -6,10 +6,7 @@ import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 const MainContent = () => {
   return (
     <main
-      className={cn(
-        "flex-1 p-8 transition-all duration-300",
-        "ml-64 max-lg:ml-16"
-      )}
+      className={cn("flex-1 transition-all duration-300", "ml-64 max-lg:ml-16")}
     >
       <Outlet />
     </main>
