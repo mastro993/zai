@@ -1,5 +1,6 @@
 import { useTransactionList } from "@/api/transactions";
 import { JsonDisplay } from "@/components/ui/JsonDisplay";
+import { db } from "@/database";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/transactions/")({
@@ -9,6 +10,22 @@ export const Route = createFileRoute("/transactions/")({
 function RouteComponent() {
   const { data, isLoading, error } = useTransactionList();
   const transactions = data?.pages.flatMap((page) => page.data) ?? [];
+
+  const handleAddTransaction = () => {
+    db.insertInto("transactions")
+      .values({
+        description: "Test",
+        amount: 100,
+        date: "2021-01-01",
+        type: "income",
+        category_id: 1,
+        notes: "Test",
+      })
+      .execute()
+      .then((result) => {
+        console.debug("🔍 Added transaction", result);
+      });
+  };
 
   return (
     <>
@@ -25,10 +42,7 @@ function RouteComponent() {
               <li>Add Document</li>
             </ul>
           </div>
-          <button
-            className="btn"
-            onClick={() => document.getElementById("my_modal_1").showModal()}
-          >
+          <button className="btn" onClick={handleAddTransaction}>
             open modal
           </button>
         </div>

@@ -1,7 +1,9 @@
 import { Sidebar } from "@/components/layout/Sidebar";
+import { migrateToLatest } from "@/database/migrate";
 import { cn } from "@/lib/utils";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+import { useEffect, useState } from "react";
 
 const MainContent = () => {
   return (
@@ -14,11 +16,25 @@ const MainContent = () => {
 };
 
 export const Route = createRootRoute({
-  component: () => (
+  component: Root,
+});
+
+function Root() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    migrateToLatest().then(() => setIsLoading(false));
+  }, []);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
     <div className="flex min-h-screen">
       <Sidebar />
       <MainContent />
-      <TanStackRouterDevtools />
+      <TanStackRouterDevtools position="bottom-right" />
     </div>
-  ),
-});
+  );
+}
