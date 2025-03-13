@@ -20,5 +20,5 @@ export type TransactionTable = {
 };
 
 export type Transaction = Selectable<TransactionTable>;
-type NewTransaction = Insertable<TransactionTable>;
-type TransactionUpdate = Updateable<TransactionTable>;
+export type NewTransaction = Insertable<TransactionTable>;
+export type TransactionUpdate = Updateable<TransactionTable>;

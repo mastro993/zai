@@ -1,6 +1,10 @@
 import { db } from "@/database";
-import { Transaction } from "@/database/schema/transaction";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { NewTransaction, Transaction } from "@/database/schema/transaction";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 type TransactionPage = {
   data: Transaction[];
@@ -32,3 +36,24 @@ export const useTransactionList = () =>
     initialPageParam: 0,
     getNextPageParam: (lastPage: TransactionPage) => lastPage.page + 1,
   });
+
+export const useAddTransaction = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    async mutationFn(transaction: NewTransaction) {
+      const results = await db
+        .insertInto("transactions")
+        .values(transaction)
+        .execute();
+
+      return results;
+    },
+    async onSuccess() {
+      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+    onError(error) {
+      console.log(error);
+    },
+  });
+};

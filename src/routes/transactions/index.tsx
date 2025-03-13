@@ -1,6 +1,5 @@
-import { useTransactionList } from "@/api/transactions";
+import { useAddTransaction, useTransactionList } from "@/api/transactions";
 import { JsonDisplay } from "@/components/ui/JsonDisplay";
-import { db } from "@/database";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/transactions/")({
@@ -8,23 +7,19 @@ export const Route = createFileRoute("/transactions/")({
 });
 
 function RouteComponent() {
+  const { mutate: addTransaction } = useAddTransaction();
   const { data, isLoading, error } = useTransactionList();
   const transactions = data?.pages.flatMap((page) => page.data) ?? [];
 
   const handleAddTransaction = () => {
-    db.insertInto("transactions")
-      .values({
-        description: "Test",
-        amount: 100,
-        date: "2021-01-01",
-        type: "income",
-        category_id: 1,
-        notes: "Test",
-      })
-      .execute()
-      .then((result) => {
-        console.debug("🔍 Added transaction", result);
-      });
+    addTransaction({
+      description: "Test",
+      amount: 100,
+      date: "2021-01-01",
+      type: "income",
+      category_id: 1,
+      notes: "Test",
+    });
   };
 
   return (
