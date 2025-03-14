@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/style";
 import { Link } from "@tanstack/react-router";
 import { LucideIcon } from "lucide-react";
 
@@ -15,9 +15,9 @@ export const SidebarLink = ({ icon: Icon, label, href }: SidebarLinkProps) => {
       className={cn(
         "flex items-center px-3 py-2 gap-3 rounded-lg",
         "px-3 py-2 max-lg:px-2",
-        "[&.active]:bg-gray-100 dark:[&.active]:bg-gray-800",
-        "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
-        "[&.active]:text-gray-900 dark:[&.active]:text-gray-50",
+        "[&.active]:bg-base-300",
+        "text-content hover:text-content",
+        "[&.active]:text-content",
         "transition-all duration-300"
       )}
     >

@@ -11,7 +11,6 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as AboutImport } from './routes/about'
 import { Route as IndexImport } from './routes/index'
 import { Route as TransactionsIndexImport } from './routes/transactions/index'
 import { Route as SettingsIndexImport } from './routes/settings/index'
@@ -19,14 +18,10 @@ import { Route as PortfolioIndexImport } from './routes/portfolio/index'
 import { Route as DashboardIndexImport } from './routes/dashboard/index'
 import { Route as BudgetsIndexImport } from './routes/budgets/index'
 import { Route as AccountsIndexImport } from './routes/accounts/index'
+import { Route as TransactionsTagsIndexImport } from './routes/transactions/tags/index'
+import { Route as TransactionsCategoriesIndexImport } from './routes/transactions/categories/index'
 
 // Create/Update Routes
-
-const AboutRoute = AboutImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => rootRoute,
-} as any)
 
 const IndexRoute = IndexImport.update({
   id: '/',
@@ -70,6 +65,19 @@ const AccountsIndexRoute = AccountsIndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const TransactionsTagsIndexRoute = TransactionsTagsIndexImport.update({
+  id: '/transactions/tags/',
+  path: '/transactions/tags/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const TransactionsCategoriesIndexRoute =
+  TransactionsCategoriesIndexImport.update({
+    id: '/transactions/categories/',
+    path: '/transactions/categories/',
+    getParentRoute: () => rootRoute,
+  } as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -79,13 +87,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutImport
       parentRoute: typeof rootRoute
     }
     '/accounts/': {
@@ -130,6 +131,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TransactionsIndexImport
       parentRoute: typeof rootRoute
     }
+    '/transactions/categories/': {
+      id: '/transactions/categories/'
+      path: '/transactions/categories'
+      fullPath: '/transactions/categories'
+      preLoaderRoute: typeof TransactionsCategoriesIndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/transactions/tags/': {
+      id: '/transactions/tags/'
+      path: '/transactions/tags'
+      fullPath: '/transactions/tags'
+      preLoaderRoute: typeof TransactionsTagsIndexImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -137,92 +152,100 @@ declare module '@tanstack/react-router' {
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/accounts': typeof AccountsIndexRoute
   '/budgets': typeof BudgetsIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/portfolio': typeof PortfolioIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/transactions': typeof TransactionsIndexRoute
+  '/transactions/categories': typeof TransactionsCategoriesIndexRoute
+  '/transactions/tags': typeof TransactionsTagsIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/accounts': typeof AccountsIndexRoute
   '/budgets': typeof BudgetsIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/portfolio': typeof PortfolioIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/transactions': typeof TransactionsIndexRoute
+  '/transactions/categories': typeof TransactionsCategoriesIndexRoute
+  '/transactions/tags': typeof TransactionsTagsIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/accounts/': typeof AccountsIndexRoute
   '/budgets/': typeof BudgetsIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/portfolio/': typeof PortfolioIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/transactions/': typeof TransactionsIndexRoute
+  '/transactions/categories/': typeof TransactionsCategoriesIndexRoute
+  '/transactions/tags/': typeof TransactionsTagsIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/about'
     | '/accounts'
     | '/budgets'
     | '/dashboard'
     | '/portfolio'
     | '/settings'
     | '/transactions'
+    | '/transactions/categories'
+    | '/transactions/tags'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/about'
     | '/accounts'
     | '/budgets'
     | '/dashboard'
     | '/portfolio'
     | '/settings'
     | '/transactions'
+    | '/transactions/categories'
+    | '/transactions/tags'
   id:
     | '__root__'
     | '/'
-    | '/about'
     | '/accounts/'
     | '/budgets/'
     | '/dashboard/'
     | '/portfolio/'
     | '/settings/'
     | '/transactions/'
+    | '/transactions/categories/'
+    | '/transactions/tags/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AboutRoute: typeof AboutRoute
   AccountsIndexRoute: typeof AccountsIndexRoute
   BudgetsIndexRoute: typeof BudgetsIndexRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   PortfolioIndexRoute: typeof PortfolioIndexRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
   TransactionsIndexRoute: typeof TransactionsIndexRoute
+  TransactionsCategoriesIndexRoute: typeof TransactionsCategoriesIndexRoute
+  TransactionsTagsIndexRoute: typeof TransactionsTagsIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AboutRoute: AboutRoute,
   AccountsIndexRoute: AccountsIndexRoute,
   BudgetsIndexRoute: BudgetsIndexRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   PortfolioIndexRoute: PortfolioIndexRoute,
   SettingsIndexRoute: SettingsIndexRoute,
   TransactionsIndexRoute: TransactionsIndexRoute,
+  TransactionsCategoriesIndexRoute: TransactionsCategoriesIndexRoute,
+  TransactionsTagsIndexRoute: TransactionsTagsIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -236,20 +259,18 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/about",
         "/accounts/",
         "/budgets/",
         "/dashboard/",
         "/portfolio/",
         "/settings/",
-        "/transactions/"
+        "/transactions/",
+        "/transactions/categories/",
+        "/transactions/tags/"
       ]
     },
     "/": {
       "filePath": "index.tsx"
-    },
-    "/about": {
-      "filePath": "about.tsx"
     },
     "/accounts/": {
       "filePath": "accounts/index.tsx"
@@ -268,6 +289,12 @@ export const routeTree = rootRoute
     },
     "/transactions/": {
       "filePath": "transactions/index.tsx"
+    },
+    "/transactions/categories/": {
+      "filePath": "transactions/categories/index.tsx"
+    },
+    "/transactions/tags/": {
+      "filePath": "transactions/tags/index.tsx"
     }
   }
 }

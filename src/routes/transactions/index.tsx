@@ -1,6 +1,10 @@
-import { useAddTransaction, useTransactionList } from "@/api/transactions";
 import { JsonDisplay } from "@/components/ui/JsonDisplay";
+import { useAddTransaction, useTransactionList } from "@/lib/api/transactions";
 import { createFileRoute } from "@tanstack/react-router";
+import { Plus, Search } from "lucide-react";
+import { useRef } from "react";
+import toast from "react-hot-toast";
+import { useHotkeys } from "react-hotkeys-hook";
 
 export const Route = createFileRoute("/transactions/")({
   component: RouteComponent,
@@ -11,6 +15,12 @@ function RouteComponent() {
   const { data, isLoading, error } = useTransactionList();
   const transactions = data?.pages.flatMap((page) => page.data) ?? [];
 
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useHotkeys("mod+k", () => {
+    searchRef.current?.focus();
+  });
+
   const handleAddTransaction = () => {
     addTransaction({
       description: "Test",
@@ -20,33 +30,40 @@ function RouteComponent() {
       category_id: 1,
       notes: "Test",
     });
+    toast.success("Transaction added");
   };
 
   return (
     <>
       <div>
-        <div className="navbar bg-base-100 flex justify-between">
-          <div className="breadcrumbs text-sm px-4">
-            <ul>
-              <li>
-                <a>Transactions</a>
-              </li>
-              <li>
-                <a>Documents</a>
-              </li>
-              <li>Add Document</li>
-            </ul>
+        <div className="navbar bg-base-100 flex justify-between px-5">
+          <h1 className="text-lg text-content">Transactions</h1>
+          <label className="input ">
+            <Search className="w-4 h-4 text-content" />
+            <input
+              type="search"
+              className="grow"
+              placeholder="Search"
+              ref={searchRef}
+            />
+            <kbd className="kbd kbd-sm">⌘</kbd>
+            <kbd className="kbd kbd-sm">K</kbd>
+          </label>
+          <div className="flex gap-2">
+            <button className="btn" onClick={handleAddTransaction}>
+              <Plus className="w-4 h-4" />
+              Add transaction
+            </button>
           </div>
-          <button className="btn" onClick={handleAddTransaction}>
-            open modal
-          </button>
         </div>
         <ul className="list">
-          {transactions.map((transaction, index) => (
-            <li className="list-row">
-              <JsonDisplay key={index} data={transaction} />
-            </li>
-          ))}
+          {data?.pages
+            .flatMap((page) => page.data)
+            .map((transaction, index) => (
+              <li className="list-row">
+                <JsonDisplay key={index} data={transaction} />
+              </li>
+            ))}
         </ul>
       </div>
       <dialog id="my_modal_1" className="modal">

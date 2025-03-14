@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/Sidebar";
-import { migrateToLatest } from "@/database/migrate";
-import { cn } from "@/lib/utils";
+import { ToastContainer } from "@/components/ui/ToastContainer";
+import { migrateToLatest } from "@/lib/database/migrate";
+import { cn } from "@/utils/style";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { useEffect, useState } from "react";
@@ -31,10 +32,11 @@ function Root() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-base-100">
       <Sidebar />
       <MainContent />
       <TanStackRouterDevtools position="bottom-right" />
+      <ToastContainer />
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import { db } from "@/database";
-import { NewTransaction, Transaction } from "@/database/schema/transaction";
+import { db } from "@/lib/database";
+import { NewTransaction, Transaction } from "@/lib/database/schema/transaction";
 import {
   useInfiniteQuery,
   useMutation,
@@ -11,7 +11,7 @@ type TransactionPage = {
   page: number;
 };
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 1000;
 
 export const useTransactionList = () =>
   useInfiniteQuery<TransactionPage>({
