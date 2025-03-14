@@ -2,7 +2,7 @@ import { FileMigrationProvider, Migrator } from "kysely";
 import { db } from ".";
 
 // Load all migration files at build time
-const migrationFiles = import.meta.glob("/src/database/migrations/*.ts", {
+const migrationFiles = import.meta.glob("/src/lib/database/migrations/*.ts", {
   as: "raw",
   eager: true,
 });
@@ -24,11 +24,13 @@ export async function migrateToLatest() {
           return paths.join("/").replace(/\/+/g, "/");
         },
       },
-      migrationFolder: "/src/database/migrations",
+      migrationFolder: "/src/lib/database/migrations",
     }),
   });
 
   const { error, results } = await migrator.migrateToLatest();
+
+  console.log("Migrations results", results);
 
   results?.forEach((it) => {
     if (it.status === "Success") {

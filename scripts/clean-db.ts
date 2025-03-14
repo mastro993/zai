@@ -21,6 +21,8 @@ async function cleanDatabase() {
 
   const dbPath = join(basePath, dbName);
 
+  console.log("Cleaning database at", dbPath);
+
   try {
     await unlink(dbPath);
     console.log("Database cleaned successfully");

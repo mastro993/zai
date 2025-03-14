@@ -24,7 +24,11 @@ function Root() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    migrateToLatest().then(() => setIsLoading(false));
+    migrateToLatest()
+      .then(() => setIsLoading(false))
+      .catch((error) => {
+        console.error(error);
+      });
   }, []);
 
   if (isLoading) {

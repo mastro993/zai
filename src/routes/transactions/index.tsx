@@ -1,3 +1,4 @@
+import { Navbar } from "@/components/layout/Navbar";
 import { JsonDisplay } from "@/components/ui/JsonDisplay";
 import { useAddTransaction, useTransactionList } from "@/lib/api/transactions";
 import { createFileRoute } from "@tanstack/react-router";
@@ -27,7 +28,7 @@ function RouteComponent() {
       amount: 100,
       date: "2021-01-01",
       type: "income",
-      category_id: 1,
+      category_id: undefined,
       notes: "Test",
     });
     toast.success("Transaction added");
@@ -36,26 +37,30 @@ function RouteComponent() {
   return (
     <>
       <div>
-        <div className="navbar bg-base-100 flex justify-between px-5">
-          <h1 className="text-lg text-content">Transactions</h1>
-          <label className="input ">
-            <Search className="w-4 h-4 text-content" />
-            <input
-              type="search"
-              className="grow"
-              placeholder="Search"
-              ref={searchRef}
-            />
-            <kbd className="kbd kbd-sm">⌘</kbd>
-            <kbd className="kbd kbd-sm">K</kbd>
-          </label>
-          <div className="flex gap-2">
+        <Navbar>
+          <div className="navbar-start">
+            <h1 className="text-lg text-content">Transactions</h1>
+          </div>
+          <div className="navbar-center">
+            <label className="input ">
+              <Search className="w-4 h-4 text-content" />
+              <input
+                type="search"
+                className="grow"
+                placeholder="Search"
+                ref={searchRef}
+              />
+              <kbd className="kbd kbd-sm">⌘</kbd>
+              <kbd className="kbd kbd-sm">K</kbd>
+            </label>
+          </div>
+          <div className=" navbar-end flex gap-2">
             <button className="btn" onClick={handleAddTransaction}>
               <Plus className="w-4 h-4" />
               Add transaction
             </button>
           </div>
-        </div>
+        </Navbar>
         <ul className="list">
           {data?.pages
             .flatMap((page) => page.data)
