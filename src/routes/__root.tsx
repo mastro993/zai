@@ -1,5 +1,5 @@
 import { Sidebar } from "@/components/layout/Sidebar";
-import { ToastContainer } from "@/components/ui/ToastContainer";
+import { ToastContainer } from "@/components/ToastContainer";
 import { migrateToLatest } from "@/lib/database/migrate";
 import { cn } from "@/utils/style";
 import { createRootRoute, Outlet } from "@tanstack/react-router";

@@ -1,3 +1,4 @@
+import { TransactionCategoryTable } from "@/features/transaction-category/schema";
 import {
   Generated,
   GeneratedAlways,
@@ -19,6 +20,9 @@ export type TransactionTable = {
   deleted_at?: string;
 };
 
-export type Transaction = Selectable<TransactionTable>;
+export type Transaction = Selectable<TransactionTable> & {
+  category: Selectable<TransactionCategoryTable> | null;
+};
+
 export type NewTransaction = Insertable<TransactionTable>;
 export type TransactionUpdate = Updateable<TransactionTable>;

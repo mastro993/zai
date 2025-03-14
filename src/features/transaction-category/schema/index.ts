@@ -18,6 +18,10 @@ export type TransactionCategoryTable = {
   deleted_at?: string;
 };
 
-export type TransactionCategory = Selectable<TransactionCategoryTable>;
+export type TransactionCategory = Selectable<TransactionCategoryTable> & {
+  parent: Selectable<TransactionCategoryTable> | null;
+  children: Selectable<TransactionCategoryTable>[];
+};
+
 export type NewTransactionCategory = Insertable<TransactionCategoryTable>;
 export type TransactionCategoryUpdate = Updateable<TransactionCategoryTable>;

@@ -1,10 +1,12 @@
 import TauriDatabase from "@tauri-apps/plugin-sql";
-import { Kysely } from "kysely";
-import { TransactionTable } from "./schema/transaction";
+import { Kysely, ParseJSONResultsPlugin } from "kysely";
 import { TauriSqliteDialect } from "./driver/TauriSqliteDialect";
+import { TransactionCategoryTable } from "@/features/transaction-category/schema";
+import { TransactionTable } from "@/features/transaction/schema";
 
 export type Database = {
   transactions: TransactionTable;
+  transaction_categories: TransactionCategoryTable;
 };
 
 const dialect = new TauriSqliteDialect({
@@ -13,6 +15,7 @@ const dialect = new TauriSqliteDialect({
 
 export const db = new Kysely<Database>({
   dialect,
+  plugins: [new ParseJSONResultsPlugin()],
   log(event): void {
     if (event.level === "query") {
       console.debug(event.query.sql, event.query.parameters);
