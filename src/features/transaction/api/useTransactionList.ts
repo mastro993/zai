@@ -1,8 +1,7 @@
 import { db } from "@/lib/database";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Transaction } from "../schema";
-import { jsonArrayFrom } from "kysely/helpers/sqlite";
-import { jsonObjectFrom } from "kysely/helpers/sqlite";
+import { category } from "./helpers";
 
 type TransactionPage = {
   data: Transaction[];
@@ -22,18 +21,7 @@ export const useTransactionList = () =>
         .selectAll()
         .limit(PAGE_SIZE)
         .offset(page * PAGE_SIZE)
-        .select((eb) => [
-          jsonObjectFrom(
-            eb
-              .selectFrom("transaction_categories")
-              .selectAll()
-              .whereRef(
-                "transaction_categories.id",
-                "=",
-                "transactions.category_id"
-              )
-          ).as("category"),
-        ])
+        .select(({ ref }) => [category(ref("category_id")).as("category")])
         .execute();
 
       return {

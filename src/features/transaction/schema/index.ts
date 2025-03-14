@@ -1,14 +1,8 @@
 import { TransactionCategoryTable } from "@/features/transaction-category/schema";
-import {
-  Generated,
-  GeneratedAlways,
-  Insertable,
-  Selectable,
-  Updateable,
-} from "kysely";
+import { GeneratedAlways, Insertable, Selectable, Updateable } from "kysely";
 
 export type TransactionTable = {
-  id: Generated<number>;
+  id: GeneratedAlways<number>;
   description: string;
   amount: number;
   date: string;

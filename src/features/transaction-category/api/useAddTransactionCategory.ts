@@ -16,10 +16,10 @@ export const useAddTransactionCategory = () => {
       return results;
     },
     async onSuccess() {
-      toast.success("Transaction category added");
       await queryClient.invalidateQueries({
         queryKey: ["transactionCategories"],
       });
+      toast.success("Transaction category added");
     },
     onError() {
       toast.error("Failed to add transaction category");

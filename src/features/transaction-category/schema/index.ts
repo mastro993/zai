@@ -1,13 +1,7 @@
-import {
-  Generated,
-  GeneratedAlways,
-  Insertable,
-  Selectable,
-  Updateable,
-} from "kysely";
+import { GeneratedAlways, Insertable, Selectable, Updateable } from "kysely";
 
 export type TransactionCategoryTable = {
-  id: Generated<number>;
+  id: GeneratedAlways<number>;
   parent_id?: number;
   name: string;
   color: string;
