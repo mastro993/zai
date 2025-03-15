@@ -8,7 +8,7 @@ import { useTransactionList } from "../api/useTransactionList";
 
 export const TransactionsScreen = () => {
   const { mutate: addTransaction } = useAddTransaction();
-  const { data, isLoading, error } = useTransactionList();
+  const { data } = useTransactionList();
 
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -22,7 +22,7 @@ export const TransactionsScreen = () => {
       amount: 100,
       date: "2021-01-01",
       type: "income",
-      category_id: undefined,
+      category_id: 1,
       notes: "Test",
     });
   };

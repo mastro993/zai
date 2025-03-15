@@ -9,7 +9,7 @@ export const useAddTransaction = () => {
   return useMutation({
     async mutationFn(transaction: NewTransaction) {
       const results = await db
-        .insertInto("transactions")
+        .insertInto("transaction")
         .values(transaction)
         .execute();
 

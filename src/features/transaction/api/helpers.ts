@@ -5,7 +5,7 @@ import { jsonObjectFrom } from "kysely/helpers/sqlite";
 function category(categoryId: Expression<number>) {
   return jsonObjectFrom(
     db
-      .selectFrom("transaction_categories as cat")
+      .selectFrom("transaction_category as cat")
       .select([
         "cat.id",
         "cat.name",

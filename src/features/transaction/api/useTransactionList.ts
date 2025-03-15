@@ -17,11 +17,13 @@ export const useTransactionList = () =>
       const page = pageParam as number;
 
       const dbTransactions = await db
-        .selectFrom("transactions")
-        .selectAll()
+        .selectFrom("transaction")
+        .selectAll("transaction")
         .limit(PAGE_SIZE)
         .offset(page * PAGE_SIZE)
-        .select(({ ref }) => [category(ref("category_id")).as("category")])
+        .select(({ ref }) => [
+          category(ref("transaction.category_id")).as("category"),
+        ])
         .execute();
 
       return {

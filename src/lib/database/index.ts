@@ -5,8 +5,8 @@ import { TransactionCategoryTable } from "@/features/transaction-category/schema
 import { TransactionTable } from "@/features/transaction/schema";
 
 export type Database = {
-  transactions: TransactionTable;
-  transaction_categories: TransactionCategoryTable;
+  transaction: TransactionTable;
+  transaction_category: TransactionCategoryTable;
 };
 
 const dialect = new TauriSqliteDialect({

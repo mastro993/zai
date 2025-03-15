@@ -9,7 +9,7 @@ export const useAddTransactionCategory = () => {
   return useMutation({
     async mutationFn(transactionCategory: NewTransactionCategory) {
       const results = await db
-        .insertInto("transaction_categories")
+        .insertInto("transaction_category")
         .values(transactionCategory)
         .execute();
 

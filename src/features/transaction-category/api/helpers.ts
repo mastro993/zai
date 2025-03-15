@@ -5,7 +5,7 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/sqlite";
 function children(id: Expression<number>) {
   return jsonArrayFrom(
     db
-      .selectFrom("transaction_categories as children")
+      .selectFrom("transaction_category as children")
       .select([
         "children.id",
         "children.name",
@@ -25,7 +25,7 @@ function children(id: Expression<number>) {
 function parent(parentId: Expression<number>) {
   return jsonObjectFrom(
     db
-      .selectFrom("transaction_categories as parent")
+      .selectFrom("transaction_category as parent")
       .select([
         "parent.id",
         "parent.name",
