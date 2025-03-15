@@ -10,8 +10,6 @@ export const TransactionCategoriesScreen = () => {
   const { mutate: addTransactionCategory } = useAddTransactionCategory();
   const { data: transactionCategories } = useTransactionCategories();
 
-  console.log("useTransactionCategories", transactionCategories);
-
   const { openModal, closeModal, Modal } = useModal({
     title: "New category",
     content: (

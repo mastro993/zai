@@ -30,8 +30,6 @@ export async function migrateToLatest() {
 
   const { error, results } = await migrator.migrateToLatest();
 
-  console.log("Migrations results", results);
-
   results?.forEach((it) => {
     if (it.status === "Success") {
       console.info(
