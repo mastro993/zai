@@ -2,42 +2,42 @@ import { db } from "@/lib/database";
 import { Expression } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/sqlite";
 
-function children(parentId: Expression<number>) {
+function children(id: Expression<number>) {
   return jsonArrayFrom(
     db
-      .selectFrom("transaction_categories as cat")
+      .selectFrom("transaction_categories as children")
       .select([
-        "cat.id",
-        "cat.name",
-        "cat.color",
-        "cat.icon",
-        "cat.description",
-        "cat.parent_id",
-        "cat.created_at",
-        "cat.updated_at",
-        "cat.deleted_at",
+        "children.id",
+        "children.name",
+        "children.color",
+        "children.icon",
+        "children.description",
+        "children.parent_id",
+        "children.created_at",
+        "children.updated_at",
+        "children.deleted_at",
       ])
-      .whereRef("cat.parent_id", "=", parentId)
-      .orderBy("cat.name")
+      .whereRef("children.parent_id", "=", id)
+      .orderBy("children.name")
   );
 }
 
 function parent(parentId: Expression<number>) {
   return jsonObjectFrom(
     db
-      .selectFrom("transaction_categories as cat")
+      .selectFrom("transaction_categories as parent")
       .select([
-        "cat.id",
-        "cat.name",
-        "cat.color",
-        "cat.icon",
-        "cat.description",
-        "cat.parent_id",
-        "cat.created_at",
-        "cat.updated_at",
-        "cat.deleted_at",
+        "parent.id",
+        "parent.name",
+        "parent.color",
+        "parent.icon",
+        "parent.description",
+        "parent.parent_id",
+        "parent.created_at",
+        "parent.updated_at",
+        "parent.deleted_at",
       ])
-      .whereRef("cat.id", "=", parentId)
+      .whereRef("parent.id", "=", parentId)
   );
 }
 

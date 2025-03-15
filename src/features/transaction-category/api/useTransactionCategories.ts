@@ -9,10 +9,10 @@ export const useTransactionCategories = () =>
     queryFn: async () =>
       db
         .selectFrom("transaction_categories")
-        .selectAll()
+        .selectAll("transaction_categories")
         .select(({ ref }) => [
-          children(ref("parent_id")).as("children"),
-          parent(ref("parent_id")).as("parent"),
+          children(ref("transaction_categories.id")).as("children"),
+          parent(ref("transaction_categories.parent_id")).as("parent"),
         ])
         .execute(),
   });
