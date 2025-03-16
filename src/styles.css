@@ -5,3 +5,7 @@
     light --default,
     dark --prefersdark;
 }
+
+html {
+  scrollbar-gutter: auto !important;
+}

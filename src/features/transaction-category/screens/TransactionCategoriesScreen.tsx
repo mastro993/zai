@@ -8,7 +8,9 @@ import { TransactionCategoryItem } from "../components/TransactionCategoryItem";
 
 export const TransactionCategoriesScreen = () => {
   const { mutate: addTransactionCategory } = useAddTransactionCategory();
-  const { data: transactionCategories } = useTransactionCategories();
+  const { data: transactionCategories } = useTransactionCategories({
+    asParents: true,
+  });
 
   const { openModal, closeModal, Modal } = useModal({
     title: "New category",
@@ -29,7 +31,7 @@ export const TransactionCategoriesScreen = () => {
         <Navbar>
           <h1 className="text-lg text-content">Categories</h1>
           <div className="flex gap-2">
-            <button className="btn" onClick={openModal}>
+            <button className="btn btn-neutral btn-sm" onClick={openModal}>
               <Plus className="w-4 h-4" />
               Add category
             </button>

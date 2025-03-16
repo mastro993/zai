@@ -1,5 +1,6 @@
 import { NewTransactionCategory } from "@/features/transaction-category/schema";
 import { SubmitHandler, useForm } from "react-hook-form";
+import { useTransactionCategories } from "../api/useTransactionCategories";
 import { TransactionCategoryBadge } from "./TransactionCategoryBadge";
 
 type TransactionCategoryFormProps = {
@@ -11,9 +12,13 @@ export const TransactionCategoryForm = ({
   onSubmit,
   onClose,
 }: TransactionCategoryFormProps) => {
+  const { data: transactionCategories } = useTransactionCategories({
+    asParents: true,
+  });
+
   const { handleSubmit, register, watch } = useForm<NewTransactionCategory>({
     defaultValues: {
-      name: "New category",
+      name: "",
       description: "",
     },
   });
@@ -28,27 +33,33 @@ export const TransactionCategoryForm = ({
           className="input  w-full"
         />
       </div>
-      {/* <select {...register("parent_id")} className="select w-full">
+      <select {...register("parent_id")} className="select w-full">
+        <option value={undefined}>Select parent</option>
         {transactionCategories?.map((transactionCategory) => (
           <option key={transactionCategory.id} value={transactionCategory.id}>
             {transactionCategory.name}
           </option>
         ))}
-      </select> */}
-      <input
-        {...register("description")}
-        placeholder="Description"
-        className="input  w-full"
-      />
+      </select>
+      <label className="input w-full">
+        <input {...register("description")} placeholder="Description" />
+        <span className="badge badge-soft badge-neutral badge-xs">
+          Optional
+        </span>
+      </label>
       {/* <input
         {...register("color")}
         placeholder="Color"
         className="input w-full"
         pattern="#[0-9a-fA-F]{6}"
       /> */}
-      <div className="box bg-base-200 p-12 rounded-md flex justify-center ">
-        <TransactionCategoryBadge name={watch("name")} />
-      </div>
+      <fieldset className="fieldset">
+        <legend className="fieldset-legend">Preview</legend>
+        <div className="box bg-base-200 p-12 rounded-md flex justify-center ">
+          <TransactionCategoryBadge name={watch("name") || "New category"} />
+        </div>
+      </fieldset>
+
       <div className="modal-action">
         <button type="submit" className="btn btn-primary">
           Save
