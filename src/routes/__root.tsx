@@ -1,20 +1,9 @@
-import { Sidebar } from "@/components/layout/Sidebar";
+import { SidebarProvider } from "@/components/layout/Sidebar";
 import { ToastContainer } from "@/components/ToastContainer";
 import { migrateToLatest } from "@/lib/database/migrate";
-import { cn } from "@/utils/style";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { useEffect, useState } from "react";
-
-const MainContent = () => {
-  return (
-    <main
-      className={cn("flex-1 transition-all duration-300", "ml-64 max-lg:ml-16")}
-    >
-      <Outlet />
-    </main>
-  );
-};
 
 export const Route = createRootRoute({
   component: Root,
@@ -36,9 +25,10 @@ function Root() {
   }
 
   return (
-    <div className="flex min-h-screen bg-base-100">
-      <Sidebar />
-      <MainContent />
+    <div className="flex min-h-screen bg-base-100  text-base-content">
+      <SidebarProvider>
+        <Outlet />
+      </SidebarProvider>
       <TanStackRouterDevtools position="bottom-right" />
       <ToastContainer />
     </div>

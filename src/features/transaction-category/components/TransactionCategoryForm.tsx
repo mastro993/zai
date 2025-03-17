@@ -1,7 +1,21 @@
 import { NewTransactionCategory } from "@/features/transaction-category/schema";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitHandler, useForm } from "react-hook-form";
+import { z, ZodType } from "zod";
 import { useTransactionCategories } from "../api/useTransactionCategories";
 import { TransactionCategoryBadge } from "./TransactionCategoryBadge";
+
+export const TransactionCategorySchema: ZodType<NewTransactionCategory> =
+  z.object({
+    name: z.string(),
+    color: z.string().optional(),
+    icon: z.string().optional(),
+    parent_id: z.coerce
+      .number()
+      .transform((val) => (val < 0 ? undefined : val))
+      .optional(),
+    description: z.string().optional(),
+  });
 
 type TransactionCategoryFormProps = {
   onSubmit: SubmitHandler<NewTransactionCategory>;
@@ -15,10 +29,7 @@ export const TransactionCategoryForm = ({
   const { data: transactionCategories } = useTransactionCategories();
 
   const { handleSubmit, register, watch } = useForm<NewTransactionCategory>({
-    defaultValues: {
-      name: "",
-      description: "",
-    },
+    resolver: zodResolver(TransactionCategorySchema),
   });
 
   return (
@@ -28,11 +39,11 @@ export const TransactionCategoryForm = ({
         <input
           {...register("name")}
           placeholder="Name"
-          className="input  w-full"
+          className="input w-full"
         />
       </div>
       <select {...register("parent_id")} className="select w-full">
-        <option value={undefined}>Select parent</option>
+        <option value={-1}>Select parent</option>
         {transactionCategories?.map((transactionCategory) => (
           <option key={transactionCategory.id} value={transactionCategory.id}>
             {transactionCategory.name}

@@ -15,12 +15,18 @@ export const SidebarLink = ({ icon: Icon, label, href }: SidebarLinkProps) => {
       className={cn(
         "flex items-center px-3 py-2 gap-3 rounded-lg",
         "px-3 py-2 max-lg:px-2",
-        "[&.active]:bg-base-300 hover:bg-base-200",
-        "[&.active]:text-base-content hover:text-base-content text-base-content/80",
+        "bg-base-100hover:bg-base-200",
+        "text-base-content/80 hover:text-base-content",
         "transition-all duration-300"
       )}
+      activeOptions={{
+        exact: true,
+      }}
+      activeProps={{
+        className: "bg-base-300 hover:bg-base-300 text-base-content",
+      }}
     >
-      <Icon className="h-5 w-5" />
+      <Icon className="h-4 w-4" />
       <span className="max-lg:hidden">{label}</span>
     </Link>
   );

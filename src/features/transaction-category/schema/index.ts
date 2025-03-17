@@ -4,9 +4,9 @@ export type TransactionCategoryTable = {
   id: GeneratedAlways<number>;
   parent_id?: number;
   name: string;
-  color: string;
-  icon: string;
-  description: string;
+  color?: string;
+  icon?: string;
+  description?: string;
   created_at: GeneratedAlways<string>;
   updated_at: GeneratedAlways<string>;
   deleted_at?: string;

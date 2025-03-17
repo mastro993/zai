@@ -11,9 +11,9 @@ export const TransactionCategoryBadge = ({
       className={cn([
         "inline-flex items-center",
         "px-2 py-1",
-        "rounded-md bg-gray-50 ",
-        "ring-1 ring-gray-500/10 ring-inset",
-        "text-xs font-medium text-gray-600",
+        "rounded-md bg-base-300",
+        "ring-1 ring-base-300/10 ring-inset",
+        "text-xs font-medium text-base-content",
       ])}
     >
       {name}

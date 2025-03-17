@@ -1,6 +1,7 @@
 import { navigationItems, type NavItem } from "@/config/navigation";
 import { cn } from "@/utils/style";
-import { Settings } from "lucide-react";
+import { Book, CircleHelp, Rocket, Settings } from "lucide-react";
+import packageJson from "../../../package.json";
 import { SidebarLink } from "./SidebarLink";
 
 export const Sidebar = () => {
@@ -27,9 +28,32 @@ export const Sidebar = () => {
         </nav>
 
         <div className={cn("p-4", "border-t  border-base-300")}>
+          <div className="flex items-center text-base-content/50 px-3 py-2 gap-3">
+            <Rocket className="size-4" />
+            <span className="text-sm text-base-content/50">
+              Version {packageJson.version}
+            </span>
+          </div>
+          <SidebarLink icon={Book} label="Documentation" href="/settings" />
+          <SidebarLink icon={CircleHelp} label="Support" href="/settings" />
           <SidebarLink icon={Settings} label="Settings" href="/settings" />
         </div>
       </div>
     </aside>
+  );
+};
+
+export const SidebarProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
+  return (
+    <main
+      className={cn("flex-1 transition-all duration-300", "ml-64 max-lg:ml-16")}
+    >
+      <Sidebar />
+      {children}
+    </main>
   );
 };
