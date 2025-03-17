@@ -12,9 +12,11 @@ export type TransactionCategoryTable = {
   deleted_at?: string;
 };
 
+export type TransactionCategoryChildren = Selectable<TransactionCategoryTable>;
+
 export type TransactionCategory = Selectable<TransactionCategoryTable> & {
   parent: Selectable<TransactionCategoryTable> | null;
-  children: Selectable<TransactionCategoryTable>[];
+  children: TransactionCategoryChildren[];
 };
 
 export type NewTransactionCategory = Insertable<TransactionCategoryTable>;

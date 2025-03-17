@@ -12,9 +12,7 @@ export const TransactionCategoryForm = ({
   onSubmit,
   onClose,
 }: TransactionCategoryFormProps) => {
-  const { data: transactionCategories } = useTransactionCategories({
-    asParents: true,
-  });
+  const { data: transactionCategories } = useTransactionCategories();
 
   const { handleSubmit, register, watch } = useForm<NewTransactionCategory>({
     defaultValues: {
@@ -43,9 +41,7 @@ export const TransactionCategoryForm = ({
       </select>
       <label className="input w-full">
         <input {...register("description")} placeholder="Description" />
-        <span className="badge badge-soft badge-neutral badge-xs">
-          Optional
-        </span>
+        <span className="badge badge-soft badge-xs">Optional</span>
       </label>
       {/* <input
         {...register("color")}
@@ -59,7 +55,6 @@ export const TransactionCategoryForm = ({
           <TransactionCategoryBadge name={watch("name") || "New category"} />
         </div>
       </fieldset>
-
       <div className="modal-action">
         <button type="submit" className="btn btn-primary">
           Save

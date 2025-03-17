@@ -8,9 +8,7 @@ import { TransactionCategoryItem } from "../components/TransactionCategoryItem";
 
 export const TransactionCategoriesScreen = () => {
   const { mutate: addTransactionCategory } = useAddTransactionCategory();
-  const { data: transactionCategories } = useTransactionCategories({
-    asParents: true,
-  });
+  const { data: transactionCategories } = useTransactionCategories();
 
   const { openModal, closeModal, Modal } = useModal({
     title: "New category",
