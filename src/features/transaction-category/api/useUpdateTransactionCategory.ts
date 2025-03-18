@@ -1,15 +1,16 @@
 import { db } from "@/lib/database";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { TransactionCategory } from "../schema";
+import { TransactionCategory, TransactionCategoryUpdate } from "../schema";
 
-export const useDeleteTransactionCategory = (category: TransactionCategory) => {
+export const useUpdateTransactionCategory = (category: TransactionCategory) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    async mutationFn() {
+    async mutationFn(payload: TransactionCategoryUpdate) {
       const results = await db
-        .deleteFrom("transaction_category")
+        .updateTable("transaction_category")
+        .set(payload)
         .where("id", "=", category.id)
         .execute();
 
@@ -19,10 +20,10 @@ export const useDeleteTransactionCategory = (category: TransactionCategory) => {
       await queryClient.invalidateQueries({
         queryKey: ["transactionCategories"],
       });
-      toast.success(`"${category.name}" category deleted`);
+      toast.success("Transaction category updated");
     },
     onError() {
-      toast.error("Failed to delete transaction category");
+      toast.error("Failed to add transaction category");
     },
   });
 };

@@ -1,4 +1,7 @@
-import { NewTransactionCategory } from "@/features/transaction-category/schema";
+import {
+  NewTransactionCategory,
+  TransactionCategory,
+} from "@/features/transaction-category/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { z, ZodType } from "zod";
@@ -20,16 +23,23 @@ export const TransactionCategorySchema: ZodType<NewTransactionCategory> =
 type TransactionCategoryFormProps = {
   onSubmit: SubmitHandler<NewTransactionCategory>;
   onClose: () => void;
+  category?: TransactionCategory;
 };
 
 export const TransactionCategoryForm = ({
   onSubmit,
   onClose,
+  category,
 }: TransactionCategoryFormProps) => {
   const { data: transactionCategories } = useTransactionCategories();
 
   const { handleSubmit, register, watch } = useForm<NewTransactionCategory>({
     resolver: zodResolver(TransactionCategorySchema),
+    defaultValues: {
+      name: category?.name,
+      parent_id: category?.parent_id,
+      description: category?.description,
+    },
   });
 
   return (
@@ -67,11 +77,11 @@ export const TransactionCategoryForm = ({
         </div>
       </fieldset>
       <div className="modal-action">
-        <button type="submit" className="btn btn-primary">
-          Save
-        </button>
         <button type="button" className="btn btn-ghost" onClick={onClose}>
           Close
+        </button>
+        <button type="submit" className="btn btn-primary">
+          Save
         </button>
       </div>
     </form>

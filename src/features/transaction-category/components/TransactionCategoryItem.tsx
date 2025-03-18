@@ -1,6 +1,6 @@
-import { Pencil, Trash } from "lucide-react";
-import { useDeleteTransactionCategory } from "../api/useDeleteTransactionCategory";
 import { TransactionCategory, TransactionCategoryChildren } from "../schema";
+import { DeleteTransactionCategoryButton } from "./DeleteTransactionCategoryButton";
+import { EditTransactionCategoryButton } from "./EditTransactionCategoryButton";
 import { TransactionCategoryBadge } from "./TransactionCategoryBadge";
 
 export type TransactionCategoryItemProps = {
@@ -10,29 +10,20 @@ export type TransactionCategoryItemProps = {
 export const TransactionCategoryItem = ({
   category,
 }: TransactionCategoryItemProps) => {
-  const { mutate: deleteTransactionCategory } = useDeleteTransactionCategory();
-
   return (
     <li
       className="list-row flex items-center justify-between bg-base-100"
       key={category.id}
     >
-      <div>
+      <div className="flex items-center gap-2">
         <TransactionCategoryBadge name={category.name} />
-        <span className="text-sm text-base-content/50">
+        <span className="text-sm text-base-content/50 ">
           {category.description}
         </span>
       </div>
       <div className="flex gap-2">
-        <button className="btn btn-square">
-          <Pencil className="size-4" />
-        </button>
-        <button
-          className="btn btn-square"
-          onClick={() => deleteTransactionCategory(category.id)}
-        >
-          <Trash className="size-4" />
-        </button>
+        <EditTransactionCategoryButton category={category} />
+        <DeleteTransactionCategoryButton category={category} />
       </div>
     </li>
   );

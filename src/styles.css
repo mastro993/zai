@@ -2,8 +2,8 @@
 @import "@radix-ui/themes/styles.css";
 @plugin "daisyui" {
   themes:
-    light --default,
-    dark --prefersdark;
+    bumblebee --default,
+    business --prefersdark;
 }
 
 html {
