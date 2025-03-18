@@ -11,32 +11,26 @@ type ModalConfig = {
   closeOnBackdropClick?: boolean;
 };
 
-type UseModalReturn = {
-  openModal: () => void;
-  closeModal: () => void;
-  Modal: React.FC;
-};
-
 export const useModal = ({
   title,
   content,
   onClose = () => true,
   showCloseButton = false,
   closeOnBackdropClick = true,
-}: ModalConfig): UseModalReturn => {
+}: ModalConfig) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  const openModal = useCallback(() => {
+  const open = useCallback(() => {
     dialogRef.current?.showModal();
   }, []);
 
-  const closeModal = useCallback(() => {
+  const close = useCallback(() => {
     dialogRef.current?.close();
   }, [onClose]);
 
   useHotkeys("Escape", () => {
     if (onClose()) {
-      closeModal();
+      close();
     }
   });
 
@@ -51,7 +45,7 @@ export const useModal = ({
         onClick={(e) => {
           if (closeOnBackdropClick && e.target === e.currentTarget) {
             if (onClose()) {
-              closeModal();
+              close();
             }
           }
         }}
@@ -62,7 +56,7 @@ export const useModal = ({
             {showCloseButton && (
               <button
                 className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-                onClick={closeModal}
+                onClick={close}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -72,7 +66,7 @@ export const useModal = ({
         </div>
       </dialog>
     );
-  }, [title, content, showCloseButton, closeOnBackdropClick, closeModal]);
+  }, [title, content, showCloseButton, closeOnBackdropClick, close]);
 
-  return { openModal, closeModal, Modal };
+  return { open, close, Modal };
 };

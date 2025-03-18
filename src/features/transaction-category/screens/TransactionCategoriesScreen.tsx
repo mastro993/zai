@@ -10,15 +10,15 @@ export const TransactionCategoriesScreen = () => {
   const { mutate: addTransactionCategory } = useAddTransactionCategory();
   const { data: transactionCategories } = useTransactionCategories();
 
-  const { openModal, closeModal, Modal } = useModal({
+  const { Modal, open, close } = useModal({
     title: "New category",
     content: (
       <TransactionCategoryForm
         onSubmit={(data) => {
           addTransactionCategory(data);
-          closeModal();
+          close();
         }}
-        onClose={() => closeModal()}
+        onClose={() => close()}
       />
     ),
   });
@@ -29,7 +29,7 @@ export const TransactionCategoriesScreen = () => {
         <Navbar>
           <h1 className="text-lg text-content">Categories</h1>
           <div className="flex gap-2">
-            <button className="btn btn-neutral btn-sm" onClick={openModal}>
+            <button className="btn btn-neutral btn-sm" onClick={open}>
               <Plus className="w-4 h-4" />
               Add category
             </button>

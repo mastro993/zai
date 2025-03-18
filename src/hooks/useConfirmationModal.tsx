@@ -11,12 +11,6 @@ type ModalConfig = {
   destructive?: boolean;
 };
 
-type UseModalReturn = {
-  openModal: () => void;
-  closeModal: () => void;
-  ConfirmationModal: React.FC;
-};
-
 export const useConfirmationModal = ({
   title,
   content,
@@ -24,22 +18,22 @@ export const useConfirmationModal = ({
   cancelText = "Cancel",
   onConfirm = () => true,
   destructive = false,
-}: ModalConfig): UseModalReturn => {
+}: ModalConfig) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  const openModal = useCallback(() => {
+  const open = useCallback(() => {
     dialogRef.current?.showModal();
   }, []);
 
-  const closeModal = useCallback(() => {
+  const close = useCallback(() => {
     dialogRef.current?.close();
   }, []);
 
   useHotkeys("Escape", () => {
-    closeModal();
+    close();
   });
 
-  const ConfirmationModal: React.FC = useCallback(() => {
+  const Modal: React.FC = useCallback(() => {
     return (
       <dialog
         ref={dialogRef}
@@ -67,7 +61,7 @@ export const useConfirmationModal = ({
         </div>
       </dialog>
     );
-  }, [title, content, confirmText, cancelText, onConfirm, closeModal]);
+  }, [title, content, confirmText, cancelText, onConfirm, close]);
 
-  return { openModal, closeModal, ConfirmationModal };
+  return { open, close, Modal };
 };

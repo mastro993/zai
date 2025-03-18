@@ -1,7 +1,10 @@
 import {
   NewTransactionCategory,
   TransactionCategory,
+  TransactionCategoryColor,
+  TransactionCategoryColors,
 } from "@/features/transaction-category/schema";
+import { cn } from "@/utils/style";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { z, ZodType } from "zod";
@@ -10,8 +13,8 @@ import { TransactionCategoryBadge } from "./TransactionCategoryBadge";
 
 export const TransactionCategorySchema: ZodType<NewTransactionCategory> =
   z.object({
-    name: z.string(),
-    color: z.string().optional(),
+    name: z.string().nonempty(),
+    color: z.enum(TransactionCategoryColors),
     icon: z.string().optional(),
     parent_id: z.coerce
       .number()
@@ -22,7 +25,7 @@ export const TransactionCategorySchema: ZodType<NewTransactionCategory> =
 
 type TransactionCategoryFormProps = {
   onSubmit: SubmitHandler<NewTransactionCategory>;
-  onClose: () => void;
+  onClose?: () => void;
   category?: TransactionCategory;
 };
 
@@ -39,6 +42,7 @@ export const TransactionCategoryForm = ({
       name: category?.name,
       parent_id: category?.parent_id,
       description: category?.description,
+      color: category?.color || "white",
     },
   });
 
@@ -64,6 +68,20 @@ export const TransactionCategoryForm = ({
         <input {...register("description")} placeholder="Description" />
         <span className="badge badge-soft badge-xs">Optional</span>
       </label>
+      <div className="flex gap-2">
+        {TransactionCategoryColors.map((color) => (
+          <input
+            {...register("color")}
+            type="radio"
+            name="color"
+            value={color}
+            className={cn(
+              ["btn btn-sm btn-square"],
+              colorRadioClassByVariants[color]
+            )}
+          />
+        ))}
+      </div>
       {/* <input
         {...register("color")}
         placeholder="Color"
@@ -73,7 +91,11 @@ export const TransactionCategoryForm = ({
       <fieldset className="fieldset">
         <legend className="fieldset-legend">Preview</legend>
         <div className="box bg-base-200 p-12 rounded-md flex justify-center ">
-          <TransactionCategoryBadge name={watch("name") || "New category"} />
+          <TransactionCategoryBadge
+            key={"category-badge-preview-" + watch("color")}
+            name={watch("name") || "New category"}
+            color={watch("color") || "white"}
+          />
         </div>
       </fieldset>
       <div className="modal-action">
@@ -86,4 +108,16 @@ export const TransactionCategoryForm = ({
       </div>
     </form>
   );
+};
+
+const colorRadioClassByVariants: {
+  [color in TransactionCategoryColor]: string;
+} = {
+  white: "bg-white",
+  red: "bg-red-500",
+  yellow: "bg-yellow-500",
+  green: "bg-green-500",
+  blue: "bg-blue-500",
+  purple: "bg-purple-500",
+  pink: "bg-pink-500",
 };
