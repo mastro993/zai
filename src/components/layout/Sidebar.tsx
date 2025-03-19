@@ -15,7 +15,7 @@ export const Sidebar = () => {
         "transition-all duration-300"
       )}
     >
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col bg-base-200">
         <nav className="flex-1 space-y-1 p-3">
           {navigationItems.map((item: NavItem) => (
             <SidebarLink

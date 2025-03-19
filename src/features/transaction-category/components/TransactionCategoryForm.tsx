@@ -40,9 +40,9 @@ export const TransactionCategoryForm = ({
     resolver: zodResolver(TransactionCategorySchema),
     defaultValues: {
       name: category?.name,
-      parent_id: category?.parent_id,
+      parent_id: category?.parent_id ?? -1,
       description: category?.description,
-      color: category?.color || "white",
+      color: category?.color || "neutral",
     },
   });
 
@@ -68,17 +68,14 @@ export const TransactionCategoryForm = ({
         <input {...register("description")} placeholder="Description" />
         <span className="badge badge-soft badge-xs">Optional</span>
       </label>
-      <div className="flex gap-2">
+      <div className="grid grid-cols-10 gap-1">
         {TransactionCategoryColors.map((color) => (
           <input
             {...register("color")}
             type="radio"
             name="color"
             value={color}
-            className={cn(
-              ["btn btn-sm btn-square"],
-              colorRadioClassByVariants[color]
-            )}
+            className={cn(["btn btn-square"], colorRadioClassByVariants[color])}
           />
         ))}
       </div>
@@ -92,9 +89,11 @@ export const TransactionCategoryForm = ({
         <legend className="fieldset-legend">Preview</legend>
         <div className="box bg-base-200 p-12 rounded-md flex justify-center ">
           <TransactionCategoryBadge
-            key={"category-badge-preview-" + watch("color")}
-            name={watch("name") || "New category"}
-            color={watch("color") || "white"}
+            category={{
+              name: watch("name") || "New category",
+              color: watch("color") || "white",
+              parent: null,
+            }}
           />
         </div>
       </fieldset>
@@ -113,11 +112,24 @@ export const TransactionCategoryForm = ({
 const colorRadioClassByVariants: {
   [color in TransactionCategoryColor]: string;
 } = {
-  white: "bg-white",
   red: "bg-red-500",
+  orange: "bg-orange-500",
+  amber: "bg-amber-500",
   yellow: "bg-yellow-500",
+  lime: "bg-lime-500",
   green: "bg-green-500",
+  emerald: "bg-emerald-500",
+  teal: "bg-teal-500",
+  cyan: "bg-cyan-500",
+  sky: "bg-sky-500",
   blue: "bg-blue-500",
+  indigo: "bg-indigo-500",
+  violet: "bg-violet-500",
   purple: "bg-purple-500",
+  fuchsia: "bg-fuchsia-500",
   pink: "bg-pink-500",
+  rose: "bg-rose-500",
+  neutral: "bg-neutral-500",
+  black: "bg-black",
+  white: "bg-white",
 };

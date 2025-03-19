@@ -1,13 +1,26 @@
 import { GeneratedAlways, Insertable, Selectable, Updateable } from "kysely";
 
 export const TransactionCategoryColors = [
-  "white",
   "red",
+  "orange",
+  "amber",
   "yellow",
+  "lime",
   "green",
+  "emerald",
+  "teal",
+  "cyan",
+  "sky",
   "blue",
+  "indigo",
+  "violet",
   "purple",
+  "fuchsia",
   "pink",
+  "rose",
+  "white",
+  "neutral",
+  "black",
 ] as const;
 
 export type TransactionCategoryColor =

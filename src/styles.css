@@ -1,10 +1,7 @@
 @import "tailwindcss";
 @plugin "daisyui" {
+  exclude: rootscrollgutter;
   themes:
     bumblebee --default,
     business --prefersdark;
-}
-
-html {
-  scrollbar-gutter: auto !important;
 }

@@ -51,20 +51,20 @@ export const TransactionCategoryItem = ({
   return (
     <>
       <li
-        className="list-row flex items-center justify-between bg-base-100"
+        className="list-row flex items-center justify-between bg-base-100 "
         key={category.id}
       >
         <div className="flex items-center gap-2">
-          <TransactionCategoryBadge
-            name={category.name}
-            color={category.color}
-          />
+          <TransactionCategoryBadge category={category} />
           <span className="text-sm text-base-content/50 ">
             {category.description}
           </span>
         </div>
         <div className="flex gap-2">
-          <button className="btn btn-sm btn-square" onClick={updateModal.open}>
+          <button
+            className="btn btn-sm btn-ghost btn-square"
+            onClick={updateModal.open}
+          >
             <Pencil className="size-4" />
           </button>
           <button

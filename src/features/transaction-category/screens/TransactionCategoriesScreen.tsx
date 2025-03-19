@@ -1,27 +1,23 @@
 import { Navbar } from "@/components/layout/Navbar";
-import { useModal } from "@/hooks/useModal";
+import { closeModal, openModal } from "@/utils/modal";
 import { Plus } from "lucide-react";
 import { useAddTransactionCategory } from "../api/useAddTransactionCategory";
 import { useTransactionCategories } from "../api/useTransactionCategories";
-import { TransactionCategoryForm } from "../components/TransactionCategoryForm";
+import {
+  TRANSACTION_CATEGORY_FORM_MODAL_ID,
+  TransactionCategoryFormModal,
+} from "../components/TransactionCategoryFormModal";
 import { TransactionCategoryItem } from "../components/TransactionCategoryItem";
+import { NewTransactionCategory } from "../schema";
 
 export const TransactionCategoriesScreen = () => {
   const { mutate: addTransactionCategory } = useAddTransactionCategory();
   const { data: transactionCategories } = useTransactionCategories();
 
-  const { Modal, open, close } = useModal({
-    title: "New category",
-    content: (
-      <TransactionCategoryForm
-        onSubmit={(data) => {
-          addTransactionCategory(data);
-          close();
-        }}
-        onClose={() => close()}
-      />
-    ),
-  });
+  const handleAddTransactionCategory = (data: NewTransactionCategory) => {
+    addTransactionCategory(data);
+    closeModal(TRANSACTION_CATEGORY_FORM_MODAL_ID);
+  };
 
   return (
     <>
@@ -29,7 +25,10 @@ export const TransactionCategoriesScreen = () => {
         <Navbar>
           <h1 className="text-lg text-content">Categories</h1>
           <div className="flex gap-2">
-            <button className="btn btn-neutral btn-sm" onClick={open}>
+            <button
+              className="btn btn-neutral btn-sm"
+              onClick={() => openModal(TRANSACTION_CATEGORY_FORM_MODAL_ID)}
+            >
               <Plus className="w-4 h-4" />
               Add category
             </button>
@@ -46,7 +45,7 @@ export const TransactionCategoriesScreen = () => {
           })}
         </ul>
       </div>
-      <Modal />
+      <TransactionCategoryFormModal onSubmit={handleAddTransactionCategory} />
     </>
   );
 };

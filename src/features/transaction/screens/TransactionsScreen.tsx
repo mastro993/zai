@@ -48,7 +48,10 @@ export const TransactionsScreen = () => {
             </label>
           </div>
           <div className=" navbar-end flex gap-2">
-            <button className="btn" onClick={handleAddTransaction}>
+            <button
+              className="btn btn-sm btn-neutral"
+              onClick={handleAddTransaction}
+            >
               <Plus className="w-4 h-4" />
               Add transaction
             </button>

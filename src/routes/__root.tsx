@@ -25,7 +25,7 @@ function Root() {
   }
 
   return (
-    <div className="flex min-h-screen bg-base-100  text-base-content">
+    <div className="flex min-h-screen bg-base-100 text-base-content">
       <SidebarProvider>
         <Outlet />
       </SidebarProvider>

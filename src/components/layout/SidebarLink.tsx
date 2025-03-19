@@ -15,7 +15,7 @@ export const SidebarLink = ({ icon: Icon, label, href }: SidebarLinkProps) => {
       className={cn(
         "flex items-center px-3 py-2 gap-3 rounded-lg",
         "px-3 py-2 max-lg:px-2",
-        "bg-base-100hover:bg-base-200",
+        "bg-base-200 hover:bg-base-300",
         "text-base-content/80 hover:text-base-content",
         "transition-all duration-300"
       )}
