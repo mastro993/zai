@@ -1,11 +1,11 @@
+import { useModal } from "@/components/Modal";
 import { useConfirmationModal } from "@/hooks/useConfirmationModal";
-import { useModal } from "@/hooks/useModal";
-import { Pencil, Trash } from "lucide-react";
+import { ContextMenu } from "@radix-ui/themes";
 import { useDeleteTransactionCategory } from "../api/useDeleteTransactionCategory";
 import { useUpdateTransactionCategory } from "../api/useUpdateTransactionCategory";
 import { TransactionCategory, TransactionCategoryUpdate } from "../schema";
 import { TransactionCategoryBadge } from "./TransactionCategoryBadge";
-import { TransactionCategoryForm } from "./TransactionCategoryForm";
+import { TransactionCategoryFormModal } from "./TransactionCategoryFormModal";
 
 export type TransactionCategoryItemProps = {
   category: TransactionCategory;
@@ -28,55 +28,45 @@ export const TransactionCategoryItem = ({
     deleteTransactionCategory();
   };
 
-  const deleteConfirmationModal = useConfirmationModal({
+  const [onPresentDeleteModal] = useConfirmationModal({
     title: `Delete "${category.name}" category`,
     content: "Are you sure you want to delete this category?",
     onConfirm: handleDelete,
     destructive: true,
   });
 
-  const updateModal = useModal({
-    title: "Update category",
-    content: (
-      <TransactionCategoryForm
-        category={category}
-        onSubmit={(data) => {
-          updateModal.close();
-          handleUpdate(data);
-        }}
-      />
-    ),
-  });
-
+  const [onPresentUpdateModal] = useModal(
+    <TransactionCategoryFormModal category={category} onSubmit={handleUpdate} />
+  );
   return (
-    <>
-      <li
-        className="list-row flex items-center justify-between bg-base-100 "
-        key={category.id}
-      >
-        <div className="flex items-center gap-2">
-          <TransactionCategoryBadge category={category} />
-          <span className="text-sm text-base-content/50 ">
-            {category.description}
-          </span>
-        </div>
-        <div className="flex gap-2">
-          <button
-            className="btn btn-sm btn-ghost btn-square"
-            onClick={updateModal.open}
-          >
-            <Pencil className="size-4" />
-          </button>
-          <button
-            className="btn btn-sm btn-square"
-            onClick={deleteConfirmationModal.open}
-          >
-            <Trash className="size-4" />
-          </button>
-        </div>
-      </li>
-      <updateModal.Modal />
-      <deleteConfirmationModal.Modal />
-    </>
+    <ContextMenu.Root>
+      <ContextMenu.Trigger>
+        <li
+          className="list-row flex items-center justify-between bg-base-100 "
+          key={category.id}
+        >
+          <div className="flex items-center gap-2">
+            <TransactionCategoryBadge category={category} />
+            <span className="text-sm text-base-content/50 ">
+              {category.description}
+            </span>
+          </div>
+        </li>
+      </ContextMenu.Trigger>
+      <ContextMenu.Content variant="soft">
+        <ContextMenu.Item shortcut="⌘ E" onClick={onPresentUpdateModal}>
+          Edit
+        </ContextMenu.Item>
+        <ContextMenu.Item shortcut="⌘ S">Select</ContextMenu.Item>
+        <ContextMenu.Separator />
+        <ContextMenu.Item
+          shortcut="⌘ ⌫"
+          color="red"
+          onClick={onPresentDeleteModal}
+        >
+          Delete
+        </ContextMenu.Item>
+      </ContextMenu.Content>
+    </ContextMenu.Root>
   );
 };

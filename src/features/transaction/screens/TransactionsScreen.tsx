@@ -1,5 +1,5 @@
-import { Navbar } from "@/components/layout/Navbar";
-import { JsonDisplay } from "@/components/ui/JsonDisplay";
+import { Navbar } from "@/components/Navbar";
+import { JsonDisplay } from "@/components/utils/JsonDisplay";
 import { Plus, Search } from "lucide-react";
 import { useRef } from "react";
 import { useHotkeys } from "react-hotkeys-hook";

@@ -1,12 +1,16 @@
 import {
   NewTransactionCategory,
   TransactionCategory,
-  TransactionCategoryColor,
   TransactionCategoryColors,
 } from "@/features/transaction-category/schema";
-import { cn } from "@/utils/style";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { SubmitHandler, useForm } from "react-hook-form";
+import { Button, Dialog, Flex, Grid } from "@radix-ui/themes";
+import {
+  SubmitHandler,
+  useController,
+  UseControllerProps,
+  useForm,
+} from "react-hook-form";
 import { z, ZodType } from "zod";
 import { useTransactionCategories } from "../api/useTransactionCategories";
 import { TransactionCategoryBadge } from "./TransactionCategoryBadge";
@@ -36,15 +40,16 @@ export const TransactionCategoryForm = ({
 }: TransactionCategoryFormProps) => {
   const { data: transactionCategories } = useTransactionCategories();
 
-  const { handleSubmit, register, watch } = useForm<NewTransactionCategory>({
-    resolver: zodResolver(TransactionCategorySchema),
-    defaultValues: {
-      name: category?.name,
-      parent_id: category?.parent_id ?? -1,
-      description: category?.description,
-      color: category?.color || "neutral",
-    },
-  });
+  const { handleSubmit, register, watch, control } =
+    useForm<NewTransactionCategory>({
+      resolver: zodResolver(TransactionCategorySchema),
+      defaultValues: {
+        name: category?.name,
+        parent_id: category?.parent_id ?? -1,
+        description: category?.description,
+        color: category?.color,
+      },
+    });
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -68,17 +73,7 @@ export const TransactionCategoryForm = ({
         <input {...register("description")} placeholder="Description" />
         <span className="badge badge-soft badge-xs">Optional</span>
       </label>
-      <div className="grid grid-cols-10 gap-1">
-        {TransactionCategoryColors.map((color) => (
-          <input
-            {...register("color")}
-            type="radio"
-            name="color"
-            value={color}
-            className={cn(["btn btn-square"], colorRadioClassByVariants[color])}
-          />
-        ))}
-      </div>
+      <ColorPicker control={control} name="color" />
       {/* <input
         {...register("color")}
         placeholder="Color"
@@ -97,39 +92,34 @@ export const TransactionCategoryForm = ({
           />
         </div>
       </fieldset>
-      <div className="modal-action">
-        <button type="button" className="btn btn-ghost" onClick={onClose}>
-          Close
-        </button>
-        <button type="submit" className="btn btn-primary">
-          Save
-        </button>
-      </div>
+      <Flex gap="3" mt="4" justify="end">
+        <Dialog.Close>
+          <Button variant="soft" color="gray">
+            Cancel
+          </Button>
+        </Dialog.Close>
+        <Dialog.Close>
+          <Button type="submit">Save</Button>
+        </Dialog.Close>
+      </Flex>
     </form>
   );
 };
 
-const colorRadioClassByVariants: {
-  [color in TransactionCategoryColor]: string;
-} = {
-  red: "bg-red-500",
-  orange: "bg-orange-500",
-  amber: "bg-amber-500",
-  yellow: "bg-yellow-500",
-  lime: "bg-lime-500",
-  green: "bg-green-500",
-  emerald: "bg-emerald-500",
-  teal: "bg-teal-500",
-  cyan: "bg-cyan-500",
-  sky: "bg-sky-500",
-  blue: "bg-blue-500",
-  indigo: "bg-indigo-500",
-  violet: "bg-violet-500",
-  purple: "bg-purple-500",
-  fuchsia: "bg-fuchsia-500",
-  pink: "bg-pink-500",
-  rose: "bg-rose-500",
-  neutral: "bg-neutral-500",
-  black: "bg-black",
-  white: "bg-white",
+const ColorPicker = (props: UseControllerProps<NewTransactionCategory>) => {
+  const { field } = useController(props);
+
+  return (
+    <Grid columns={"9"} gap={"2"}>
+      {TransactionCategoryColors.map((color) => (
+        <Button
+          type="button"
+          key={color}
+          variant={field.value === color ? "solid" : "soft"}
+          color={color}
+          onClick={() => field.onChange(color)}
+        />
+      ))}
+    </Grid>
+  );
 };

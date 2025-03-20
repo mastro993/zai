@@ -1,5 +1,6 @@
-import { cn } from "@/utils/style";
-import { useCallback, useRef } from "react";
+import { InjectedModalProps, useModal } from "@/components/Modal";
+import { AlertDialog, Button, Flex } from "@radix-ui/themes";
+import { useCallback } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 type ModalConfig = {
@@ -19,49 +20,46 @@ export const useConfirmationModal = ({
   onConfirm = () => true,
   destructive = false,
 }: ModalConfig) => {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  const open = useCallback(() => {
-    dialogRef.current?.showModal();
-  }, []);
-
-  const close = useCallback(() => {
-    dialogRef.current?.close();
-  }, []);
-
   useHotkeys("Escape", () => {
     close();
   });
 
-  const Modal: React.FC = useCallback(() => {
-    return (
-      <dialog
-        ref={dialogRef}
-        className={cn(
-          "modal modal-bottom sm:modal-middle",
-          "backdrop:bg-black/50"
-        )}
-      >
-        <div className={cn("modal-box")}>
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-lg">{title}</h3>
-          </div>
-          <div className="py-4">{content}</div>
-          <div className="modal-action">
-            <form method="dialog" className="flex gap-2">
-              <button className="btn btn-ghost">{cancelText}</button>
-              <button
-                className={cn("btn", destructive && "btn-error")}
-                onClick={onConfirm}
-              >
-                {confirmText}
-              </button>
-            </form>
-          </div>
-        </div>
-      </dialog>
-    );
-  }, [title, content, confirmText, cancelText, onConfirm, close]);
+  const Modal: React.FC = useCallback(
+    (props: InjectedModalProps) => {
+      const handleClose = () => {
+        props.onDismiss?.();
+      };
 
-  return { open, close, Modal };
+      return (
+        <AlertDialog.Root open={true} onOpenChange={handleClose}>
+          <AlertDialog.Content maxWidth="450px">
+            <AlertDialog.Title>{title}</AlertDialog.Title>
+            <AlertDialog.Description size="2">
+              {content}
+            </AlertDialog.Description>
+
+            <Flex gap="3" mt="4" justify="end">
+              <AlertDialog.Cancel>
+                <Button variant="soft" color="gray" onClick={handleClose}>
+                  {cancelText}
+                </Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action>
+                <Button
+                  variant="solid"
+                  color={destructive ? "red" : "gray"}
+                  onClick={onConfirm}
+                >
+                  {confirmText}
+                </Button>
+              </AlertDialog.Action>
+            </Flex>
+          </AlertDialog.Content>
+        </AlertDialog.Root>
+      );
+    },
+    [title, content, confirmText, cancelText, onConfirm, close]
+  );
+
+  return useModal(<Modal />);
 };

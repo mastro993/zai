@@ -1,7 +1,13 @@
 @import "tailwindcss";
+@import "@radix-ui/themes/styles.css";
+
 @plugin "daisyui" {
   exclude: rootscrollgutter;
   themes:
     bumblebee --default,
     business --prefersdark;
+}
+
+.radix-themes {
+  --cursor-button: pointer;
 }

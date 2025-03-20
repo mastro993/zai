@@ -1,6 +1,9 @@
-import { SidebarProvider } from "@/components/layout/Sidebar";
+import { ModalProvider } from "@/components/Modal/ModalContext";
+import { SidebarProvider } from "@/components/Sidebar/Sidebar";
 import { ToastContainer } from "@/components/ToastContainer";
 import { migrateToLatest } from "@/lib/database/migrate";
+import { Spinner } from "@radix-ui/themes";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { useEffect, useState } from "react";
@@ -21,16 +24,23 @@ function Root() {
   }, []);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner size="3" />
+      </div>
+    );
   }
 
   return (
     <div className="flex min-h-screen bg-base-100 text-base-content">
-      <SidebarProvider>
-        <Outlet />
-      </SidebarProvider>
+      <ModalProvider>
+        <SidebarProvider>
+          <Outlet />
+        </SidebarProvider>
+        <ToastContainer />
+      </ModalProvider>
       <TanStackRouterDevtools position="bottom-right" />
-      <ToastContainer />
+      <ReactQueryDevtools initialIsOpen={false} position="bottom" />
     </div>
   );
 }
