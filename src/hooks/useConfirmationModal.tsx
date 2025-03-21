@@ -1,65 +1,44 @@
-import { InjectedModalProps, useModal } from "@/components/Modal";
-import { AlertDialog, Button, Flex } from "@radix-ui/themes";
+import { InjectedModalProps, Modal, useModal } from "@/components/Modal";
+import { cn } from "@/utils/style";
 import { useCallback } from "react";
-import { useHotkeys } from "react-hotkeys-hook";
 
 type ModalConfig = {
-  title: string | React.ReactNode;
-  content: string | React.ReactNode;
+  title: string;
+  description?: string;
   confirmText?: string;
   cancelText?: string;
-  onConfirm: () => void;
+  onConfirm?: () => void;
+  onDismiss?: () => void;
   destructive?: boolean;
 };
 
 export const useConfirmationModal = ({
   title,
-  content,
+  description,
   confirmText = "Confirm",
   cancelText = "Cancel",
-  onConfirm = () => true,
+  onConfirm = () => {},
+  onDismiss = () => {},
   destructive = false,
 }: ModalConfig) => {
-  useHotkeys("Escape", () => {
-    close();
-  });
-
-  const Modal: React.FC = useCallback(
-    (props: InjectedModalProps) => {
-      const handleClose = () => {
-        props.onDismiss?.();
-      };
-
-      return (
-        <AlertDialog.Root open={true} onOpenChange={handleClose}>
-          <AlertDialog.Content maxWidth="450px">
-            <AlertDialog.Title>{title}</AlertDialog.Title>
-            <AlertDialog.Description size="2">
-              {content}
-            </AlertDialog.Description>
-
-            <Flex gap="3" mt="4" justify="end">
-              <AlertDialog.Cancel>
-                <Button variant="soft" color="gray" onClick={handleClose}>
-                  {cancelText}
-                </Button>
-              </AlertDialog.Cancel>
-              <AlertDialog.Action>
-                <Button
-                  variant="solid"
-                  color={destructive ? "red" : "gray"}
-                  onClick={onConfirm}
-                >
-                  {confirmText}
-                </Button>
-              </AlertDialog.Action>
-            </Flex>
-          </AlertDialog.Content>
-        </AlertDialog.Root>
-      );
-    },
-    [title, content, confirmText, cancelText, onConfirm, close]
+  const InnerModal: React.FC = useCallback(
+    (props: InjectedModalProps) => (
+      <Modal title={title} description={description} {...props}>
+        <form method="dialog" className="modal-action">
+          <button className="btn btn-soft" onClick={onDismiss}>
+            {cancelText}
+          </button>
+          <button
+            className={cn("btn", destructive && "btn-error")}
+            onClick={onConfirm}
+          >
+            {confirmText}
+          </button>
+        </form>
+      </Modal>
+    ),
+    [title, description, confirmText, cancelText, onConfirm, onDismiss]
   );
 
-  return useModal(<Modal />);
+  return useModal(<InnerModal />);
 };

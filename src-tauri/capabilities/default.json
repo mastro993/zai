@@ -12,6 +12,12 @@
     "sql:allow-select",
     "sql:allow-close",
     "fs:default",
+    "fs:allow-app-write",
+    "fs:allow-app-write-recursive",
+    "fs:allow-appcache-write",
+    "fs:allow-appcache-write-recursive",
+    "fs:allow-appcache-read",
+    "fs:allow-appcache-read-recursive",
     {
       "identifier": "fs:allow-exists",
       "allow": [{ "path": "$APPDATA/*" }]

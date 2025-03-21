@@ -1,5 +1,6 @@
-import { Dialog } from "@radix-ui/themes";
+import { useId, useLayoutEffect } from "react";
 import { InjectedModalProps } from ".";
+import Overlay from "../Overlay";
 
 export type ModalProps = InjectedModalProps & {
   title: string;
@@ -13,21 +14,23 @@ export const Modal = ({
   children,
   onDismiss,
 }: ModalProps) => {
-  const handleOnOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-      onDismiss?.();
-    }
-  };
+  const uniqueModalId = useId();
+
+  useLayoutEffect(() => {
+    const modal = document.getElementById(
+      uniqueModalId
+    ) as HTMLDialogElement | null;
+    modal?.showModal();
+  }, [uniqueModalId]);
 
   return (
-    <Dialog.Root open={true} onOpenChange={handleOnOpenChange}>
-      <Dialog.Content maxWidth="450px">
-        <Dialog.Title>{title}</Dialog.Title>
-        <Dialog.Description size="2" mb="4">
-          {description}
-        </Dialog.Description>
+    <dialog id={uniqueModalId} className="modal modal-bottom sm:modal-middle">
+      <Overlay onClick={onDismiss} />
+      <div className="modal-box">
+        <h3 className="font-bold text-lg">{title}</h3>
+        <p className="py-4">{description}</p>
         {children}
-      </Dialog.Content>
-    </Dialog.Root>
+      </div>
+    </dialog>
   );
 };

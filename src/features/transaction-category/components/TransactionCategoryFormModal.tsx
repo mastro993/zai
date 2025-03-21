@@ -2,11 +2,12 @@ import { InjectedModalProps, Modal } from "@/components/Modal";
 import {
   NewTransactionCategory,
   TransactionCategory,
+  TransactionCategoryColor,
   TransactionCategoryColors,
 } from "@/features/transaction-category/schema";
+import { cn } from "@/utils/style";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Flex, Grid } from "@radix-ui/themes";
-import { useController, UseControllerProps, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useHotkeys } from "react-hotkeys-hook";
 import { z, ZodType } from "zod";
 import { useTransactionCategories } from "../api/useTransactionCategories";
@@ -37,17 +38,16 @@ export const TransactionCategoryFormModal = (
 ) => {
   const { data: transactionCategories } = useTransactionCategories();
 
-  const { handleSubmit, register, watch, control } =
-    useForm<NewTransactionCategory>({
-      resolver: zodResolver(TransactionCategorySchema),
-      defaultValues: {
-        name: props.category?.name,
-        description: props.category?.description,
-        color: props.category?.color ?? "gray",
-        icon: props.category?.icon,
-        parent_id: props.category?.parent_id,
-      },
-    });
+  const { handleSubmit, register, watch } = useForm<NewTransactionCategory>({
+    resolver: zodResolver(TransactionCategorySchema),
+    defaultValues: {
+      name: props.category?.name,
+      description: props.category?.description,
+      color: props.category?.color ?? "neutral",
+      icon: props.category?.icon,
+      parent_id: props.category?.parent_id,
+    },
+  });
 
   const onSubmit = (data: NewTransactionCategory) => {
     props.onSubmit(data);
@@ -59,7 +59,7 @@ export const TransactionCategoryFormModal = (
   });
 
   return (
-    <Modal title="New categordy">
+    <Modal title="New category" {...props}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="flex gap-2">
           {/*  <input {...register("icon")} placeholder="Icon" className="input" /> */}
@@ -81,44 +81,68 @@ export const TransactionCategoryFormModal = (
           <input {...register("description")} placeholder="Description" />
           <span className="badge badge-soft badge-xs">Optional</span>
         </label>
-        <ColorPicker control={control} name="color" />
+        <div className="grid grid-cols-9 gap-1">
+          {TransactionCategoryColors.map((color) => (
+            <input
+              {...register("color")}
+              type="radio"
+              name="color"
+              value={color}
+              className={cn(
+                ["btn btn-square"],
+                colorRadioClassByVariants[color]
+              )}
+            />
+          ))}
+        </div>
         <fieldset className="fieldset">
           <legend className="fieldset-legend">Preview</legend>
           <div className="box bg-base-200 p-12 rounded-md flex justify-center ">
             <TransactionCategoryBadge
               category={{
                 name: watch("name") || "New category",
-                color: watch("color") || "white",
+                color: watch("color") || "neutral",
                 parent: null,
               }}
             />
           </div>
         </fieldset>
-        <Flex gap="3" mt="4" justify="end">
-          <Button variant="soft" color="gray" onClick={props.onDismiss}>
+        <div className="flex gap-2 justify-end">
+          <button
+            className="btn btn-soft"
+            type="reset"
+            onClick={props.onDismiss}
+          >
             Cancel
-          </Button>
-          <Button type="submit">Save</Button>
-        </Flex>
+          </button>
+          <button className="btn btn-primary" type="submit">
+            Save
+          </button>
+        </div>
       </form>
     </Modal>
   );
 };
 
-const ColorPicker = (props: UseControllerProps<NewTransactionCategory>) => {
-  const { field } = useController(props);
-
-  return (
-    <Grid columns={"9"} gap={"2"}>
-      {TransactionCategoryColors.map((color) => (
-        <Button
-          type="button"
-          key={color}
-          variant={field.value === color ? "solid" : "soft"}
-          color={color}
-          onClick={() => field.onChange(color)}
-        />
-      ))}
-    </Grid>
-  );
+const colorRadioClassByVariants: {
+  [color in TransactionCategoryColor]: string;
+} = {
+  red: "bg-red-500",
+  orange: "bg-orange-500",
+  amber: "bg-amber-500",
+  yellow: "bg-yellow-500",
+  lime: "bg-lime-500",
+  green: "bg-green-500",
+  emerald: "bg-emerald-500",
+  teal: "bg-teal-500",
+  cyan: "bg-cyan-500",
+  sky: "bg-sky-500",
+  blue: "bg-blue-500",
+  indigo: "bg-indigo-500",
+  violet: "bg-violet-500",
+  purple: "bg-purple-500",
+  fuchsia: "bg-fuchsia-500",
+  pink: "bg-pink-500",
+  rose: "bg-rose-500",
+  neutral: "bg-neutral-500",
 };

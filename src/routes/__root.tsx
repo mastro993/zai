@@ -1,12 +1,11 @@
 import { ModalProvider } from "@/components/Modal/ModalContext";
 import { SidebarProvider } from "@/components/Sidebar/Sidebar";
-import { ToastContainer } from "@/components/ToastContainer";
 import { migrateToLatest } from "@/lib/database/migrate";
-import { Spinner } from "@radix-ui/themes";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { useEffect, useState } from "react";
+import { Toaster } from "sonner";
 
 export const Route = createRootRoute({
   component: Root,
@@ -26,7 +25,7 @@ function Root() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="3" />
+        <span className="loading loading-spinner loading-xl text-primary"></span>
       </div>
     );
   }
@@ -37,10 +36,10 @@ function Root() {
         <SidebarProvider>
           <Outlet />
         </SidebarProvider>
-        <ToastContainer />
       </ModalProvider>
       <TanStackRouterDevtools position="bottom-right" />
       <ReactQueryDevtools initialIsOpen={false} position="bottom" />
+      <Toaster richColors />
     </div>
   );
 }

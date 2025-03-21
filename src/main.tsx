@@ -1,4 +1,3 @@
-import { Theme } from "@radix-ui/themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
@@ -25,9 +24,7 @@ if (!rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <Theme appearance="light">
-          <RouterProvider router={router} />
-        </Theme>
+        <RouterProvider router={router} />
       </QueryClientProvider>
     </StrictMode>
   );

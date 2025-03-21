@@ -27,15 +27,19 @@ export const Sidebar = () => {
           ))}
         </nav>
 
-        <div className={cn("p-4", "border-t  border-base-300")}>
+        <div className={cn("space-y-1 p-3", "border-t  border-base-300")}>
           <div className=" hidden lg:flex items-center text-base-content/50 px-3 py-2 gap-3">
             <Rocket className="size-4" />
             <span className="text-sm text-base-content/50">
               Version {packageJson.version}
             </span>
           </div>
-          <SidebarLink icon={Book} label="Documentation" href="/settings" />
-          <SidebarLink icon={CircleHelp} label="Support" href="/settings" />
+          <SidebarLink
+            icon={Book}
+            label="Documentation"
+            href="/documentation"
+          />
+          <SidebarLink icon={CircleHelp} label="Support" href="/support" />
           <SidebarLink icon={Settings} label="Settings" href="/settings" />
         </div>
       </div>

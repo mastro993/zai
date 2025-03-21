@@ -1,4 +1,6 @@
 import getPortalRoot from "@/utils/getPortalRoot";
+import { DismissableLayer } from "@radix-ui/react-dismissable-layer";
+import { AnimatePresence, domAnimation, LazyMotion } from "framer-motion";
 import { get } from "lodash";
 import React, {
   createContext,
@@ -8,8 +10,8 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { Overlay } from "../Overlay";
 import { Handler } from "./types";
-
 type ModalContextType = {
   isOpen: boolean;
   nodeId: string;
@@ -80,13 +82,24 @@ export const ModalProvider = ({ children }: PropsWithChildren) => {
     <ModalContext.Provider value={providerValue}>
       {portal &&
         createPortal(
-          <>
-            {React.isValidElement(modalNode) &&
-              React.cloneElement(modalNode, {
-                // @ts-ignore
-                onDismiss: handleDismiss,
-              })}
-          </>,
+          <LazyMotion features={domAnimation}>
+            <AnimatePresence>
+              {isOpen && (
+                <DismissableLayer
+                  role="dialog"
+                  disableOutsidePointerEvents={false}
+                  onEscapeKeyDown={handleOverlayDismiss}
+                >
+                  <Overlay onClick={handleOverlayDismiss} />
+                  {React.isValidElement(modalNode) &&
+                    React.cloneElement(modalNode, {
+                      // @ts-ignore
+                      onDismiss: handleDismiss,
+                    })}
+                </DismissableLayer>
+              )}
+            </AnimatePresence>
+          </LazyMotion>,
           portal
         )}
       {children}

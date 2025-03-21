@@ -1,6 +1,6 @@
 import { db } from "@/lib/database";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { NewTransactionCategory } from "../schema";
 
 export const useAddTransactionCategory = () => {

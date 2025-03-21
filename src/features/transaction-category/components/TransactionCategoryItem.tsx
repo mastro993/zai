@@ -1,6 +1,6 @@
 import { useModal } from "@/components/Modal";
 import { useConfirmationModal } from "@/hooks/useConfirmationModal";
-import { ContextMenu } from "@radix-ui/themes";
+import { PencilIcon, TrashIcon } from "lucide-react";
 import { useDeleteTransactionCategory } from "../api/useDeleteTransactionCategory";
 import { useUpdateTransactionCategory } from "../api/useUpdateTransactionCategory";
 import { TransactionCategory, TransactionCategoryUpdate } from "../schema";
@@ -30,7 +30,7 @@ export const TransactionCategoryItem = ({
 
   const [onPresentDeleteModal] = useConfirmationModal({
     title: `Delete "${category.name}" category`,
-    content: "Are you sure you want to delete this category?",
+    description: "Are you sure you want to delete this category?",
     onConfirm: handleDelete,
     destructive: true,
   });
@@ -39,34 +39,31 @@ export const TransactionCategoryItem = ({
     <TransactionCategoryFormModal category={category} onSubmit={handleUpdate} />
   );
   return (
-    <ContextMenu.Root>
-      <ContextMenu.Trigger>
-        <li
-          className="list-row flex items-center justify-between bg-base-100 "
-          key={category.id}
-        >
-          <div className="flex items-center gap-2">
-            <TransactionCategoryBadge category={category} />
-            <span className="text-sm text-base-content/50 ">
-              {category.description}
-            </span>
-          </div>
-        </li>
-      </ContextMenu.Trigger>
-      <ContextMenu.Content variant="soft">
-        <ContextMenu.Item shortcut="⌘ E" onClick={onPresentUpdateModal}>
-          Edit
-        </ContextMenu.Item>
-        <ContextMenu.Item shortcut="⌘ S">Select</ContextMenu.Item>
-        <ContextMenu.Separator />
-        <ContextMenu.Item
-          shortcut="⌘ ⌫"
-          color="red"
+    <li
+      className="list-row flex items-center justify-between"
+      key={category.id}
+      contextMenu="ddd"
+    >
+      <div className="flex items-center gap-2">
+        <TransactionCategoryBadge category={category} />
+        <span className="text-sm text-base-content/50 ">
+          {category.description}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          className="btn btn-sm btn-square btn-ghost"
           onClick={onPresentDeleteModal}
         >
-          Delete
-        </ContextMenu.Item>
-      </ContextMenu.Content>
-    </ContextMenu.Root>
+          <TrashIcon className="w-4 h-4" />
+        </button>
+        <button
+          className="btn btn-sm btn-square btn-ghost"
+          onClick={onPresentUpdateModal}
+        >
+          <PencilIcon className="w-4 h-4" />
+        </button>
+      </div>
+    </li>
   );
 };
