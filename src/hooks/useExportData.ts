@@ -23,8 +23,6 @@ export const useExportToFile = ({
       return;
     }
 
-    setIsExporting(true);
-
     try {
       const formattedDate = dayjs().format("YYYY-MM-DDT-HH-mm-ss");
       const defaultPath = `${filePrefix}_${formattedDate}.json`;
@@ -36,6 +34,7 @@ export const useExportToFile = ({
       });
 
       if (filePath) {
+        setIsExporting(true);
         await writeTextFile(filePath, JSON.stringify(data, null, 2));
         onSuccess?.();
       }

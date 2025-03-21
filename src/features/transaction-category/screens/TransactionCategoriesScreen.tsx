@@ -5,8 +5,9 @@ import { Download, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAddTransactionCategory } from "../api/useAddTransactionCategory";
 import { useTransactionCategories } from "../api/useTransactionCategories";
+import { TransactionCategoriesSelection } from "../components/TransactionCategoriesSelection";
 import { TransactionCategoryFormModal } from "../components/TransactionCategoryFormModal";
-import { TransactionCategoryItem } from "../components/TransactionCategoryItem";
+import { TransactionCategoryList } from "../components/TransactionCategoryList";
 
 export const TransactionCategoriesScreen = () => {
   const { mutate: addTransactionCategory } = useAddTransactionCategory();
@@ -26,12 +27,17 @@ export const TransactionCategoriesScreen = () => {
       <Navbar>
         <h1 className="text-lg text-content">Categories</h1>
         <div className="flex gap-2">
+          <TransactionCategoriesSelection />
           <div className="tooltip tooltip-bottom" data-tip="Export categories">
             <div
               className="btn btn-sm btn-square btn-primary btn-soft"
               onClick={exportData}
             >
-              <Upload className="w-4 h-4" />
+              {isExporting ? (
+                <span className="loading loading-spinner loading-sm"></span>
+              ) : (
+                <Upload className="w-4 h-4" />
+              )}
             </div>
           </div>
           <div className="tooltip tooltip-bottom" data-tip="Import categories">
@@ -45,16 +51,7 @@ export const TransactionCategoriesScreen = () => {
           </button>
         </div>
       </Navbar>
-      <ul className="list">
-        {transactionCategories?.map((transactionCategory) => {
-          return (
-            <TransactionCategoryItem
-              key={transactionCategory.id}
-              category={transactionCategory}
-            />
-          );
-        })}
-      </ul>
+      <TransactionCategoryList />
     </div>
   );
 };
