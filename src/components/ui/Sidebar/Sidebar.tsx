@@ -1,7 +1,7 @@
 import { navigationItems, type NavItem } from "@/config/navigation";
 import { cn } from "@/utils/style";
 import { Book, CircleHelp, Rocket, Settings } from "lucide-react";
-import packageJson from "../../../package.json";
+import packageJson from "../../../../package.json";
 import { SidebarLink } from "./SidebarLink";
 
 export const Sidebar = () => {

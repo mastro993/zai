@@ -1,8 +1,10 @@
-import { useModal } from "@/components/Modal";
+import { useModal } from "@/components/widgets/Modal";
 import { useConfirmationModal } from "@/hooks/useConfirmationModal";
+import { withMetaKey } from "@/utils/handlers";
 import { cn } from "@/utils/style";
 import { PencilIcon, TrashIcon } from "lucide-react";
 import { useMemo } from "react";
+import { toast } from "sonner";
 import { useDeleteTransactionCategory } from "../api/useDeleteTransactionCategory";
 import { useUpdateTransactionCategory } from "../api/useUpdateTransactionCategory";
 import { TransactionCategory, TransactionCategoryUpdate } from "../schema";
@@ -27,15 +29,16 @@ export const TransactionCategoryItem = ({
   const { mutate: updateTransactionCategory } =
     useUpdateTransactionCategory(category);
 
-  const { mutate: deleteTransactionCategory } =
-    useDeleteTransactionCategory(category);
+  const { mutateAsync: deleteTransactionCategory } =
+    useDeleteTransactionCategory();
 
   const handleUpdate = (data: TransactionCategoryUpdate) => {
     updateTransactionCategory(data);
   };
 
-  const handleDelete = () => {
-    deleteTransactionCategory();
+  const handleDelete = async () => {
+    await deleteTransactionCategory([category.id]);
+    toast.success(`"${category.name}" category deleted`);
   };
 
   const [onPresentDeleteModal] = useConfirmationModal({
@@ -48,25 +51,19 @@ export const TransactionCategoryItem = ({
   const [onPresentUpdateModal] = useModal(
     <TransactionCategoryFormModal category={category} onSubmit={handleUpdate} />
   );
+
   return (
     <li
-      className="list-row flex flex-col py-1"
+      className={cn([
+        "list-row flex flex-col rounded-none",
+        "bg-base-100 hover:bg-base-200",
+        isSelected && "bg-primary/5 hover:bg-primary/10",
+      ])}
       key={category.id}
-      contextMenu="ddd"
+      onClick={withMetaKey(() => toggleCategory(category.id))}
     >
-      <div
-        className={cn([
-          "flex items-center justify-between bg-base-100 py-2 px-3 rounded-box",
-          isSelected && "bg-primary/5",
-        ])}
-      >
+      <div className={cn(["flex items-center justify-between"])}>
         <div className="flex items-center gap-2 ">
-          <input
-            type="checkbox"
-            className="checkbox checkbox-primary checkbox-xs"
-            checked={isSelected}
-            onChange={() => toggleCategory(category.id)}
-          />
           <TransactionCategoryBadge category={category} />
           <span className="text-sm text-base-content/50 ">
             {category.description}

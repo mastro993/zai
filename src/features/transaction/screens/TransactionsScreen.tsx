@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "@/components/ui/Navbar";
 import { JsonDisplay } from "@/components/utils/JsonDisplay";
 import { Plus, Search } from "lucide-react";
 import { useRef } from "react";

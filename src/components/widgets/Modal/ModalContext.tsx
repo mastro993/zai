@@ -1,3 +1,4 @@
+import Overlay from "@/components/Overlay";
 import getPortalRoot from "@/utils/getPortalRoot";
 import { DismissableLayer } from "@radix-ui/react-dismissable-layer";
 import { AnimatePresence, domAnimation, LazyMotion } from "framer-motion";
@@ -10,7 +11,6 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { Overlay } from "../Overlay";
 import { Handler } from "./types";
 type ModalContextType = {
   isOpen: boolean;

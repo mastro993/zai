@@ -1,5 +1,5 @@
-import { ModalProvider } from "@/components/Modal/ModalContext";
-import { SidebarProvider } from "@/components/Sidebar/Sidebar";
+import { SidebarProvider } from "@/components/ui/Sidebar";
+import { ModalProvider } from "@/components/widgets/Modal";
 import { migrateToLatest } from "@/lib/database/migrate";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRootRoute, Outlet } from "@tanstack/react-router";

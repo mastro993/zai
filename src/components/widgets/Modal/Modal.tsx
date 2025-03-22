@@ -1,6 +1,6 @@
+import Overlay from "@/components/Overlay";
 import { useId, useLayoutEffect } from "react";
 import { InjectedModalProps } from ".";
-import Overlay from "../Overlay";
 
 export type ModalProps = InjectedModalProps & {
   title: string;

@@ -1,4 +1,4 @@
-import { InjectedModalProps, Modal } from "@/components/Modal";
+import { InjectedModalProps, Modal } from "@/components/widgets/Modal";
 import {
   NewTransactionCategory,
   TransactionCategory,

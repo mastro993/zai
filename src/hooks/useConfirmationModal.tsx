@@ -1,4 +1,8 @@
-import { InjectedModalProps, Modal, useModal } from "@/components/Modal";
+import {
+  InjectedModalProps,
+  Modal,
+  useModal,
+} from "@/components/widgets/Modal";
 import { cn } from "@/utils/style";
 import { useCallback } from "react";
 
