@@ -3,7 +3,7 @@ import {
   Modal,
   useModal,
 } from "@/components/widgets/Modal";
-import { cn } from "@/utils/style";
+import { cn } from "@/lib/utils";
 import { useCallback } from "react";
 
 type ModalConfig = {
@@ -16,7 +16,7 @@ type ModalConfig = {
   destructive?: boolean;
 };
 
-export const useConfirmationModal = ({
+const useConfirmationModal = ({
   title,
   description,
   confirmText = "Confirm",
@@ -46,3 +46,5 @@ export const useConfirmationModal = ({
 
   return useModal(<InnerModal />);
 };
+
+export default useConfirmationModal;

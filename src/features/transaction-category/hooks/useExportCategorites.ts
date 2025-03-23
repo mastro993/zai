@@ -31,8 +31,8 @@ export const useExportCategories = ({ data, onError, onSuccess }: Props) => {
       if (filePath) {
         const cleanedData = data
           .map((category) => {
-            const { children, parent, ...rest } = category;
-            return rest;
+            const { id, name, color, description, parent_id } = category;
+            return { id, name, color, description, parent_id };
           })
           .map((category) => {
             return Object.fromEntries(

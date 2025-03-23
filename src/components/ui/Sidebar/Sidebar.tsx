@@ -1,5 +1,5 @@
 import { navigationItems, type NavItem } from "@/config/navigation";
-import { cn } from "@/utils/style";
+import { cn } from "@/lib/utils";
 import { Book, CircleHelp, Rocket, Settings } from "lucide-react";
 import packageJson from "../../../../package.json";
 import { SidebarLink } from "./SidebarLink";

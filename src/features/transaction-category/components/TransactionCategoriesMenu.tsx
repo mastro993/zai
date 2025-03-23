@@ -1,8 +1,10 @@
+import { useModal } from "@/components/widgets/Modal";
 import { Download, EllipsisVertical, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useTransactionCategories } from "../api/useTransactionCategories";
 import { useExportCategories } from "../hooks/useExportCategorites";
 import { useImportCategories } from "../hooks/useImportCategories";
+import { TransactionCategoryExportModal } from "./TransactionCategoryExportModal";
 
 export const TransactionCategoriesMenu = () => {
   const { data: transactionCategories } = useTransactionCategories();
@@ -12,6 +14,8 @@ export const TransactionCategoriesMenu = () => {
   });
 
   const importCategories = useImportCategories();
+
+  const [onPresentExportModal] = useModal(<TransactionCategoryExportModal />);
 
   return (
     <div className="dropdown dropdown-hover dropdown-end">
@@ -33,7 +37,7 @@ export const TransactionCategoriesMenu = () => {
           </a>
         </li>
         <li>
-          <a onClick={exportCategories}>
+          <a onClick={onPresentExportModal}>
             <Upload className="w-4 h-4" />
             Export categories
           </a>

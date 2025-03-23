@@ -12,13 +12,15 @@ import {
   Wallet,
 } from "lucide-react";
 
-export interface NavItem {
+export type NavItem = {
   label: string;
   href: string;
   icon: LucideIcon;
-}
+  children?: ReadonlyArray<NavItem>;
+  disabled?: boolean;
+};
 
-export const navigationItems: NavItem[] = [
+export const navigationItems: ReadonlyArray<NavItem> = [
   {
     label: "Home",
     href: "/",

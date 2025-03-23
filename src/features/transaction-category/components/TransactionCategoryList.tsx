@@ -1,8 +1,9 @@
+import { ScrollArea } from "@/components/ui/ScrollArea";
 import { EmptyView } from "@/components/views/EmptyView";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useTransactionCategories } from "../api/useTransactionCategories";
 import { useSelectionStore } from "../stores/selection";
-import { TransactionCategoryItem } from "./TransactionCategoryItem";
+import { TransactionCategoryListItem } from "./TransactionCategoryListItem";
 
 export const TransactionCategoryList = () => {
   const { data: transactionCategories } = useTransactionCategories();
@@ -19,15 +20,19 @@ export const TransactionCategoryList = () => {
   }
 
   return (
-    <ul className="list">
-      {transactionCategories?.map((transactionCategory) => {
-        return (
-          <TransactionCategoryItem
-            key={transactionCategory.id}
-            category={transactionCategory}
-          />
-        );
-      })}
-    </ul>
+    <div className="overflow-auto">
+      <ScrollArea>
+        <ul className="list">
+          {transactionCategories?.map((transactionCategory) => {
+            return (
+              <TransactionCategoryListItem
+                key={transactionCategory.id}
+                category={transactionCategory}
+              />
+            );
+          })}
+        </ul>
+      </ScrollArea>
+    </div>
   );
 };

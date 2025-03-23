@@ -5,7 +5,7 @@ import {
   TransactionCategoryColor,
   TransactionCategoryColors,
 } from "@/features/transaction-category/schema";
-import { cn } from "@/utils/style";
+import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useHotkeys } from "react-hotkeys-hook";

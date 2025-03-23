@@ -1,4 +1,4 @@
-import { useConfirmationModal } from "@/hooks/useConfirmationModal";
+import { useConfirmationModal } from "@/components/widgets/Modal";
 import { TrashIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { useDeleteTransactionCategory } from "../api/useDeleteTransactionCategory";

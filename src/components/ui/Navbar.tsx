@@ -1,4 +1,4 @@
-import { cn } from "@/utils/style";
+import { cn } from "@/lib/utils";
 
 type Props = {
   title: string;
@@ -10,9 +10,10 @@ export const Navbar = ({ title, children, actions }: Props) => {
   return (
     <div
       className={cn([
-        "navbar sticky top-0 z-20",
+        "navbar",
+        "sticky top-0 z-20",
         "px-4 bg-base-100",
-        "border-b border-base-200",
+        "border-b border-base-content/10",
       ])}
     >
       <div className="navbar-start">

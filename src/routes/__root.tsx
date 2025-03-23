@@ -31,7 +31,7 @@ function Root() {
   }
 
   return (
-    <div className="flex min-h-screen bg-base-100 text-base-content  select-none">
+    <div className="flex h-screen select-none">
       <ModalProvider>
         <SidebarProvider>
           <Outlet />

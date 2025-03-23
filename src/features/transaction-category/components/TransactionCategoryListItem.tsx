@@ -1,7 +1,6 @@
-import { useModal } from "@/components/widgets/Modal";
-import { useConfirmationModal } from "@/hooks/useConfirmationModal";
+import { useConfirmationModal, useModal } from "@/components/widgets/Modal";
+import { cn } from "@/lib/utils";
 import { withMetaKey } from "@/utils/handlers";
-import { cn } from "@/utils/style";
 import { PencilIcon, TrashIcon } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
@@ -16,7 +15,7 @@ export type TransactionCategoryItemProps = {
   category: TransactionCategory;
 };
 
-export const TransactionCategoryItem = ({
+export const TransactionCategoryListItem = ({
   category,
 }: TransactionCategoryItemProps) => {
   const { selectedCategoryIds, toggleCategory } = useSelectionStore();
@@ -56,7 +55,7 @@ export const TransactionCategoryItem = ({
     <li
       className={cn([
         "list-row flex flex-col rounded-none",
-        "bg-base-100 hover:bg-base-200",
+        "bg-base-100 hover:bg-base-300",
         isSelected && "bg-primary/5 hover:bg-primary/10",
       ])}
       key={category.id}

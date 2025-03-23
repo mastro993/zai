@@ -1,4 +1,4 @@
-import { cn } from "@/utils/style";
+import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { LucideIcon } from "lucide-react";
 

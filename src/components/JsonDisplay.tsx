@@ -1,4 +1,4 @@
-import { cn } from "@/utils/style";
+import { cn } from "@/lib/utils";
 
 type JsonDisplayProps = {
   data: unknown;

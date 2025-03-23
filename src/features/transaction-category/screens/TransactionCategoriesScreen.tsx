@@ -26,7 +26,7 @@ export const TransactionCategoriesScreen = () => {
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-screen">
       <Navbar title="Categories" actions={navbarActions} />
       <TransactionCategoryList />
     </div>
