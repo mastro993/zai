@@ -31,4 +31,10 @@ export default defineConfig(async () => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+
+  esbuild: {
+    supported: {
+      "top-level-await": true, //browsers can handle top-level-await features
+    },
+  },
 }));

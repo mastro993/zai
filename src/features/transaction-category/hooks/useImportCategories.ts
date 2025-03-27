@@ -16,7 +16,7 @@ const TransactionCategoryImportSchema = z.array(
 );
 
 export const useImportCategories = () => {
-  const [isImporting, setIsImporting] = useState(false);
+  const [_, setIsImporting] = useState(false);
 
   const importCategories = useCallback(async () => {
     try {

@@ -1,18 +1,9 @@
 import { useModal } from "@/components/widgets/Modal";
 import { Download, EllipsisVertical, Upload } from "lucide-react";
-import { toast } from "sonner";
-import { useTransactionCategories } from "../api/useTransactionCategories";
-import { useExportCategories } from "../hooks/useExportCategorites";
 import { useImportCategories } from "../hooks/useImportCategories";
 import { TransactionCategoryExportModal } from "./TransactionCategoryExportModal";
 
 export const TransactionCategoriesMenu = () => {
-  const { data: transactionCategories } = useTransactionCategories();
-  const exportCategories = useExportCategories({
-    data: transactionCategories,
-    onSuccess: () => toast.success("Categories exported successfully"),
-  });
-
   const importCategories = useImportCategories();
 
   const [onPresentExportModal] = useModal(<TransactionCategoryExportModal />);
