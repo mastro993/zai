@@ -24,7 +24,10 @@ export const Modal = ({
   }, [uniqueModalId]);
 
   return (
-    <dialog id={uniqueModalId} className="modal modal-bottom sm:modal-middle">
+    <dialog
+      id={uniqueModalId}
+      className="modal modal-bottom sm:modal-middle select-none"
+    >
       <Overlay onClick={onDismiss} />
       <div className="modal-box">
         <h3 className="font-bold text-lg">{title}</h3>

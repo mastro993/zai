@@ -1,10 +1,9 @@
 import { InjectedModalProps, Modal } from "@/components/widgets/Modal";
-import { save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { exportDataToFile } from "@/lib/export";
 import dayjs from "dayjs";
 import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import { useTransactionCategories } from "../api/useTransactionCategories";
-
 type TransactionCategoryExportModalProps = InjectedModalProps;
 
 export const TransactionCategoryExportModal = (
@@ -13,7 +12,6 @@ export const TransactionCategoryExportModal = (
   const { data } = useTransactionCategories();
   const [isExporting, setIsExporting] = useState(false);
 
-  const [exportLocation, setExportLocation] = useState<string | null>(null);
   const [exportFormat, setExportFormat] = useState<"json" | "csv">("csv");
 
   const exportData = useCallback(async () => {
@@ -21,34 +19,35 @@ export const TransactionCategoryExportModal = (
       return;
     }
 
-    try {
-      const formattedDate = dayjs().format("YYYY-MM-DDT-HH-mm-ss");
-      const defaultPath = `spiccy_transaction_categories_${formattedDate}.json`;
+    const formattedDate = dayjs().format("YYYY-MM-DDT-HH-mm-ss");
+    const defaultPath = `spiccy_transaction_categories_${formattedDate}.${exportFormat}`;
 
-      const filePath = await save({
-        defaultPath,
-        filters: [{ name: "JSON", extensions: ["json"] }],
-        canCreateDirectories: true,
+    const filteredData = data
+      .map((category) => {
+        const { id, name, color, description, parent_id } = category;
+        return { id, name, color, description, parent_id };
+      })
+      .map((category) => {
+        return Object.fromEntries(
+          Object.entries(category).filter(([_, value]) => value !== null)
+        );
       });
 
-      if (filePath) {
-        const cleanedData = data
-          .map((category) => {
-            const { id, name, color, description, parent_id } = category;
-            return { id, name, color, description, parent_id };
-          })
-          .map((category) => {
-            return Object.fromEntries(
-              Object.entries(category).filter(([_, value]) => value !== null)
-            );
-          });
+    setIsExporting(true);
+    const success = await exportDataToFile({
+      data: filteredData,
+      defaultPath,
+      format: exportFormat,
+    });
 
-        await writeTextFile(filePath, JSON.stringify(cleanedData, null, 2));
-      }
-    } catch (error) {}
+    if (success) {
+      toast.success("Transaction categories exported successfully");
+    } else {
+      toast.error("Failed to export transaction categories");
+    }
 
-    setIsExporting(false);
-  }, [data, isExporting]);
+    props.onDismiss?.();
+  }, [data, isExporting, exportFormat]);
 
   return (
     <Modal
@@ -57,38 +56,52 @@ export const TransactionCategoryExportModal = (
       {...props}
     >
       <fieldset className="fieldset">
-        <legend className="fieldset-legend">Export location</legend>
-        <input type="file" className="file-input" />
-      </fieldset>
-      <fieldset className="fieldset">
         <legend className="fieldset-legend">File format</legend>
-        <div className="join">
+        <div className="flex gap-2 items-center">
           <input
-            className="join-item btn"
             type="radio"
-            name="options"
-            aria-label="CSV"
-            defaultChecked
+            name="radio-1"
+            className="radio"
+            value="csv"
             onChange={() => setExportFormat("csv")}
             checked={exportFormat === "csv"}
           />
+          <label htmlFor="radio-1" className="text-md">
+            CSV
+          </label>
+        </div>
+        <div className="flex gap-2 items-center">
           <input
-            className="join-item btn"
             type="radio"
-            name="options"
-            aria-label="JSON"
+            name="radio-1"
+            className="radio"
+            value="json"
             onChange={() => setExportFormat("json")}
             checked={exportFormat === "json"}
           />
+          <label htmlFor="radio-2" className="text-md">
+            JSON
+          </label>
         </div>
       </fieldset>
 
       <div className="flex gap-2 justify-end">
-        <button className="btn btn-soft" type="reset" onClick={props.onDismiss}>
+        <button
+          className="btn btn-soft"
+          type="reset"
+          onClick={props.onDismiss}
+          disabled={isExporting}
+        >
           Cancel
         </button>
-        <button className="btn btn-primary" type="submit">
-          <span className="loading loading-spinner"></span>
+        <button
+          className="btn btn-primary"
+          onClick={exportData}
+          disabled={isExporting}
+        >
+          {isExporting && (
+            <span className="loading loading-spinner loading-xs" />
+          )}
           Export
         </button>
       </div>

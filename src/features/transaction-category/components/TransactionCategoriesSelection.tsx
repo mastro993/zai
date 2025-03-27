@@ -1,5 +1,6 @@
 import { useConfirmationModal } from "@/components/widgets/Modal";
 import { TrashIcon, X } from "lucide-react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { useDeleteTransactionCategory } from "../api/useDeleteTransactionCategory";
 import { useSelectionStore } from "../stores/selection";
@@ -28,6 +29,19 @@ export const TransactionCategoriesSelection = () => {
     onConfirm: handleDelete,
     destructive: true,
   });
+
+  useHotkeys(
+    "delete",
+    () => {
+      setSelectedCategoryIds([]);
+    },
+    undefined,
+    [selectedCategoryIds]
+  );
+
+  useHotkeys("mod+delete", onPresentDeleteModal, undefined, [
+    selectedCategoryIds,
+  ]);
 
   if (selectedCategoryIds.length === 0) {
     return null;

@@ -55,7 +55,7 @@ export const TransactionCategoryListItem = ({
     <li
       className={cn([
         "list-row flex flex-col rounded-none",
-        "bg-base-100 hover:bg-base-300",
+        "bg-base-100 hover:bg-base-200/50",
         isSelected && "bg-primary/5 hover:bg-primary/10",
       ])}
       key={category.id}
