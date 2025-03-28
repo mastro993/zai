@@ -1,5 +1,5 @@
 [package]
-name = "myfin-app"
+name = "Spiccy"
 version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]

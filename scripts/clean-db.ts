@@ -10,7 +10,7 @@ async function cleanDatabase() {
   );
 
   const appId = tauriConfig.identifier;
-  const dbName = "myfin.db";
+  const dbName = "spiccy.db";
 
   const basePath =
     platform === "win32"

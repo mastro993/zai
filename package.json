@@ -1,7 +1,7 @@
 {
-  "name": "myfin-app",
+  "name": "spiccy-app",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.1-rc.1",
   "type": "module",
   "scripts": {
     "generate-routes": "tsr generate",
@@ -10,7 +10,7 @@
     "build": "yarn generate-routes && tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "clean-db": "bun scripts/clean-db.ts",
+    "clean-db": "yarn scripts/clean-db.ts",
     "migrate:latest": "yarn src/database/migrate.ts"
   },
   "packageManager": "yarn@4.7.0",

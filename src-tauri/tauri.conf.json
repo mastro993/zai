@@ -1,16 +1,16 @@
 {
   "$schema": "https://schema.tauri.app/config/1",
-  "productName": "MyFin",
-  "mainBinaryName": "myfin-app",
-  "version": "0.1.0",
-  "identifier": "dev.fedemas.myfin.app",
+  "productName": "Spiccy",
+  "mainBinaryName": "Spiccy",
+  "version": "0.0.1",
+  "identifier": "dev.fedemas.spiccy.app",
   "app": {
     "security": {
       "csp": null
     },
     "windows": [
       {
-        "title": "myfin-app",
+        "title": "Spiccy",
         "width": 1280,
         "height": 960,
         "minWidth": 480,
@@ -38,7 +38,7 @@
   },
   "plugins": {
     "sql": {
-      "preload": ["sqlite:myfin.db"]
+      "preload": ["sqlite:spiccy.db"]
     }
   }
 }

@@ -10,7 +10,7 @@ export type Database = {
 };
 
 const dialect = new TauriSqliteDialect({
-  database: await TauriDatabase.load("sqlite:myfin.db"),
+  database: await TauriDatabase.load("sqlite:spiccy.db"),
 });
 
 export const db = new Kysely<Database>({
