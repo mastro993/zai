@@ -1,7 +1,8 @@
 import Overlay from "@/components/Overlay";
+import { cn } from "@/lib/utils";
 import getPortalRoot from "@/utils/getPortalRoot";
 import { DismissableLayer } from "@radix-ui/react-dismissable-layer";
-import { AnimatePresence, domAnimation, LazyMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { get } from "lodash";
 import React, {
   createContext,
@@ -12,6 +13,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { Handler } from "./types";
+
 type ModalContextType = {
   isOpen: boolean;
   nodeId: string;
@@ -82,13 +84,24 @@ export const ModalProvider = ({ children }: PropsWithChildren) => {
     <ModalContext.Provider value={providerValue}>
       {portal &&
         createPortal(
-          <LazyMotion features={domAnimation}>
-            <AnimatePresence>
-              {isOpen && (
-                <DismissableLayer
-                  role="dialog"
-                  disableOutsidePointerEvents={false}
-                  onEscapeKeyDown={handleOverlayDismiss}
+          <AnimatePresence>
+            {isOpen && (
+              <DismissableLayer
+                role="dialog"
+                disableOutsidePointerEvents={false}
+                onEscapeKeyDown={handleOverlayDismiss}
+              >
+                <motion.div
+                  className={cn([
+                    "absolute top-0 left-0 w-full h-full z-50",
+                    "flex items-center justify-center",
+                    "max-sm:items-end max-sm:justify-stretch",
+                    "bg-black/30 backdrop-blur-xs",
+                  ])}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
                 >
                   <Overlay onClick={handleOverlayDismiss} />
                   {React.isValidElement(modalNode) &&
@@ -96,10 +109,10 @@ export const ModalProvider = ({ children }: PropsWithChildren) => {
                       // @ts-ignore
                       onDismiss: handleDismiss,
                     })}
-                </DismissableLayer>
-              )}
-            </AnimatePresence>
-          </LazyMotion>,
+                </motion.div>
+              </DismissableLayer>
+            )}
+          </AnimatePresence>,
           portal
         )}
       {children}

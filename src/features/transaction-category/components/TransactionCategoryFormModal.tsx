@@ -59,7 +59,7 @@ export const TransactionCategoryFormModal = (
   });
 
   return (
-    <Modal title="New category" {...props}>
+    <Modal title="New category" {...props} fullScreen>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="flex gap-2">
           {/*  <input {...register("icon")} placeholder="Icon" className="input" /> */}
@@ -84,6 +84,7 @@ export const TransactionCategoryFormModal = (
         <div className="grid grid-cols-9 gap-1">
           {TransactionCategoryColors.map((color) => (
             <input
+              key={color}
               {...register("color")}
               type="radio"
               name="color"

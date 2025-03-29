@@ -28,7 +28,7 @@ export const Sidebar = () => {
         </nav>
 
         <div className={cn("space-y-1 p-3", "border-t  border-base-300")}>
-          <div className=" hidden lg:flex items-center text-base-content/50 px-3 py-2 gap-3">
+          <div className=" hidden lg:flex items-center text-base-content/50 px-3 py-2 gap-3 cursor-pointer">
             <Rocket className="size-4" />
             <span className="text-sm text-base-content/50">
               Version {packageJson.version}

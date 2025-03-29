@@ -2,7 +2,6 @@ import { useModal } from "@/components/widgets/Modal";
 import { Download, EllipsisVertical, Upload } from "lucide-react";
 import { useImportCategories } from "../hooks/useImportCategories";
 import { TransactionCategoryExportModal } from "./TransactionCategoryExportModal";
-
 export const TransactionCategoriesMenu = () => {
   const importCategories = useImportCategories();
 

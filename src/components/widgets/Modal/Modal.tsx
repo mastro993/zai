@@ -1,39 +1,42 @@
-import Overlay from "@/components/Overlay";
-import { useId, useLayoutEffect } from "react";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { useId } from "react";
 import { InjectedModalProps } from ".";
 
 export type ModalProps = InjectedModalProps & {
   title: string;
   description?: string;
   children: React.ReactNode;
+  fullScreen?: boolean;
 };
 
 export const Modal = ({
   title,
   description,
   children,
-  onDismiss,
+  fullScreen = false,
 }: ModalProps) => {
   const uniqueModalId = useId();
 
-  useLayoutEffect(() => {
-    const modal = document.getElementById(
-      uniqueModalId
-    ) as HTMLDialogElement | null;
-    modal?.showModal();
-  }, [uniqueModalId]);
-
   return (
-    <dialog
+    <motion.div
       id={uniqueModalId}
-      className="modal modal-bottom sm:modal-middle select-none"
+      className={cn([
+        "card bg-base-100 p-4",
+        "max-sm:w-full",
+        fullScreen && "w-11/12 h-11/12",
+      ])}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{
+        duration: 0.2,
+        ease: "easeInOut",
+      }}
     >
-      <Overlay onClick={onDismiss} />
-      <div className="modal-box">
-        <h3 className="font-bold text-lg">{title}</h3>
-        <p className="py-4">{description}</p>
-        {children}
-      </div>
-    </dialog>
+      <h3 className="font-bold text-lg">{title}</h3>
+      <p className="py-4">{description}</p>
+      {children}
+    </motion.div>
   );
 };
