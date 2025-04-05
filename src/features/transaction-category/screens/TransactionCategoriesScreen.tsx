@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/ui/Navbar";
 import { useModal } from "@/components/widgets/Modal";
 import { Plus } from "lucide-react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { useAddTransactionCategory } from "../api/useAddTransactionCategory";
 import { TransactionCategoriesMenu } from "../components/TransactionCategoriesMenu";
 import { TransactionCategoriesSelection } from "../components/TransactionCategoriesSelection";
@@ -13,6 +14,8 @@ export const TransactionCategoriesScreen = () => {
   const [onPresent] = useModal(
     <TransactionCategoryFormModal onSubmit={addTransactionCategory} />
   );
+
+  useHotkeys("mod+n", onPresent);
 
   const navbarActions = (
     <div className="flex gap-2">

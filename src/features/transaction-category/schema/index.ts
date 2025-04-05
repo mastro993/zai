@@ -26,14 +26,14 @@ export type TransactionCategoryColor =
 
 export type TransactionCategoryTable = {
   id: GeneratedAlways<number>;
-  parent_id?: number;
+  parent_id: number | null;
   name: string;
-  color?: TransactionCategoryColor;
-  icon?: string;
-  description?: string;
+  color: TransactionCategoryColor | null;
+  icon: string | null;
+  description: string | null;
   created_at: GeneratedAlways<string>;
   updated_at: GeneratedAlways<string>;
-  deleted_at?: string;
+  deleted_at: string | null;
 };
 
 export type TransactionCategoryChildren = Selectable<TransactionCategoryTable>;

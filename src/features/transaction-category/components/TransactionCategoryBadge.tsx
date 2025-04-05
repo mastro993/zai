@@ -8,11 +8,11 @@ export type TransactionCategoryBadgeProps = {
 export const TransactionCategoryBadge = ({
   category,
 }: TransactionCategoryBadgeProps) => {
-  const { name, color = "neutral" } = category;
-  const variant = colorVariants[color] ?? colorVariants.neutral;
+  const { name, parent, color } = category;
+  const variant = colorVariants[color ?? "neutral"];
   return (
     <span className={cn(["badge border-0", variant.bg, variant.text])}>
-      {name}
+      {parent ? `${parent.name} • ${name}` : name}
     </span>
   );
 };

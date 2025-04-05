@@ -13,6 +13,7 @@ import { TransactionCategoryFormModal } from "./TransactionCategoryFormModal";
 
 export type TransactionCategoryItemProps = {
   category: TransactionCategory;
+  isChild?: boolean;
 };
 
 export const TransactionCategoryListItem = ({

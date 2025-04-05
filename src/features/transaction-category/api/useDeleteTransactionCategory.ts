@@ -1,5 +1,6 @@
 import { db } from "@/lib/database";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { sql } from "kysely";
 import { toast } from "sonner";
 
 export const useDeleteTransactionCategory = () => {
@@ -8,7 +9,10 @@ export const useDeleteTransactionCategory = () => {
   return useMutation({
     async mutationFn(categoryIds: Array<number>) {
       const results = await db
-        .deleteFrom("transaction_category")
+        .updateTable("transaction_category")
+        .set({
+          deleted_at: sql`current_timestamp`,
+        })
         .where("id", "in", categoryIds)
         .execute();
 

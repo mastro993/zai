@@ -2,7 +2,7 @@ import { db } from "@/lib/database";
 import { Expression } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/sqlite";
 
-function children(id: Expression<number>) {
+function children(id: Expression<number | null>) {
   return jsonArrayFrom(
     db
       .selectFrom("transaction_category as children")
@@ -22,7 +22,7 @@ function children(id: Expression<number>) {
   );
 }
 
-function parent(parentId: Expression<number>) {
+function parent(parentId: Expression<number | null>) {
   return jsonObjectFrom(
     db
       .selectFrom("transaction_category as parent")

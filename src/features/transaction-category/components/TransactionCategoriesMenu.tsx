@@ -1,5 +1,5 @@
 import { useModal } from "@/components/widgets/Modal";
-import { Download, EllipsisVertical, Upload } from "lucide-react";
+import { ChevronDown, Download, Upload } from "lucide-react";
 import { useImportCategories } from "../hooks/useImportCategories";
 import { TransactionCategoryExportModal } from "./TransactionCategoryExportModal";
 export const TransactionCategoriesMenu = () => {
@@ -14,7 +14,7 @@ export const TransactionCategoriesMenu = () => {
         role="button"
         className="btn btn-sm btn-square btn-soft"
       >
-        <EllipsisVertical className="w-4 h-4" />
+        <ChevronDown className="w-4 h-4" />
       </div>
       <ul
         tabIndex={0}

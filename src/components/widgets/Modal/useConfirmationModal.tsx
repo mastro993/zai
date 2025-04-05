@@ -4,47 +4,39 @@ import {
   useModal,
 } from "@/components/widgets/Modal";
 import { cn } from "@/lib/utils";
-import { useCallback } from "react";
 
-type ModalConfig = {
+type ConfirmationModalConfig = InjectedModalProps & {
   title: string;
   description?: string;
   confirmText?: string;
   cancelText?: string;
   onConfirm?: () => void;
-  onDismiss?: () => void;
   destructive?: boolean;
 };
 
-const useConfirmationModal = ({
-  title,
-  description,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
-  onConfirm = () => {},
-  onDismiss = () => {},
-  destructive = false,
-}: ModalConfig) => {
-  const InnerModal: React.FC = useCallback(
-    (props: InjectedModalProps) => (
-      <Modal title={title} description={description} {...props}>
-        <form method="dialog" className="modal-action">
-          <button className="btn btn-soft" onClick={onDismiss}>
-            {cancelText}
-          </button>
-          <button
-            className={cn("btn", destructive && "btn-error")}
-            onClick={onConfirm}
-          >
-            {confirmText}
-          </button>
-        </form>
-      </Modal>
-    ),
-    [title, description, confirmText, cancelText, onConfirm, onDismiss]
+const ConfirmationModal = (props: ConfirmationModalConfig) => {
+  return (
+    <Modal {...props}>
+      <form method="dialog" className="modal-action">
+        <button className="btn btn-soft" onClick={props.onDismiss}>
+          {props.cancelText || "Cancel"}
+        </button>
+        <button
+          className={cn("btn", props.destructive && "btn-error")}
+          onClick={() => {
+            props.onConfirm?.();
+            props.onDismiss?.();
+          }}
+        >
+          {props.confirmText || "Confirm"}
+        </button>
+      </form>
+    </Modal>
   );
+};
 
-  return useModal(<InnerModal />);
+const useConfirmationModal = (props: ConfirmationModalConfig) => {
+  return useModal(<ConfirmationModal {...props} />);
 };
 
 export default useConfirmationModal;
