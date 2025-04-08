@@ -7,7 +7,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn("parent_id", "integer", (col) =>
       col.references("transaction_category.id").onDelete("set null")
     )
-    .addColumn("name", "text", (col) => col.notNull().unique())
+    .addColumn("name", "text", (col) => col.notNull())
     .addColumn("color", "text")
     .addColumn("icon", "text")
     .addColumn("description", "text")
@@ -15,7 +15,7 @@ export async function up(db: Kysely<any>): Promise<void> {
       col.defaultTo(sql`current_timestamp`)
     )
     .addColumn("updated_at", "timestamp", (col) =>
-      col.defaultTo(sql`current_timestamp`)
+      col.defaultTo(sql`current_timestamp`).onUpdate("set default")
     )
     .addColumn("deleted_at", "timestamp")
     .execute();
@@ -35,7 +35,7 @@ export async function up(db: Kysely<any>): Promise<void> {
       col.defaultTo(sql`current_timestamp`)
     )
     .addColumn("updated_at", "timestamp", (col) =>
-      col.defaultTo(sql`current_timestamp`)
+      col.defaultTo(sql`current_timestamp`).onUpdate("set default")
     )
     .addColumn("deleted_at", "timestamp")
     .execute();
