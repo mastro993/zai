@@ -52,19 +52,17 @@ export const TransactionsScreen = () => {
           <kbd className="kbd kbd-sm">K</kbd>
         </label>
       </Navbar>
-      <div className="overflow-auto">
-        <ScrollArea>
-          <ul className="list">
-            {data?.pages
-              .flatMap((page) => page.data)
-              .map((transaction, index) => (
-                <li className="list-row">
-                  <JsonDisplay key={index} data={transaction} />
-                </li>
-              ))}
-          </ul>
-        </ScrollArea>
-      </div>
+      <ScrollArea>
+        <ul className="list">
+          {data?.pages
+            .flatMap((page) => page.data)
+            .map((transaction, index) => (
+              <li className="list-row">
+                <JsonDisplay key={index} data={transaction} />
+              </li>
+            ))}
+        </ul>
+      </ScrollArea>
     </div>
   );
 };

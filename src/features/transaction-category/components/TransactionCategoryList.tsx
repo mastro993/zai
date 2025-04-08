@@ -20,19 +20,17 @@ export const TransactionCategoryList = () => {
   }
 
   return (
-    <div className="overflow-auto">
-      <ScrollArea>
-        <ul className="list">
-          {transactionCategories?.map((transactionCategory) => {
-            return (
-              <TransactionCategoryListItem
-                key={transactionCategory.id}
-                category={transactionCategory}
-              />
-            );
-          })}
-        </ul>
-      </ScrollArea>
-    </div>
+    <ScrollArea className="h-full">
+      <ul className="list">
+        {transactionCategories?.map((transactionCategory) => {
+          return (
+            <TransactionCategoryListItem
+              key={transactionCategory.id}
+              category={transactionCategory}
+            />
+          );
+        })}
+      </ul>
+    </ScrollArea>
   );
 };

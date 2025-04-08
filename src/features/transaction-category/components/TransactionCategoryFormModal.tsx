@@ -8,8 +8,8 @@ import {
 } from "@/features/transaction-category/schema";
 import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
-import { useHotkeys } from "react-hotkeys-hook";
+import { useEffect } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z, ZodType } from "zod";
 import { useAvailableParentTransactionCategories } from "../api/useAvailableParentTransactionCategories";
 import { TransactionCategoryBadge } from "./TransactionCategoryBadge";
@@ -36,7 +36,7 @@ export const TransactionCategoryFormModal = (
   const { data: transactionCategories } =
     useAvailableParentTransactionCategories();
 
-  const { handleSubmit, register, watch, control } =
+  const { handleSubmit, register, watch, control, setValue } =
     useForm<NewTransactionCategory>({
       resolver: zodResolver(TransactionCategorySchema),
       defaultValues: {
@@ -52,15 +52,29 @@ export const TransactionCategoryFormModal = (
     props.onDismiss?.();
   };
 
-  useHotkeys("Escape", () => {
-    props.onDismiss?.();
+  const parentCategoryId = useWatch({
+    control,
+    name: "parent_id",
   });
 
+  useEffect(() => {
+    if (parentCategoryId) {
+      const parentCategory = transactionCategories?.find(
+        (category) => category.id === parentCategoryId
+      );
+      if (parentCategory) {
+        setValue("color", parentCategory.color);
+      }
+    }
+  }, [parentCategoryId]);
+
   const parentCategoryOptions =
-    transactionCategories?.map((transactionCategory) => ({
-      label: transactionCategory.name,
-      value: transactionCategory.id,
-    })) ?? [];
+    transactionCategories
+      ?.map((transactionCategory) => ({
+        label: transactionCategory.name,
+        value: transactionCategory.id,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label)) ?? [];
 
   return (
     <Modal title="New category" {...props}>
@@ -107,7 +121,7 @@ export const TransactionCategoryFormModal = (
               name="color"
               value={color}
               className={cn(
-                ["btn btn-square border-3"],
+                ["btn btn-square border-4 rounded-md"],
                 colorRadioClassByVariants[color]
               )}
             />

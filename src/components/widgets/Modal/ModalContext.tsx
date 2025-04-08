@@ -96,7 +96,7 @@ export const ModalProvider = ({ children }: PropsWithChildren) => {
                     "absolute top-0 left-0 w-full h-full z-50",
                     "flex items-center justify-center",
                     "max-sm:items-end max-sm:justify-stretch",
-                    "bg-black/30 backdrop-blur-xs",
+                    "bg-black/50 backdrop-blur-xs",
                   ])}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
