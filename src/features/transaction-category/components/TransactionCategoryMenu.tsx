@@ -2,7 +2,8 @@ import { useModal } from "@/components/widgets/Modal";
 import { ChevronDown, Download, Upload } from "lucide-react";
 import { useImportCategories } from "../hooks/useImportCategories";
 import { TransactionCategoryExportModal } from "./TransactionCategoryExportModal";
-export const TransactionCategoriesMenu = () => {
+
+export const TransactionCategoryMenu = () => {
   const importCategories = useImportCategories();
 
   const [onPresentExportModal] = useModal(<TransactionCategoryExportModal />);

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useDeleteTransactionCategory } from "../api/useDeleteTransactionCategory";
 import { useSelectionStore } from "../stores/selection";
 
-export const TransactionCategoriesSelection = () => {
+export const TransactionCategorySelection = () => {
   const { selectedCategoryIds, setSelectedCategoryIds } = useSelectionStore();
 
   const { mutate: deleteMultipleTransactionCategory } =
