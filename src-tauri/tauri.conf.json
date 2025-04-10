@@ -1,16 +1,16 @@
 {
   "$schema": "https://schema.tauri.app/config/1",
-  "productName": "Spiccy",
-  "mainBinaryName": "Spiccy",
+  "productName": "Zai",
+  "mainBinaryName": "Zai",
   "version": "0.0.1",
-  "identifier": "dev.fedemas.spiccy.app",
+  "identifier": "dev.fedemas.zai.app",
   "app": {
     "security": {
       "csp": null
     },
     "windows": [
       {
-        "title": "Spiccy",
+        "title": "Zai",
         "width": 1280,
         "height": 960,
         "minWidth": 480,
@@ -38,7 +38,7 @@
   },
   "plugins": {
     "sql": {
-      "preload": ["sqlite:spiccy.db"]
+      "preload": ["sqlite:zai.db"]
     }
   }
 }

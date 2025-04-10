@@ -20,7 +20,7 @@ export const useExportCategories = ({ data, onError, onSuccess }: Props) => {
 
     try {
       const formattedDate = dayjs().format("YYYY-MM-DDT-HH-mm-ss");
-      const defaultPath = `spiccy_transaction_categories_${formattedDate}.json`;
+      const defaultPath = `zai_transaction_categories_${formattedDate}.json`;
 
       const filePath = await save({
         defaultPath,

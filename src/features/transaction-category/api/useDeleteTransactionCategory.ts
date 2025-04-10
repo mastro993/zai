@@ -12,6 +12,7 @@ export const useDeleteTransactionCategory = () => {
         .updateTable("transaction_category")
         .set({
           deleted_at: sql`current_timestamp`,
+          updated_at: sql`current_timestamp`,
         })
         .where("id", "in", categoryIds)
         .execute();

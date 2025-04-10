@@ -5,7 +5,7 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "spiccy-light";
+  name: "zai-light";
   default: true;
   prefersdark: false;
   color-scheme: "light";
@@ -40,7 +40,7 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "spiccy-dark";
+  name: "zai-dark";
   default: false;
   prefersdark: true;
   color-scheme: "dark";

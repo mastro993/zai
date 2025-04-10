@@ -1,5 +1,5 @@
 {
-  "name": "spiccy-app",
+  "name": "zai-app",
   "private": true,
   "version": "0.0.1-alpha.1",
   "type": "module",
@@ -10,7 +10,7 @@
     "build": "yarn generate-routes && tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "clean-db": "yarn scripts/clean-db.ts",
+    "clean-db": "node scripts/clean-db.ts",
     "migrate:latest": "yarn src/database/migrate.ts"
   },
   "packageManager": "yarn@4.7.0",
@@ -36,6 +36,7 @@
     "lodash": "^4.17.21",
     "lucide-react": "^0.479.0",
     "motion": "^12.5.0",
+    "papaparse": "^5.5.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.2",
@@ -54,6 +55,7 @@
     "@tauri-apps/cli": "^2.3.1",
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.13.9",
+    "@types/papaparse": "^5",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@types/react-modal": "^3",

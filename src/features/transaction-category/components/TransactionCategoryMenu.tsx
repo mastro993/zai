@@ -1,12 +1,11 @@
 import { useModal } from "@/components/widgets/Modal";
 import { ChevronDown, Download, Upload } from "lucide-react";
-import { useImportCategories } from "../hooks/useImportCategories";
 import { TransactionCategoryExportModal } from "./TransactionCategoryExportModal";
+import { TransactionCategoryImportModal } from "./TransactionCategoryImportModal";
 
 export const TransactionCategoryMenu = () => {
-  const importCategories = useImportCategories();
-
   const [onPresentExportModal] = useModal(<TransactionCategoryExportModal />);
+  const [onPresentImportModal] = useModal(<TransactionCategoryImportModal />);
 
   return (
     <div className="dropdown dropdown-hover dropdown-end">
@@ -22,7 +21,7 @@ export const TransactionCategoryMenu = () => {
         className="dropdown-content menu bg-base-200 rounded-box z-1 w-52 p-2 shadow-sm"
       >
         <li>
-          <a onClick={importCategories}>
+          <a onClick={onPresentImportModal}>
             <Download className="w-4 h-4" />
             Import categories
           </a>

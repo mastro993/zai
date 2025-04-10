@@ -24,7 +24,7 @@ export const Modal = ({
       className={cn([
         "card bg-base-100 p-4",
         "max-sm:w-full",
-        fullScreen && "w-11/12 h-11/12",
+        fullScreen && "w-11/12 h-11/12 min-2xl:w-[1280px]",
       ])}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}

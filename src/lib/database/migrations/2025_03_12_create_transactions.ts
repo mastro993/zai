@@ -9,13 +9,12 @@ export async function up(db: Kysely<any>): Promise<void> {
     )
     .addColumn("name", "text", (col) => col.notNull())
     .addColumn("color", "text")
-    .addColumn("icon", "text")
     .addColumn("description", "text")
     .addColumn("created_at", "timestamp", (col) =>
       col.defaultTo(sql`current_timestamp`)
     )
     .addColumn("updated_at", "timestamp", (col) =>
-      col.defaultTo(sql`current_timestamp`).onUpdate("set default")
+      col.defaultTo(sql`current_timestamp`)
     )
     .addColumn("deleted_at", "timestamp")
     .execute();
@@ -28,14 +27,14 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn("date", "date", (col) => col.notNull())
     .addColumn("type", "text", (col) => col.notNull())
     .addColumn("category_id", "integer", (col) =>
-      col.references("transaction_category.id").onDelete("set null")
+      col.references("transaction_category.id")
     )
     .addColumn("notes", "text")
     .addColumn("created_at", "timestamp", (col) =>
       col.defaultTo(sql`current_timestamp`)
     )
     .addColumn("updated_at", "timestamp", (col) =>
-      col.defaultTo(sql`current_timestamp`).onUpdate("set default")
+      col.defaultTo(sql`current_timestamp`)
     )
     .addColumn("deleted_at", "timestamp")
     .execute();
@@ -54,6 +53,8 @@ export async function up(db: Kysely<any>): Promise<void> {
 }
 
 export async function down(db: Kysely<any>): Promise<void> {
+  await db.schema.dropIndex("transaction_type_index").execute();
+  await db.schema.dropIndex("transaction_category_id_index").execute();
   await db.schema.dropTable("transaction").execute();
   await db.schema.dropTable("transaction_category").execute();
 }

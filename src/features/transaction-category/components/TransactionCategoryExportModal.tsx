@@ -21,7 +21,7 @@ export const TransactionCategoryExportModal = (
     }
 
     const formattedDate = dayjs().format("YYYY-MM-DDT-HH-mm-ss");
-    const defaultPath = `spiccy_transaction_categories_${formattedDate}.${exportFormat}`;
+    const defaultPath = `zai_transaction_categories_${formattedDate}.${exportFormat}`;
 
     const filteredData = data
       .map((category) => {

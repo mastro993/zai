@@ -1,4 +1,10 @@
-import { GeneratedAlways, Insertable, Selectable, Updateable } from "kysely";
+import {
+  Generated,
+  GeneratedAlways,
+  Insertable,
+  Selectable,
+  Updateable,
+} from "kysely";
 
 export const TransactionCategoryColors = [
   "red",
@@ -29,10 +35,9 @@ export type TransactionCategoryTable = {
   parent_id: number | null;
   name: string;
   color: TransactionCategoryColor | null;
-  icon: string | null;
   description: string | null;
   created_at: GeneratedAlways<string>;
-  updated_at: GeneratedAlways<string>;
+  updated_at: Generated<string>;
   deleted_at: string | null;
 };
 
