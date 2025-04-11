@@ -27,7 +27,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn("date", "date", (col) => col.notNull())
     .addColumn("type", "text", (col) => col.notNull())
     .addColumn("category_id", "integer", (col) =>
-      col.references("transaction_category.id")
+      col.references("transaction_category.id").onDelete("set null")
     )
     .addColumn("notes", "text")
     .addColumn("created_at", "timestamp", (col) =>

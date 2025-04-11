@@ -1,16 +1,20 @@
-import { save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
-import dayjs from "dayjs";
 import { useCallback, useState } from "react";
-import { TransactionCategory } from "../schema";
+import { useTransactionCategories } from "../api/useTransactionCategories";
+import { AcceptedFileExtension, exportToFile } from "@/features/file-processor";
+import { Effect, pipe } from "effect";
 
 type Props = {
-  data?: Array<TransactionCategory>;
+  format: AcceptedFileExtension;
   onSuccess?: () => void;
   onError?: () => void;
 };
 
-export const useExportCategories = ({ data, onError, onSuccess }: Props) => {
+export const useExportCategories = ({
+  format,
+  onError = () => {},
+  onSuccess = () => {},
+}: Props) => {
+  const { data } = useTransactionCategories();
   const [isExporting, setIsExporting] = useState(false);
 
   const exportData = useCallback(async () => {
@@ -18,37 +22,35 @@ export const useExportCategories = ({ data, onError, onSuccess }: Props) => {
       return;
     }
 
-    try {
-      const formattedDate = dayjs().format("YYYY-MM-DDT-HH-mm-ss");
-      const defaultPath = `zai_transaction_categories_${formattedDate}.json`;
-
-      const filePath = await save({
-        defaultPath,
-        filters: [{ name: "JSON", extensions: ["json"] }],
-        canCreateDirectories: true,
+    const filteredData = data
+      .map((category) => {
+        const { id, name, color, description, parent_id } = category;
+        return { id, name, color, description, parent_id };
+      })
+      .map((category) => {
+        return Object.fromEntries(
+          Object.entries(category).filter(([_, value]) => value !== null)
+        );
       });
 
-      if (filePath) {
-        const cleanedData = data
-          .map((category) => {
-            const { id, name, color, description, parent_id } = category;
-            return { id, name, color, description, parent_id };
-          })
-          .map((category) => {
-            return Object.fromEntries(
-              Object.entries(category).filter(([_, value]) => value !== null)
-            );
-          });
+    setIsExporting(true);
 
-        await writeTextFile(filePath, JSON.stringify(cleanedData, null, 2));
-        onSuccess?.();
-      }
-    } catch (error) {
-      onError?.();
-    }
+    await Effect.runPromise(
+      pipe(
+        exportToFile({
+          data: filteredData,
+          fileName: "zai_transaction_categories",
+          extension: format,
+        }),
+        Effect.map(onSuccess),
+        Effect.catchAll(() => {
+          onError();
+          setIsExporting(false);
+          return Effect.void;
+        })
+      )
+    );
+  }, [data, isExporting, format]);
 
-    setIsExporting(false);
-  }, [data, isExporting]);
-
-  return exportData;
+  return { exportData, isExporting };
 };

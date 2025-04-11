@@ -10,7 +10,6 @@ function category(categoryId: Expression<number>) {
         "cat.id",
         "cat.name",
         "cat.color",
-        "cat.icon",
         "cat.description",
         "cat.parent_id",
         "cat.created_at",

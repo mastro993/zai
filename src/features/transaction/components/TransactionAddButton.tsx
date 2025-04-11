@@ -11,7 +11,6 @@ export const TransactionAddButton = () => {
       amount: 100,
       date: "2021-01-01",
       type: "income",
-      category_id: 1,
       notes: "Test",
     });
   };

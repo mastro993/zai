@@ -22,6 +22,7 @@ export const Modal = ({
     <motion.div
       id={uniqueModalId}
       className={cn([
+        "flex flex-col gap-4",
         "card bg-base-100 p-4",
         "max-sm:w-full",
         fullScreen && "w-11/12 h-11/12 min-2xl:w-[1280px]",
@@ -35,7 +36,7 @@ export const Modal = ({
       }}
     >
       <h3 className="font-bold text-lg">{title}</h3>
-      <p className="py-4">{description}</p>
+      {description}
       {children}
     </motion.div>
   );

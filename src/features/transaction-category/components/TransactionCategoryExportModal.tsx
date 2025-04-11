@@ -1,54 +1,26 @@
+import { Button } from "@/components/ui/Button/Button";
 import { InjectedModalProps, Modal } from "@/components/widgets/Modal";
-import { exportDataToFile } from "@/lib/export";
-import dayjs from "dayjs";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { useTransactionCategories } from "../api/useTransactionCategories";
+import { useExportCategories } from "../hooks/useExportCategorites";
 
 type TransactionCategoryExportModalProps = InjectedModalProps;
 
 export const TransactionCategoryExportModal = (
   props: TransactionCategoryExportModalProps
 ) => {
-  const { data } = useTransactionCategories();
-  const [isExporting, setIsExporting] = useState(false);
-
   const [exportFormat, setExportFormat] = useState<"json" | "csv">("csv");
 
-  const exportData = useCallback(async () => {
-    if (!data || isExporting) {
-      return;
-    }
-
-    const formattedDate = dayjs().format("YYYY-MM-DDT-HH-mm-ss");
-    const defaultPath = `zai_transaction_categories_${formattedDate}.${exportFormat}`;
-
-    const filteredData = data
-      .map((category) => {
-        const { id, name, color, description, parent_id } = category;
-        return { id, name, color, description, parent_id };
-      })
-      .map((category) => {
-        return Object.fromEntries(
-          Object.entries(category).filter(([_, value]) => value !== null)
-        );
-      });
-
-    setIsExporting(true);
-    const success = await exportDataToFile({
-      data: filteredData,
-      defaultPath,
-      format: exportFormat,
-    });
-
-    if (success) {
+  const { exportData, isExporting } = useExportCategories({
+    format: exportFormat,
+    onSuccess: () => {
       toast.success("Transaction categories exported successfully");
-    } else {
+      props.onDismiss?.();
+    },
+    onError: () => {
       toast.error("Failed to export transaction categories");
-    }
-
-    props.onDismiss?.();
-  }, [data, isExporting, exportFormat]);
+    },
+  });
 
   return (
     <Modal
@@ -87,24 +59,19 @@ export const TransactionCategoryExportModal = (
       </fieldset>
 
       <div className="flex gap-2 justify-end">
-        <button
-          className="btn btn-soft"
-          type="reset"
+        <Button
+          variant="soft"
           onClick={props.onDismiss}
           disabled={isExporting}
-        >
-          Cancel
-        </button>
-        <button
-          className="btn btn-primary"
+          label="Cancel"
+        />
+        <Button
+          variant="primary"
           onClick={exportData}
           disabled={isExporting}
-        >
-          {isExporting && (
-            <span className="loading loading-spinner loading-xs" />
-          )}
-          Export
-        </button>
+          loading={isExporting}
+          label="Export"
+        />
       </div>
     </Modal>
   );

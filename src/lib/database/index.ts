@@ -18,7 +18,7 @@ export const db = new Kysely<Database>({
   plugins: [new ParseJSONResultsPlugin()],
   log(event): void {
     if (event.level === "query") {
-      console.debug(event.query.sql, event.query.parameters);
+      // console.debug(event.query.sql, event.query.parameters);
     } else if (event.level === "error") {
       console.error(event.error);
     }

@@ -1,41 +1,53 @@
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
-type BaseButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
+type BaseButtonProps = Omit<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  "children"
+>;
 
 type ButtonProps = BaseButtonProps & {
   label?: string;
   onClick?: () => void;
-  variant?: "primary" | "secondary" | "accent" | "ghost" | "link";
+  variant?:
+    | "primary"
+    | "secondary"
+    | "accent"
+    | "ghost"
+    | "link"
+    | "neutral"
+    | "soft";
   size?: "sm" | "md" | "lg";
-  icon?: React.ReactNode;
-  iconPosition?: "left" | "right";
-  hotkeys?: ReadonlyArray<string>;
-  className?: string;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  isLoading?: boolean;
 };
 
 export const Button = (props: ButtonProps) => {
-  const variantClass = variantClasses[props.variant || "primary"];
+  const variantClass = variantClasses[props.variant || "soft"];
   const sizeClass = sizeClasses[props.size || "md"];
-
-  // useHotkeys(props.hotkeys?.join("+"), () => props.onClick?.());
 
   return (
     <button
       className={cn("btn", variantClass, sizeClass, props.className)}
       {...props}
     >
-      {props.icon && props.iconPosition === "left" && props.icon}
-      {props.label}
-      {props.icon && props.iconPosition === "right" && props.icon}
-      {props.hotkeys &&
-        props.hotkeys.map((hotkey) => (
-          <>
-            +
-            <kbd className="kbd kbd-sm" key={hotkey}>
-              {hotkey}
-            </kbd>
-          </>
-        ))}
+      {props.leftIcon && props.leftIcon}
+      <motion.div
+        className={cn(["flex-1"])}
+        initial={{ opacity: 1 }}
+        animate={{ opacity: props.isLoading ? 0 : 1 }}
+        transition={{ duration: 0.2 }}
+      >
+        {props.label}
+      </motion.div>
+      {props.rightIcon && props.rightIcon}
+      <motion.span
+        className="loading loading-spinner loading-xs absolute"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: props.isLoading ? 1 : 0 }}
+        transition={{ duration: 0.2 }}
+      />
     </button>
   );
 };
@@ -46,6 +58,8 @@ const variantClasses = {
   accent: "btn-accent",
   ghost: "btn-ghost",
   link: "btn-link",
+  neutral: "btn-neutral",
+  soft: "btn-soft",
 };
 
 const sizeClasses = {
