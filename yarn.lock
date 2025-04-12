@@ -1590,6 +1590,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tauri-apps/plugin-stronghold@npm:~2":
+  version: 2.2.0
+  resolution: "@tauri-apps/plugin-stronghold@npm:2.2.0"
+  dependencies:
+    "@tauri-apps/api": "npm:^2.0.0"
+  checksum: 10c0/2918e2fc522928220899e4835042fafc99d3146df5f94f4d7f3832d4e7d82d123ed4ac331bee3328b8ce2226b86510f22f2c687fb1a0b6859c68cd091f33d0c2
+  languageName: node
+  linkType: hard
+
 "@types/babel__core@npm:^7.20.5":
   version: 7.20.5
   resolution: "@types/babel__core@npm:7.20.5"
@@ -4377,6 +4386,7 @@ __metadata:
     "@tauri-apps/plugin-log": "npm:~2"
     "@tauri-apps/plugin-shell": "npm:~2"
     "@tauri-apps/plugin-sql": "npm:~2"
+    "@tauri-apps/plugin-stronghold": "npm:~2"
     "@types/lodash": "npm:^4.17.16"
     "@types/node": "npm:^22.13.9"
     "@types/papaparse": "npm:^5"

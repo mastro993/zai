@@ -23,6 +23,7 @@
       "allow": [{ "path": "$APPDATA/*" }]
     },
     "dialog:allow-open",
-    "dialog:default"
+    "dialog:default",
+    "stronghold:default"
   ]
 }
