@@ -1,7 +1,7 @@
 import { db } from "@/lib/database";
 import { useQuery } from "@tanstack/react-query";
 import { TransactionCategory } from "../schema";
-import { children, parent } from "./helpers";
+import { children, parent } from "../schema/helpers";
 
 export const useAvailableParentTransactionCategories = () =>
   useQuery<Array<TransactionCategory>>({
