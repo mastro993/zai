@@ -24,6 +24,10 @@
     },
     "dialog:allow-open",
     "dialog:default",
-    "stronghold:default"
+    "stronghold:default",
+    {
+      "identifier": "http:default",
+      "allow": [{ "url": "https://*.gocardless.com" }]
+    }
   ]
 }

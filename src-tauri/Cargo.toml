@@ -21,6 +21,7 @@ tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-stronghold = "2"
 argon2 = "0.5.3"
+tauri-plugin-http = "2"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
