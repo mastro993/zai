@@ -1190,54 +1190,54 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/query-core@npm:5.69.0":
-  version: 5.69.0
-  resolution: "@tanstack/query-core@npm:5.69.0"
-  checksum: 10c0/8ad87046d1a8c18773de10e74d7fef2093cdbe9734e76460945048c00a219ae3d2421eab2b4d54340f3f491813f99ceef7d2849827d95490c8b67de1b87934ae
+"@tanstack/query-core@npm:5.74.3":
+  version: 5.74.3
+  resolution: "@tanstack/query-core@npm:5.74.3"
+  checksum: 10c0/ad28c2a4b9c39b23fb4a621474f134320f4cf5a2ea62a12918ca27d95b4b4a8b15316d5eceba04debbe2ecc7453f4dbaeb8deede7eeef07a83ad6ee42659b326
   languageName: node
   linkType: hard
 
-"@tanstack/query-devtools@npm:5.67.2":
-  version: 5.67.2
-  resolution: "@tanstack/query-devtools@npm:5.67.2"
-  checksum: 10c0/85172bb7cbca204e62507ffb72add4ff8f204b034ea0c6bb82cc44a00756ab196bd8a688b5e857911274aa5e7c467cdda6a393ebce6ba36ce8d471d5b52060fb
+"@tanstack/query-devtools@npm:5.73.3":
+  version: 5.73.3
+  resolution: "@tanstack/query-devtools@npm:5.73.3"
+  checksum: 10c0/9a38a663626947d3b19f91aa6c80282c49dabc28ee5f51599c3fcca9567b10d57c1002e7e1c6f7fec7f16aa4cd721ddd79f0ea33357cfbdc685cb441a371594c
   languageName: node
   linkType: hard
 
 "@tanstack/react-query-devtools@npm:^5.69.0":
-  version: 5.69.0
-  resolution: "@tanstack/react-query-devtools@npm:5.69.0"
+  version: 5.74.3
+  resolution: "@tanstack/react-query-devtools@npm:5.74.3"
   dependencies:
-    "@tanstack/query-devtools": "npm:5.67.2"
+    "@tanstack/query-devtools": "npm:5.73.3"
   peerDependencies:
-    "@tanstack/react-query": ^5.69.0
+    "@tanstack/react-query": ^5.74.3
     react: ^18 || ^19
-  checksum: 10c0/e74937f68f205227d3a1bc616daeb4908de6c09426851b64c96b48a2f7468abbfe8a9509eac5c808836f63b0ae5faaba4229e7d1fed5e00cf7dc913da05f705f
+  checksum: 10c0/e94ae8ab43acf65390b97fb3c0a9600ff6be597f41fb71b080e09591b2c363e8c180cf1078b94948f7e18e1f1b1061f8eadafac047dde00f6b7b0eba30a477f1
   languageName: node
   linkType: hard
 
 "@tanstack/react-query@npm:^5.67.2":
-  version: 5.69.0
-  resolution: "@tanstack/react-query@npm:5.69.0"
+  version: 5.74.3
+  resolution: "@tanstack/react-query@npm:5.74.3"
   dependencies:
-    "@tanstack/query-core": "npm:5.69.0"
+    "@tanstack/query-core": "npm:5.74.3"
   peerDependencies:
     react: ^18 || ^19
-  checksum: 10c0/3481218d0dd1623af8148037011415ca6f57f2f918e859f6856b7d6cec191ca79029f6fd9e5b1139b1ec252198bda645ce8c1b44ac8dd28adf3c5f978a4126ec
+  checksum: 10c0/5bb0c55383ba1fdb88cddcc43ee308d201dc7bfece01e8bbd1e41b21ba21c3b58c6546670de411b83566fd42cf771061c8d6ccf6af5aef200bfeed068332b21e
   languageName: node
   linkType: hard
 
-"@tanstack/react-router-devtools@npm:^1.114.29":
-  version: 1.114.29
-  resolution: "@tanstack/react-router-devtools@npm:1.114.29"
+"@tanstack/react-router-devtools@npm:^1.115.3":
+  version: 1.115.3
+  resolution: "@tanstack/react-router-devtools@npm:1.115.3"
   dependencies:
-    "@tanstack/router-devtools-core": "npm:^1.114.29"
+    "@tanstack/router-devtools-core": "npm:^1.115.3"
     solid-js: "npm:^1.9.5"
   peerDependencies:
-    "@tanstack/react-router": ^1.114.29
+    "@tanstack/react-router": ^1.115.3
     react: ">=18.0.0 || >=19.0.0"
     react-dom: ">=18.0.0 || >=19.0.0"
-  checksum: 10c0/dfad8ae29e138d193a0dd5919602ccf3b91284a681863af2fbaabfd6c5c86ecdd5d17620e007712b05a94638b57cd57ecc06481340feb41cd2a8d48605c80be9
+  checksum: 10c0/c76a7b6c7c8ed41fdb7da5c9c7e142fd85af201aa97f47a1ab64adb8592f81d5cef7bb55889e35d96dc56e1157b0bc1edc2238820f724df1c44770236d4f6a98
   languageName: node
   linkType: hard
 
@@ -1295,40 +1295,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/router-devtools-core@npm:^1.114.29":
-  version: 1.114.29
-  resolution: "@tanstack/router-devtools-core@npm:1.114.29"
+"@tanstack/router-devtools-core@npm:^1.115.3":
+  version: 1.115.3
+  resolution: "@tanstack/router-devtools-core@npm:1.115.3"
   dependencies:
     clsx: "npm:^2.1.1"
     goober: "npm:^2.1.16"
   peerDependencies:
-    "@tanstack/router-core": ^1.114.29
+    "@tanstack/router-core": ^1.115.3
     csstype: ^3.0.10
     solid-js: ">=1.9.5"
     tiny-invariant: ^1.3.3
   peerDependenciesMeta:
     csstype:
       optional: true
-  checksum: 10c0/8e73fb377ad0fb2f31f591b63840d901648d86f8e0a584609351b0c30e798486367cdeb4c6e8cd8c3b3ccf7d994710bb9c3bbcc73fbf2b16f0eb0cfc20be80b3
-  languageName: node
-  linkType: hard
-
-"@tanstack/router-devtools@npm:^1.112.18":
-  version: 1.114.29
-  resolution: "@tanstack/router-devtools@npm:1.114.29"
-  dependencies:
-    "@tanstack/react-router-devtools": "npm:^1.114.29"
-    clsx: "npm:^2.1.1"
-    goober: "npm:^2.1.16"
-  peerDependencies:
-    "@tanstack/react-router": ^1.114.29
-    csstype: ^3.0.10
-    react: ">=18.0.0 || >=19.0.0"
-    react-dom: ">=18.0.0 || >=19.0.0"
-  peerDependenciesMeta:
-    csstype:
-      optional: true
-  checksum: 10c0/7382e9b75b7a3deb26e0dd755673dc295cde65d3575a28b04aa9c13e892ed9b088ebe5355138bce2395ded7a31dd3a8c30f6ab52dcbe45122370bdc3ec7508ca
+  checksum: 10c0/ff397883d1a04f755b4eea053f8c88cf29df66e22802d0ac7116999d2bea0510b4b978790e6aa95b9743dd1185cd42f0dfe3f732be4801c08a59316ecb5cd713
   languageName: node
   linkType: hard
 
@@ -1563,6 +1544,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tauri-apps/plugin-http@npm:~2":
+  version: 2.4.3
+  resolution: "@tauri-apps/plugin-http@npm:2.4.3"
+  dependencies:
+    "@tauri-apps/api": "npm:^2.0.0"
+  checksum: 10c0/629342d1591d2e41b2e47b03d21556d8c8ef6ab9a7d9e71722672f92eb27f81b47a1224cdbfcd3ce55392891c30e9ff48d21f1f0bb233f6348982d51ff23ac2b
+  languageName: node
+  linkType: hard
+
 "@tauri-apps/plugin-log@npm:~2":
   version: 2.3.1
   resolution: "@tauri-apps/plugin-log@npm:2.3.1"
@@ -1738,6 +1728,13 @@ __metadata:
     "@types/prop-types": "npm:*"
     csstype: "npm:^3.0.2"
   checksum: 10c0/65fa867c91357e4c4c646945c8b99044360f8973cb7f928ec4de115fe3207827985d45be236e6fd6c092b09f631c2126ce835c137be30718419e143d73300d8f
+  languageName: node
+  linkType: hard
+
+"@types/use-sync-external-store@npm:^0.0.6":
+  version: 0.0.6
+  resolution: "@types/use-sync-external-store@npm:0.0.6"
+  checksum: 10c0/77c045a98f57488201f678b181cccd042279aff3da34540ad242f893acc52b358bd0a8207a321b8ac09adbcef36e3236944390e2df4fcedb556ce7bb2a88f2a8
   languageName: node
   linkType: hard
 
@@ -3563,6 +3560,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-redux@npm:^9.2.0":
+  version: 9.2.0
+  resolution: "react-redux@npm:9.2.0"
+  dependencies:
+    "@types/use-sync-external-store": "npm:^0.0.6"
+    use-sync-external-store: "npm:^1.4.0"
+  peerDependencies:
+    "@types/react": ^18.2.25 || ^19
+    react: ^18.0 || ^19
+    redux: ^5.0.0
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    redux:
+      optional: true
+  checksum: 10c0/00d485f9d9219ca1507b4d30dde5f6ff8fb68ba642458f742e0ec83af052f89e65cd668249b99299e1053cc6ad3d2d8ac6cb89e2f70d2ac5585ae0d7fa0ef259
+  languageName: node
+  linkType: hard
+
 "react-refresh@npm:^0.14.2":
   version: 0.14.2
   resolution: "react-refresh@npm:0.14.2"
@@ -4376,13 +4392,14 @@ __metadata:
     "@tanstack/react-query": "npm:^5.67.2"
     "@tanstack/react-query-devtools": "npm:^5.69.0"
     "@tanstack/react-router": "npm:^1.112.18"
+    "@tanstack/react-router-devtools": "npm:^1.115.3"
     "@tanstack/router-cli": "npm:^1.112.19"
-    "@tanstack/router-devtools": "npm:^1.112.18"
     "@tanstack/router-plugin": "npm:^1.112.19"
     "@tauri-apps/api": "npm:^2.4.0"
     "@tauri-apps/cli": "npm:^2.3.1"
     "@tauri-apps/plugin-dialog": "npm:~2"
     "@tauri-apps/plugin-fs": "npm:~2"
+    "@tauri-apps/plugin-http": "npm:~2"
     "@tauri-apps/plugin-log": "npm:~2"
     "@tauri-apps/plugin-shell": "npm:~2"
     "@tauri-apps/plugin-sql": "npm:~2"
@@ -4410,6 +4427,7 @@ __metadata:
     react-dom: "npm:^18.3.1"
     react-hook-form: "npm:^7.54.2"
     react-hotkeys-hook: "npm:^4.6.1"
+    react-redux: "npm:^9.2.0"
     react-select: "npm:^5.10.1"
     sonner: "npm:^2.0.1"
     tailwind-merge: "npm:^3.0.2"
