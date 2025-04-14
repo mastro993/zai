@@ -1,11 +1,9 @@
-import { importFromFile } from "@/features/file-processor";
+import { importFromFile } from "@/lib/file-processor";
 import { db } from "@/lib/database";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Effect, pipe } from "effect";
 import { useCallback, useState } from "react";
-import { toast } from "sonner";
 import { z } from "zod";
 import { TransactionCategoryColors } from "../schema";
+import { Result } from "neverthrow";
 
 const _RawCategorySchema = z.object({
   id: z.coerce.number(),
@@ -23,89 +21,76 @@ const RawCategoryImportSchema = z.array(RawCategorySchema);
 
 type RawCategoryImport = z.infer<typeof RawCategoryImportSchema>;
 
-export const useImportCategories = (onSuccess: () => void) => {
+export const useImportCategories = (onSuccess?: () => void) => {
   const [rawCategories, setRawCategories] = useState<RawCategoryImport>();
-  const queryClient = useQueryClient();
+  const [isImporting, setIsImporting] = useState(false);
+
+  const importCategories = useCallback(async () => {
+    setIsImporting(true);
+    const parentCategories =
+      rawCategories?.filter((category) => !category.parent_id) ?? [];
+
+    for (const parent of parentCategories) {
+      await db.transaction().execute(async (trx) => {
+        const { id: parentId } = await trx
+          .insertInto("transaction_category")
+          .values({
+            name: parent.name,
+            color: parent.color,
+            description: parent.description,
+          })
+          .returning("id")
+          .executeTakeFirstOrThrow();
+
+        const children =
+          rawCategories
+            ?.filter((c) => c.parent_id === parent.id)
+            ?.map((child) => ({
+              name: child.name,
+              color: child.color,
+              description: child.description,
+              parent_id: parentId,
+            })) ?? [];
+
+        return await trx
+          .insertInto("transaction_category")
+          .values(children)
+          .returningAll()
+          .executeTakeFirst();
+      });
+    }
+    setIsImporting(false);
+    onSuccess?.();
+  }, [setRawCategories]);
 
   const selectFile = useCallback(
     () =>
-      Effect.runPromise(
-        pipe(
-          importFromFile(),
-          Effect.map(RawCategoryImportSchema.parse),
-          Effect.map((validatedData) => {
-            return validatedData.map((category) => {
-              return {
-                ...category,
-                parent: category.parent_id
-                  ? validatedData.find((c) => c.id === category.parent_id)
-                  : undefined,
-              };
-            });
-          }),
-          Effect.map((categories) => {
-            return categories.sort((a, b) => {
-              return a.id - b.id;
-            });
-          }),
-          Effect.map(setRawCategories)
+      importFromFile()
+        .andThen(
+          Result.fromThrowable((data) => RawCategoryImportSchema.parse(data))
         )
-      ),
+        .map((data) => {
+          return data.map((category) => {
+            return {
+              ...category,
+              parent: category.parent_id
+                ? data.find((c) => c.id === category.parent_id)
+                : undefined,
+            };
+          });
+        })
+        .map((data) => {
+          return data.sort((a, b) => {
+            return a.id - b.id;
+          });
+        }),
     []
   );
-
-  const importMutation = useMutation({
-    async mutationFn() {
-      const parentCategories =
-        rawCategories?.filter((category) => !category.parent_id) ?? [];
-
-      for (const parent of parentCategories) {
-        await db.transaction().execute(async (trx) => {
-          const { id: parentId } = await trx
-            .insertInto("transaction_category")
-            .values({
-              name: parent.name,
-              color: parent.color,
-              description: parent.description,
-            })
-            .returning("id")
-            .executeTakeFirstOrThrow();
-
-          const children =
-            rawCategories
-              ?.filter((c) => c.parent_id === parent.id)
-              ?.map((child) => ({
-                name: child.name,
-                color: child.color,
-                description: child.description,
-                parent_id: parentId,
-              })) ?? [];
-
-          return await trx
-            .insertInto("transaction_category")
-            .values(children)
-            .returningAll()
-            .executeTakeFirst();
-        });
-      }
-    },
-    async onSuccess() {
-      await queryClient.invalidateQueries({
-        queryKey: ["transactionCategories"],
-      });
-      toast.success("Transaction categories imported");
-      onSuccess();
-    },
-    onError(error) {
-      toast.error("Failed to import transaction categories");
-      console.error(error);
-    },
-  });
 
   return {
     selectFile,
     rawCategories,
-    importCategories: importMutation.mutate,
-    isImporting: importMutation.isPending,
+    importCategories,
+    isImporting,
   };
 };

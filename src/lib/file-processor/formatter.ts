@@ -1,31 +1,39 @@
 import Papa from "papaparse";
 import { AcceptedFileExtension, FileData } from "./types";
+import { FileProcessorError } from "./error";
+import { Result } from "neverthrow";
 
-const formatJson = (data: FileData) => JSON.stringify(data, null, 2);
+const formatJson = Result.fromThrowable(
+  (data: FileData) => JSON.stringify(data, null, 2),
+  (e) => new FileProcessorError("Failed to format JSON", e)
+);
 
-const formatCsv = (data: FileData) => {
-  // Handle array data
-  if (Array.isArray(data)) {
-    return Papa.unparse(data);
-  }
-
-  // Handle object data
-  if (data && typeof data === "object") {
-    // If it's a single object, convert to array with one item
-    if (!Array.isArray(data)) {
-      return Papa.unparse([data]);
+const formatCsv = Result.fromThrowable(
+  (data: FileData) => {
+    if (Array.isArray(data)) {
+      return Papa.unparse(data);
     }
-  }
 
-  // Fallback for other data types
-  return Papa.unparse([{ value: String(data) }]);
-};
+    if (data && typeof data === "object") {
+      if (!Array.isArray(data)) {
+        return Papa.unparse([data]);
+      }
+    }
 
-const formatter: Record<AcceptedFileExtension, (data: FileData) => string> = {
+    return Papa.unparse([{ value: String(data) }]);
+  },
+  (e) => new FileProcessorError("Failed to format CSV", e)
+);
+
+const formatter: Record<
+  AcceptedFileExtension,
+  (data: FileData) => Result<string, FileProcessorError>
+> = {
   json: formatJson,
   csv: formatCsv,
 };
 
 export const getFormatter = (
   extension: AcceptedFileExtension
-): ((data: FileData) => string) => formatter[extension];
+): ((data: FileData) => Result<string, FileProcessorError>) =>
+  formatter[extension];

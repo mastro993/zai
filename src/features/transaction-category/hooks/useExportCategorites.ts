@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import { useTransactionCategories } from "../api/useTransactionCategories";
-import { AcceptedFileExtension, exportToFile } from "@/features/file-processor";
-import { Effect, pipe } from "effect";
+import { AcceptedFileExtension, exportToFile } from "@/lib/file-processor";
 
 type Props = {
   format: AcceptedFileExtension;
@@ -35,21 +34,20 @@ export const useExportCategories = ({
 
     setIsExporting(true);
 
-    await Effect.runPromise(
-      pipe(
-        exportToFile({
-          data: filteredData,
-          fileName: "zai_transaction_categories",
-          extension: format,
-        }),
-        Effect.map(onSuccess),
-        Effect.catchAll(() => {
-          onError();
-          setIsExporting(false);
-          return Effect.void;
-        })
-      )
-    );
+    const result = await exportToFile({
+      data: filteredData,
+      fileName: "zai_transaction_categories",
+      extension: format,
+    });
+
+    if (result.isErr()) {
+      onError();
+      setIsExporting(false);
+      return;
+    }
+
+    onSuccess();
+    setIsExporting(false);
   }, [data, isExporting, format]);
 
   return { exportData, isExporting };

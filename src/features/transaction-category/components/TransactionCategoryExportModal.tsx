@@ -69,7 +69,7 @@ export const TransactionCategoryExportModal = (
           variant="primary"
           onClick={exportData}
           disabled={isExporting}
-          loading={isExporting}
+          isLoading={isExporting}
           label="Export"
         />
       </div>

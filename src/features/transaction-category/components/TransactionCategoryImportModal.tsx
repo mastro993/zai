@@ -61,7 +61,7 @@ export const TransactionCategoryImportModal = (
         <Button
           variant="primary"
           label={`Import ${rawCategories?.length ?? ""} categories`}
-          onClick={importCategories}
+          onClick={() => importCategories()}
           disabled={isImporting || !rawCategories}
           isLoading={isImporting}
         />

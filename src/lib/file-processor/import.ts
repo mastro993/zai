@@ -1,6 +1,6 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { readTextFile } from "@tauri-apps/plugin-fs";
-import { Effect, pipe } from "effect";
+import { err, ok, okAsync, Result, ResultAsync } from "neverthrow";
 import {
   FileProcessorError,
   FileReadError,
@@ -19,43 +19,39 @@ const isValidFileExtension = (
 
 const getFileExtension = (
   filePath: string
-): Effect.Effect<AcceptedFileExtension, InvalidFileExtensionError, never> =>
-  pipe(
-    Effect.succeed(filePath.split(".").pop()),
-    Effect.flatMap((extension) =>
-      isValidFileExtension(extension)
-        ? Effect.succeed(extension)
-        : Effect.fail(new InvalidFileExtensionError(extension ?? "undefined"))
-    )
-  );
+): Result<AcceptedFileExtension, InvalidFileExtensionError> => {
+  const extension = filePath.split(".").pop();
+
+  if (!extension) {
+    return err(new InvalidFileExtensionError("undefined"));
+  }
+
+  if (!isValidFileExtension(extension)) {
+    return err(new InvalidFileExtensionError(extension));
+  }
+
+  return ok(extension);
+};
+
+const openFileDialog = ResultAsync.fromThrowable(
+  () => open({ filters: AcceptedFileExtensions.map(getFilter) }),
+  (e) => new FileProcessorError("Failed to open file dialog", e)
+);
+
+const readFile = ResultAsync.fromThrowable(
+  (filePath: string) => readTextFile(filePath),
+  (e) => new FileReadError(e)
+);
 
 export const importFromFile = () =>
-  pipe(
-    Effect.tryPromise({
-      try: () =>
-        open({
-          filters: AcceptedFileExtensions.map(getFilter),
-        }),
-      catch: (error) =>
-        new FileProcessorError("Failed to open file dialog", error),
-    }),
-    Effect.flatMap((filePath) =>
-      filePath ? Effect.succeed(filePath) : Effect.fail(new NoFilePathError())
-    ),
-    Effect.flatMap((filePath) =>
-      pipe(
-        Effect.tryPromise({
-          try: () => readTextFile(filePath),
-          catch: (error) => new FileReadError(error),
-        }),
-        Effect.flatMap((data) =>
-          pipe(
-            getFileExtension(filePath),
-            Effect.map((extension) => ({ data, extension }))
-          )
-        )
-      )
-    ),
-    Effect.flatMap(({ data, extension }) => getParser(extension)(data)),
-    Effect.catchAll((error) => Effect.fail(error))
-  );
+  openFileDialog()
+    .andThen((path) => (path ? ok(path) : err(new NoFilePathError())))
+    .andThen((path) => {
+      const parser = getFileExtension(path)
+        .asyncAndThen((_) => okAsync(_))
+        .map(getParser);
+      const data = readFile(path);
+
+      return ResultAsync.combine([parser, data]);
+    })
+    .map(([parser, data]) => parser(data));

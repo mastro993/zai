@@ -1,25 +1,29 @@
-import { Effect } from "effect";
 import Papa from "papaparse";
 import { ParseError } from "./error";
 import { AcceptedFileExtension, ParsedData } from "./types";
+import { ok, err, Result } from "neverthrow";
 
-const parseJson = (
-  data: string
-): Effect.Effect<ParsedData, ParseError, never> =>
-  Effect.try({
-    try: () => JSON.parse(data),
-    catch: (error) => new ParseError(error),
-  });
+const parseJson = (jsonString: string): Result<ParsedData, ParseError> => {
+  try {
+    return ok(JSON.parse(jsonString));
+  } catch (e: unknown) {
+    return err(new ParseError(e));
+  }
+};
 
-const parseCsv = (data: string): Effect.Effect<ParsedData, ParseError, never> =>
-  Effect.try({
-    try: () => Papa.parse(data, { header: true, skipEmptyLines: true }).data,
-    catch: (error) => new ParseError(error),
-  });
+const parseCsv = (csvString: string): Result<ParsedData, ParseError> => {
+  try {
+    return ok(
+      Papa.parse(csvString, { header: true, skipEmptyLines: true }).data
+    );
+  } catch (e: unknown) {
+    return err(new ParseError(e));
+  }
+};
 
 const parser: Record<
   AcceptedFileExtension,
-  (data: string) => Effect.Effect<ParsedData, ParseError, never>
+  (data: string) => Result<ParsedData, ParseError>
 > = {
   json: parseJson,
   csv: parseCsv,
@@ -27,5 +31,4 @@ const parser: Record<
 
 export const getParser = (
   extension: AcceptedFileExtension
-): ((data: string) => Effect.Effect<ParsedData, ParseError, never>) =>
-  parser[extension];
+): ((data: string) => Result<ParsedData, ParseError>) => parser[extension];
