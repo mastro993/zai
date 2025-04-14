@@ -63,10 +63,20 @@ export async function insertRecord(
  * @param key - The key of the record to retrieve
  * @throws {Error} If the record does not exist or is null
  */
-export async function getRecord(store: Store, key: string): Promise<string> {
+export async function getRecord(
+  store: Store,
+  key: string
+): Promise<string | undefined> {
   const data = await store.get(key);
-  if (data === null) {
-    throw new Error("data is null");
-  }
-  return new TextDecoder().decode(data);
+  return data ? new TextDecoder().decode(data) : undefined;
+}
+
+/**
+ * Removes a record from a Stronghold store.
+ *
+ * @param store - The Stronghold store to remove the record from
+ * @param key - The key of the record to remove
+ */
+export async function removeRecord(store: Store, key: string): Promise<void> {
+  await store.remove(key);
 }
