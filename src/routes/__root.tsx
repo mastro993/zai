@@ -3,7 +3,7 @@ import { ModalProvider } from "@/components/widgets/Modal";
 import { migrateToLatest } from "@/lib/database/migrate";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 
@@ -37,8 +37,8 @@ function Root() {
           <Outlet />
         </SidebarProvider>
       </ModalProvider>
-      <TanStackRouterDevtools position="bottom-right" />
-      <ReactQueryDevtools initialIsOpen={false} position="bottom" />
+      <TanStackRouterDevtools position="bottom-left" />
+      <ReactQueryDevtools initialIsOpen={false} position="left" />
       <Toaster richColors />
     </div>
   );
