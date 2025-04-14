@@ -1,7 +1,7 @@
 import { db } from "@/lib/database";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Transaction } from "../schema";
-import { category } from "./helpers";
+import { category } from "../schema/helpers";
 
 type TransactionPage = {
   data: Transaction[];
