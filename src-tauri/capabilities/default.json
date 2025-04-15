@@ -5,12 +5,9 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "shell:allow-open",
+    "shell:default",
     "sql:default",
-    "sql:allow-load",
     "sql:allow-execute",
-    "sql:allow-select",
-    "sql:allow-close",
     "fs:default",
     "fs:allow-app-write",
     "fs:allow-app-write-recursive",
@@ -20,14 +17,22 @@
     "fs:allow-appcache-read-recursive",
     {
       "identifier": "fs:allow-exists",
-      "allow": [{ "path": "$APPDATA/*" }]
+      "allow": [
+        {
+          "path": "$APPDATA/*"
+        }
+      ]
     },
-    "dialog:allow-open",
-    "dialog:default",
+    "store:default",
     "stronghold:default",
     {
       "identifier": "http:default",
-      "allow": [{ "url": "https://*.gocardless.com" }]
-    }
+      "allow": [
+        {
+          "url": "https://*.gocardless.com"
+        }
+      ]
+    },
+    "dialog:default"
   ]
 }

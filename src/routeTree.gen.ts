@@ -20,6 +20,7 @@ import { Route as BudgetsIndexImport } from './routes/budgets/index'
 import { Route as AccountsIndexImport } from './routes/accounts/index'
 import { Route as TransactionsTagsIndexImport } from './routes/transactions/tags/index'
 import { Route as TransactionsCategoriesIndexImport } from './routes/transactions/categories/index'
+import { Route as SettingsPlaygroundsIndexImport } from './routes/settings/playgrounds/index'
 
 // Create/Update Routes
 
@@ -78,6 +79,12 @@ const TransactionsCategoriesIndexRoute =
     getParentRoute: () => rootRoute,
   } as any)
 
+const SettingsPlaygroundsIndexRoute = SettingsPlaygroundsIndexImport.update({
+  id: '/settings/playgrounds/',
+  path: '/settings/playgrounds/',
+  getParentRoute: () => rootRoute,
+} as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -131,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TransactionsIndexImport
       parentRoute: typeof rootRoute
     }
+    '/settings/playgrounds/': {
+      id: '/settings/playgrounds/'
+      path: '/settings/playgrounds'
+      fullPath: '/settings/playgrounds'
+      preLoaderRoute: typeof SettingsPlaygroundsIndexImport
+      parentRoute: typeof rootRoute
+    }
     '/transactions/categories/': {
       id: '/transactions/categories/'
       path: '/transactions/categories'
@@ -158,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/portfolio': typeof PortfolioIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/transactions': typeof TransactionsIndexRoute
+  '/settings/playgrounds': typeof SettingsPlaygroundsIndexRoute
   '/transactions/categories': typeof TransactionsCategoriesIndexRoute
   '/transactions/tags': typeof TransactionsTagsIndexRoute
 }
@@ -170,6 +185,7 @@ export interface FileRoutesByTo {
   '/portfolio': typeof PortfolioIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/transactions': typeof TransactionsIndexRoute
+  '/settings/playgrounds': typeof SettingsPlaygroundsIndexRoute
   '/transactions/categories': typeof TransactionsCategoriesIndexRoute
   '/transactions/tags': typeof TransactionsTagsIndexRoute
 }
@@ -183,6 +199,7 @@ export interface FileRoutesById {
   '/portfolio/': typeof PortfolioIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/transactions/': typeof TransactionsIndexRoute
+  '/settings/playgrounds/': typeof SettingsPlaygroundsIndexRoute
   '/transactions/categories/': typeof TransactionsCategoriesIndexRoute
   '/transactions/tags/': typeof TransactionsTagsIndexRoute
 }
@@ -197,6 +214,7 @@ export interface FileRouteTypes {
     | '/portfolio'
     | '/settings'
     | '/transactions'
+    | '/settings/playgrounds'
     | '/transactions/categories'
     | '/transactions/tags'
   fileRoutesByTo: FileRoutesByTo
@@ -208,6 +226,7 @@ export interface FileRouteTypes {
     | '/portfolio'
     | '/settings'
     | '/transactions'
+    | '/settings/playgrounds'
     | '/transactions/categories'
     | '/transactions/tags'
   id:
@@ -219,6 +238,7 @@ export interface FileRouteTypes {
     | '/portfolio/'
     | '/settings/'
     | '/transactions/'
+    | '/settings/playgrounds/'
     | '/transactions/categories/'
     | '/transactions/tags/'
   fileRoutesById: FileRoutesById
@@ -232,6 +252,7 @@ export interface RootRouteChildren {
   PortfolioIndexRoute: typeof PortfolioIndexRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
   TransactionsIndexRoute: typeof TransactionsIndexRoute
+  SettingsPlaygroundsIndexRoute: typeof SettingsPlaygroundsIndexRoute
   TransactionsCategoriesIndexRoute: typeof TransactionsCategoriesIndexRoute
   TransactionsTagsIndexRoute: typeof TransactionsTagsIndexRoute
 }
@@ -244,6 +265,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortfolioIndexRoute: PortfolioIndexRoute,
   SettingsIndexRoute: SettingsIndexRoute,
   TransactionsIndexRoute: TransactionsIndexRoute,
+  SettingsPlaygroundsIndexRoute: SettingsPlaygroundsIndexRoute,
   TransactionsCategoriesIndexRoute: TransactionsCategoriesIndexRoute,
   TransactionsTagsIndexRoute: TransactionsTagsIndexRoute,
 }
@@ -265,6 +287,7 @@ export const routeTree = rootRoute
         "/portfolio/",
         "/settings/",
         "/transactions/",
+        "/settings/playgrounds/",
         "/transactions/categories/",
         "/transactions/tags/"
       ]
@@ -289,6 +312,9 @@ export const routeTree = rootRoute
     },
     "/transactions/": {
       "filePath": "transactions/index.tsx"
+    },
+    "/settings/playgrounds/": {
+      "filePath": "settings/playgrounds/index.tsx"
     },
     "/transactions/categories/": {
       "filePath": "transactions/categories/index.tsx"

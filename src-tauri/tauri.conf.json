@@ -37,6 +37,9 @@
     "devUrl": "http://localhost:1420"
   },
   "plugins": {
+    "fs": {
+      "requireLiteralLeadingDot": false
+    },
     "sql": {
       "preload": ["sqlite:zai.db"]
     }
