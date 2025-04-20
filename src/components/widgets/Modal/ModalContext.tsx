@@ -93,7 +93,7 @@ export const ModalProvider = ({ children }: PropsWithChildren) => {
               >
                 <motion.div
                   className={cn([
-                    "absolute top-0 left-0 w-full h-full z-50",
+                    "absolute top-0 left-0 w-full h-screen z-50",
                     "flex items-center justify-center",
                     "max-sm:items-end max-sm:justify-stretch",
                     "bg-black/50 backdrop-blur-xs",

@@ -1,4 +1,4 @@
-import { ScrollArea } from "@/components/ui/ScrollArea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/transactions/tags/")({

@@ -7,24 +7,30 @@ import {
 } from "kysely";
 
 export const TransactionCategoryColors = [
+  // Hard colors
   "red",
   "orange",
-  "amber",
   "yellow",
-  "lime",
   "green",
-  "emerald",
   "teal",
-  "cyan",
   "sky",
   "blue",
   "indigo",
-  "violet",
   "purple",
-  "fuchsia",
   "pink",
-  "rose",
   "neutral",
+  // Soft colors
+  "red-soft",
+  "orange-soft",
+  "yellow-soft",
+  "green-soft",
+  "teal-soft",
+  "sky-soft",
+  "blue-soft",
+  "indigo-soft",
+  "purple-soft",
+  "pink-soft",
+  "neutral-soft",
 ] as const;
 
 export type TransactionCategoryColor =

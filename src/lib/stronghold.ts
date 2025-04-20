@@ -11,8 +11,6 @@ const VAULT_PASSWORD = "WjlWZ1W5tNDc30HamIQegK/nNuYTfuHI6Pe6aoyr6zc=";
  * secure key-value storage operations.
  */
 export class Stronghold {
-  private static _instance: Stronghold;
-
   private client: tauri.Client;
   private stronghold: tauri.Stronghold;
 
@@ -26,20 +24,6 @@ export class Stronghold {
   private constructor(client: tauri.Client, stronghold: tauri.Stronghold) {
     this.client = client;
     this.stronghold = stronghold;
-  }
-
-  /**
-   * Gets the singleton instance of the Stronghold class.
-   * If an instance doesn't exist, it creates one by calling the init method.
-   *
-   * @returns A promise that resolves to the Stronghold instance
-   * @static
-   */
-  static async instance(): Promise<Stronghold> {
-    if (!this._instance) {
-      this._instance = await this.init();
-    }
-    return this._instance;
   }
 
   /**

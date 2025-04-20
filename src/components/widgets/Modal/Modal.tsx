@@ -22,8 +22,9 @@ export const Modal = ({
     <motion.div
       id={uniqueModalId}
       className={cn([
+        "z-50",
+        "bg-background p-6 rounded-md border",
         "flex flex-col gap-4",
-        "card bg-base-100 p-4",
         "max-sm:w-full",
         fullScreen && "w-11/12 h-11/12 min-2xl:w-[1280px]",
       ])}

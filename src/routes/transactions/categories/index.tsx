@@ -1,7 +1,8 @@
-import { Navbar } from "@/components/ui/Navbar";
+import { Navbar } from "@/components/Navbar";
 import { TransactionCategoryAddButton } from "@/features/transaction-category/components/TransactionCategoryAddButton";
+import { TransactionCategoryExportButton } from "@/features/transaction-category/components/TransactionCategoryExportButton";
+import { TransactionCategoryImportButton } from "@/features/transaction-category/components/TransactionCategoryImportButton";
 import { TransactionCategoryList } from "@/features/transaction-category/components/TransactionCategoryList";
-import { TransactionCategoryMenu } from "@/features/transaction-category/components/TransactionCategoryMenu";
 import { TransactionCategorySelection } from "@/features/transaction-category/components/TransactionCategorySelection";
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -13,13 +14,14 @@ function RouteComponent() {
   const navbarActions = (
     <div className="flex gap-2">
       <TransactionCategorySelection />
+      <TransactionCategoryImportButton />
+      <TransactionCategoryExportButton />
       <TransactionCategoryAddButton />
-      <TransactionCategoryMenu />
     </div>
   );
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col">
       <Navbar title="Categories" actions={navbarActions} />
       <TransactionCategoryList />
     </div>

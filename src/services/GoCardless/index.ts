@@ -1,14 +1,13 @@
-import { initStronghold, insertRecord, getRecord } from "@/lib/stronghold";
 import { fetch } from "@tauri-apps/plugin-http";
 import { GoCardlessAccessToken } from "./schema";
+import { Stronghold } from "@/lib/stronghold";
 
 const ACCESS_TOKEN_KEY = "gocardless-access-token";
 const BASE_URL = "https://bankaccountdata.gocardless.com/api/v2";
 
 export const init = async () => {
-  const { client, stronghold } = await initStronghold();
-  const store = client.getStore();
-  const accessToken = await getRecord(store, ACCESS_TOKEN_KEY);
+  const stronghold = await Stronghold.init();
+  const accessToken = await stronghold.get(ACCESS_TOKEN_KEY);
 
   if (accessToken) {
     return;
@@ -17,7 +16,7 @@ export const init = async () => {
   const secretKey = import.meta.env.VITE_GOCARDLESS_SECRED_KEY;
 
   const newAccessToken = await getAccessToken(secretId, secretKey);
-  await insertRecord(store, ACCESS_TOKEN_KEY, JSON.stringify(newAccessToken));
+  await stronghold.insert(ACCESS_TOKEN_KEY, JSON.stringify(newAccessToken));
 
   await stronghold.save();
 

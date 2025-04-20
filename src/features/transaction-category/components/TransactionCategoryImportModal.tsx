@@ -1,6 +1,6 @@
-import { Button } from "@/components/ui/Button/Button";
+import { Button } from "@/components/ui/button";
 import { InjectedModalProps, Modal } from "@/components/widgets/Modal";
-import { FileUp } from "lucide-react";
+import { FileUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useImportCategories } from "../hooks/useImportCategories";
 type TransactionCategoryImportModalProps = InjectedModalProps;
@@ -54,17 +54,16 @@ export const TransactionCategoryImportModal = (
       )}
       <div className="flex-0 flex gap-2 justify-end">
         <Button
-          label="Cancel"
+          variant="outline"
           onClick={props.onDismiss}
           disabled={isImporting}
-        />
-        <Button
-          variant="primary"
-          label={`Import ${rawCategories?.length ?? ""} categories`}
-          onClick={() => importCategories()}
-          disabled={isImporting || !rawCategories}
-          isLoading={isImporting}
-        />
+        >
+          Cancel
+        </Button>
+        <Button onClick={() => importCategories()} disabled={isImporting}>
+          {isImporting && <Loader2 className="animate-spin" />}
+          Import {rawCategories?.length ?? ""} categories
+        </Button>
       </div>
     </Modal>
   );

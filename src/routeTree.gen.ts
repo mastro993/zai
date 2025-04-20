@@ -13,8 +13,10 @@
 import { Route as rootRoute } from './routes/__root'
 import { Route as IndexImport } from './routes/index'
 import { Route as TransactionsIndexImport } from './routes/transactions/index'
+import { Route as SupportIndexImport } from './routes/support/index'
 import { Route as SettingsIndexImport } from './routes/settings/index'
 import { Route as PortfolioIndexImport } from './routes/portfolio/index'
+import { Route as DocumentationIndexImport } from './routes/documentation/index'
 import { Route as DashboardIndexImport } from './routes/dashboard/index'
 import { Route as BudgetsIndexImport } from './routes/budgets/index'
 import { Route as AccountsIndexImport } from './routes/accounts/index'
@@ -36,6 +38,12 @@ const TransactionsIndexRoute = TransactionsIndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const SupportIndexRoute = SupportIndexImport.update({
+  id: '/support/',
+  path: '/support/',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const SettingsIndexRoute = SettingsIndexImport.update({
   id: '/settings/',
   path: '/settings/',
@@ -45,6 +53,12 @@ const SettingsIndexRoute = SettingsIndexImport.update({
 const PortfolioIndexRoute = PortfolioIndexImport.update({
   id: '/portfolio/',
   path: '/portfolio/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const DocumentationIndexRoute = DocumentationIndexImport.update({
+  id: '/documentation/',
+  path: '/documentation/',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -117,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexImport
       parentRoute: typeof rootRoute
     }
+    '/documentation/': {
+      id: '/documentation/'
+      path: '/documentation'
+      fullPath: '/documentation'
+      preLoaderRoute: typeof DocumentationIndexImport
+      parentRoute: typeof rootRoute
+    }
     '/portfolio/': {
       id: '/portfolio/'
       path: '/portfolio'
@@ -129,6 +150,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsIndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/support/': {
+      id: '/support/'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportIndexImport
       parentRoute: typeof rootRoute
     }
     '/transactions/': {
@@ -169,8 +197,10 @@ export interface FileRoutesByFullPath {
   '/accounts': typeof AccountsIndexRoute
   '/budgets': typeof BudgetsIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/documentation': typeof DocumentationIndexRoute
   '/portfolio': typeof PortfolioIndexRoute
   '/settings': typeof SettingsIndexRoute
+  '/support': typeof SupportIndexRoute
   '/transactions': typeof TransactionsIndexRoute
   '/settings/playgrounds': typeof SettingsPlaygroundsIndexRoute
   '/transactions/categories': typeof TransactionsCategoriesIndexRoute
@@ -182,8 +212,10 @@ export interface FileRoutesByTo {
   '/accounts': typeof AccountsIndexRoute
   '/budgets': typeof BudgetsIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/documentation': typeof DocumentationIndexRoute
   '/portfolio': typeof PortfolioIndexRoute
   '/settings': typeof SettingsIndexRoute
+  '/support': typeof SupportIndexRoute
   '/transactions': typeof TransactionsIndexRoute
   '/settings/playgrounds': typeof SettingsPlaygroundsIndexRoute
   '/transactions/categories': typeof TransactionsCategoriesIndexRoute
@@ -196,8 +228,10 @@ export interface FileRoutesById {
   '/accounts/': typeof AccountsIndexRoute
   '/budgets/': typeof BudgetsIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/documentation/': typeof DocumentationIndexRoute
   '/portfolio/': typeof PortfolioIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/support/': typeof SupportIndexRoute
   '/transactions/': typeof TransactionsIndexRoute
   '/settings/playgrounds/': typeof SettingsPlaygroundsIndexRoute
   '/transactions/categories/': typeof TransactionsCategoriesIndexRoute
@@ -211,8 +245,10 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/budgets'
     | '/dashboard'
+    | '/documentation'
     | '/portfolio'
     | '/settings'
+    | '/support'
     | '/transactions'
     | '/settings/playgrounds'
     | '/transactions/categories'
@@ -223,8 +259,10 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/budgets'
     | '/dashboard'
+    | '/documentation'
     | '/portfolio'
     | '/settings'
+    | '/support'
     | '/transactions'
     | '/settings/playgrounds'
     | '/transactions/categories'
@@ -235,8 +273,10 @@ export interface FileRouteTypes {
     | '/accounts/'
     | '/budgets/'
     | '/dashboard/'
+    | '/documentation/'
     | '/portfolio/'
     | '/settings/'
+    | '/support/'
     | '/transactions/'
     | '/settings/playgrounds/'
     | '/transactions/categories/'
@@ -249,8 +289,10 @@ export interface RootRouteChildren {
   AccountsIndexRoute: typeof AccountsIndexRoute
   BudgetsIndexRoute: typeof BudgetsIndexRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DocumentationIndexRoute: typeof DocumentationIndexRoute
   PortfolioIndexRoute: typeof PortfolioIndexRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
+  SupportIndexRoute: typeof SupportIndexRoute
   TransactionsIndexRoute: typeof TransactionsIndexRoute
   SettingsPlaygroundsIndexRoute: typeof SettingsPlaygroundsIndexRoute
   TransactionsCategoriesIndexRoute: typeof TransactionsCategoriesIndexRoute
@@ -262,8 +304,10 @@ const rootRouteChildren: RootRouteChildren = {
   AccountsIndexRoute: AccountsIndexRoute,
   BudgetsIndexRoute: BudgetsIndexRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DocumentationIndexRoute: DocumentationIndexRoute,
   PortfolioIndexRoute: PortfolioIndexRoute,
   SettingsIndexRoute: SettingsIndexRoute,
+  SupportIndexRoute: SupportIndexRoute,
   TransactionsIndexRoute: TransactionsIndexRoute,
   SettingsPlaygroundsIndexRoute: SettingsPlaygroundsIndexRoute,
   TransactionsCategoriesIndexRoute: TransactionsCategoriesIndexRoute,
@@ -284,8 +328,10 @@ export const routeTree = rootRoute
         "/accounts/",
         "/budgets/",
         "/dashboard/",
+        "/documentation/",
         "/portfolio/",
         "/settings/",
+        "/support/",
         "/transactions/",
         "/settings/playgrounds/",
         "/transactions/categories/",
@@ -304,11 +350,17 @@ export const routeTree = rootRoute
     "/dashboard/": {
       "filePath": "dashboard/index.tsx"
     },
+    "/documentation/": {
+      "filePath": "documentation/index.tsx"
+    },
     "/portfolio/": {
       "filePath": "portfolio/index.tsx"
     },
     "/settings/": {
       "filePath": "settings/index.tsx"
+    },
+    "/support/": {
+      "filePath": "support/index.tsx"
     },
     "/transactions/": {
       "filePath": "transactions/index.tsx"

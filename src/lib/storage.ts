@@ -32,16 +32,16 @@ export const createLocalStorage = <S>(): PersistStorage<S> => {
  */
 export const createStrongholdStorage = <S>(): PersistStorage<S> => ({
   async getItem(name) {
-    const instance = await Stronghold.instance();
-    const value = await instance.get(name);
+    const stronghold = await Stronghold.init();
+    const value = await stronghold.get(name);
     return value ? (value as StorageValue<S>) : null;
   },
   async setItem(name, storageValue) {
-    const instance = await Stronghold.instance();
-    await instance.insert(name, JSON.stringify(storageValue));
+    const stronghold = await Stronghold.init();
+    await stronghold.insert(name, JSON.stringify(storageValue));
   },
   async removeItem(name) {
-    const instance = await Stronghold.instance();
-    await instance.remove(name);
+    const stronghold = await Stronghold.init();
+    await stronghold.remove(name);
   },
 });

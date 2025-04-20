@@ -1,11 +1,11 @@
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
-import dayjs from "dayjs";
 import { err, ok, ResultAsync } from "neverthrow";
 import { FileProcessorError, FileWriteError, NoFilePathError } from "./error";
 import { getFormatter } from "./formatter";
 import { AcceptedFileExtension, FileData } from "./types";
 import { getFilter } from "./utils";
+import { formatDate } from "date-fns";
 
 export type ExportOptions = {
   data: FileData;
@@ -36,7 +36,7 @@ export const exportToFile = ({
   void,
   FileProcessorError | NoFilePathError | FileWriteError
 > => {
-  const formattedDate = dayjs().format("YYYY-MM-DDT-HH-mm-ss");
+  const formattedDate = formatDate(new Date(), "YYYY-MM-DDT-HH-mm-ss");
   const defaultPath = `${fileName}_${formattedDate}.${extension}`;
   const format = getFormatter(extension);
 

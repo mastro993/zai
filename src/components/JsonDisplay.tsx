@@ -14,7 +14,7 @@ export const JsonDisplay = ({
   const formattedJson = JSON.stringify(data, null, 2);
 
   return (
-    <div className={cn("card bg-base-200", className)}>
+    <div className={cn("bg-gray-500/10 p-4 rounded-lg", className)}>
       <div className="card-body">
         <pre className={cn("overflow-auto font-mono text-sm", maxHeight)}>
           <code className="text-base-content/80">{formattedJson}</code>

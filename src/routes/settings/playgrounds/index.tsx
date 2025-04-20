@@ -12,9 +12,7 @@ function RouteComponent() {
   const [stronghold, setStronghold] = useState<Stronghold | null>(null);
   const [key, setKey] = useState<string>("");
   const [value, setValue] = useState<string>("");
-  const [retrievedValue, setRetrievedValue] = useState<string | undefined>(
-    undefined
-  );
+  const [retrievedValue, setRetrievedValue] = useState<unknown>(undefined);
   const [isLoading, setIsLoading] = useState(false);
 
   console.log("key", key);
@@ -152,8 +150,12 @@ function RouteComponent() {
         <div className="card bg-base-200 p-6">
           <h2 className="text-xl font-semibold mb-4">Retrieved Value</h2>
           <div className="p-4 bg-base-300 rounded-lg">
-            {retrievedValue !== undefined ? (
-              <pre className="whitespace-pre-wrap">{retrievedValue}</pre>
+            {retrievedValue ? (
+              <pre className="whitespace-pre-wrap">
+                {typeof retrievedValue === "string"
+                  ? retrievedValue
+                  : JSON.stringify(retrievedValue)}
+              </pre>
             ) : (
               <span className="text-base-content/60">
                 No value retrieved yet

@@ -77,7 +77,7 @@ export const TransactionCategoryFormModal = (
       .sort((a, b) => a.label.localeCompare(b.label)) ?? [];
 
   return (
-    <Modal title="New category" {...props}>
+    <Modal title={props.category ? "Edit category" : "New category"} {...props}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="flex gap-2">
           <input
@@ -129,7 +129,7 @@ export const TransactionCategoryFormModal = (
         </div>
         <fieldset className="fieldset">
           <legend className="fieldset-legend">Preview</legend>
-          <div className="box bg-base-200 p-12 rounded-md flex justify-center border-base-300 border-1">
+          <div className="flex justify-center bg-sidebar p-12 rounded-md border-2 border-dashed">
             <TransactionCategoryBadge
               category={{
                 name: watch("name") || "New category",

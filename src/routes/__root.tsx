@@ -1,4 +1,5 @@
-import { SidebarProvider } from "@/components/ui/Sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ModalProvider } from "@/components/widgets/Modal";
 import { migrateToLatest } from "@/lib/database/migrate";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -34,7 +35,12 @@ function Root() {
     <div className="flex h-screen select-none">
       <ModalProvider>
         <SidebarProvider>
-          <Outlet />
+          <AppSidebar />
+          <SidebarInset>
+            <div className="@container">
+              <Outlet />
+            </div>
+          </SidebarInset>
         </SidebarProvider>
       </ModalProvider>
       <ReactQueryDevtools

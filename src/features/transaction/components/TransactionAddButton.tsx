@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useAddTransaction } from "../api/useAddTransaction";
@@ -20,9 +21,8 @@ export const TransactionAddButton = () => {
   });
 
   return (
-    <button className="btn btn-sm btn-primary" onClick={handleAddTransaction}>
-      <Plus className="w-4 h-4" />
-      Add transaction
-    </button>
+    <Button size="sm" onClick={handleAddTransaction}>
+      <Plus size={16} aria-hidden="true" /> Add transaction
+    </Button>
   );
 };

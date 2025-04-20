@@ -1,4 +1,3 @@
-import { ScrollArea } from "@/components/ui/ScrollArea";
 import { EmptyView } from "@/components/views/EmptyView";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useTransactionCategories } from "../api/useTransactionCategories";
@@ -20,17 +19,15 @@ export const TransactionCategoryList = () => {
   }
 
   return (
-    <ScrollArea className="h-full">
-      <ul className="list">
-        {transactionCategories?.map((transactionCategory) => {
-          return (
-            <TransactionCategoryListItem
-              key={transactionCategory.id}
-              category={transactionCategory}
-            />
-          );
-        })}
-      </ul>
-    </ScrollArea>
+    <ul>
+      {transactionCategories?.map((transactionCategory) => {
+        return (
+          <TransactionCategoryListItem
+            key={transactionCategory.id}
+            category={transactionCategory}
+          />
+        );
+      })}
+    </ul>
   );
 };

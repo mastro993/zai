@@ -1,9 +1,14 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute('/dashboard/')({
+export const Route = createFileRoute("/dashboard/")({
   component: RouteComponent,
-})
+});
 
 function RouteComponent() {
-  return <div>Hello "/dashboard/"!</div>
+  return (
+    <div>
+      <ThemeToggle />
+    </div>
+  );
 }
