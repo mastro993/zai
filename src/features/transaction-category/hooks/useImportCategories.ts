@@ -61,7 +61,7 @@ export const useImportCategories = (onSuccess?: () => void) => {
     }
     setIsImporting(false);
     onSuccess?.();
-  }, [setRawCategories]);
+  }, [rawCategories]);
 
   const selectFile = useCallback(
     () =>
@@ -83,7 +83,8 @@ export const useImportCategories = (onSuccess?: () => void) => {
           return data.sort((a, b) => {
             return a.id - b.id;
           });
-        }),
+        })
+        .map(setRawCategories),
     []
   );
 

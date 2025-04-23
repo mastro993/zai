@@ -116,10 +116,10 @@ export function TransactionCategoryFormDialog({
   );
 
   return (
-    <Dialog {...dialogProps}>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <DialogContent>
+    <Form {...form}>
+      <Dialog {...dialogProps}>
+        <DialogContent onCloseAutoFocus={() => form.reset()}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <DialogHeader>
               <DialogTitle>{title}</DialogTitle>
               <DialogDescription>{description}</DialogDescription>
@@ -234,10 +234,10 @@ export function TransactionCategoryFormDialog({
               </DialogClose>
               <Button type="submit">Confirm</Button>
             </DialogFooter>
-          </DialogContent>
-        </form>
-      </Form>
-    </Dialog>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </Form>
   );
 }
 

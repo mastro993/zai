@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
-import { useTransactionCategories } from "../api/useTransactionCategories";
+import { db } from "@/lib/database";
 import { AcceptedFileExtension, exportToFile } from "@/lib/file-processor";
+import { useCallback, useState } from "react";
+import { children, parent } from "../schema/helpers";
 
 type Props = {
   format: AcceptedFileExtension;
@@ -13,10 +14,19 @@ export const useExportCategories = ({
   onError = () => {},
   onSuccess = () => {},
 }: Props) => {
-  const { data } = useTransactionCategories();
   const [isExporting, setIsExporting] = useState(false);
 
   const exportData = useCallback(async () => {
+    const data = await db
+      .selectFrom("transaction_category")
+      .selectAll("transaction_category")
+      .where("deleted_at", "is", null)
+      .select(({ ref }) => [
+        children(ref("transaction_category.id")).as("children"),
+        parent(ref("transaction_category.parent_id")).as("parent"),
+      ])
+      .execute();
+
     if (!data || isExporting) {
       return;
     }
@@ -48,7 +58,7 @@ export const useExportCategories = ({
 
     onSuccess();
     setIsExporting(false);
-  }, [data, isExporting, format]);
+  }, [isExporting, format]);
 
   return { exportData, isExporting };
 };

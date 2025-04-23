@@ -56,7 +56,7 @@ export const TransactionCategorySelection = () => {
   }
 
   return (
-    <div>
+    <>
       <div className="flex items-center gap-2">
         <Button
           className="ml-auto"
@@ -105,6 +105,6 @@ export const TransactionCategorySelection = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 };

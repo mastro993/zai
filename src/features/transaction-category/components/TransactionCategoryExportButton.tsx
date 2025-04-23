@@ -1,14 +1,25 @@
 import { Button } from "@/components/ui/button";
-import { useModal } from "@/components/widgets/Modal";
 import { Download } from "lucide-react";
-import { TransactionCategoryExportModal } from "./TransactionCategoryExportModal";
+import { useState } from "react";
+import { TransactionCategoryExportDialog } from "./TransactionCategoryExportDialog";
 
 export function TransactionCategoryExportButton() {
-  const [onPresentExportModal] = useModal(<TransactionCategoryExportModal />);
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   return (
-    <Button variant="outline" size="sm" onClick={onPresentExportModal}>
-      <Download className="w-4 h-4" /> Export
-    </Button>
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setShowExportDialog(true)}
+      >
+        <Download className="w-4 h-4" /> Export
+      </Button>
+
+      <TransactionCategoryExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+      />
+    </>
   );
 }

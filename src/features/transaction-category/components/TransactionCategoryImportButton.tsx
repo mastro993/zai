@@ -1,14 +1,24 @@
 import { Button } from "@/components/ui/button";
-import { useModal } from "@/components/widgets/Modal";
 import { Upload } from "lucide-react";
-import { TransactionCategoryImportModal } from "./TransactionCategoryImportModal";
+import { useState } from "react";
+import { TransactionCategoryImportDialog } from "./TransactionCategoryImportDialog";
 
 export function TransactionCategoryImportButton() {
-  const [onPresentImportModal] = useModal(<TransactionCategoryImportModal />);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   return (
-    <Button variant="outline" size="sm" onClick={onPresentImportModal}>
-      <Upload className="w-4 h-4" /> Import
-    </Button>
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setShowImportDialog(true)}
+      >
+        <Upload className="w-4 h-4" /> Import
+      </Button>
+      <TransactionCategoryImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+      />
+    </>
   );
 }
