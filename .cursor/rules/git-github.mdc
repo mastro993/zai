@@ -1,0 +1,25 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Git and GitHub Workflow
+
+## Creating Commits
+
+1.  Check for changed files using `git status | cat`.
+2.  Create a commit using `git add .` and `git commit -m "message"`.
+3.  Write a brief message describing the changes, either per file or for all changes if minor.
+
+## Creating Pull Requests
+
+When asked to create a PR, follow this process (assuming GitHub CLI is authenticated):
+
+1.  `git status | cat` - Check for uncommitted changes.
+2.  `git add .` - Stage changes (if needed).
+3.  `git commit -m "commit message"` - Commit changes (if needed).
+4.  `git push` - Push changes to the remote repository (if needed).
+5.  `git branch | cat` - Check the current branch.
+6.  `git log main..[current_branch] | cat` - Log changes specific to the current branch relative to main.
+7.  `git diff --name-status main | cat` - Check changed files relative to main.
+8.  `gh pr create --title "Your Title Here" --body "Your single-line PR description here. Do not include newlines."` - Create the pull request.

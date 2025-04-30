@@ -1,0 +1,33 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Code Style, Structure, and TypeScript Usage
+
+## Code Style and Structure
+
+- Write concise, technical TypeScript code with accurate examples.
+- Use functional and declarative programming patterns; avoid classes.
+- Prefer iteration and modularization over code duplication.
+- Use descriptive variable names with auxiliary verbs (e.g., `isLoading`, `hasError`).
+- Structure files in this order: exported component, subcomponents, helpers, static content, types.
+
+## Naming Conventions
+
+- Use lowercase with dashes for directories (e.g., `components/auth-wizard`).
+- Favor named exports for components.
+
+## TypeScript Usage
+
+- Use TypeScript for all code.
+- Prefer `type` definitions over `enum`.
+- Avoid enums; use `Map` objects or plain objects instead.
+- Use functional components with TypeScript interfaces for props.
+- Use `fp-ts` for long functions where it can improve readability.
+
+## Syntax and Formatting
+
+- Use the `const` keyword for pure functions and constants.
+- Always use curly braces `{}` in conditional statements (if/else).
+- Use declarative JSX.

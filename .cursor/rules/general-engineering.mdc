@@ -1,0 +1,17 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# General Engineering Practices
+
+## Code Splitting
+
+- When a file becomes too long, split it into smaller, logically grouped files.
+- When a function becomes too long, refactor it by splitting it into smaller, focused functions.
+
+## Scalability and Maintainability
+
+- After writing code, perform a deep reflection on its scalability and maintainability.
+- Produce a 1-2 paragraph analysis of the code change based on these reflections.
+- Suggest potential improvements or next steps as needed based on the analysis.
