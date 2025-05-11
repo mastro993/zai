@@ -1,32 +1,20 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BoxIcon, HouseIcon, PanelsTopLeftIcon } from "lucide-react"
+
+import { Badge } from "@/components/ui/badge"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
-import * as gocardless from "@/lib/gocardless";
-import { createFileRoute } from "@tanstack/react-router";
-import { BoxIcon, HouseIcon, PanelsTopLeftIcon } from "lucide-react";
+} from "@/components/ui/tooltip"
 
-export const Route = createFileRoute("/settings/")({
-  component: RouteComponent,
-});
-
-function RouteComponent() {
-  const getAccessToken = async () => {
-    const accessToken = await gocardless.getAccessToken();
-    console.log(accessToken);
-  };
-
-  return (
-    <div>
-      <Button onClick={getAccessToken}>Get Access Token</Button>
-    </div>
-  );
-
+export default function Component() {
   return (
     <Tabs defaultValue="tab-1" className="items-center">
       <TabsList>
@@ -94,5 +82,5 @@ function RouteComponent() {
         </p>
       </TabsContent>
     </Tabs>
-  );
+  )
 }
