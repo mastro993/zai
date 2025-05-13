@@ -1,8 +1,9 @@
 import TauriDatabase from "@tauri-apps/plugin-sql";
 import { Kysely, ParseJSONResultsPlugin } from "kysely";
-import { TauriSqliteDialect } from "./driver/TauriSqliteDialect";
 import { TransactionCategoryTable } from "@/features/transaction-category/schema";
 import { TransactionTable } from "@/features/transaction/schema";
+import { appDataDir } from "@tauri-apps/api/path";
+import { TauriSqliteDialect } from "kysely-dialect-tauri";
 
 export type Database = {
   transaction: TransactionTable;
@@ -10,7 +11,8 @@ export type Database = {
 };
 
 const dialect = new TauriSqliteDialect({
-  database: await TauriDatabase.load("sqlite:zai.db"),
+  database: async (prefix) =>
+    await TauriDatabase.load(`${prefix}${await appDataDir()}zai.db`),
 });
 
 export const db = new Kysely<Database>({
