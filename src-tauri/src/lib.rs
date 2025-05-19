@@ -24,7 +24,11 @@ pub fn run() {
                 .plugin(tauri_plugin_stronghold::Builder::with_argon2(&salt_path).build())?;
             Ok(())
         })
-        .plugin(tauri_plugin_log::Builder::new().clear_targets().build())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
+                .build(),
+        )
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
