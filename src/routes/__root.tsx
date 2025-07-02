@@ -1,10 +1,10 @@
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { migrateToLatest } from "@/lib/database/migrate";
+import { migrateToLatest } from "@/lib/database";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Toaster } from "sonner";
 
 export const Route = createRootRoute({
@@ -14,13 +14,14 @@ export const Route = createRootRoute({
 function Root() {
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    migrateToLatest()
-      .then(() => setIsLoading(false))
-      .catch((error) => {
-        console.error(error);
-      });
+  const migrate = useCallback(async () => {
+    await migrateToLatest();
+    setIsLoading(false);
   }, []);
+
+  useEffect(() => {
+    migrate();
+  }, [migrate]);
 
   if (isLoading) {
     return (

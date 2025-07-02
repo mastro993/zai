@@ -15,8 +15,6 @@ function RouteComponent() {
   const [retrievedValue, setRetrievedValue] = useState<unknown>(undefined);
   const [isLoading, setIsLoading] = useState(false);
 
-  console.log("key", key);
-
   useEffect(() => {
     Stronghold.init().then((stronghold) => {
       setStronghold(stronghold);

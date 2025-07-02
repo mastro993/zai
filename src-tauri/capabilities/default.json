@@ -6,8 +6,6 @@
   "permissions": [
     "core:default",
     "shell:default",
-    "sql:default",
-    "sql:allow-execute",
     "fs:default",
     "fs:allow-app-write",
     "fs:allow-app-write-recursive",
@@ -25,14 +23,6 @@
     },
     "store:default",
     "stronghold:default",
-    {
-      "identifier": "http:default",
-      "allow": [
-        {
-          "url": "https://*.gocardless.com"
-        }
-      ]
-    },
     "dialog:default"
   ]
 }
