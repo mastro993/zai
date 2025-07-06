@@ -29,3 +29,6 @@ dist-ssr
 .env.production
 .env.test
 .env.test.local
+
+# Local development db
+db

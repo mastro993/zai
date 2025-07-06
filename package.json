@@ -7,14 +7,13 @@
     "generate-routes": "tsr generate",
     "watch-routes": "tsr watch",
     "dev": "vite",
-    "build": "yarn generate-routes && tsc && vite build",
+    "build": "pnpm generate-routes && tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "clean-db": "node scripts/clean-db.ts",
-    "migrate:latest": "yarn src/database/migrate.ts",
+    "migrate:latest": "pnpm src/database/migrate.ts",
     "lint": "eslint . --max-warnings=0"
   },
-  "packageManager": "yarn@4.7.0",
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
     "@hookform/resolvers": "^5.0.1",
@@ -96,5 +95,6 @@
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.29.1",
     "vite": "^6.0.3"
-  }
+  },
+  "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184"
 }

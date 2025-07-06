@@ -31,8 +31,8 @@
     ]
   },
   "build": {
-    "beforeDevCommand": "yarn run dev",
-    "beforeBuildCommand": "yarn run build",
+    "beforeDevCommand": "pnpm run dev",
+    "beforeBuildCommand": "pnpm run build",
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420"
   },

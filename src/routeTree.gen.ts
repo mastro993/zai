@@ -8,189 +8,82 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as TransactionsIndexRouteImport } from './routes/transactions/index'
+import { Route as SupportIndexRouteImport } from './routes/support/index'
+import { Route as SettingsIndexRouteImport } from './routes/settings/index'
+import { Route as PortfolioIndexRouteImport } from './routes/portfolio/index'
+import { Route as DocumentationIndexRouteImport } from './routes/documentation/index'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as BudgetsIndexRouteImport } from './routes/budgets/index'
+import { Route as AccountsIndexRouteImport } from './routes/accounts/index'
+import { Route as TransactionsTagsIndexRouteImport } from './routes/transactions/tags/index'
+import { Route as TransactionsCategoriesIndexRouteImport } from './routes/transactions/categories/index'
+import { Route as SettingsPlaygroundsIndexRouteImport } from './routes/settings/playgrounds/index'
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as IndexImport } from './routes/index'
-import { Route as TransactionsIndexImport } from './routes/transactions/index'
-import { Route as SupportIndexImport } from './routes/support/index'
-import { Route as SettingsIndexImport } from './routes/settings/index'
-import { Route as PortfolioIndexImport } from './routes/portfolio/index'
-import { Route as DocumentationIndexImport } from './routes/documentation/index'
-import { Route as DashboardIndexImport } from './routes/dashboard/index'
-import { Route as BudgetsIndexImport } from './routes/budgets/index'
-import { Route as AccountsIndexImport } from './routes/accounts/index'
-import { Route as TransactionsTagsIndexImport } from './routes/transactions/tags/index'
-import { Route as TransactionsCategoriesIndexImport } from './routes/transactions/categories/index'
-import { Route as SettingsPlaygroundsIndexImport } from './routes/settings/playgrounds/index'
-
-// Create/Update Routes
-
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const TransactionsIndexRoute = TransactionsIndexImport.update({
+const TransactionsIndexRoute = TransactionsIndexRouteImport.update({
   id: '/transactions/',
   path: '/transactions/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const SupportIndexRoute = SupportIndexImport.update({
+const SupportIndexRoute = SupportIndexRouteImport.update({
   id: '/support/',
   path: '/support/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const SettingsIndexRoute = SettingsIndexImport.update({
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/settings/',
   path: '/settings/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const PortfolioIndexRoute = PortfolioIndexImport.update({
+const PortfolioIndexRoute = PortfolioIndexRouteImport.update({
   id: '/portfolio/',
   path: '/portfolio/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const DocumentationIndexRoute = DocumentationIndexImport.update({
+const DocumentationIndexRoute = DocumentationIndexRouteImport.update({
   id: '/documentation/',
   path: '/documentation/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const DashboardIndexRoute = DashboardIndexImport.update({
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/dashboard/',
   path: '/dashboard/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const BudgetsIndexRoute = BudgetsIndexImport.update({
+const BudgetsIndexRoute = BudgetsIndexRouteImport.update({
   id: '/budgets/',
   path: '/budgets/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AccountsIndexRoute = AccountsIndexImport.update({
+const AccountsIndexRoute = AccountsIndexRouteImport.update({
   id: '/accounts/',
   path: '/accounts/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const TransactionsTagsIndexRoute = TransactionsTagsIndexImport.update({
+const TransactionsTagsIndexRoute = TransactionsTagsIndexRouteImport.update({
   id: '/transactions/tags/',
   path: '/transactions/tags/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const TransactionsCategoriesIndexRoute =
-  TransactionsCategoriesIndexImport.update({
+  TransactionsCategoriesIndexRouteImport.update({
     id: '/transactions/categories/',
     path: '/transactions/categories/',
-    getParentRoute: () => rootRoute,
+    getParentRoute: () => rootRouteImport,
   } as any)
-
-const SettingsPlaygroundsIndexRoute = SettingsPlaygroundsIndexImport.update({
-  id: '/settings/playgrounds/',
-  path: '/settings/playgrounds/',
-  getParentRoute: () => rootRoute,
-} as any)
-
-// Populate the FileRoutesByPath interface
-
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/accounts/': {
-      id: '/accounts/'
-      path: '/accounts'
-      fullPath: '/accounts'
-      preLoaderRoute: typeof AccountsIndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/budgets/': {
-      id: '/budgets/'
-      path: '/budgets'
-      fullPath: '/budgets'
-      preLoaderRoute: typeof BudgetsIndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/dashboard/': {
-      id: '/dashboard/'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardIndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/documentation/': {
-      id: '/documentation/'
-      path: '/documentation'
-      fullPath: '/documentation'
-      preLoaderRoute: typeof DocumentationIndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/portfolio/': {
-      id: '/portfolio/'
-      path: '/portfolio'
-      fullPath: '/portfolio'
-      preLoaderRoute: typeof PortfolioIndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/settings/': {
-      id: '/settings/'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsIndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/support/': {
-      id: '/support/'
-      path: '/support'
-      fullPath: '/support'
-      preLoaderRoute: typeof SupportIndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/transactions/': {
-      id: '/transactions/'
-      path: '/transactions'
-      fullPath: '/transactions'
-      preLoaderRoute: typeof TransactionsIndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/settings/playgrounds/': {
-      id: '/settings/playgrounds/'
-      path: '/settings/playgrounds'
-      fullPath: '/settings/playgrounds'
-      preLoaderRoute: typeof SettingsPlaygroundsIndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/transactions/categories/': {
-      id: '/transactions/categories/'
-      path: '/transactions/categories'
-      fullPath: '/transactions/categories'
-      preLoaderRoute: typeof TransactionsCategoriesIndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/transactions/tags/': {
-      id: '/transactions/tags/'
-      path: '/transactions/tags'
-      fullPath: '/transactions/tags'
-      preLoaderRoute: typeof TransactionsTagsIndexImport
-      parentRoute: typeof rootRoute
-    }
-  }
-}
-
-// Create and export the route tree
+const SettingsPlaygroundsIndexRoute =
+  SettingsPlaygroundsIndexRouteImport.update({
+    id: '/settings/playgrounds/',
+    path: '/settings/playgrounds/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -206,7 +99,6 @@ export interface FileRoutesByFullPath {
   '/transactions/categories': typeof TransactionsCategoriesIndexRoute
   '/transactions/tags': typeof TransactionsTagsIndexRoute
 }
-
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsIndexRoute
@@ -221,9 +113,8 @@ export interface FileRoutesByTo {
   '/transactions/categories': typeof TransactionsCategoriesIndexRoute
   '/transactions/tags': typeof TransactionsTagsIndexRoute
 }
-
 export interface FileRoutesById {
-  __root__: typeof rootRoute
+  __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/accounts/': typeof AccountsIndexRoute
   '/budgets/': typeof BudgetsIndexRoute
@@ -237,7 +128,6 @@ export interface FileRoutesById {
   '/transactions/categories/': typeof TransactionsCategoriesIndexRoute
   '/transactions/tags/': typeof TransactionsTagsIndexRoute
 }
-
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
@@ -283,7 +173,6 @@ export interface FileRouteTypes {
     | '/transactions/tags/'
   fileRoutesById: FileRoutesById
 }
-
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountsIndexRoute: typeof AccountsIndexRoute
@@ -297,6 +186,95 @@ export interface RootRouteChildren {
   SettingsPlaygroundsIndexRoute: typeof SettingsPlaygroundsIndexRoute
   TransactionsCategoriesIndexRoute: typeof TransactionsCategoriesIndexRoute
   TransactionsTagsIndexRoute: typeof TransactionsTagsIndexRoute
+}
+
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transactions/': {
+      id: '/transactions/'
+      path: '/transactions'
+      fullPath: '/transactions'
+      preLoaderRoute: typeof TransactionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support/': {
+      id: '/support/'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portfolio/': {
+      id: '/portfolio/'
+      path: '/portfolio'
+      fullPath: '/portfolio'
+      preLoaderRoute: typeof PortfolioIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documentation/': {
+      id: '/documentation/'
+      path: '/documentation'
+      fullPath: '/documentation'
+      preLoaderRoute: typeof DocumentationIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/budgets/': {
+      id: '/budgets/'
+      path: '/budgets'
+      fullPath: '/budgets'
+      preLoaderRoute: typeof BudgetsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounts/': {
+      id: '/accounts/'
+      path: '/accounts'
+      fullPath: '/accounts'
+      preLoaderRoute: typeof AccountsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transactions/tags/': {
+      id: '/transactions/tags/'
+      path: '/transactions/tags'
+      fullPath: '/transactions/tags'
+      preLoaderRoute: typeof TransactionsTagsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transactions/categories/': {
+      id: '/transactions/categories/'
+      path: '/transactions/categories'
+      fullPath: '/transactions/categories'
+      preLoaderRoute: typeof TransactionsCategoriesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/playgrounds/': {
+      id: '/settings/playgrounds/'
+      path: '/settings/playgrounds'
+      fullPath: '/settings/playgrounds'
+      preLoaderRoute: typeof SettingsPlaygroundsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -313,67 +291,6 @@ const rootRouteChildren: RootRouteChildren = {
   TransactionsCategoriesIndexRoute: TransactionsCategoriesIndexRoute,
   TransactionsTagsIndexRoute: TransactionsTagsIndexRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/accounts/",
-        "/budgets/",
-        "/dashboard/",
-        "/documentation/",
-        "/portfolio/",
-        "/settings/",
-        "/support/",
-        "/transactions/",
-        "/settings/playgrounds/",
-        "/transactions/categories/",
-        "/transactions/tags/"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/accounts/": {
-      "filePath": "accounts/index.tsx"
-    },
-    "/budgets/": {
-      "filePath": "budgets/index.tsx"
-    },
-    "/dashboard/": {
-      "filePath": "dashboard/index.tsx"
-    },
-    "/documentation/": {
-      "filePath": "documentation/index.tsx"
-    },
-    "/portfolio/": {
-      "filePath": "portfolio/index.tsx"
-    },
-    "/settings/": {
-      "filePath": "settings/index.tsx"
-    },
-    "/support/": {
-      "filePath": "support/index.tsx"
-    },
-    "/transactions/": {
-      "filePath": "transactions/index.tsx"
-    },
-    "/settings/playgrounds/": {
-      "filePath": "settings/playgrounds/index.tsx"
-    },
-    "/transactions/categories/": {
-      "filePath": "transactions/categories/index.tsx"
-    },
-    "/transactions/tags/": {
-      "filePath": "transactions/tags/index.tsx"
-    }
-  }
-}
-ROUTE_MANIFEST_END */
