@@ -6,6 +6,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
+use diesel::connection::{Connection, SimpleConnection};
 use diesel::r2d2;
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use diesel::sqlite::SqliteConnection;
@@ -49,12 +50,14 @@ pub fn get_db_path(app_data_dir: &str) -> String {
     env::var("DATABASE_URL").unwrap_or_else(|_| format!("{}/{}", app_data_dir, DEFAULT_DB_FILENAME))
 }
 
-/// Initializes the database by ensuring the directory structure exists.
+/// Initializes the database by ensuring the directory structure exists and configuring SQLite.
 ///
 /// This function prepares the database environment by:
 /// 1. Determining the database file path (from env var or default)
 /// 2. Creating the parent directory if it doesn't exist
-/// 3. Returning the database path for further use
+/// 3. Establishing a connection to configure SQLite PRAGMA settings
+/// 4. Setting up WAL mode, foreign keys, busy timeout, and synchronous mode
+/// 5. Returning the database path for further use
 pub fn init(app_data_dir: &str) -> Result<String, DatabaseError> {
     let db_path = get_db_path(app_data_dir);
     let db_dir = Path::new(&db_path).parent().unwrap();
@@ -70,6 +73,19 @@ pub fn init(app_data_dir: &str) -> Result<String, DatabaseError> {
                 path: db_dir.display().to_string(),
                 source: e,
             }
+        })?;
+    }
+
+    {
+        let mut conn = SqliteConnection::establish(&db_path).map_err(|e| {
+            error!("Failed to connect to the database: {}", e);
+            DatabaseError::ConnectionFailed(e.to_string())
+        })?;
+        conn.batch_execute(
+            "\n            PRAGMA journal_mode = WAL;\n            PRAGMA foreign_keys = ON;\n            PRAGMA busy_timeout = 30000;\n            PRAGMA synchronous  = NORMAL;\n        ",
+        ).map_err(|e| {
+            error!("Failed to execute batch PRAGMA statements: {}", e);
+            DatabaseError::QueryFailed(e.to_string())
         })?;
     }
 
@@ -108,7 +124,7 @@ pub fn get_connection(
 ) -> Result<DbConnection, DatabaseError> {
     pool.get().map_err(|e| {
         error!("Failed to get a connection from the pool: {}", e);
-        DatabaseError::ConnectionPool(e.to_string())
+        DatabaseError::ConnectionFailed(e.to_string())
     })
 }
 
