@@ -1,1 +1,1 @@
-pub(crate) mod transaction_categories_model;
+pub mod transaction_categories_model;

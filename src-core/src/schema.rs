@@ -3,12 +3,11 @@
 diesel::table! {
     transaction (id) {
         id -> Integer,
-        description -> Text,
-        amount -> Integer,
-        date -> Date,
-        #[sql_name = "type"]
-        type_ -> Text,
+        date -> Timestamp,
+        kind -> Text,
         category_id -> Nullable<Integer>,
+        amount -> Double,
+        description -> Text,
         notes -> Nullable<Text>,
         created_at -> Nullable<Timestamp>,
         updated_at -> Nullable<Timestamp>,
@@ -21,8 +20,8 @@ diesel::table! {
         id -> Integer,
         parent_id -> Nullable<Integer>,
         name -> Text,
-        color -> Nullable<Text>,
         description -> Nullable<Text>,
+        color -> Nullable<Text>,
         created_at -> Nullable<Timestamp>,
         updated_at -> Nullable<Timestamp>,
         deleted_at -> Nullable<Timestamp>,

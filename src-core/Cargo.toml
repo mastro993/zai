@@ -1,12 +1,14 @@
 [package]
-name = "src-core"
+name = "zai-core"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-diesel = { version = "2.2.11", features = ["sqlite", "r2d2"] }
+diesel = { version = "2.2.11", features = ["sqlite", "r2d2", "chrono"] }
 diesel_migrations = { version = "2.2.0", features = ["sqlite"] }
 dotenvy = "0.15.7"
 log = "0.4.27"
 r2d2 = "0.8.10"
 thiserror = "2.0.12"
+chrono = { version = "0.4.42", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
