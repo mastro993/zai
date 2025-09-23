@@ -2,10 +2,10 @@
 
 diesel::table! {
     transaction (id) {
-        id -> Integer,
+        id -> Text,
         date -> Timestamp,
         kind -> Text,
-        category_id -> Nullable<Integer>,
+        category_id -> Nullable<Text>,
         amount -> Double,
         description -> Text,
         notes -> Nullable<Text>,
@@ -17,8 +17,8 @@ diesel::table! {
 
 diesel::table! {
     transaction_category (id) {
-        id -> Integer,
-        parent_id -> Nullable<Integer>,
+        id -> Text,
+        parent_id -> Nullable<Text>,
         name -> Text,
         description -> Nullable<Text>,
         color -> Nullable<Text>,

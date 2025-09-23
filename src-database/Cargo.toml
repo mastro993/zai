@@ -1,5 +1,5 @@
 [package]
-name = "zai-core"
+name = "zai-database"
 version = "0.1.0"
 edition = "2024"
 

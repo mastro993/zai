@@ -1,1 +1,3 @@
 pub mod transaction_categories_model;
+pub mod transaction_categories_repository;
+pub mod transaction_categories_traits;

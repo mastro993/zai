@@ -1,4 +1,17 @@
+use diesel::result::Error as DieselError;
 use thiserror::Error;
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("Database operation failed: {0}")]
+    Database(#[from] DatabaseError),
+
+    #[error("Unexpected error: {0}")]
+    Unexpected(String),
+}
 
 #[derive(Error, Debug)]
 pub enum DatabaseError {
@@ -12,7 +25,14 @@ pub enum DatabaseError {
     #[error("Failed to connect to the database: {0}")]
     ConnectionFailed(String),
     #[error("Failed to execute query: {0}")]
-    QueryFailed(String),
+    QueryFailed(#[from] DieselError),
     #[error("Database migration failed: {0}")]
     MigrationFailed(String),
+}
+
+// Implement From for DieselError to Error directly
+impl From<DieselError> for Error {
+    fn from(err: DieselError) -> Self {
+        Error::Database(DatabaseError::QueryFailed(err))
+    }
 }
