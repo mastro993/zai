@@ -1,7 +1,7 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    transaction (id) {
+    transactions (id) {
         id -> Text,
         date -> Timestamp,
         kind -> Text,
@@ -16,7 +16,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    transaction_category (id) {
+    transaction_categories (id) {
         id -> Text,
         parent_id -> Nullable<Text>,
         name -> Text,
@@ -28,9 +28,9 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(transaction -> transaction_category (category_id));
+diesel::joinable!(transactions -> transaction_categories (category_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    transaction,
-    transaction_category,
+    transactions,
+    transaction_categories,
 );

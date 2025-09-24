@@ -1,6 +1,6 @@
 -- Create transaction_category table
-CREATE TABLE transaction_category (
-      id INTEGER NOT NULL PRIMARY KEY,
+CREATE TABLE transaction_categories (
+      id TEXT NOT NULL PRIMARY KEY,
       parent_id INTEGER REFERENCES transaction_category(id) ON DELETE SET NULL,
       name TEXT NOT NULL,
       color TEXT,
@@ -11,8 +11,8 @@ CREATE TABLE transaction_category (
   );
 
   -- Create transaction table
-  CREATE TABLE "transaction" (
-      id INTEGER NOT NULL PRIMARY KEY,
+  CREATE TABLE transactions (
+      id TEXT NOT NULL PRIMARY KEY,
       description TEXT NOT NULL,
       amount INTEGER NOT NULL,
       date DATE NOT NULL,
@@ -25,5 +25,5 @@ CREATE TABLE transaction_category (
   );
 
   -- Create indexes
-  CREATE INDEX transaction_type_index ON "transaction"(type);
-  CREATE INDEX transaction_category_id_index ON "transaction"(category_id);
+  CREATE INDEX transactions_type_index ON transactions(type);
+  CREATE INDEX transaction_categories_id_index ON transactions(category_id);

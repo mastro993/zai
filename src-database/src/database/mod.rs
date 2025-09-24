@@ -8,12 +8,11 @@ use diesel::connection::{Connection, SimpleConnection};
 use diesel::r2d2;
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use diesel::sqlite::SqliteConnection;
-use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
-
-use crate::errors::{DatabaseError, Error, Result};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
 pub mod write_actor;
 
+use crate::errors::{DatabaseError, Error, Result};
 pub use write_actor::WriteHandle;
 
 /// Type alias for the database connection pool.
@@ -121,9 +120,7 @@ pub fn create_pool(db_path: &str) -> Result<Arc<DbPool>> {
 /// This function gets a connection from the pool, which will be automatically
 /// returned to the pool when the connection is dropped. The connection is ready
 /// for immediate use with all SQLite optimizations applied.
-pub fn get_connection(
-    pool: &Pool<ConnectionManager<SqliteConnection>>,
-) -> Result<DbConnection> {
+pub fn get_connection(pool: &Pool<ConnectionManager<SqliteConnection>>) -> Result<DbConnection> {
     pool.get().map_err(|e| {
         error!("Failed to get a connection from the pool: {}", e);
         Error::Database(DatabaseError::ConnectionFailed(e.to_string()))
@@ -186,8 +183,8 @@ impl r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error> for Connec
         diesel::sql_query(
             "\n            PRAGMA foreign_keys = ON;\n            PRAGMA busy_timeout = 30000;\n            PRAGMA synchronous = NORMAL;\n        ",
         )
-        .execute(conn)
-        .map_err(r2d2::Error::QueryError)?;
+            .execute(conn)
+            .map_err(r2d2::Error::QueryError)?;
 
         Ok(())
     }

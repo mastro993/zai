@@ -1,4 +1,4 @@
-use crate::database::{DbPool, Result};
+use crate::database::{Result, DbPool };
 use diesel::SqliteConnection;
 use std::any::Any;
 use tokio::sync::{mpsc, oneshot};

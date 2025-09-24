@@ -14,3 +14,5 @@ chrono = { version = "0.4.42", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread", "sync"] }
 async-trait = "0.1.89"
+uuid = { version = "1.18.1", features = ["v4"] }
+tempfile = "3.23.0"
