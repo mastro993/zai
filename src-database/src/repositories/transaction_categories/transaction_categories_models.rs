@@ -50,3 +50,41 @@ impl NewTransactionCategory {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::repositories::transaction_categories::NewTransactionCategory;
+
+    #[tokio::test]
+    async fn test_validation() {
+
+        let new_category = NewTransactionCategory {
+            name: "Test Category".to_string(),
+            parent_id: None,
+            description: Some("Descrizione test".to_string()),
+            color: Some("#FF0000".to_string()),
+            id: None,
+        };
+
+        new_category.validate().expect("validate");
+
+        assert!(new_category.id.is_none());
+        assert_eq!(new_category.name, "Test Category");
+        assert_eq!(new_category.description.as_deref(), Some("Descrizione test"));
+        assert_eq!(new_category.color.as_deref(), Some("#FF0000"));
+
+
+        let new_category_invalid = NewTransactionCategory {
+            name: "".to_string(),
+            parent_id: None,
+            description: Some("Descrizione test".to_string()),
+            color: Some("#FF0000".to_string()),
+            id: None,
+        };
+
+        let result = new_category_invalid.validate();
+
+        assert!(result.is_err());
+    }
+
+}

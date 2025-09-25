@@ -11,6 +11,8 @@ use diesel::sqlite::SqliteConnection;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
 pub mod write_actor;
+mod test_utils;
+pub use test_utils::*;
 
 use crate::errors::{DatabaseError, Error, Result};
 pub use write_actor::WriteHandle;

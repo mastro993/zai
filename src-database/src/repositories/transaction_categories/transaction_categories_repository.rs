@@ -138,36 +138,12 @@ mod tests {
     };
     use tokio;
     use uuid::Uuid;
+    use crate::database;
     use crate::database::write_actor::spawn_writer;
 
-    struct TempDb {
-        path: PathBuf,
-    }
 
-    impl TempDb {
-        fn new() -> Self {
-            let file_name = format!("{}.db", Uuid::new_v4());
-            let path = PathBuf::from(file_name);
-            fs::File::create(&path).expect("Failed to create temp.db");
-            Self { path }
-        }
-
-        fn path(&self) -> &str {
-            self.path.to_str().unwrap()
-        }
-    }
-
-    impl Drop for TempDb {
-        fn drop(&mut self) {
-            if self.path.exists() {
-                fs::remove_file(&self.path).expect("Failed to delete temp.db");
-            }
-        }
-    }
-
-    fn setup_test_repo(db_path: PathBuf) -> TransactionCategoriesRepository {
-        let db_path_str = db_path.to_str().unwrap();
-        let manager = r2d2::ConnectionManager::<SqliteConnection>::new(db_path_str);
+    fn setup_test_repo(db_path: &str) -> TransactionCategoriesRepository {
+        let manager = r2d2::ConnectionManager::<SqliteConnection>::new(db_path);
         let pool = Pool::builder().build(manager).expect("Failed to create pool");
 
         run_migrations(&pool.clone()).unwrap();
@@ -179,8 +155,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_category() {
-        let temp_db = TempDb::new();
-        let repo = setup_test_repo(temp_db.path.clone());
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
 
         let new_category = NewTransactionCategory {
             name: "Test Category".to_string(),
@@ -201,8 +177,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_category() {
-        let temp_db = TempDb::new();
-        let repo = setup_test_repo(temp_db.path.clone());
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
 
         let new_category = NewTransactionCategory {
             name: "Original".to_string(),
@@ -225,8 +201,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_category() {
-        let temp_db = TempDb::new();
-        let repo = setup_test_repo(temp_db.path.clone());
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
 
         let new_category = NewTransactionCategory {
             name: "To Delete".to_string(),
@@ -244,8 +220,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_children() {
-        let temp_db = TempDb::new();
-        let repo = setup_test_repo(temp_db.path.clone());
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
 
         // Crea parent
         let parent = NewTransactionCategory {
@@ -274,8 +250,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_all_categories() {
-        let temp_db = TempDb::new();
-        let repo = setup_test_repo(temp_db.path.clone());
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
 
         let cat1 = NewTransactionCategory {
             name: "Cat 1".to_string(),
