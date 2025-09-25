@@ -1,0 +1,2 @@
+[workspace]
+members = ["zai-core", "zai-db", "src-tauri"]

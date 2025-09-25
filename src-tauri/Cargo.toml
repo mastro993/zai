@@ -2,10 +2,8 @@
 name = "Zai"
 version = "0.1.0"
 description = "Your personal finance app"
-authors = ["you"]
+authors = ["fedemas"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -26,6 +24,8 @@ dotenvy = "0.15.7"
 specta = "2.0.0-rc.22"
 specta-typescript = "0.0.9"
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript", "derive"] }
+zai-core = { version = "0.1.0", path = "../zai-core" }
+zai-db = { version = "0.1.0", path = "../zai-db" }
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
