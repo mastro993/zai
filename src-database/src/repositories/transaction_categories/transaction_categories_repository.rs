@@ -129,15 +129,12 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
-    use std::path::{Path, PathBuf};
     use super::*;
     use crate::database::{run_migrations};
     use crate::repositories::transaction_categories::transaction_categories_models::{
         NewTransactionCategory, TransactionCategory,
     };
     use tokio;
-    use uuid::Uuid;
     use crate::database;
     use crate::database::write_actor::spawn_writer;
 
