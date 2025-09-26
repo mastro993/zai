@@ -1,2 +1,2 @@
 [workspace]
-members = ["src-core", "src-db", "src-tauri"]
+members = ["src-core", "src-tauri"]

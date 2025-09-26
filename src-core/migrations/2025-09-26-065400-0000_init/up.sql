@@ -2,12 +2,12 @@
 CREATE TABLE
     transaction_categories (
         id TEXT NOT NULL PRIMARY KEY,
-        parent_id INTEGER REFERENCES transaction_category (id) ON DELETE SET NULL,
+        parent_id TEXT REFERENCES transaction_category (id) ON DELETE SET NULL,
         name TEXT NOT NULL,
-        color TEXT,
         description TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        color TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         deleted_at TIMESTAMP
     );
 
@@ -19,10 +19,10 @@ CREATE TABLE
         amount INTEGER NOT NULL,
         date DATE NOT NULL,
         type TEXT NOT NULL,
-        category_id INTEGER REFERENCES transaction_category (id) ON DELETE SET NULL,
+        category_id TEXT REFERENCES transaction_category (id) ON DELETE SET NULL,
         notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         deleted_at TIMESTAMP
     );
 

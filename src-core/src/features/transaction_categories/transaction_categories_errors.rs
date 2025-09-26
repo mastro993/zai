@@ -14,7 +14,7 @@ pub enum TransactionCategoryError {
 
 impl From<TransactionCategoryError> for diesel::result::Error {
     fn from(err: TransactionCategoryError) -> Self {
-        // Convert ActivityError to a diesel error
+        // Convert TransactionCategoryError to a diesel error
         // Using DatabaseError as it's the most appropriate for general errors
         diesel::result::Error::DatabaseError(
             diesel::result::DatabaseErrorKind::SerializationFailure,

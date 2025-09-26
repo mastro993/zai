@@ -14,6 +14,7 @@ version = "0.1.0"
 dependencies = [
  "argon2",
  "dotenvy",
+ "log",
  "serde",
  "serde_json",
  "specta",
@@ -30,7 +31,6 @@ dependencies = [
  "tauri-plugin-stronghold",
  "tauri-specta",
  "zai-core",
- "zai-db",
 ]
 
 [[package]]
@@ -7571,24 +7571,6 @@ dependencies = [
  "log",
  "r2d2",
  "serde",
- "thiserror 2.0.16",
- "tokio",
- "zai-db",
-]
-
-[[package]]
-name = "zai-db"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "chrono",
- "diesel",
- "diesel_migrations",
- "dotenvy",
- "log",
- "r2d2",
- "serde",
- "tempfile",
  "thiserror 2.0.16",
  "tokio",
  "uuid",

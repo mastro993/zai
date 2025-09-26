@@ -3,24 +3,13 @@
 mod commands;
 mod context;
 
-use std::sync::Arc;
 use dotenvy::dotenv;
-use specta_typescript::Typescript;
+use std::sync::Arc;
 use tauri::Manager;
 use tauri_plugin_log::log::error;
-use tauri_specta::{collect_commands, Builder};
 
 fn main() {
     dotenv().ok();
-
-    let builder = Builder::<tauri::Wry>::new()
-        // Then register them (separated by a comma)
-        .commands(collect_commands![commands::hello_world]);
-
-    #[cfg(debug_assertions)]
-    builder
-        .export(Typescript::default(), "../src/lib/bindings.ts")
-        .expect("Failed to export typescript bindings");
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
@@ -28,7 +17,6 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             let handle = app.handle().clone();
 
@@ -74,6 +62,9 @@ fn main() {
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
                 .build(),
         )
+        .invoke_handler(tauri::generate_handler![
+            commands::transaction_categories::get_transaction_categories
+        ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 

@@ -1,20 +1,24 @@
+use diesel::connection::{Connection, SimpleConnection};
+use diesel::r2d2;
+use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
+use diesel::sqlite::SqliteConnection;
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use log::{error, info};
 use std::env;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use diesel::connection::{Connection, SimpleConnection};
-use diesel::r2d2;
-use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
-use diesel::sqlite::SqliteConnection;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use crate::errors::{Error, Result};
 
-pub mod write_actor;
+pub mod errors;
+use errors::DatabaseError;
+
+/// Test utilities for database-related tests.
 mod test_utils;
 pub use test_utils::*;
 
-use crate::errors::{Error, InternalDatabaseError, Result};
+pub mod write_actor;
 pub use write_actor::WriteHandle;
 
 /// Type alias for the database connection pool.
@@ -72,7 +76,7 @@ pub fn init(app_data_dir: &str) -> Result<String> {
                 db_dir.display(),
                 e
             );
-            Error::InternalDatabase(InternalDatabaseError::DirectoryCreation {
+            Error::Database(DatabaseError::DirectoryCreation {
                 path: db_dir.display().to_string(),
                 source: e,
             })
@@ -82,13 +86,13 @@ pub fn init(app_data_dir: &str) -> Result<String> {
     {
         let mut conn = SqliteConnection::establish(&db_path).map_err(|e| {
             error!("Failed to connect to the database: {}", e);
-            Error::InternalDatabase(InternalDatabaseError::ConnectionFailed(e.to_string()))
+            Error::Database(DatabaseError::ConnectionFailed(e.to_string()))
         })?;
         conn.batch_execute(
             "\n            PRAGMA journal_mode = WAL;\n            PRAGMA foreign_keys = ON;\n            PRAGMA busy_timeout = 30000;\n            PRAGMA synchronous  = NORMAL;\n        ",
         ).map_err(|e| {
             error!("Failed to execute batch PRAGMA statements: {}", e);
-            Error::InternalDatabase(InternalDatabaseError::QueryFailed(e))
+            Error::Database(DatabaseError::QueryFailed(e))
         })?;
     }
 
@@ -112,7 +116,7 @@ pub fn create_pool(db_path: &str) -> Result<Arc<DbPool>> {
         ))
         .connection_customizer(Box::new(ConnectionCustomizer {}))
         .build(manager)
-        .map_err(InternalDatabaseError::PoolCreationFailed)?;
+        .map_err(DatabaseError::PoolCreationFailed)?;
 
     Ok(Arc::new(pool))
 }
@@ -125,7 +129,7 @@ pub fn create_pool(db_path: &str) -> Result<Arc<DbPool>> {
 pub fn get_connection(pool: &Pool<ConnectionManager<SqliteConnection>>) -> Result<DbConnection> {
     pool.get().map_err(|e| {
         error!("Failed to get a connection from the pool: {}", e);
-        Error::InternalDatabase(InternalDatabaseError::ConnectionFailed(e.to_string()))
+        Error::Database(DatabaseError::ConnectionFailed(e.to_string()))
     })
 }
 
@@ -140,7 +144,7 @@ pub fn run_migrations(pool: &DbPool) -> Result<()> {
 
     let result = connection.run_pending_migrations(MIGRATIONS).map_err(|e| {
         error!("Database migration failed: {}", e);
-        Error::InternalDatabase(InternalDatabaseError::MigrationFailed(e.to_string()))
+        Error::Database(DatabaseError::MigrationFailed(e.to_string()))
     })?;
 
     if result.is_empty() {

@@ -25,7 +25,7 @@ specta = "2.0.0-rc.22"
 specta-typescript = "0.0.9"
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript", "derive"] }
 zai-core = { version = "0.1.0", path = "../src-core" }
-zai-db = { version = "0.1.0", path = "../src-db" }
+log = "0.4.28"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

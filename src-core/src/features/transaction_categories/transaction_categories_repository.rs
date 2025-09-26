@@ -1,10 +1,9 @@
 use super::transaction_categories_traits::TransactionCategoriesRepositoryTrait;
-use crate::database::{get_connection, WriteHandle};
+use crate::database::{WriteHandle, get_connection};
 use crate::errors::{Error, Result};
-use crate::repositories::transaction_categories::transaction_categories_errors::TransactionCategoryError;
-use crate::repositories::transaction_categories::transaction_categories_models::{
-    NewTransactionCategory, TransactionCategory,
-};
+use crate::features::transaction_categories::transaction_categories_errors::TransactionCategoryError;
+use crate::features::transaction_categories::transaction_categories_models::NewTransactionCategory;
+use crate::features::transaction_categories::transaction_categories_models::*;
 use crate::schema::transaction_categories;
 use async_trait::async_trait;
 use chrono::Local;
@@ -35,27 +34,32 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
 
         let result = transaction_categories::table
             .find(id)
-            .first::<TransactionCategory>(&mut conn)
+            .first::<TransactionCategoryTable>(&mut conn)
             .map_err(|e| Error::from(TransactionCategoryError::NotFound(e.to_string())))?;
 
         Ok(result.into())
     }
+
     fn get_all_categories(&self) -> Result<Vec<TransactionCategory>> {
         let mut conn = get_connection(&self.pool)?;
 
-        let result = transaction_categories::table.load::<TransactionCategory>(&mut conn)?;
+        let results = transaction_categories::table.load::<TransactionCategoryTable>(&mut conn)?;
 
-        Ok(result.into())
+        let categories: Vec<TransactionCategory> =
+            results.into_iter().map(TransactionCategory::from).collect();
+        Ok(categories)
     }
 
     fn get_children(&self, parent_id: &str) -> Result<Vec<TransactionCategory>> {
         let mut conn = get_connection(&self.pool)?;
 
-        let result = transaction_categories::table
+        let results = transaction_categories::table
             .filter(transaction_categories::parent_id.eq(parent_id))
-            .load::<TransactionCategory>(&mut conn)?;
+            .load::<TransactionCategoryTable>(&mut conn)?;
 
-        Ok(result.into())
+        let categories: Vec<TransactionCategory> =
+            results.into_iter().map(TransactionCategory::from).collect();
+        Ok(categories)
     }
 
     async fn create_category(
@@ -68,59 +72,67 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         let new_id = Uuid::new_v4().to_string();
 
         self.writer
-            .exec(move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
-                let mut category_to_insert = new_category;
-                category_to_insert.id = Some(new_id.clone());
-
-                diesel::insert_into(transaction_categories::table)
-                    .values(&category_to_insert)
-                    .execute(conn)?;
-
-                let inserted = transaction_categories::table
-                    .filter(transaction_categories::id.eq(&new_id))
-                    .first::<TransactionCategory>(conn)?;
-
-                Ok(inserted)
-            })
-            .await
-    }
-
-    async fn update_category(
-        &self,
-        updated_category: TransactionCategory,
-    ) -> Result<TransactionCategory> {
-        let category_id_owned = updated_category.id.clone();
-        let updated_category_owned = updated_category.clone();
-
-        self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
-                    diesel::update(transaction_categories::table.find(category_id_owned.clone()))
-                        .set(&updated_category_owned)
+                    let mut category: TransactionCategoryTable = new_category.into();
+                    category.id = new_id.clone();
+
+                    diesel::insert_into(transaction_categories::table)
+                        .values(&category)
                         .execute(conn)?;
-                    Ok(transaction_categories::table
-                        .filter(transaction_categories::id.eq(category_id_owned))
-                        .first(conn)?)
+
+                    let inserted = transaction_categories::table
+                        .filter(transaction_categories::id.eq(&new_id))
+                        .first::<TransactionCategoryTable>(conn)?;
+
+                    Ok(inserted.into())
                 },
             )
             .await
     }
 
-    async fn delete_category(&self, id: &str) -> Result<TransactionCategory> {
-        let category_id = id.to_owned();
+    async fn update_category(
+        &self,
+        updated_category: NewTransactionCategory,
+    ) -> Result<TransactionCategory> {
+        updated_category.validate()?;
 
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
+                    let mut category: TransactionCategoryTable = updated_category.into();
+
+                    let existing = transaction_categories::table
+                        .find(&category.id)
+                        .first::<TransactionCategoryTable>(conn)
+                        .map_err(|e| Error::from(TransactionCategoryError::NotFound(e.to_string())))?;
+
+                    category.created_at = existing.created_at;
+                    category.updated_at = chrono::Utc::now().naive_utc();
+
+                    diesel::update(transaction_categories::table.find(&category.id))
+                        .set(&category)
+                        .execute(conn)?;
+
+                    Ok(category.into())
+                },
+            )
+            .await
+    }
+
+    async fn delete_category(&self, id: &str) -> Result<usize> {
+        let category_id = id.to_owned();
+
+        self.writer
+            .exec(
+                move |conn: &mut SqliteConnection| -> Result<usize> {
                     let now = Local::now().naive_utc();
 
-                    diesel::update(transaction_categories::table.find(&category_id))
+                    let affected_rows = diesel::update(transaction_categories::table.find(&category_id))
                         .set(transaction_categories::deleted_at.eq(now))
                         .execute(conn)?;
 
-                    Ok(transaction_categories::table
-                        .filter(transaction_categories::id.eq(&category_id))
-                        .first(conn)?)
+                    Ok(affected_rows)
                 },
             )
             .await
@@ -130,18 +142,20 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::database::{run_migrations};
-    use crate::repositories::transaction_categories::transaction_categories_models::{
+    use crate::database;
+    use crate::database::run_migrations;
+    use crate::database::write_actor::spawn_writer;
+    use crate::features::transaction_categories::transaction_categories_models::{
         NewTransactionCategory, TransactionCategory,
     };
     use tokio;
-    use crate::database;
-    use crate::database::write_actor::spawn_writer;
-
+    use crate::schema::transaction_categories::name;
 
     fn setup_test_repo(db_path: &str) -> TransactionCategoriesRepository {
         let manager = r2d2::ConnectionManager::<SqliteConnection>::new(db_path);
-        let pool = Pool::builder().build(manager).expect("Failed to create pool");
+        let pool = Pool::builder()
+            .build(manager)
+            .expect("Failed to create pool");
 
         run_migrations(&pool.clone()).unwrap();
 
@@ -169,7 +183,6 @@ mod tests {
         assert_eq!(created.name, "Test Category");
         assert_eq!(created.description.as_deref(), Some("Descrizione test"));
         assert_eq!(created.color.as_deref(), Some("#FF0000"));
-        assert!(created.deleted_at.is_none());
     }
 
     #[tokio::test]
@@ -186,14 +199,21 @@ mod tests {
         };
         let created = repo.create_category(new_category).await.unwrap();
 
-        let mut updated = created.clone();
-        updated.name = "Updated".to_string();
-        updated.description = Some("Updated description".to_string());
+        let updated = NewTransactionCategory {
+            name: "Updated".to_string(),
+            parent_id: None,
+            description: Some("Updated description".to_string()),
+            color: None,
+            id: Some(created.id),
+        };
 
         let updated_category = repo.update_category(updated).await.unwrap();
 
         assert_eq!(updated_category.name, "Updated");
-        assert_eq!(updated_category.description.as_deref(), Some("Updated description"));
+        assert_eq!(
+            updated_category.description.as_deref(),
+            Some("Updated description")
+        );
     }
 
     #[tokio::test]
@@ -210,9 +230,9 @@ mod tests {
         };
         let created = repo.create_category(new_category).await.unwrap();
 
-        let deleted = repo.delete_category(&created.id).await.unwrap();
+        let deleted_rows = repo.delete_category(&created.id).await.unwrap();
 
-        assert!(deleted.deleted_at.is_some());
+        assert_eq!(deleted_rows, 1);
     }
 
     #[tokio::test]
