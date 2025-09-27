@@ -29,6 +29,16 @@ impl TransactionCategoriesRepository {
 
 #[async_trait]
 impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
+    fn get_categories(&self) -> Result<Vec<TransactionCategory>> {
+        let mut conn = get_connection(&self.pool)?;
+
+        let results = transaction_categories::table.load::<TransactionCategoryTable>(&mut conn)?;
+
+        let categories: Vec<TransactionCategory> =
+            results.into_iter().map(TransactionCategory::from).collect();
+        Ok(categories)
+    }
+
     fn get_category(&self, id: &str) -> Result<TransactionCategory> {
         let mut conn = get_connection(&self.pool)?;
 
@@ -40,17 +50,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         Ok(result.into())
     }
 
-    fn get_all_categories(&self) -> Result<Vec<TransactionCategory>> {
-        let mut conn = get_connection(&self.pool)?;
-
-        let results = transaction_categories::table.load::<TransactionCategoryTable>(&mut conn)?;
-
-        let categories: Vec<TransactionCategory> =
-            results.into_iter().map(TransactionCategory::from).collect();
-        Ok(categories)
-    }
-
-    fn get_children(&self, parent_id: &str) -> Result<Vec<TransactionCategory>> {
+    fn get_categories_by_parent_id(&self, parent_id: &str) -> Result<Vec<TransactionCategory>> {
         let mut conn = get_connection(&self.pool)?;
 
         let results = transaction_categories::table
@@ -105,7 +105,9 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                     let existing = transaction_categories::table
                         .find(&category.id)
                         .first::<TransactionCategoryTable>(conn)
-                        .map_err(|e| Error::from(TransactionCategoryError::NotFound(e.to_string())))?;
+                        .map_err(|e| {
+                            Error::from(TransactionCategoryError::NotFound(e.to_string()))
+                        })?;
 
                     category.created_at = existing.created_at;
                     category.updated_at = chrono::Utc::now().naive_utc();
@@ -120,19 +122,24 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
             .await
     }
 
-    async fn delete_category(&self, id: &str) -> Result<usize> {
+    async fn delete_category(&self, id: &str) -> Result<TransactionCategory> {
         let category_id = id.to_owned();
 
         self.writer
             .exec(
-                move |conn: &mut SqliteConnection| -> Result<usize> {
+                move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
                     let now = Local::now().naive_utc();
 
-                    let affected_rows = diesel::update(transaction_categories::table.find(&category_id))
+                    diesel::update(transaction_categories::table.find(&category_id))
                         .set(transaction_categories::deleted_at.eq(now))
                         .execute(conn)?;
 
-                    Ok(affected_rows)
+                    let deleted = transaction_categories::table
+                        .find(&category_id)
+                        .filter(transaction_categories::deleted_at.is_not_null())
+                        .first::<TransactionCategoryTable>(conn)?;
+
+                    Ok(deleted.into())
                 },
             )
             .await
@@ -149,7 +156,6 @@ mod tests {
         NewTransactionCategory, TransactionCategory,
     };
     use tokio;
-    use crate::schema::transaction_categories::name;
 
     fn setup_test_repo(db_path: &str) -> TransactionCategoriesRepository {
         let manager = r2d2::ConnectionManager::<SqliteConnection>::new(db_path);
@@ -230,9 +236,9 @@ mod tests {
         };
         let created = repo.create_category(new_category).await.unwrap();
 
-        let deleted_rows = repo.delete_category(&created.id).await.unwrap();
+        let deleted = repo.delete_category(&created.id).await.unwrap();
 
-        assert_eq!(deleted_rows, 1);
+        assert_eq!(created.id, deleted.id);
     }
 
     #[tokio::test]
@@ -260,7 +266,7 @@ mod tests {
         };
         let _child = repo.create_category(child).await.unwrap();
 
-        let children = repo.get_children(&parent.id).unwrap();
+        let children = repo.get_categories_by_parent_id(&parent.id).unwrap();
         assert_eq!(children.len(), 1);
         assert_eq!(children[0].name, "Child");
     }
@@ -288,7 +294,7 @@ mod tests {
         repo.create_category(cat1).await.unwrap();
         repo.create_category(cat2).await.unwrap();
 
-        let all = repo.get_all_categories().unwrap();
+        let all = repo.get_categories().unwrap();
         assert!(all.len() >= 2);
     }
 }
