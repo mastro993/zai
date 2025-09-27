@@ -20,6 +20,7 @@ pub trait TransactionCategoriesServiceTrait: Send + Sync {
         activity: NewTransactionCategory,
     ) -> Result<TransactionCategory>;
     async fn delete_category(&self, id: &str) -> Result<TransactionCategory>;
+    async fn delete_categories(&self, ids: Vec<&str>) -> Result<Vec<TransactionCategory>>;
 }
 
 #[async_trait]
@@ -36,4 +37,5 @@ pub trait TransactionCategoriesRepositoryTrait: Send + Sync {
         category: NewTransactionCategory,
     ) -> Result<TransactionCategory>;
     async fn delete_category(&self, id: &str) -> Result<TransactionCategory>;
+    async fn delete_categories(&self, ids: Vec<&str>) -> Result<Vec<TransactionCategory>>;
 }

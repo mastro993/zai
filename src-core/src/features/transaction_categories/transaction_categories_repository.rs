@@ -32,7 +32,9 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
     fn get_categories(&self) -> Result<Vec<TransactionCategory>> {
         let mut conn = get_connection(&self.pool)?;
 
-        let results = transaction_categories::table.load::<TransactionCategoryTable>(&mut conn)?;
+        let results = transaction_categories::table
+            .filter(transaction_categories::deleted_at.is_null())
+            .load::<TransactionCategoryTable>(&mut conn)?;
 
         let categories: Vec<TransactionCategory> =
             results.into_iter().map(TransactionCategory::from).collect();
@@ -43,6 +45,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         let mut conn = get_connection(&self.pool)?;
 
         let result = transaction_categories::table
+            .filter(transaction_categories::deleted_at.is_null())
             .find(id)
             .first::<TransactionCategoryTable>(&mut conn)
             .map_err(|e| Error::from(TransactionCategoryError::NotFound(e.to_string())))?;
@@ -54,6 +57,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         let mut conn = get_connection(&self.pool)?;
 
         let results = transaction_categories::table
+            .filter(transaction_categories::deleted_at.is_null())
             .filter(transaction_categories::parent_id.eq(parent_id))
             .load::<TransactionCategoryTable>(&mut conn)?;
 
@@ -140,6 +144,33 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .first::<TransactionCategoryTable>(conn)?;
 
                     Ok(deleted.into())
+                },
+            )
+            .await
+    }
+
+    async fn delete_categories(&self, ids: Vec<&str>) -> Result<Vec<TransactionCategory>> {
+        let owned_ids = ids.iter().map(|&s| s.to_string()).collect::<Vec<String>>();
+        self.writer
+            .exec(
+                move |conn: &mut SqliteConnection| -> Result<Vec<TransactionCategory>> {
+                    let now = Local::now().naive_utc();
+
+                    diesel::update(
+                        transaction_categories::table
+                            .filter(transaction_categories::id.eq_any(&owned_ids)),
+                    )
+                    .set(transaction_categories::deleted_at.eq(now))
+                    .execute(conn)?;
+
+                    let deleted = transaction_categories::table
+                        .filter(transaction_categories::id.eq_any(&owned_ids))
+                        .filter(transaction_categories::deleted_at.is_not_null())
+                        .load::<TransactionCategoryTable>(conn)?;
+
+                    let categories: Vec<TransactionCategory> =
+                        deleted.into_iter().map(TransactionCategory::from).collect();
+                    Ok(categories)
                 },
             )
             .await
@@ -242,6 +273,37 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_delete_categories() {
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let new_category_1 = NewTransactionCategory {
+            name: "To Delete".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            id: None,
+        };
+        let created_1 = repo.create_category(new_category_1).await.unwrap();
+
+        let new_category_2 = NewTransactionCategory {
+            name: "To Delete".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            id: None,
+        };
+        let created_2 = repo.create_category(new_category_2).await.unwrap();
+
+        let deleted = repo
+            .delete_categories(vec![&created_1.id, &created_2.id])
+            .await
+            .unwrap();
+
+        assert_eq!(deleted.len(), 2);
+    }
+
+    #[tokio::test]
     async fn test_get_children() {
         let temp_db = database::TempDb::new();
         let repo = setup_test_repo(temp_db.path());
@@ -272,7 +334,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_all_categories() {
+    async fn test_get_categories() {
         let temp_db = database::TempDb::new();
         let repo = setup_test_repo(temp_db.path());
 
@@ -290,11 +352,57 @@ mod tests {
             color: None,
             id: None,
         };
+        let cat3 = NewTransactionCategory {
+            name: "Cat 3".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            id: None,
+        };
 
         repo.create_category(cat1).await.unwrap();
         repo.create_category(cat2).await.unwrap();
+        let created = repo.create_category(cat3).await.unwrap();
+        repo.delete_category(&created.id).await.unwrap();
 
         let all = repo.get_categories().unwrap();
-        assert!(all.len() >= 2);
+        assert!(all.len() == 2);
+    }
+
+    #[tokio::test]
+    async fn test_get_categories_by_parent_id() {
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let cat1 = NewTransactionCategory {
+            name: "Cat 1".to_string(),
+            parent_id: Some("parent_id".to_string()),
+            description: None,
+            color: None,
+            id: None,
+        };
+        let cat2 = NewTransactionCategory {
+            name: "Cat 2".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            id: None,
+        };
+        let cat3 = NewTransactionCategory {
+            name: "Cat 3".to_string(),
+            parent_id: Some("parent_id".to_string()),
+            description: None,
+            color: None,
+            id: None,
+        };
+
+        repo.create_category(cat1).await.unwrap();
+        repo.create_category(cat2).await.unwrap();
+        let created = repo.create_category(cat3).await.unwrap();
+        repo.delete_category(&created.id).await.unwrap();
+
+        let all = repo.get_categories_by_parent_id("parent_id").unwrap();
+        assert!(all.len() == 1);
+        assert!(all[0].name == "Cat 1");
     }
 }

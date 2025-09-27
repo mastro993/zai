@@ -80,6 +80,9 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
     async fn delete_category(&self, category_id: &str) -> Result<TransactionCategory> {
         (*self.repository).delete_category(category_id).await
     }
+    async fn delete_categories(&self, category_ids: Vec<&str>) -> Result<Vec<TransactionCategory>> {
+        (*self.repository).delete_categories(category_ids).await
+    }
 }
 
 #[cfg(test)]
@@ -145,6 +148,14 @@ mod tests {
             )))
         }
         async fn delete_category(&self, _category_id: &str) -> Result<TransactionCategory> {
+            Err(Error::from(TransactionCategoryError::NotFound(
+                "mock not found".to_string(),
+            )))
+        }
+        async fn delete_categories(
+            &self,
+            _category_ids: Vec<&str>,
+        ) -> Result<Vec<TransactionCategory>> {
             Err(Error::from(TransactionCategoryError::NotFound(
                 "mock not found".to_string(),
             )))

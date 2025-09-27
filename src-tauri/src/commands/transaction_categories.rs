@@ -87,6 +87,19 @@ pub async fn delete_transaction_category(
 }
 
 #[tauri::command]
+pub async fn delete_transaction_categories(
+    category_ids: Vec<&str>,
+    state: State<'_, Arc<ServiceContext>>,
+) -> Result<Vec<TransactionCategory>, String> {
+    debug!("Deleting {} transaction categories ..", category_ids.len());
+    state
+        .transaction_categories_service()
+        .delete_categories(category_ids)
+        .await
+        .map_err(|e| format!("Failed to delete transaction categoris: {}", e))
+}
+
+#[tauri::command]
 pub async fn import_transaction_categories(
     categories: Vec<NewTransactionCategory>,
     state: State<'_, Arc<ServiceContext>>,

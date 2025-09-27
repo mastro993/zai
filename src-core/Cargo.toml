@@ -20,3 +20,4 @@ serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread", "sync"] }
 async-trait = "0.1.89"
 uuid = { version = "1.18.1", features = ["v4"] }
+futures = "0.3.31"

@@ -18,16 +18,19 @@ export const getTransactionCategories =
     }
   };
 
-export const getTransactionCategory =
-  async (): Promise<TransactionCategory> => {
-    try {
-      const result = await invokeTauri("get_transaction_category");
-      return TransactionCategorySchema.parse(result);
-    } catch (error) {
-      logger.error("Error fetching transaction category");
-      throw error;
-    }
-  };
+export const getTransactionCategory = async (
+  category_id: string
+): Promise<TransactionCategory> => {
+  try {
+    const result = await invokeTauri("get_transaction_category", {
+      category_id: category_id,
+    });
+    return TransactionCategorySchema.parse(result);
+  } catch (error) {
+    logger.error("Error fetching transaction category");
+    throw error;
+  }
+};
 
 export const importTransactionCategories = async (
   categories: ReadonlyArray<NewTransactionCategory>
@@ -53,6 +56,48 @@ export const createTransactionCategory = async (
     return TransactionCategorySchema.parse(result);
   } catch (error) {
     logger.error("Error creating transaction category");
+    throw error;
+  }
+};
+
+export const updateTransactionCategory = async (
+  category: NewTransactionCategory
+): Promise<TransactionCategory> => {
+  try {
+    const result = await invokeTauri("update_transaction_category", {
+      updated_category: category,
+    });
+    return TransactionCategorySchema.parse(result);
+  } catch (error) {
+    logger.error("Error updating transaction category");
+    throw error;
+  }
+};
+
+export const deleteTransactionCategory = async (
+  category_id: string
+): Promise<TransactionCategory> => {
+  try {
+    const result = await invokeTauri("delete_transaction_category", {
+      category_id: category_id,
+    });
+    return TransactionCategorySchema.parse(result);
+  } catch (error) {
+    logger.error("Error deleting transaction category");
+    throw error;
+  }
+};
+
+export const deleteTransactionCategories = async (
+  category_ids: ReadonlyArray<string>
+): Promise<TransactionCategories> => {
+  try {
+    const result = await invokeTauri("delete_transaction_categories", {
+      category_ids: category_ids,
+    });
+    return TransactionCategoriesSchema.parse(result);
+  } catch (error) {
+    logger.error("Error deleting transaction categories");
     throw error;
   }
 };
