@@ -34,7 +34,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
 
         let results = transaction_categories::table
             .filter(transaction_categories::deleted_at.is_null())
-            .load::<TransactionCategoryTable>(&mut conn)?;
+            .load::<TransactionCategoryRow>(&mut conn)?;
 
         let categories: Vec<TransactionCategory> =
             results.into_iter().map(TransactionCategory::from).collect();
@@ -47,7 +47,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         let result = transaction_categories::table
             .filter(transaction_categories::deleted_at.is_null())
             .find(id)
-            .first::<TransactionCategoryTable>(&mut conn)
+            .first::<TransactionCategoryRow>(&mut conn)
             .map_err(|e| Error::from(TransactionCategoryError::NotFound(e.to_string())))?;
 
         Ok(result.into())
@@ -59,7 +59,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         let results = transaction_categories::table
             .filter(transaction_categories::deleted_at.is_null())
             .filter(transaction_categories::parent_id.eq(parent_id))
-            .load::<TransactionCategoryTable>(&mut conn)?;
+            .load::<TransactionCategoryRow>(&mut conn)?;
 
         let categories: Vec<TransactionCategory> =
             results.into_iter().map(TransactionCategory::from).collect();
@@ -78,7 +78,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
-                    let mut category: TransactionCategoryTable = new_category.into();
+                    let mut category: TransactionCategoryRow = new_category.into();
                     category.id = new_id.clone();
 
                     diesel::insert_into(transaction_categories::table)
@@ -87,7 +87,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
 
                     let inserted = transaction_categories::table
                         .filter(transaction_categories::id.eq(&new_id))
-                        .first::<TransactionCategoryTable>(conn)?;
+                        .first::<TransactionCategoryRow>(conn)?;
 
                     Ok(inserted.into())
                 },
@@ -104,11 +104,11 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
-                    let mut category: TransactionCategoryTable = updated_category.into();
+                    let mut category: TransactionCategoryRow = updated_category.into();
 
                     let existing = transaction_categories::table
                         .find(&category.id)
-                        .first::<TransactionCategoryTable>(conn)
+                        .first::<TransactionCategoryRow>(conn)
                         .map_err(|e| {
                             Error::from(TransactionCategoryError::NotFound(e.to_string()))
                         })?;
@@ -141,7 +141,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                     let deleted = transaction_categories::table
                         .find(&category_id)
                         .filter(transaction_categories::deleted_at.is_not_null())
-                        .first::<TransactionCategoryTable>(conn)?;
+                        .first::<TransactionCategoryRow>(conn)?;
 
                     Ok(deleted.into())
                 },
@@ -166,7 +166,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                     let deleted = transaction_categories::table
                         .filter(transaction_categories::id.eq_any(&owned_ids))
                         .filter(transaction_categories::deleted_at.is_not_null())
-                        .load::<TransactionCategoryTable>(conn)?;
+                        .load::<TransactionCategoryRow>(conn)?;
 
                     let categories: Vec<TransactionCategory> =
                         deleted.into_iter().map(TransactionCategory::from).collect();

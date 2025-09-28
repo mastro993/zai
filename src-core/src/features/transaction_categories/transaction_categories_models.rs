@@ -27,7 +27,7 @@ pub struct TransactionCategory {
 )]
 #[diesel(table_name = crate::schema::transaction_categories)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
-pub struct TransactionCategoryTable {
+pub struct TransactionCategoryRow {
     pub id: String,
     pub parent_id: Option<String>,
     pub name: String,
@@ -62,8 +62,8 @@ impl NewTransactionCategory {
     }
 }
 
-impl From<TransactionCategoryTable> for TransactionCategory {
-    fn from(value: TransactionCategoryTable) -> Self {
+impl From<TransactionCategoryRow> for TransactionCategory {
+    fn from(value: TransactionCategoryRow) -> Self {
         Self {
             id: value.id,
             parent_id: value.parent_id,
@@ -74,7 +74,7 @@ impl From<TransactionCategoryTable> for TransactionCategory {
     }
 }
 
-impl From<NewTransactionCategory> for TransactionCategoryTable {
+impl From<NewTransactionCategory> for TransactionCategoryRow {
     fn from(value: NewTransactionCategory) -> Self {
         let now = chrono::Utc::now().naive_utc();
         Self {
