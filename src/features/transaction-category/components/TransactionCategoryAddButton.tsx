@@ -2,13 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { useAddTransactionCategory } from "../api/useAddTransactionCategory";
+import { useCreateTransactionCategory } from "../api/useCreateTransactionCategory";
 import { NewTransactionCategory } from "../types";
 import { TransactionCategoryFormDialog } from "./TransactionCategoryFormDialog";
 
 export const TransactionCategoryAddButton = () => {
   const [showFormDialog, setShowFormDialog] = useState(false);
-  const { mutate: addTransactionCategory } = useAddTransactionCategory();
+  const { mutate: addTransactionCategory } = useCreateTransactionCategory();
 
   const handleSubmit = (data: NewTransactionCategory) => {
     addTransactionCategory(data);

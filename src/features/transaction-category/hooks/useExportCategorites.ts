@@ -1,6 +1,6 @@
 import { AcceptedFileExtension, exportToFile } from "@/lib/file-processor";
 import { useCallback, useState } from "react";
-import { getTransactionCategories } from "../commands";
+import { useTransactionCategories } from "../api/useTransactionCategories";
 
 type Props = {
   extension: AcceptedFileExtension;
@@ -14,18 +14,17 @@ export const useExportCategories = ({
   onSuccess = () => {},
 }: Props) => {
   const [isExporting, setIsExporting] = useState(false);
+  const categories = useTransactionCategories();
 
   const exportData = useCallback(async () => {
-    const data = await getTransactionCategories();
-
-    if (!data || isExporting) {
+    if (!categories.data || isExporting) {
       return;
     }
 
     setIsExporting(true);
 
     const result = await exportToFile({
-      data,
+      data: categories.data,
       fileName: "zai_transaction_categories",
       extension,
     });
@@ -38,7 +37,7 @@ export const useExportCategories = ({
 
     onSuccess();
     setIsExporting(false);
-  }, [isExporting, extension]);
+  }, [isExporting, extension, categories]);
 
   return { exportData, isExporting };
 };

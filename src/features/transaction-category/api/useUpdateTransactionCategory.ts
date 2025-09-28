@@ -20,7 +20,7 @@ export const useUpdateTransactionCategory = (
       toast.success("Transaction category updated");
     },
     onError() {
-      toast.error("Failed to add transaction category");
+      toast.error("Failed to update transaction category");
     },
   });
 };

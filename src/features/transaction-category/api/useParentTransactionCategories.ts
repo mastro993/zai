@@ -2,9 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { getTransactionCategories } from "../commands";
 import { TransactionCategory } from "../types";
 
-export const useAvailableParentTransactionCategories = () =>
+export const useParentTransactionCategories = () =>
   useQuery<Array<TransactionCategory>>({
     queryKey: ["transactionCategories", "parent"],
-    queryFn: async () =>
-      (await getTransactionCategories()).filter((c) => c.parent_id === null),
+    queryFn: async () => {
+      const categories = await getTransactionCategories();
+      return categories.filter((category) => !category.parentId);
+    },
   });

@@ -51,11 +51,13 @@ export const createTransactionCategory = async (
 ): Promise<TransactionCategory> => {
   try {
     const result = await invokeTauri("create_transaction_category", {
-      new_category: category,
+      newCategory: category,
     });
     return TransactionCategorySchema.parse(result);
   } catch (error) {
-    logger.error("Error creating transaction category");
+    logger.error(
+      "Error creating transaction category " + JSON.stringify(error)
+    );
     throw error;
   }
 };
@@ -65,11 +67,13 @@ export const updateTransactionCategory = async (
 ): Promise<TransactionCategory> => {
   try {
     const result = await invokeTauri("update_transaction_category", {
-      updated_category: category,
+      updatedCategory: category,
     });
     return TransactionCategorySchema.parse(result);
   } catch (error) {
-    logger.error("Error updating transaction category");
+    logger.error(
+      "Error updating transaction category: " + JSON.stringify(error)
+    );
     throw error;
   }
 };
@@ -93,11 +97,13 @@ export const deleteTransactionCategories = async (
 ): Promise<TransactionCategories> => {
   try {
     const result = await invokeTauri("delete_transaction_categories", {
-      category_ids: category_ids,
+      categoryIds: category_ids,
     });
     return TransactionCategoriesSchema.parse(result);
   } catch (error) {
-    logger.error("Error deleting transaction categories");
+    logger.error(
+      "Error deleting transaction categories: " + JSON.stringify(error)
+    );
     throw error;
   }
 };

@@ -1,19 +1,12 @@
-import { db } from "@/lib/database";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { NewTransaction } from "../schema";
 
 export const useAddTransaction = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    async mutationFn(transaction: NewTransaction) {
-      const results = await db
-        .insertInto("transaction")
-        .values(transaction)
-        .execute();
-
-      return results;
+    async mutationFn(transaction: any) {
+      return [];
     },
     async onSuccess() {
       await queryClient.invalidateQueries({ queryKey: ["transactions"] });

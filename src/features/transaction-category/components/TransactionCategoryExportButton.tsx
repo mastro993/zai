@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Upload } from "lucide-react";
 import { useState } from "react";
 import { TransactionCategoryExportDialog } from "./TransactionCategoryExportDialog";
 
@@ -13,7 +13,7 @@ export function TransactionCategoryExportButton() {
         size="sm"
         onClick={() => setShowExportDialog(true)}
       >
-        <Download className="w-4 h-4" /> Export
+        <Upload className="w-4 h-4" /> Export
       </Button>
 
       <TransactionCategoryExportDialog

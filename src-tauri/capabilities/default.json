@@ -23,6 +23,7 @@
     },
     "store:default",
     "stronghold:default",
-    "dialog:default"
+    "dialog:default",
+    "log:default"
   ]
 }

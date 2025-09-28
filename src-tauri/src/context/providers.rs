@@ -9,6 +9,7 @@ pub async fn initialize_context(
     let db_path = zai_core::database::init(app_data_dir)?;
     let pool = zai_core::database::create_pool(&db_path)?;
     let writer = zai_core::database::write_actor::spawn_writer(pool.as_ref().clone());
+    log::info!("Database initialized at {}", db_path);
 
     // Run migrations using the pool directly if run_migrations expects a Pool
     zai_core::database::run_migrations(&pool)?;

@@ -28,6 +28,7 @@ export function TransactionCategoryExportDialog(
     },
     onError: () => {
       toast.error("Failed to export transaction categories");
+      dialogProps.onOpenChange?.(false);
     },
   });
 

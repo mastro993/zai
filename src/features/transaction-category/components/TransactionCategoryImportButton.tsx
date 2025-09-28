@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Download } from "lucide-react";
 import { useState } from "react";
 import { TransactionCategoryImportDialog } from "./TransactionCategoryImportDialog";
 
@@ -13,7 +13,7 @@ export function TransactionCategoryImportButton() {
         size="sm"
         onClick={() => setShowImportDialog(true)}
       >
-        <Upload className="w-4 h-4" /> Import
+        <Download className="w-4 h-4" /> Import
       </Button>
       <TransactionCategoryImportDialog
         open={showImportDialog}

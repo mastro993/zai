@@ -2,7 +2,7 @@
 CREATE TABLE
     transaction_categories (
         id TEXT NOT NULL PRIMARY KEY,
-        parent_id TEXT REFERENCES transaction_category (id) ON DELETE SET NULL,
+        parent_id TEXT REFERENCES transaction_categories (id) ON DELETE SET NULL,
         name TEXT NOT NULL,
         description TEXT,
         color TEXT,
@@ -11,7 +11,6 @@ CREATE TABLE
         deleted_at TIMESTAMP
     );
 
--- Create transaction table
 CREATE TABLE
     transactions (
         id TEXT NOT NULL PRIMARY KEY,
@@ -19,7 +18,7 @@ CREATE TABLE
         amount INTEGER NOT NULL,
         date DATE NOT NULL,
         type TEXT NOT NULL,
-        category_id TEXT REFERENCES transaction_category (id) ON DELETE SET NULL,
+        category_id TEXT REFERENCES transaction_categories (id) ON DELETE SET NULL,
         notes TEXT,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

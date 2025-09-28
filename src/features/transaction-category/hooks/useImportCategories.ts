@@ -8,12 +8,14 @@ import {
 } from "../types";
 
 export const useImportCategories = (onSuccess?: () => void) => {
-  const [rawCategories, setRawCategories] = useState<NewTransactionCategories>(
-    []
-  );
+  const [rawCategories, setRawCategories] =
+    useState<NewTransactionCategories>();
   const [isImporting, setIsImporting] = useState(false);
 
   const importCategories = useCallback(async () => {
+    if (!rawCategories) {
+      return;
+    }
     setIsImporting(true);
     await importTransactionCategories(rawCategories);
     setIsImporting(false);
@@ -24,16 +26,16 @@ export const useImportCategories = (onSuccess?: () => void) => {
     () =>
       importFromFile()
         .andThen(
-          Result.fromThrowable((data) =>
-            TransactionCategoriesSchema.parse(data)
-          )
+          Result.fromThrowable((data) => {
+            return TransactionCategoriesSchema.parse(data.value);
+          })
         )
         .map((data) => {
           return data.map((category) => {
             return {
               ...category,
-              parent: category.parent_id
-                ? data.find((c) => c.id === category.parent_id)
+              parent: category.parentId
+                ? data.find((c) => c.id === category.parentId)
                 : undefined,
             };
           });

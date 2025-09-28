@@ -45,7 +45,7 @@ import { CheckIcon, ChevronDownIcon, Command } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import { useAvailableParentTransactionCategories } from "../api/useAvailableParentTransactionCategories";
+import { useParentTransactionCategories } from "../api/useParentTransactionCategories";
 import {
   NewTransactionCategory,
   TransactionCategory,
@@ -65,10 +65,11 @@ export type TransactionCategoryFormDialogProps = React.ComponentProps<
 };
 
 export const formSchema = z.object({
+  id: z.string().optional(),
   name: z.string().nonempty({ message: "Name is required" }),
-  color: z.enum(TransactionCategoryColors).optional(),
-  parent_id: z.string().uuid().optional(),
-  description: z.string().optional(),
+  color: z.enum(TransactionCategoryColors),
+  parentId: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
 });
 
 export function TransactionCategoryFormDialog({
@@ -76,22 +77,22 @@ export function TransactionCategoryFormDialog({
   onSubmit,
   ...dialogProps
 }: TransactionCategoryFormDialogProps) {
-  const { data: transactionCategories } =
-    useAvailableParentTransactionCategories();
+  const { data: transactionCategories } = useParentTransactionCategories();
 
   const form = useForm<NewTransactionCategory>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      id: category?.id,
       name: category?.name,
       description: category?.description,
       color: category?.color ?? "neutral",
-      parent_id: category?.parent_id,
+      parentId: category?.parentId,
     },
   });
 
   const parentCategoryId = useWatch({
     control: form.control,
-    name: "parent_id",
+    name: "parentId",
   });
 
   useEffect(() => {
@@ -126,14 +127,14 @@ export function TransactionCategoryFormDialog({
             </DialogHeader>
             <FormField
               control={form.control}
-              name="parent_id"
+              name="parentId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Parent</FormLabel>
                   <FormControl>
                     <Select
-                      value={field.value?.toString() ?? undefined}
-                      onValueChange={(value) => field.onChange(Number(value))}
+                      value={field.value ?? undefined}
+                      onValueChange={field.onChange}
                     >
                       <SelectTrigger
                         id={"parent-category-select"}
@@ -143,7 +144,7 @@ export function TransactionCategoryFormDialog({
                       </SelectTrigger>
                       <SelectContent>
                         {transactionCategories?.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id.toString()}>
+                          <SelectItem key={cat.id} value={cat.id}>
                             {cat.name}
                           </SelectItem>
                         ))}
