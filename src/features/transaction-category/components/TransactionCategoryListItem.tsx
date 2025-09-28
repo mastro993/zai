@@ -24,8 +24,8 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useDeleteTransactionCategory } from "../api/useDeleteTransactionCategory";
 import { useUpdateTransactionCategory } from "../api/useUpdateTransactionCategory";
-import { TransactionCategory, TransactionCategoryUpdate } from "../schema";
 import { useSelectionStore } from "../stores/selection";
+import { NewTransactionCategory, TransactionCategory } from "../types";
 import { TransactionCategoryBadge } from "./TransactionCategoryBadge";
 import { TransactionCategoryFormDialog } from "./TransactionCategoryFormDialog";
 
@@ -78,7 +78,7 @@ const TransactionCategoryItemMenu = ({
   const { mutateAsync: updateTransactionCategory } =
     useUpdateTransactionCategory(category);
 
-  const handleUpdate = async (data: TransactionCategoryUpdate) => {
+  const handleUpdate = async (data: NewTransactionCategory) => {
     await updateTransactionCategory(data);
     setShowUpdateDialog(false);
   };

@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useAddTransactionCategory } from "../api/useAddTransactionCategory";
-import { NewTransactionCategory } from "../schema";
+import { NewTransactionCategory } from "../types";
 import { TransactionCategoryFormDialog } from "./TransactionCategoryFormDialog";
 
 export const TransactionCategoryAddButton = () => {

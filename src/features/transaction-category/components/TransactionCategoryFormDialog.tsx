@@ -44,14 +44,14 @@ import { cva } from "class-variance-authority";
 import { CheckIcon, ChevronDownIcon, Command } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
-import { z, ZodType } from "zod";
+import { z } from "zod";
 import { useAvailableParentTransactionCategories } from "../api/useAvailableParentTransactionCategories";
 import {
   NewTransactionCategory,
   TransactionCategory,
   TransactionCategoryColor,
   TransactionCategoryColors,
-} from "../schema";
+} from "../types";
 import {
   TransactionCategoryBadge,
   TransactionCategoryBadgeVariants,
@@ -64,11 +64,11 @@ export type TransactionCategoryFormDialogProps = React.ComponentProps<
   onSubmit: (data: NewTransactionCategory) => void;
 };
 
-export const formSchema: ZodType<NewTransactionCategory> = z.object({
+export const formSchema = z.object({
   name: z.string().nonempty({ message: "Name is required" }),
-  color: z.enum(TransactionCategoryColors),
-  parent_id: z.coerce.number().optional().nullable(),
-  description: z.string().optional().nullable(),
+  color: z.enum(TransactionCategoryColors).optional(),
+  parent_id: z.string().uuid().optional(),
+  description: z.string().optional(),
 });
 
 export function TransactionCategoryFormDialog({
@@ -219,7 +219,6 @@ export function TransactionCategoryFormDialog({
                     category={{
                       name: form.watch("name") || "New category",
                       color: form.watch("color") || "neutral",
-                      parent: null,
                     }}
                   />
                 </div>

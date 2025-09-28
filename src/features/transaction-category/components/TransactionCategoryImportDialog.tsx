@@ -53,7 +53,7 @@ export function TransactionCategoryImportDialog(
                   <tr key={category.id}>
                     <td className="font-mono">{category.id}</td>
                     <td>{category.name}</td>
-                    <td>{category.parent?.name ?? "-"}</td>
+                    {/* <td>{category.parent?.name ?? "-"}</td> */}
                     <td className="font-mono">{category.color}</td>
                     <td>{category.description}</td>
                   </tr>

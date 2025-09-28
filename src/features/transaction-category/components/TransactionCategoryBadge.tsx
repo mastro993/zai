@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { cva } from "class-variance-authority";
-import { TransactionCategory, TransactionCategoryColor } from "../schema";
+import { TransactionCategory, TransactionCategoryColor } from "../types";
 
 export type TransactionCategoryBadgeVariants = {
   color: Record<TransactionCategoryColor, string>;
@@ -46,16 +46,18 @@ const buttonVariants = cva<TransactionCategoryBadgeVariants>("", {
 });
 
 export type TransactionCategoryBadgeProps = {
-  category: Pick<TransactionCategory, "name" | "color" | "parent">;
+  category: Pick<TransactionCategory, "name" | "color">;
 };
 
 export const TransactionCategoryBadge = ({
   category,
 }: TransactionCategoryBadgeProps) => {
-  const { name, parent, color } = category;
+  const { name, color } = category;
+  let parent: TransactionCategory | undefined; // TODO: fetch parent category if needed
+  const label = [parent?.name, name].filter(Boolean).join(" • ");
   return (
     <Badge variant="outline" className={cn(buttonVariants({ color }))}>
-      {parent ? `${parent.name} • ${name}` : name}
+      {label}
     </Badge>
   );
 };

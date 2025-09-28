@@ -5,7 +5,7 @@ import { updateTransactionCategory } from "../commands";
 
 export const useUpdateTransactionCategory = (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  category: NewTransactionCategory
+  _category: NewTransactionCategory
 ) => {
   const queryClient = useQueryClient();
 

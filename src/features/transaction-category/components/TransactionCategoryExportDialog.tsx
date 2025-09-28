@@ -21,7 +21,7 @@ export function TransactionCategoryExportDialog(
   const [exportFormat, setExportFormat] = useState<"json" | "csv">("json");
 
   const { exportData } = useExportCategories({
-    format: exportFormat,
+    extension: exportFormat,
     onSuccess: () => {
       toast.success("Transaction categories exported successfully");
       dialogProps.onOpenChange?.(false);
