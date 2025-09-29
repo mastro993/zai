@@ -7,10 +7,6 @@ use async_trait::async_trait;
 pub trait TransactionCategoriesServiceTrait: Send + Sync {
     fn get_categories(&self) -> Result<Vec<TransactionCategory>>;
     fn get_category(&self, category_id: &str) -> Result<TransactionCategory>;
-    async fn import_categories(
-        &self,
-        categories: Vec<NewTransactionCategory>,
-    ) -> Result<Vec<TransactionCategory>>;
     async fn create_category(
         &self,
         activity: NewTransactionCategory,
@@ -21,6 +17,10 @@ pub trait TransactionCategoriesServiceTrait: Send + Sync {
     ) -> Result<TransactionCategory>;
     async fn delete_category(&self, id: &str) -> Result<TransactionCategory>;
     async fn delete_categories(&self, ids: Vec<&str>) -> Result<Vec<TransactionCategory>>;
+    async fn import_categories(
+        &self,
+        categories: Vec<NewTransactionCategory>,
+    ) -> Result<Vec<TransactionCategory>>;
 }
 
 #[async_trait]
@@ -38,4 +38,8 @@ pub trait TransactionCategoriesRepositoryTrait: Send + Sync {
     ) -> Result<TransactionCategory>;
     async fn delete_category(&self, id: &str) -> Result<TransactionCategory>;
     async fn delete_categories(&self, ids: Vec<&str>) -> Result<Vec<TransactionCategory>>;
+    async fn import_categories(
+        &self,
+        categories: Vec<NewTransactionCategory>,
+    ) -> Result<Vec<TransactionCategory>>;
 }

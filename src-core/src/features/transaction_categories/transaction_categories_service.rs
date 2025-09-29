@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use super::transaction_categories_models::TransactionCategory;
 use super::transaction_categories_traits::{
     TransactionCategoriesRepositoryTrait, TransactionCategoriesServiceTrait,
@@ -21,67 +23,85 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
     fn get_categories(&self) -> Result<Vec<TransactionCategory>> {
         (*self.repository).get_categories()
     }
+
     fn get_category(&self, category_id: &str) -> Result<TransactionCategory> {
         (*self.repository).get_category(category_id)
     }
-    async fn import_categories(
-        &self,
-        categories: Vec<NewTransactionCategory>,
-    ) -> Result<Vec<TransactionCategory>> {
-        let mut created_categories: Vec<TransactionCategory> = vec![];
 
-        // Filter categories to only valid ones
-        let valid_categories = categories
-            .iter()
-            .filter(|c| c.validate().is_ok())
-            .cloned()
-            .collect::<Vec<_>>();
-
-        // List of the categories that have children
-        let parent_categories = valid_categories
-            .iter()
-            .filter(|c| c.parent_id.is_none())
-            .collect::<Vec<_>>();
-
-        // For each parent category, create it and its children
-        for parent in parent_categories {
-            let created_parent = self.create_category(parent.clone()).await?;
-            created_categories.push(created_parent.clone());
-
-            let child_categories = valid_categories
-                .iter()
-                .filter(|c| c.parent_id.is_some())
-                .filter(|c| c.parent_id == parent.id)
-                .collect::<Vec<_>>();
-
-            for child in child_categories {
-                let owned_parent_id = created_parent.id.clone();
-                let mut child_clone = child.clone();
-                child_clone.parent_id = Some(owned_parent_id);
-                let created_child = self.create_category(child_clone).await?;
-                created_categories.push(created_child);
-            }
-        }
-
-        Ok(created_categories)
-    }
     async fn create_category(
         &self,
         category: NewTransactionCategory,
     ) -> Result<TransactionCategory> {
         (*self.repository).create_category(category).await
     }
+
     async fn update_category(
         &self,
         category: NewTransactionCategory,
     ) -> Result<TransactionCategory> {
         (*self.repository).update_category(category).await
     }
+
     async fn delete_category(&self, category_id: &str) -> Result<TransactionCategory> {
         (*self.repository).delete_category(category_id).await
     }
+
     async fn delete_categories(&self, category_ids: Vec<&str>) -> Result<Vec<TransactionCategory>> {
         (*self.repository).delete_categories(category_ids).await
+    }
+
+    async fn import_categories(
+        &self,
+        categories: Vec<NewTransactionCategory>,
+    ) -> Result<Vec<TransactionCategory>> {
+        // Only categories that pass validation are imported; invalid ones are silently skipped.
+        let valid_categories = categories
+            .iter()
+            .filter(|c| c.validate().is_ok())
+            .collect::<Vec<_>>();
+
+        let valid_count = valid_categories.len();
+        let mut categories_to_import: Vec<NewTransactionCategory> = Vec::with_capacity(valid_count);
+
+        // List of the root categories (categories with no parent)
+        let root_categories = valid_categories
+            .iter()
+            .filter(|c| c.parent_id.is_none() || c.parent_id.as_deref() == Some(""))
+            .cloned()
+            .collect::<Vec<_>>();
+
+        // For each parent category, create it and its children
+        for root_category in root_categories {
+            let mut owned_root_category = root_category.clone();
+            let owned_parent_id = Some(Uuid::new_v4().to_string());
+
+            owned_root_category.id = owned_parent_id.clone();
+            owned_root_category.parent_id = None; // Ensure parent
+
+            categories_to_import.push(owned_root_category);
+
+            let child_categories = valid_categories
+                .iter()
+                .filter(|c| c.parent_id.is_some())
+                .filter(|c| c.parent_id == root_category.id)
+                .cloned() // get owned values
+                .collect::<Vec<_>>();
+
+            for child in child_categories {
+                let mut owned_child = child.clone();
+
+                owned_child.id = Some(Uuid::new_v4().to_string());
+                owned_child.parent_id = owned_parent_id.clone();
+
+                categories_to_import.push(owned_child);
+            }
+        }
+
+        let created_categories = (*self.repository)
+            .import_categories(categories_to_import)
+            .await?;
+
+        Ok(created_categories)
     }
 }
 
@@ -159,6 +179,12 @@ mod tests {
             Err(Error::from(TransactionCategoryError::NotFound(
                 "mock not found".to_string(),
             )))
+        }
+        async fn import_categories(
+            &self,
+            _categories: Vec<NewTransactionCategory>,
+        ) -> Result<Vec<TransactionCategory>> {
+            Ok(vec![])
         }
     }
 

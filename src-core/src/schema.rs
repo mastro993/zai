@@ -29,4 +29,6 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(transactions -> transaction_categories (category_id));
+
 diesel::allow_tables_to_appear_in_same_query!(transaction_categories, transactions,);

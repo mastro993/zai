@@ -175,6 +175,44 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
             )
             .await
     }
+
+    async fn import_categories(
+        &self,
+        new_categories: Vec<NewTransactionCategory>,
+    ) -> Result<Vec<TransactionCategory>> {
+        let valid_categories = new_categories
+            .iter()
+            .filter(|c| c.validate().is_ok())
+            .cloned()
+            .collect::<Vec<_>>();
+
+        self.writer
+            .exec(
+                move |conn: &mut SqliteConnection| -> Result<Vec<TransactionCategory>> {
+                    let categories: Vec<TransactionCategoryRow> =
+                        valid_categories.iter().map(|c| c.clone().into()).collect();
+
+                    diesel::insert_into(transaction_categories::table)
+                        .values(&categories)
+                        .execute(conn)?;
+
+                    let ids = categories
+                        .iter()
+                        .map(|c| c.id.clone())
+                        .collect::<Vec<String>>();
+
+                    let inserted = transaction_categories::table
+                        .filter(transaction_categories::id.eq_any(&ids))
+                        .load::<TransactionCategoryRow>(conn)?;
+
+                    Ok(inserted
+                        .into_iter()
+                        .map(TransactionCategory::from)
+                        .collect())
+                },
+            )
+            .await
+    }
 }
 
 #[cfg(test)]
@@ -404,5 +442,42 @@ mod tests {
         let all = repo.get_categories_by_parent_id("parent_id").unwrap();
         assert!(all.len() == 1);
         assert!(all[0].name == "Cat 1");
+    }
+
+    #[tokio::test]
+    async fn test_import_categories() {
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let new_category_1 = NewTransactionCategory {
+            id: Some(Uuid::new_v4().to_string()),
+            name: "Test Category 1".to_string(),
+            parent_id: None,
+            description: Some("Descrizione test".to_string()),
+            color: Some("#FF0000".to_string()),
+        };
+
+        let new_category_2 = NewTransactionCategory {
+            id: Some(Uuid::new_v4().to_string()),
+            name: "Test Category 2".to_string(),
+            parent_id: None,
+            description: Some("Descrizione test".to_string()),
+            color: Some("#FF0000".to_string()),
+        };
+
+        let new_category_3 = NewTransactionCategory {
+            id: Some(Uuid::new_v4().to_string()),
+            name: "Test Category 3".to_string(),
+            parent_id: Some(new_category_1.id.as_deref().unwrap().to_string()),
+            description: Some("Descrizione test".to_string()),
+            color: Some("#FF0000".to_string()),
+        };
+
+        let created: Vec<TransactionCategory> = repo
+            .import_categories(vec![new_category_1, new_category_2, new_category_3])
+            .await
+            .unwrap();
+
+        assert!(created.len() == 3);
     }
 }
