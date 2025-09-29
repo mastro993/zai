@@ -7,59 +7,68 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { FileUp, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { useImportCategories } from "../hooks/useImportCategories";
 
 export function TransactionCategoryImportDialog(
   dialogProps: React.ComponentProps<typeof Dialog>
 ) {
-  const { selectFile, rawCategories, importCategories, isImporting } =
+  const { selectFile, rawCategories, importCategories, isImporting, clear } =
     useImportCategories(() => {
-      toast.success("Categories imported");
       dialogProps.onOpenChange?.(false);
     });
 
   return (
     <Dialog {...dialogProps}>
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={() => clear()}
+        className="min-w-2/3 min-h-3/4 max-h-3/4 flex flex-col"
+      >
         <DialogHeader>
           <DialogTitle>Import categories</DialogTitle>
         </DialogHeader>
-        {!rawCategories && (
+        {rawCategories ? (
+          <div className="[&>div]:max-h-96 border border-base-300 rounded-md">
+            <Table className="[&_td]:border-border [&_th]:border-border border-separate border-spacing-0 [&_tfoot_td]:border-t [&_th]:border-b [&_tr]:border-none [&_tr:not(:last-child)_td]:border-b">
+              <TableHeader className="bg-background/90 sticky top-0 z-10 backdrop-blur-xs">
+                <TableRow className="bg-muted/50">
+                  <TableHead className="h-9 py-2">Name</TableHead>
+                  <TableHead className="h-9 py-2">Description</TableHead>
+                  <TableHead className="h-9 py-2">Parent</TableHead>
+                  <TableHead className="h-9 py-2">Color</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rawCategories.map((category) => (
+                  <TableRow key={category.id}>
+                    <TableCell className="py-2 font-medium">
+                      {category.name}
+                    </TableCell>
+                    <TableCell className="py-2">
+                      {category.description}
+                    </TableCell>
+                    <TableCell className="py-2">{category.parentId}</TableCell>
+                    <TableCell className="py-2">{category.color}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
           <div
             className="flex-1 bg-base-200 rounded-md flex flex-col items-center justify-center gap-4 cursor-pointer border-dashed border-2 border-base-300"
             onClick={selectFile}
           >
             <FileUp className="w-16 h-16 text-primary" />
             <p>Drop a file here or click to upload</p>
-          </div>
-        )}
-        {rawCategories && (
-          <div className="flex-1 overflow-auto border border-base-300 rounded-md">
-            <table className="table table-zebra table-xs table-pin-rows w-full">
-              {/* head */}
-              <thead>
-                <tr>
-                  <th className="w-10">Id</th>
-                  <th className="w-60">Name</th>
-                  <th className="w-60">Parent</th>
-                  <th className="w-20">Color</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rawCategories.map((category) => (
-                  <tr key={category.id}>
-                    <td className="font-mono">{category.id}</td>
-                    <td>{category.name}</td>
-                    {/* <td>{category.parent?.name ?? "-"}</td> */}
-                    <td className="font-mono">{category.color}</td>
-                    <td>{category.description}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         )}
         <DialogFooter>

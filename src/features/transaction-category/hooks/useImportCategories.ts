@@ -1,26 +1,34 @@
 import { importFromFile } from "@/lib/file-processor";
 import { Result } from "neverthrow";
-import { useCallback, useState } from "react";
-import { importTransactionCategories } from "../commands";
+import { useCallback, useEffect, useState } from "react";
 import {
   NewTransactionCategories,
   TransactionCategoriesSchema,
 } from "../types";
+import { useImportTransactionCategories } from "../api/useImportTransactionCategories";
 
 export const useImportCategories = (onSuccess?: () => void) => {
   const [rawCategories, setRawCategories] =
     useState<NewTransactionCategories>();
-  const [isImporting, setIsImporting] = useState(false);
 
-  const importCategories = useCallback(async () => {
-    if (!rawCategories) {
-      return;
+  const {
+    mutate: importCategoriesMutation,
+    isPending,
+    isSuccess,
+  } = useImportTransactionCategories();
+
+  useEffect(() => {
+    if (isSuccess) {
+      setRawCategories(undefined);
+      onSuccess?.();
     }
-    setIsImporting(true);
-    await importTransactionCategories(rawCategories);
-    setIsImporting(false);
-    onSuccess?.();
-  }, [rawCategories]);
+  }, [isSuccess, onSuccess]);
+
+  const importCategories = useCallback(() => {
+    if (rawCategories) {
+      importCategoriesMutation(rawCategories);
+    }
+  }, [rawCategories, importCategoriesMutation]);
 
   const selectFile = useCallback(
     () =>
@@ -48,6 +56,7 @@ export const useImportCategories = (onSuccess?: () => void) => {
     selectFile,
     rawCategories,
     importCategories,
-    isImporting,
+    isImporting: isPending,
+    clear: () => setRawCategories(undefined),
   };
 };

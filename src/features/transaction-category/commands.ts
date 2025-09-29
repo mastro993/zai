@@ -1,5 +1,6 @@
 import { invokeTauri, logger } from "@/lib/adapters";
 import {
+  NewTransactionCategories,
   NewTransactionCategory,
   TransactionCategories,
   TransactionCategoriesSchema,
@@ -33,7 +34,7 @@ export const getTransactionCategory = async (
 };
 
 export const importTransactionCategories = async (
-  categories: ReadonlyArray<NewTransactionCategory>
+  categories: NewTransactionCategories
 ): Promise<TransactionCategories> => {
   try {
     const result = await invokeTauri("import_transaction_categories", {
@@ -41,7 +42,9 @@ export const importTransactionCategories = async (
     });
     return TransactionCategoriesSchema.parse(result);
   } catch (error) {
-    logger.error("Error fetching transaction categories");
+    logger.error(
+      `Error importing transaction categories: ${JSON.stringify(error)}`
+    );
     throw error;
   }
 };

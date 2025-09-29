@@ -45,7 +45,7 @@ export function TransactionCategoryExportDialog(
 
   return (
     <Dialog {...dialogProps}>
-      <DialogContent onCloseAutoFocus={() => setExportFormat("csv")}>
+      <DialogContent onCloseAutoFocus={() => setExportFormat("json")}>
         <DialogHeader>
           <DialogTitle>Export transaction categories</DialogTitle>
           <DialogDescription>

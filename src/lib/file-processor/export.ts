@@ -36,7 +36,7 @@ export const exportToFile = ({
   void,
   FileProcessorError | NoFilePathError | FileWriteError
 > => {
-  const formattedDate = formatDate(new Date(), "yyyy-MM-ddT-HH-mm-ss");
+  const formattedDate = formatDate(new Date(), "yyyy-MM-dd-HH-mm-ss");
   const defaultPath = `${fileName}_${formattedDate}.${extension}`;
   const format = getFormatter(extension);
 
