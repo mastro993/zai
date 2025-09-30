@@ -13,7 +13,7 @@ import { TrashIcon, X } from "lucide-react";
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
-import { useDeleteTransactionCategory } from "../api/useDeleteTransactionCategory";
+import { useDeleteTransactionCategoryMutation } from "../api/useDeleteTransactionCategoryMutation";
 import { useSelectionStore } from "../stores/selection";
 
 export const TransactionCategorySelection = () => {
@@ -21,7 +21,7 @@ export const TransactionCategorySelection = () => {
   const { selectedCategoryIds, setSelectedCategoryIds } = useSelectionStore();
 
   const { mutate: deleteMultipleTransactionCategory } =
-    useDeleteTransactionCategory();
+    useDeleteTransactionCategoryMutation();
 
   const handleDelete = async () => {
     deleteMultipleTransactionCategory(selectedCategoryIds, {
@@ -35,17 +35,12 @@ export const TransactionCategorySelection = () => {
     });
   };
 
-  useHotkeys(
-    "delete",
-    () => {
-      setSelectedCategoryIds([]);
-    },
-    undefined,
-    [selectedCategoryIds]
-  );
+  useHotkeys("esc", () => {
+    setSelectedCategoryIds([]);
+  });
 
   useHotkeys(
-    "mod+delete",
+    "delete",
     () => selectedCategoryIds.length > 0 && setShowDeleteDialog(true),
     undefined,
     [selectedCategoryIds]

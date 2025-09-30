@@ -11,7 +11,6 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -112,7 +111,10 @@ export function TransactionCategoryFormDialog({
   );
 
   const description = useMemo(
-    () => (category ? "Edit the category details" : "Create a new category"),
+    () =>
+      category
+        ? "Edit the transaction category details"
+        : "Create a new category for transactions",
     [category]
   );
 
@@ -226,14 +228,16 @@ export function TransactionCategoryFormDialog({
               </FormControl>
               <FormMessage />
             </FormItem>
-            <DialogFooter>
+            <div className="grid gap-2">
+              <Button type="submit" className="w-full">
+                {category ? "Save changes" : "Create category"}
+              </Button>
               <DialogClose asChild>
-                <Button type="button" variant="secondary">
+                <Button type="button" variant="ghost" className="w-full">
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit">Confirm</Button>
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

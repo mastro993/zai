@@ -22,8 +22,8 @@ import { withMetaKey } from "@/utils/handlers";
 import { Ellipsis } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useDeleteTransactionCategory } from "../api/useDeleteTransactionCategory";
-import { useUpdateTransactionCategory } from "../api/useUpdateTransactionCategory";
+import { useDeleteTransactionCategoryMutation } from "../api/useDeleteTransactionCategoryMutation";
+import { useUpdateTransactionCategoryMutation } from "../api/useUpdateTransactionCategoryMutation";
 import { useSelectionStore } from "../stores/selection";
 import { NewTransactionCategory, TransactionCategory } from "../types";
 import { TransactionCategoryBadge } from "./TransactionCategoryBadge";
@@ -73,10 +73,10 @@ const TransactionCategoryItemMenu = ({
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
   const { mutateAsync: deleteTransactionCategory } =
-    useDeleteTransactionCategory();
+    useDeleteTransactionCategoryMutation();
 
   const { mutateAsync: updateTransactionCategory } =
-    useUpdateTransactionCategory(category);
+    useUpdateTransactionCategoryMutation();
 
   const handleUpdate = async (data: NewTransactionCategory) => {
     await updateTransactionCategory(data);

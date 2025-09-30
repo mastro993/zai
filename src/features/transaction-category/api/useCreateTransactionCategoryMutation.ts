@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { NewTransactionCategory } from "../types";
 import { createTransactionCategory } from "../commands";
 
-export const useCreateTransactionCategory = () => {
+export const useCreateTransactionCategoryMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

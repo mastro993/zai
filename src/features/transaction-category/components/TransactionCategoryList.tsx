@@ -1,4 +1,5 @@
 import { EmptyView } from "@/components/views/EmptyView";
+import { useEffect } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useTransactionCategories } from "../api/useTransactionCategories";
 import { useSelectionStore } from "../stores/selection";
@@ -13,6 +14,12 @@ export const TransactionCategoryList = () => {
       transactionCategories?.map((category) => category.id)
     );
   });
+
+  useEffect(() => {
+    return () => {
+      setSelectedCategoryIds([]);
+    };
+  }, []);
 
   if (transactionCategories?.length === 0) {
     return <EmptyView message="No categories found" />;

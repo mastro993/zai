@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { deleteTransactionCategories } from "../commands";
 
-export const useDeleteTransactionCategory = () => {
+export const useDeleteTransactionCategoryMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

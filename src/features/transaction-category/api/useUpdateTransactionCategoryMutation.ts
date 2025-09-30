@@ -3,10 +3,7 @@ import { toast } from "sonner";
 import { NewTransactionCategory } from "../types";
 import { updateTransactionCategory } from "../commands";
 
-export const useUpdateTransactionCategory = (
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _category: NewTransactionCategory
-) => {
+export const useUpdateTransactionCategoryMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

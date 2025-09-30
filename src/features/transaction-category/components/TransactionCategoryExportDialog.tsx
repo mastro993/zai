@@ -10,38 +10,56 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useId, useState } from "react";
+import { exportToFile } from "@/lib/file-processor";
+import { useCallback, useId, useState } from "react";
 import { toast } from "sonner";
-import { useExportCategories } from "../hooks/useExportCategorites";
+import { useTransactionCategories } from "../api/useTransactionCategories";
+
+const exportFormatOptions = [
+  {
+    label: "JSON",
+    value: "json",
+  },
+  {
+    label: "CSV",
+    value: "csv",
+  },
+];
 
 export function TransactionCategoryExportDialog(
   dialogProps: React.ComponentProps<typeof Dialog>
 ) {
   const id = useId();
+
+  const [isExporting, setIsExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<"json" | "csv">("json");
 
-  const { exportData } = useExportCategories({
-    extension: exportFormat,
-    onSuccess: () => {
-      toast.success("Transaction categories exported successfully");
-      dialogProps.onOpenChange?.(false);
-    },
-    onError: () => {
+  const categories = useTransactionCategories();
+
+  const exportData = useCallback(async () => {
+    if (!categories.data || isExporting) {
+      return;
+    }
+
+    setIsExporting(true);
+
+    const result = await exportToFile({
+      data: categories.data,
+      fileName: "zai_transaction_categories",
+      extension: exportFormat,
+    });
+
+    if (result.isErr()) {
       toast.error("Failed to export transaction categories");
       dialogProps.onOpenChange?.(false);
-    },
-  });
+      setIsExporting(false);
+      return;
+    }
 
-  const exportFormatOptions = [
-    {
-      label: "JSON",
-      value: "json",
-    },
-    {
-      label: "CSV",
-      value: "csv",
-    },
-  ];
+    toast.success("Transaction categories exported successfully");
+    dialogProps.onOpenChange?.(false);
+    setIsExporting(false);
+  }, [isExporting, exportFormat, categories]);
 
   return (
     <Dialog {...dialogProps}>
@@ -49,7 +67,7 @@ export function TransactionCategoryExportDialog(
         <DialogHeader>
           <DialogTitle>Export transaction categories</DialogTitle>
           <DialogDescription>
-            Export transaction categories to a file in different formats
+            Export your transaction categories to a file
           </DialogDescription>
         </DialogHeader>
         <fieldset className="space-y-4">
