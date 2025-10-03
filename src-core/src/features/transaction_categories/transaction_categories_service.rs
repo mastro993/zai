@@ -5,7 +5,9 @@ use super::transaction_categories_traits::{
     TransactionCategoriesRepositoryTrait, TransactionCategoriesServiceTrait,
 };
 use crate::errors::Result;
-use crate::features::transaction_categories::transaction_categories_models::NewTransactionCategory;
+use crate::features::transaction_categories::transaction_categories_models::{
+    NewTransactionCategory, TransactionCategoryUpdate,
+};
 use std::sync::Arc;
 
 pub struct TransactionCategoriesService {
@@ -28,6 +30,10 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
         (*self.repository).get_category(category_id)
     }
 
+    fn get_categories_by_parent_id(&self, parent_id: &str) -> Result<Vec<TransactionCategory>> {
+        (*self.repository).get_categories_by_parent_id(parent_id)
+    }
+
     async fn create_category(
         &self,
         category: NewTransactionCategory,
@@ -37,7 +43,7 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
 
     async fn update_category(
         &self,
-        category: NewTransactionCategory,
+        category: TransactionCategoryUpdate,
     ) -> Result<TransactionCategory> {
         (*self.repository).update_category(category).await
     }
@@ -109,7 +115,6 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
 mod tests {
     use super::TransactionCategoriesServiceTrait;
     use crate::errors::Error;
-    use crate::features::transaction_categories::transaction_categories_errors::TransactionCategoryError;
     // ...existing code...
 
     use crate::features::transaction_categories::{
@@ -119,7 +124,7 @@ mod tests {
 
     use crate::errors::Result;
     use crate::features::transaction_categories::transaction_categories_models::{
-        NewTransactionCategory, TransactionCategory,
+        NewTransactionCategory, TransactionCategory, TransactionCategoryUpdate,
     };
     use async_trait::async_trait;
     use std::sync::Arc;
@@ -141,9 +146,7 @@ mod tests {
             Ok(vec![])
         }
         fn get_category(&self, _category_id: &str) -> Result<TransactionCategory> {
-            Err(Error::from(TransactionCategoryError::NotFound(
-                "mock not found".to_string(),
-            )))
+            Err(Error::NotFound("mock not found".to_string()))
         }
         async fn create_category(
             &self,
@@ -161,24 +164,18 @@ mod tests {
         }
         async fn update_category(
             &self,
-            _category: NewTransactionCategory,
+            _category: TransactionCategoryUpdate,
         ) -> Result<TransactionCategory> {
-            Err(Error::from(TransactionCategoryError::NotFound(
-                "mock not found".to_string(),
-            )))
+            Err(Error::NotFound("mock not found".to_string()))
         }
         async fn delete_category(&self, _category_id: &str) -> Result<TransactionCategory> {
-            Err(Error::from(TransactionCategoryError::NotFound(
-                "mock not found".to_string(),
-            )))
+            Err(Error::NotFound("mock not found".to_string()))
         }
         async fn delete_categories(
             &self,
             _category_ids: Vec<&str>,
         ) -> Result<Vec<TransactionCategory>> {
-            Err(Error::from(TransactionCategoryError::NotFound(
-                "mock not found".to_string(),
-            )))
+            Err(Error::NotFound("mock not found".to_string()))
         }
         async fn import_categories(
             &self,

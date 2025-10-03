@@ -1,7 +1,6 @@
 use super::transaction_categories_traits::TransactionCategoriesRepositoryTrait;
 use crate::database::{WriteHandle, get_connection};
 use crate::errors::{Error, Result};
-use crate::features::transaction_categories::transaction_categories_errors::TransactionCategoryError;
 use crate::features::transaction_categories::transaction_categories_models::NewTransactionCategory;
 use crate::features::transaction_categories::transaction_categories_models::*;
 use crate::schema::transaction_categories;
@@ -48,7 +47,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
             .filter(transaction_categories::deleted_at.is_null())
             .find(id)
             .first::<TransactionCategoryRow>(&mut conn)
-            .map_err(|e| Error::from(TransactionCategoryError::NotFound(e.to_string())))?;
+            .map_err(|e| Error::NotFound(e.to_string()))?;
 
         Ok(result.into())
     }
@@ -97,7 +96,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
 
     async fn update_category(
         &self,
-        updated_category: NewTransactionCategory,
+        updated_category: TransactionCategoryUpdate,
     ) -> Result<TransactionCategory> {
         updated_category.validate()?;
 
@@ -109,9 +108,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                     let existing = transaction_categories::table
                         .find(&category.id)
                         .first::<TransactionCategoryRow>(conn)
-                        .map_err(|e| {
-                            Error::from(TransactionCategoryError::NotFound(e.to_string()))
-                        })?;
+                        .map_err(|e| Error::NotFound(e.to_string()))?;
 
                     category.created_at = existing.created_at;
                     category.updated_at = chrono::Utc::now().naive_utc();
@@ -274,12 +271,12 @@ mod tests {
         };
         let created = repo.create_category(new_category).await.unwrap();
 
-        let updated = NewTransactionCategory {
+        let updated = TransactionCategoryUpdate {
+            id: created.id,
             name: "Updated".to_string(),
             parent_id: None,
             description: Some("Updated description".to_string()),
             color: None,
-            id: Some(created.id),
         };
 
         let updated_category = repo.update_category(updated).await.unwrap();

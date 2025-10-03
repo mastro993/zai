@@ -4,7 +4,7 @@ use crate::context::ServiceContext;
 use log::debug;
 use tauri::State;
 use zai_core::features::transaction_categories::transaction_categories_models::{
-    NewTransactionCategory, TransactionCategory,
+    NewTransactionCategory, TransactionCategory, TransactionCategoryUpdate,
 };
 
 #[tauri::command]
@@ -31,6 +31,23 @@ pub async fn get_transaction_category(
 }
 
 #[tauri::command]
+pub async fn get_transaction_categories_by_parent_id(
+    parent_id: &str,
+    state: State<'_, Arc<ServiceContext>>,
+) -> Result<Vec<TransactionCategory>, String> {
+    debug!("Getting transaction category...{}", parent_id);
+    state
+        .transaction_categories_service()
+        .get_categories_by_parent_id(parent_id)
+        .map_err(|e| {
+            format!(
+                "Failed to get transaction categories by parent id {}: {}",
+                parent_id, e
+            )
+        })
+}
+
+#[tauri::command]
 pub async fn create_transaction_category(
     new_category: NewTransactionCategory,
     state: State<'_, Arc<ServiceContext>>,
@@ -51,7 +68,7 @@ pub async fn create_transaction_category(
 
 #[tauri::command]
 pub async fn update_transaction_category(
-    updated_category: NewTransactionCategory,
+    updated_category: TransactionCategoryUpdate,
     state: State<'_, Arc<ServiceContext>>,
 ) -> Result<TransactionCategory, String> {
     debug!("Updating transaction category...");
@@ -91,7 +108,11 @@ pub async fn delete_transaction_categories(
     category_ids: Vec<&str>,
     state: State<'_, Arc<ServiceContext>>,
 ) -> Result<Vec<TransactionCategory>, String> {
-    debug!("Deleting {} transaction categories ..", category_ids.len());
+    debug!(
+        "Deleting {} transaction categories [{}]...",
+        category_ids.len(),
+        category_ids.join(", ")
+    );
     state
         .transaction_categories_service()
         .delete_categories(category_ids)

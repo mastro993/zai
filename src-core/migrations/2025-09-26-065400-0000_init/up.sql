@@ -14,11 +14,11 @@ CREATE TABLE
 CREATE TABLE
     transactions (
         id TEXT NOT NULL PRIMARY KEY,
-        description TEXT NOT NULL,
+        description TEXT,
         amount INTEGER NOT NULL,
-        date DATE NOT NULL,
-        type TEXT NOT NULL,
-        category_id TEXT REFERENCES transaction_categories (id) ON DELETE SET NULL,
+        date TIMESTAMP NOT NULL,
+        transaction_type TEXT NOT NULL,
+        transaction_category_id TEXT REFERENCES transaction_categories (id) ON DELETE SET NULL,
         notes TEXT,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -26,6 +26,6 @@ CREATE TABLE
     );
 
 -- Create indexes
-CREATE INDEX transactions_type_index ON transactions (type);
+CREATE INDEX transactions_type_index ON transactions (transaction_type);
 
-CREATE INDEX transaction_categories_id_index ON transactions (category_id);
+CREATE INDEX transaction_categories_id_index ON transactions (transaction_category_id);

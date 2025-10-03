@@ -16,12 +16,11 @@ diesel::table! {
 diesel::table! {
     transactions (id) {
         id -> Text,
-        description -> Text,
+        description -> Nullable<Text>,
         amount -> Integer,
-        date -> Date,
-        #[sql_name = "type"]
-        type_ -> Text,
-        category_id -> Nullable<Text>,
+        date -> Timestamp,
+        transaction_type -> Text,
+        transaction_category_id -> Nullable<Text>,
         notes -> Nullable<Text>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
@@ -29,6 +28,6 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(transactions -> transaction_categories (category_id));
+diesel::joinable!(transactions -> transaction_categories (transaction_category_id));
 
 diesel::allow_tables_to_appear_in_same_query!(transaction_categories, transactions,);
