@@ -1,12 +1,12 @@
-use crate::database::{get_connection, WriteHandle};
+use crate::database::pagination::{Paginate, PaginatedData};
+use crate::database::sorting::Sort;
+use crate::database::{WriteHandle, get_connection};
 use crate::errors::{Error, Result};
 use crate::features::transactions::transactions_models::{
     NewTransaction, Transaction, TransactionRow, TransactionSearchFilters, TransactionUpdate,
 };
 use crate::features::transactions::transactions_traits::TransactionsRepositoryTrait;
 use crate::schema::transactions;
-use crate::utils::pagination::PaginatedData;
-use crate::utils::sorting::Sort;
 use async_trait::async_trait;
 use chrono::Local;
 use diesel::prelude::*;
@@ -33,16 +33,104 @@ impl TransactionsRepository {
 impl TransactionsRepositoryTrait for TransactionsRepository {
     fn get_transactions(
         &self,
-        page: i32,
-        page_size: i32,
+        page: i64,
+        per_page: i64,
         filters: Option<TransactionSearchFilters>,
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>> {
-        let mut conn = get_connection(&self.pool)?;
+        let conn = &mut get_connection(&self.pool)?;
 
-        let pagination_offset = page * page_size;
+        let mut query = transactions::table
+            .filter(transactions::deleted_at.is_null())
+            .into_boxed();
 
-        todo!()
+        if let Some(ref filters) = filters {
+            if let Some(ref query_filter) = filters.query {
+                query = query.filter(
+                    transactions::description
+                        .like(query_filter)
+                        .or(transactions::notes.like(query_filter)),
+                );
+            }
+            if let Some(ref categories_filter) = filters.categories {
+                query =
+                    query.filter(transactions::transaction_category_id.eq_any(categories_filter));
+            }
+            if let Some(ref type_filter) = filters.transaction_type {
+                query = query.filter(transactions::transaction_type.eq(type_filter));
+            }
+            if let Some(ref start_date_filter) = filters.start_date {
+                query = query.filter(transactions::transaction_date.ge(start_date_filter));
+            }
+            if let Some(ref end_date_filter) = filters.end_date {
+                query = query.filter(transactions::transaction_date.le(end_date_filter));
+            }
+        }
+
+        if let Some(ref sort) = sort {
+            match sort.field.as_str() {
+                "description" => {
+                    if sort.desc {
+                        query = query.order((transactions::description.desc(),));
+                    } else {
+                        query = query.order((transactions::description.asc(),));
+                    }
+                }
+                "type" => {
+                    if sort.desc {
+                        query = query.order((transactions::transaction_type.desc(),));
+                    } else {
+                        query = query.order((transactions::transaction_type.asc(),));
+                    }
+                }
+                "amount" => {
+                    if sort.desc {
+                        query = query.order((transactions::amount.desc(),));
+                    } else {
+                        query = query.order((transactions::amount.asc(),));
+                    }
+                }
+                "date" => {
+                    if sort.desc {
+                        query = query.order((
+                            transactions::transaction_date.desc(),
+                            transactions::created_at.asc(),
+                        ));
+                    } else {
+                        query = query.order((
+                            transactions::transaction_date.asc(),
+                            transactions::created_at.asc(),
+                        ));
+                    }
+                }
+                _ => {
+                    query = query.order((
+                        transactions::transaction_date.desc(),
+                        transactions::created_at.asc(),
+                    ))
+                } // Default order
+            }
+        } else {
+            query = query.order((
+                transactions::transaction_date.desc(),
+                transactions::created_at.asc(),
+            )); // Default order
+        }
+
+        let (page_rows, total_pages) = query
+            .select(transactions::all_columns)
+            .paginate(page)
+            .per_page(per_page)
+            .load_and_count_pages::<TransactionRow>(conn)?;
+
+        let data = page_rows.into_iter().map(Transaction::from).collect();
+
+        Ok(PaginatedData {
+            data,
+            page,
+            per_page,
+            total_pages,
+        })
     }
 
     fn get_transaction(&self, id: &str) -> Result<Transaction> {

@@ -21,6 +21,9 @@ pub use test_utils::*;
 pub mod write_actor;
 pub use write_actor::WriteHandle;
 
+pub mod pagination;
+pub mod sorting;
+
 /// Type alias for the database connection pool.
 ///
 /// This represents a pool of SQLite connections managed by r2d2, providing

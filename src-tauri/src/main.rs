@@ -63,14 +63,15 @@ fn main() {
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
-            commands::transaction_categories::get_transaction_categories,
             commands::transaction_categories::get_transaction_category,
+            commands::transaction_categories::get_transaction_categories,
             commands::transaction_categories::get_transaction_categories_by_parent_id,
             commands::transaction_categories::create_transaction_category,
             commands::transaction_categories::update_transaction_category,
             commands::transaction_categories::delete_transaction_category,
             commands::transaction_categories::delete_transaction_categories,
             commands::transaction_categories::import_transaction_categories,
+            commands::transactions::get_transaction,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

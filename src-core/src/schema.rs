@@ -18,7 +18,7 @@ diesel::table! {
         id -> Text,
         description -> Nullable<Text>,
         amount -> Integer,
-        date -> Timestamp,
+        transaction_date -> Timestamp,
         transaction_type -> Text,
         transaction_category_id -> Nullable<Text>,
         notes -> Nullable<Text>,

@@ -4,5 +4,5 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct Sort {
     pub field: String,
-    pub direction: String,
+    pub desc: bool,
 }

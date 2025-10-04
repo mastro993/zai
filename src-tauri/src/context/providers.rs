@@ -2,6 +2,8 @@ use crate::context::ServiceContext;
 use std::sync::Arc;
 use zai_core::features::transaction_categories::transaction_categories_repository::TransactionCategoriesRepository;
 use zai_core::features::transaction_categories::transaction_categories_service::TransactionCategoriesService;
+use zai_core::features::transactions::transactions_repository::TransactionsRepository;
+use zai_core::features::transactions::transactions_service::TransactionsService;
 
 pub async fn initialize_context(
     app_data_dir: &str,
@@ -19,13 +21,17 @@ pub async fn initialize_context(
         pool.clone(),
         writer.clone(),
     ));
+    let transactions_repository =
+        Arc::new(TransactionsRepository::new(pool.clone(), writer.clone()));
 
     // Services
     let transaction_categories_service = Arc::new(TransactionCategoriesService::new(
         transaction_categories_repository.clone(),
     ));
+    let transactions_service = Arc::new(TransactionsService::new(transactions_repository.clone()));
 
     Ok(ServiceContext {
         transaction_categories_service,
+        transactions_service,
     })
 }

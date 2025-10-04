@@ -3,19 +3,18 @@ use crate::{
     features::transactions::transactions_models::{
         NewTransaction, TransactionSearchFilters, TransactionUpdate,
     },
-    utils::sorting::Sort,
 };
 use async_trait::async_trait;
-
+use crate::database::pagination::PaginatedData;
+use crate::database::sorting::Sort;
 use crate::features::transactions::transactions_models::Transaction;
-use crate::utils::pagination::PaginatedData;
 
 #[async_trait]
 pub trait TransactionsRepositoryTrait: Send + Sync {
     fn get_transactions(
         &self,
-        page: i32,
-        page_size: i32,
+        page: i64,
+        per_page: i64,
         filters: Option<TransactionSearchFilters>,
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>>;
@@ -39,11 +38,11 @@ pub trait TransactionsRepositoryTrait: Send + Sync {
 pub trait TransactionsServiceTrait: Send + Sync {
     fn get_transactions(
         &self,
-        page: i32,
-        page_size: i32,
+        page: i64,
+        per_page: i64,
         filters: Option<TransactionSearchFilters>,
         sort: Option<Sort>,
-    ) -> Result<Vec<Transaction>>;
+    ) -> Result<PaginatedData<Transaction>>;
     fn get_transaction(&self, id: &str) -> Result<Transaction>;
 
     async fn create_transaction(&self, new_category: NewTransaction) -> Result<Transaction>;
