@@ -114,81 +114,35 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
 #[cfg(test)]
 mod tests {
     use super::TransactionCategoriesServiceTrait;
-    use crate::errors::Error;
-    // ...existing code...
-
-    use crate::features::transaction_categories::{
-        transaction_categories_service::TransactionCategoriesService,
-        transaction_categories_traits::TransactionCategoriesRepositoryTrait,
-    };
-
-    use crate::errors::Result;
-    use crate::features::transaction_categories::transaction_categories_models::{
-        NewTransactionCategory, TransactionCategory, TransactionCategoryUpdate,
-    };
-    use async_trait::async_trait;
+    use crate::database;
+    use crate::database::run_migrations;
+    use crate::database::write_actor::spawn_writer;
+    use crate::features::transaction_categories::transaction_categories_models::NewTransactionCategory;
+    use crate::features::transaction_categories::transaction_categories_repository::TransactionCategoriesRepository;
+    use crate::features::transaction_categories::transaction_categories_service::TransactionCategoriesService;
+    use diesel::SqliteConnection;
+    use diesel::r2d2::{self, Pool};
     use std::sync::Arc;
+    use tokio;
 
-    struct MockRepo {
-        // ...existing code...
-        pub created: Vec<NewTransactionCategory>,
-    }
+    fn setup_test_repo(db_path: &str) -> TransactionCategoriesRepository {
+        let manager = r2d2::ConnectionManager::<SqliteConnection>::new(db_path);
+        let pool = Pool::builder()
+            .build(manager)
+            .expect("Failed to create pool");
 
-    #[async_trait]
-    impl TransactionCategoriesRepositoryTrait for MockRepo {
-        fn get_categories_by_parent_id(
-            &self,
-            _parent_id: &str,
-        ) -> Result<Vec<TransactionCategory>> {
-            Ok(vec![])
-        }
-        fn get_categories(&self) -> Result<Vec<TransactionCategory>> {
-            Ok(vec![])
-        }
-        fn get_category(&self, _category_id: &str) -> Result<TransactionCategory> {
-            Err(Error::NotFound("mock not found".to_string()))
-        }
-        async fn create_category(
-            &self,
-            category: NewTransactionCategory,
-        ) -> Result<TransactionCategory> {
-            let mut created = self.created.clone();
-            created.push(category.clone());
-            Ok(TransactionCategory {
-                id: category.id.clone().unwrap_or_default(),
-                name: category.name.clone(),
-                parent_id: category.parent_id.clone(),
-                description: category.description.clone(),
-                color: category.color.clone(),
-            })
-        }
-        async fn update_category(
-            &self,
-            _category: TransactionCategoryUpdate,
-        ) -> Result<TransactionCategory> {
-            Err(Error::NotFound("mock not found".to_string()))
-        }
-        async fn delete_category(&self, _category_id: &str) -> Result<TransactionCategory> {
-            Err(Error::NotFound("mock not found".to_string()))
-        }
-        async fn delete_categories(
-            &self,
-            _category_ids: Vec<&str>,
-        ) -> Result<Vec<TransactionCategory>> {
-            Err(Error::NotFound("mock not found".to_string()))
-        }
-        async fn import_categories(
-            &self,
-            _categories: Vec<NewTransactionCategory>,
-        ) -> Result<Vec<TransactionCategory>> {
-            Ok(vec![])
-        }
+        run_migrations(&pool.clone()).unwrap();
+
+        let writer = spawn_writer(pool.clone());
+
+        TransactionCategoriesRepository::new(Arc::new(pool), writer)
     }
 
     #[tokio::test]
     async fn test_import_categories() {
-        let repo = Arc::new(MockRepo { created: vec![] });
-        let service = TransactionCategoriesService::new(repo.clone());
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let service = TransactionCategoriesService::new(Arc::new(repo));
 
         let parent = NewTransactionCategory {
             id: Some("parent1".to_string()),
