@@ -8,10 +8,10 @@ use crate::Error;
 #[serde(rename_all = "camelCase")]
 pub struct TransactionCategory {
     pub id: String,
-    pub parent_id: Option<String>,
     pub name: String,
     pub description: Option<String>,
     pub color: Option<String>,
+    pub parent: Option<Box<Self>>,
 }
 
 #[derive(
@@ -45,10 +45,10 @@ impl From<TransactionCategoryRow> for TransactionCategory {
     fn from(value: TransactionCategoryRow) -> Self {
         Self {
             id: value.id,
-            parent_id: value.parent_id,
             name: value.name,
             description: value.description,
             color: value.color,
+            parent: None,
         }
     }
 }

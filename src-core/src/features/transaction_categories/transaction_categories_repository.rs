@@ -28,41 +28,66 @@ impl TransactionCategoriesRepository {
 
 #[async_trait]
 impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
-    fn get_categories(&self) -> Result<Vec<TransactionCategory>> {
-        let mut conn = get_connection(&self.pool)?;
+    fn get_categories(&self, parent_id: Option<&str>) -> Result<Vec<TransactionCategory>> {
+        let conn = &mut get_connection(&self.pool)?;
 
-        let results = transaction_categories::table
+        let parent_categories = diesel::alias!(transaction_categories as parent_categories);
+        let mut query = transaction_categories::table
+            .left_join(
+                parent_categories.on(
+                    // Compare the child's parent_id with the aliased parent's id.
+                    // We use .nullable() to match the types, as parent_id is nullable.
+                    transaction_categories::parent_id.eq(parent_categories
+                        .field(transaction_categories::id)
+                        .nullable()),
+                ),
+            )
             .filter(transaction_categories::deleted_at.is_null())
-            .load::<TransactionCategoryRow>(&mut conn)?;
+            .into_boxed();
 
-        let categories: Vec<TransactionCategory> =
-            results.into_iter().map(TransactionCategory::from).collect();
+        if let Some(ref pid) = parent_id {
+            query = query.filter(transaction_categories::parent_id.eq(pid));
+        }
+
+        let results =
+            query.load::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)?;
+
+        let categories: Vec<TransactionCategory> = results
+            .into_iter()
+            .map(|(row, parent_row)| {
+                let mut category: TransactionCategory = row.into();
+                category.parent = parent_row.map(TransactionCategory::from).map(Box::new);
+                category
+            })
+            .collect();
+
         Ok(categories)
     }
 
     fn get_category(&self, id: &str) -> Result<TransactionCategory> {
-        let mut conn = get_connection(&self.pool)?;
+        let conn = &mut get_connection(&self.pool)?;
 
-        let result = transaction_categories::table
+        let parent_categories = diesel::alias!(transaction_categories as parent_categories);
+
+        let (category_row, parent_row) = transaction_categories::table
+            .left_join(
+                parent_categories.on(
+                    // Compare the child's parent_id with the aliased parent's id.
+                    // We use .nullable() to match the types, as parent_id is nullable.
+                    transaction_categories::parent_id.eq(parent_categories
+                        .field(transaction_categories::id)
+                        .nullable()),
+                ),
+            )
+            .filter(transaction_categories::id.eq(id))
             .filter(transaction_categories::deleted_at.is_null())
-            .find(id)
-            .first::<TransactionCategoryRow>(&mut conn)
+            .first::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)
             .map_err(|e| Error::NotFound(e.to_string()))?;
 
-        Ok(result.into())
-    }
+        let mut category: TransactionCategory = category_row.into();
+        category.parent = parent_row.map(TransactionCategory::from).map(Box::new);
 
-    fn get_categories_by_parent_id(&self, parent_id: &str) -> Result<Vec<TransactionCategory>> {
-        let mut conn = get_connection(&self.pool)?;
-
-        let results = transaction_categories::table
-            .filter(transaction_categories::deleted_at.is_null())
-            .filter(transaction_categories::parent_id.eq(parent_id))
-            .load::<TransactionCategoryRow>(&mut conn)?;
-
-        let categories: Vec<TransactionCategory> =
-            results.into_iter().map(TransactionCategory::from).collect();
-        Ok(categories)
+        Ok(category)
     }
 
     async fn create_category(
@@ -84,11 +109,26 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .values(&category)
                         .execute(conn)?;
 
-                    let inserted = transaction_categories::table
-                        .filter(transaction_categories::id.eq(&new_id))
-                        .first::<TransactionCategoryRow>(conn)?;
+                    let parent_categories =
+                        diesel::alias!(transaction_categories as parent_categories);
 
-                    Ok(inserted.into())
+                    let (category_row, parent_row) = transaction_categories::table
+                        .left_join(
+                            parent_categories.on(
+                                // Compare the child's parent_id with the aliased parent's id.
+                                // We use .nullable() to match the types, as parent_id is nullable.
+                                transaction_categories::parent_id.eq(parent_categories
+                                    .field(transaction_categories::id)
+                                    .nullable()),
+                            ),
+                        )
+                        .filter(transaction_categories::id.eq(&new_id))
+                        .first::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)?;
+
+                    let mut category: TransactionCategory = category_row.into();
+                    category.parent = parent_row.map(TransactionCategory::from).map(Box::new);
+
+                    Ok(category)
                 },
             )
             .await
@@ -117,7 +157,26 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .set(&category)
                         .execute(conn)?;
 
-                    Ok(category.into())
+                    let parent_categories =
+                        diesel::alias!(transaction_categories as parent_categories);
+
+                    let (category_row, parent_row) = transaction_categories::table
+                        .left_join(
+                            parent_categories.on(
+                                // Compare the child's parent_id with the aliased parent's id.
+                                // We use .nullable() to match the types, as parent_id is nullable.
+                                transaction_categories::parent_id.eq(parent_categories
+                                    .field(transaction_categories::id)
+                                    .nullable()),
+                            ),
+                        )
+                        .filter(transaction_categories::id.eq(&category.id))
+                        .first::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)?;
+
+                    let mut category: TransactionCategory = category_row.into();
+                    category.parent = parent_row.map(TransactionCategory::from).map(Box::new);
+
+                    Ok(category)
                 },
             )
             .await
@@ -237,6 +296,107 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_get_categories() {
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let cat1 = NewTransactionCategory {
+            name: "Cat 1".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            id: None,
+        };
+        let cat2 = NewTransactionCategory {
+            name: "Cat 2".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            id: None,
+        };
+        let cat3 = NewTransactionCategory {
+            name: "Cat 3".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            id: None,
+        };
+
+        repo.create_category(cat1).await.unwrap();
+        repo.create_category(cat2).await.unwrap();
+        let created = repo.create_category(cat3).await.unwrap();
+        repo.delete_category(&created.id).await.unwrap();
+
+        let all = repo.get_categories(None).unwrap();
+        assert!(all.len() == 2);
+    }
+
+    #[tokio::test]
+    async fn test_get_category() {
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let parent = NewTransactionCategory {
+            name: "Parent".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            id: None,
+        };
+        let parent = repo.create_category(parent).await.unwrap();
+
+        let child = NewTransactionCategory {
+            name: "Child".to_string(),
+            parent_id: Some(parent.id.clone()),
+            description: None,
+            color: None,
+            id: None,
+        };
+        let child = repo.create_category(child).await.unwrap();
+
+        let category = repo.get_category(&child.id).unwrap();
+        assert_eq!(category.id, child.id);
+        assert_eq!(category.parent.unwrap().id, parent.id);
+    }
+
+    #[tokio::test]
+    async fn test_get_categories_by_parent_id() {
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let cat1 = NewTransactionCategory {
+            name: "Cat 1".to_string(),
+            parent_id: Some("parent_id".to_string()),
+            description: None,
+            color: None,
+            id: None,
+        };
+        let cat2 = NewTransactionCategory {
+            name: "Cat 2".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            id: None,
+        };
+        let cat3 = NewTransactionCategory {
+            name: "Cat 3".to_string(),
+            parent_id: Some("parent_id".to_string()),
+            description: None,
+            color: None,
+            id: None,
+        };
+
+        repo.create_category(cat1).await.unwrap();
+        repo.create_category(cat2).await.unwrap();
+        let created = repo.create_category(cat3).await.unwrap();
+        repo.delete_category(&created.id).await.unwrap();
+
+        let all = repo.get_categories(Some("parent_id")).unwrap();
+        assert!(all.len() == 1);
+        assert!(all[0].name == "Cat 1");
+    }
+
+    #[tokio::test]
     async fn test_create_category() {
         let temp_db = database::TempDb::new();
         let repo = setup_test_repo(temp_db.path());
@@ -336,109 +496,6 @@ mod tests {
             .unwrap();
 
         assert_eq!(deleted.len(), 2);
-    }
-
-    #[tokio::test]
-    async fn test_get_children() {
-        let temp_db = database::TempDb::new();
-        let repo = setup_test_repo(temp_db.path());
-
-        // Crea parent
-        let parent = NewTransactionCategory {
-            name: "Parent".to_string(),
-            parent_id: None,
-            description: None,
-            color: None,
-            id: None,
-        };
-        let parent = repo.create_category(parent).await.unwrap();
-
-        // Crea child
-        let child = NewTransactionCategory {
-            name: "Child".to_string(),
-            parent_id: Some(parent.id.clone()),
-            description: None,
-            color: None,
-            id: None,
-        };
-        let _child = repo.create_category(child).await.unwrap();
-
-        let children = repo.get_categories_by_parent_id(&parent.id).unwrap();
-        assert_eq!(children.len(), 1);
-        assert_eq!(children[0].name, "Child");
-    }
-
-    #[tokio::test]
-    async fn test_get_categories() {
-        let temp_db = database::TempDb::new();
-        let repo = setup_test_repo(temp_db.path());
-
-        let cat1 = NewTransactionCategory {
-            name: "Cat 1".to_string(),
-            parent_id: None,
-            description: None,
-            color: None,
-            id: None,
-        };
-        let cat2 = NewTransactionCategory {
-            name: "Cat 2".to_string(),
-            parent_id: None,
-            description: None,
-            color: None,
-            id: None,
-        };
-        let cat3 = NewTransactionCategory {
-            name: "Cat 3".to_string(),
-            parent_id: None,
-            description: None,
-            color: None,
-            id: None,
-        };
-
-        repo.create_category(cat1).await.unwrap();
-        repo.create_category(cat2).await.unwrap();
-        let created = repo.create_category(cat3).await.unwrap();
-        repo.delete_category(&created.id).await.unwrap();
-
-        let all = repo.get_categories().unwrap();
-        assert!(all.len() == 2);
-    }
-
-    #[tokio::test]
-    async fn test_get_categories_by_parent_id() {
-        let temp_db = database::TempDb::new();
-        let repo = setup_test_repo(temp_db.path());
-
-        let cat1 = NewTransactionCategory {
-            name: "Cat 1".to_string(),
-            parent_id: Some("parent_id".to_string()),
-            description: None,
-            color: None,
-            id: None,
-        };
-        let cat2 = NewTransactionCategory {
-            name: "Cat 2".to_string(),
-            parent_id: None,
-            description: None,
-            color: None,
-            id: None,
-        };
-        let cat3 = NewTransactionCategory {
-            name: "Cat 3".to_string(),
-            parent_id: Some("parent_id".to_string()),
-            description: None,
-            color: None,
-            id: None,
-        };
-
-        repo.create_category(cat1).await.unwrap();
-        repo.create_category(cat2).await.unwrap();
-        let created = repo.create_category(cat3).await.unwrap();
-        repo.delete_category(&created.id).await.unwrap();
-
-        let all = repo.get_categories_by_parent_id("parent_id").unwrap();
-        assert!(all.len() == 1);
-        assert!(all[0].name == "Cat 1");
     }
 
     #[tokio::test]

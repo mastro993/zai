@@ -3,13 +3,10 @@ use crate::errors::Result;
 use crate::features::transaction_categories::transaction_categories_models::*;
 use async_trait::async_trait;
 
-
-
 #[async_trait]
 pub trait TransactionCategoriesServiceTrait: Send + Sync {
-    fn get_categories(&self) -> Result<Vec<TransactionCategory>>;
+    fn get_categories(&self, parent_id: Option<&str>) -> Result<Vec<TransactionCategory>>;
     fn get_category(&self, category_id: &str) -> Result<TransactionCategory>;
-    fn get_categories_by_parent_id(&self, parent_id: &str) -> Result<Vec<TransactionCategory>>;
 
     async fn create_category(
         &self,
@@ -30,9 +27,8 @@ pub trait TransactionCategoriesServiceTrait: Send + Sync {
 
 #[async_trait]
 pub trait TransactionCategoriesRepositoryTrait: Send + Sync {
-    fn get_categories(&self) -> Result<Vec<TransactionCategory>>;
+    fn get_categories(&self, parent_id: Option<&str>) -> Result<Vec<TransactionCategory>>;
     fn get_category(&self, id: &str) -> Result<TransactionCategory>;
-    fn get_categories_by_parent_id(&self, parent_id: &str) -> Result<Vec<TransactionCategory>>;
 
     async fn create_category(
         &self,

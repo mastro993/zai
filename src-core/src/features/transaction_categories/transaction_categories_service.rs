@@ -22,16 +22,12 @@ impl TransactionCategoriesService {
 
 #[async_trait::async_trait]
 impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
-    fn get_categories(&self) -> Result<Vec<TransactionCategory>> {
-        (*self.repository).get_categories()
+    fn get_categories(&self, parent_id: Option<&str>) -> Result<Vec<TransactionCategory>> {
+        (*self.repository).get_categories(parent_id)
     }
 
     fn get_category(&self, category_id: &str) -> Result<TransactionCategory> {
         (*self.repository).get_category(category_id)
-    }
-
-    fn get_categories_by_parent_id(&self, parent_id: &str) -> Result<Vec<TransactionCategory>> {
-        (*self.repository).get_categories_by_parent_id(parent_id)
     }
 
     async fn create_category(

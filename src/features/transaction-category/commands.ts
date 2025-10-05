@@ -8,16 +8,19 @@ import {
   TransactionCategorySchema,
 } from "./types";
 
-export const getTransactionCategories =
-  async (): Promise<TransactionCategories> => {
-    try {
-      const result = await invokeTauri("get_transaction_categories");
-      return TransactionCategoriesSchema.parse(result);
-    } catch (error) {
-      logger.error("Error fetching transaction categories");
-      throw error;
-    }
-  };
+export const getTransactionCategories = async (
+  parentId?: string
+): Promise<TransactionCategories> => {
+  try {
+    const result = await invokeTauri("get_transaction_categories", {
+      parentId: parentId,
+    });
+    return TransactionCategoriesSchema.parse(result);
+  } catch (error) {
+    logger.error("Error fetching transaction categories");
+    throw error;
+  }
+};
 
 export const getTransactionCategory = async (
   category_id: string

@@ -21,30 +21,14 @@ pub async fn get_transaction_category(
 
 #[tauri::command]
 pub async fn get_transaction_categories(
+    parent_id: Option<&str>,
     state: State<'_, Arc<ServiceContext>>,
 ) -> Result<Vec<TransactionCategory>, String> {
     debug!("Fetching transaction categories...");
     state
         .transaction_categories_service()
-        .get_categories()
+        .get_categories(parent_id)
         .map_err(|e| format!("Failed to load transaction_categories: {}", e))
-}
-
-#[tauri::command]
-pub async fn get_transaction_categories_by_parent_id(
-    parent_id: &str,
-    state: State<'_, Arc<ServiceContext>>,
-) -> Result<Vec<TransactionCategory>, String> {
-    debug!("Getting transaction category...{}", parent_id);
-    state
-        .transaction_categories_service()
-        .get_categories_by_parent_id(parent_id)
-        .map_err(|e| {
-            format!(
-                "Failed to get transaction categories by parent id {}: {}",
-                parent_id, e
-            )
-        })
 }
 
 #[tauri::command]
