@@ -44,7 +44,7 @@ import { CheckIcon, ChevronDownIcon, Command } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import { useParentTransactionCategories } from "../api/useParentTransactionCategories";
+import { useParentTransactionCategories } from "../queries/useParentTransactionCategories";
 import {
   NewTransactionCategory,
   TransactionCategory,

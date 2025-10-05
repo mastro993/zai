@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { exportToFile } from "@/lib/file-processor";
 import { useCallback, useId, useState } from "react";
 import { toast } from "sonner";
-import { useTransactionCategories } from "../api/useTransactionCategories";
+import { useTransactionCategories } from "../queries/useTransactionCategories";
 
 const exportFormatOptions = [
   {

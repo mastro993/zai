@@ -13,7 +13,7 @@ import { TrashIcon, X } from "lucide-react";
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
-import { useDeleteTransactionCategoryMutation } from "../api/useDeleteTransactionCategoryMutation";
+import { useDeleteTransactionCategoryMutation } from "../mutations/useDeleteTransactionCategoryMutation";
 import { useSelectionStore } from "../stores/selection";
 
 export const TransactionCategorySelection = () => {

@@ -19,7 +19,7 @@ import { importFromFile } from "@/lib/file-processor";
 import { Download, Loader2 } from "lucide-react";
 import { Result } from "neverthrow";
 import { useCallback, useEffect, useState } from "react";
-import { useImportTransactionCategoriesMutation } from "../api/useImportTransactionCategoriesMutation";
+import { useImportTransactionCategoriesMutation } from "../mutations/useImportTransactionCategoriesMutation";
 import {
   NewTransactionCategories,
   TransactionCategoriesSchema,

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { useCreateTransactionCategoryMutation } from "../api/useCreateTransactionCategoryMutation";
+import { useCreateTransactionCategoryMutation } from "../mutations/useCreateTransactionCategoryMutation";
 import { NewTransactionCategory } from "../types";
 import { TransactionCategoryFormDialog } from "./TransactionCategoryFormDialog";
 

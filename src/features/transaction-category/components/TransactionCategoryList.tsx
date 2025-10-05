@@ -1,7 +1,7 @@
 import { EmptyView } from "@/components/views/EmptyView";
 import { useEffect } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { useTransactionCategories } from "../api/useTransactionCategories";
+import { useTransactionCategories } from "../queries/useTransactionCategories";
 import { useSelectionStore } from "../stores/selection";
 import { TransactionCategoryListItem } from "./TransactionCategoryListItem";
 

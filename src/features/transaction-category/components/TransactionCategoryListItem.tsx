@@ -17,13 +17,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { withMetaKey } from "@/lib/handlers";
 import { cn } from "@/lib/utils";
-import { withMetaKey } from "@/utils/handlers";
 import { Ellipsis } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useDeleteTransactionCategoryMutation } from "../api/useDeleteTransactionCategoryMutation";
-import { useUpdateTransactionCategoryMutation } from "../api/useUpdateTransactionCategoryMutation";
+import { useDeleteTransactionCategoryMutation } from "../mutations/useDeleteTransactionCategoryMutation";
+import { useUpdateTransactionCategoryMutation } from "../mutations/useUpdateTransactionCategoryMutation";
 import { useSelectionStore } from "../stores/selection";
 import { NewTransactionCategory, TransactionCategory } from "../types";
 import { TransactionCategoryBadge } from "./TransactionCategoryBadge";
