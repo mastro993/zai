@@ -8,6 +8,7 @@ use crate::Error;
 #[serde(rename_all = "camelCase")]
 pub struct TransactionCategory {
     pub id: String,
+    pub parent_id: Option<String>,
     pub name: String,
     pub description: Option<String>,
     pub color: Option<String>,
@@ -28,6 +29,7 @@ pub struct TransactionCategory {
 )]
 #[diesel(table_name = crate::schema::transaction_categories)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+#[diesel(belongs_to(TransactionCategoryRow, foreign_key = parent_id))]
 pub struct TransactionCategoryRow {
     pub id: String,
     pub parent_id: Option<String>,
@@ -45,6 +47,7 @@ impl From<TransactionCategoryRow> for TransactionCategory {
     fn from(value: TransactionCategoryRow) -> Self {
         Self {
             id: value.id,
+            parent_id: value.parent_id,
             name: value.name,
             description: value.description,
             color: value.color,

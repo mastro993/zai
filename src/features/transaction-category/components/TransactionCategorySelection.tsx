@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { TrashIcon, X } from "lucide-react";
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { toast } from "sonner";
 import { useDeleteTransactionCategoryMutation } from "../mutations/useDeleteTransactionCategoryMutation";
 import { useSelectionStore } from "../stores/selection";
 
@@ -26,10 +25,6 @@ export const TransactionCategorySelection = () => {
   const handleDelete = async () => {
     deleteMultipleTransactionCategory(selectedCategoryIds, {
       onSuccess: () => {
-        const length = selectedCategoryIds.length;
-        toast.success(
-          `${length} ${length === 1 ? "category" : "categories"} deleted`
-        );
         setSelectedCategoryIds(undefined);
       },
     });

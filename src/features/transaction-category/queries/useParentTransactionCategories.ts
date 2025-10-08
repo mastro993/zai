@@ -5,6 +5,6 @@ import { TransactionCategory } from "../types";
 export const useParentTransactionCategories = () =>
   useQuery<Array<TransactionCategory>>({
     queryKey: ["transactionCategories"],
-    queryFn: getTransactionCategories,
-    select: (categories) => categories.filter((c) => !c.parentId),
+    queryFn: async () => getTransactionCategories(),
+    select: (categories) => categories.filter((c) => !c.parent),
   });

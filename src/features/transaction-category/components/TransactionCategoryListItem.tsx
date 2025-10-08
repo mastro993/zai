@@ -21,7 +21,6 @@ import { withMetaKey } from "@/lib/handlers";
 import { cn } from "@/lib/utils";
 import { Ellipsis } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import { useDeleteTransactionCategoryMutation } from "../mutations/useDeleteTransactionCategoryMutation";
 import { useUpdateTransactionCategoryMutation } from "../mutations/useUpdateTransactionCategoryMutation";
 import { useSelectionStore } from "../stores/selection";
@@ -85,7 +84,6 @@ const TransactionCategoryItemMenu = ({
 
   const handleDelete = async () => {
     await deleteTransactionCategory([category.id]);
-    toast.success(`"${category.name}" category deleted`);
     setShowDeleteDialog(false);
   };
 
