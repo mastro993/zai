@@ -10,14 +10,14 @@ export const useCreateTransactionCategoryMutation = () => {
     async mutationFn(transactionCategory: NewTransactionCategory) {
       return createTransactionCategory(transactionCategory);
     },
-    async onSuccess() {
+    async onSuccess({ name }) {
       await queryClient.invalidateQueries({
         queryKey: ["transactionCategories"],
       });
-      toast.success("Transaction category added");
+      toast.success(`Successfully added "${name}" category`);
     },
     onError() {
-      toast.error("Failed to add transaction category");
+      toast.error("Failed to add new transaction category");
     },
   });
 };

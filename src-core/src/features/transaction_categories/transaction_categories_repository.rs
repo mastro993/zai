@@ -182,29 +182,6 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
             .await
     }
 
-    async fn delete_category(&self, id: &str) -> Result<TransactionCategory> {
-        let category_id = id.to_owned();
-
-        self.writer
-            .exec(
-                move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
-                    let now = Local::now().naive_utc();
-
-                    diesel::update(transaction_categories::table.find(&category_id))
-                        .set(transaction_categories::deleted_at.eq(now))
-                        .execute(conn)?;
-
-                    let deleted = transaction_categories::table
-                        .find(&category_id)
-                        .filter(transaction_categories::deleted_at.is_not_null())
-                        .first::<TransactionCategoryRow>(conn)?;
-
-                    Ok(deleted.into())
-                },
-            )
-            .await
-    }
-
     async fn delete_categories(&self, ids: Vec<&str>) -> Result<Vec<TransactionCategory>> {
         let owned_ids = ids.iter().map(|&s| s.to_string()).collect::<Vec<String>>();
         self.writer
@@ -325,7 +302,7 @@ mod tests {
         repo.create_category(cat1).await.unwrap();
         repo.create_category(cat2).await.unwrap();
         let created = repo.create_category(cat3).await.unwrap();
-        repo.delete_category(&created.id).await.unwrap();
+        repo.delete_categories(vec![&created.id]).await.unwrap();
 
         let all = repo.get_categories(None).unwrap();
         assert!(all.len() == 2);
@@ -389,7 +366,7 @@ mod tests {
         repo.create_category(cat1).await.unwrap();
         repo.create_category(cat2).await.unwrap();
         let created = repo.create_category(cat3).await.unwrap();
-        repo.delete_category(&created.id).await.unwrap();
+        repo.delete_categories(vec![&created.id]).await.unwrap();
 
         let all = repo.get_categories(Some("parent_id")).unwrap();
         assert!(all.len() == 1);
@@ -446,25 +423,6 @@ mod tests {
             updated_category.description.as_deref(),
             Some("Updated description")
         );
-    }
-
-    #[tokio::test]
-    async fn test_delete_category() {
-        let temp_db = database::TempDb::new();
-        let repo = setup_test_repo(temp_db.path());
-
-        let new_category = NewTransactionCategory {
-            name: "To Delete".to_string(),
-            parent_id: None,
-            description: None,
-            color: None,
-            id: None,
-        };
-        let created = repo.create_category(new_category).await.unwrap();
-
-        let deleted = repo.delete_category(&created.id).await.unwrap();
-
-        assert_eq!(created.id, deleted.id);
     }
 
     #[tokio::test]

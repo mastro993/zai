@@ -44,10 +44,6 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
         (*self.repository).update_category(category).await
     }
 
-    async fn delete_category(&self, category_id: &str) -> Result<TransactionCategory> {
-        (*self.repository).delete_category(category_id).await
-    }
-
     async fn delete_categories(&self, category_ids: Vec<&str>) -> Result<Vec<TransactionCategory>> {
         (*self.repository).delete_categories(category_ids).await
     }

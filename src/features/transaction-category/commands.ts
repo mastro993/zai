@@ -84,20 +84,6 @@ export const updateTransactionCategory = async (
   }
 };
 
-export const deleteTransactionCategory = async (
-  category_id: string
-): Promise<TransactionCategory> => {
-  try {
-    const result = await invokeTauri("delete_transaction_category", {
-      category_id: category_id,
-    });
-    return TransactionCategorySchema.parse(result);
-  } catch (error) {
-    logger.error("Error deleting transaction category");
-    throw error;
-  }
-};
-
 export const deleteTransactionCategories = async (
   category_ids: ReadonlyArray<string>
 ): Promise<TransactionCategories> => {

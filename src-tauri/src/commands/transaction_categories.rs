@@ -70,24 +70,6 @@ pub async fn update_transaction_category(
 }
 
 #[tauri::command]
-pub async fn delete_transaction_category(
-    category_id: &str,
-    state: State<'_, Arc<ServiceContext>>,
-) -> Result<TransactionCategory, String> {
-    debug!("Deleting transaction category {}...", category_id);
-    state
-        .transaction_categories_service()
-        .delete_category(category_id)
-        .await
-        .map_err(|e| {
-            format!(
-                "Failed to delete transaction category {}: {}",
-                category_id, e
-            )
-        })
-}
-
-#[tauri::command]
 pub async fn delete_transaction_categories(
     category_ids: Vec<&str>,
     state: State<'_, Arc<ServiceContext>>,
