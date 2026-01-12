@@ -11,6 +11,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { exportToFile } from "@/lib/file-processor";
+import { Result } from "@praha/byethrow";
 import { useCallback, useId, useState } from "react";
 import { toast } from "sonner";
 import { useTransactionCategories } from "../queries/useTransactionCategories";
@@ -49,7 +50,7 @@ export function TransactionCategoryExportDialog(
       extension: exportFormat,
     });
 
-    if (result.isErr()) {
+    if (Result.isFailure(result)) {
       toast.error("Failed to export transaction categories");
       dialogProps.onOpenChange?.(false);
       setIsExporting(false);

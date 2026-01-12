@@ -1,6 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { readTextFile } from "@tauri-apps/plugin-fs";
-import { err, ok, okAsync, Result, ResultAsync } from "neverthrow";
 import {
   FileProcessorError,
   FileReadError,
@@ -8,6 +7,7 @@ import {
   NoFilePathError,
 } from "./error";
 import { getParser } from "./parser";
+import { Result } from "@praha/byethrow";
 import { AcceptedFileExtension, AcceptedFileExtensions } from "./types";
 import { getFilter } from "./utils";
 
@@ -19,39 +19,38 @@ const isValidFileExtension = (
 
 const getFileExtension = (
   filePath: string
-): Result<AcceptedFileExtension, InvalidFileExtensionError> => {
+): Result.Result<AcceptedFileExtension, InvalidFileExtensionError> => {
   const extension = filePath.split(".").pop();
 
   if (!extension) {
-    return err(new InvalidFileExtensionError("undefined"));
+    return Result.fail(new InvalidFileExtensionError("undefined"));
   }
 
   if (!isValidFileExtension(extension)) {
-    return err(new InvalidFileExtensionError(extension));
+    return Result.fail(new InvalidFileExtensionError(extension));
   }
 
-  return ok(extension);
+  return Result.succeed(extension);
 };
 
-const openFileDialog = ResultAsync.fromThrowable(
-  () => open({ filters: AcceptedFileExtensions.map(getFilter) }),
-  (e) => new FileProcessorError("Failed to open file dialog", e)
-);
+const openFileDialog = Result.try({
+  try: () => open({ filters: AcceptedFileExtensions.map(getFilter) }),
+  catch: (e) => new FileProcessorError("Failed to open file dialog", e),
+});
 
-const readFile = ResultAsync.fromThrowable(
-  (filePath: string) => readTextFile(filePath),
-  (e) => new FileReadError(e)
-);
+const readFile = Result.try({
+  try: (filePath: string) => readTextFile(filePath),
+  catch: (e) => new FileReadError(e),
+});
 
 export const importFromFile = () =>
-  openFileDialog()
-    .andThen((path) => (path ? ok(path) : err(new NoFilePathError())))
-    .andThen((path) => {
-      const parser = getFileExtension(path)
-        .asyncAndThen((_) => okAsync(_))
-        .map(getParser);
-      const data = readFile(path);
-
-      return ResultAsync.combine([parser, data]);
-    })
-    .map(([parser, data]) => parser(data));
+  Result.pipe(
+    openFileDialog(),
+    Result.andThen((path) =>
+      path ? Result.succeed(path) : Result.fail(new NoFilePathError())
+    ),
+    Result.andThen((path) =>
+      Result.collect([getFileExtension(path), readFile(path)])
+    ),
+    Result.andThen(([extension, data]) => getParser(extension)(data))
+  );

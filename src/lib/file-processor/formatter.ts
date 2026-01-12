@@ -1,15 +1,15 @@
 import Papa from "papaparse";
 import { AcceptedFileExtension, FileData } from "./types";
 import { FileProcessorError } from "./error";
-import { Result } from "neverthrow";
+import { Result } from "@praha/byethrow";
 
-const formatJson = Result.fromThrowable(
-  (data: FileData) => JSON.stringify(data, null, 2),
-  (e) => new FileProcessorError("Failed to format JSON", e)
-);
+const formatJson = Result.try({
+  try: (data: FileData) => JSON.stringify(data, null, 2),
+  catch: (e) => new FileProcessorError("Failed to format JSON", e),
+});
 
-const formatCsv = Result.fromThrowable(
-  (data: FileData) => {
+const formatCsv = Result.try({
+  try: (data: FileData) => {
     if (Array.isArray(data)) {
       return Papa.unparse(data);
     }
@@ -22,12 +22,12 @@ const formatCsv = Result.fromThrowable(
 
     return Papa.unparse([{ value: String(data) }]);
   },
-  (e) => new FileProcessorError("Failed to format CSV", e)
-);
+  catch: (e) => new FileProcessorError("Failed to format CSV", e),
+});
 
 const formatter: Record<
   AcceptedFileExtension,
-  (data: FileData) => Result<string, FileProcessorError>
+  (data: FileData) => Result.Result<string, FileProcessorError>
 > = {
   json: formatJson,
   csv: formatCsv,
@@ -35,5 +35,5 @@ const formatter: Record<
 
 export const getFormatter = (
   extension: AcceptedFileExtension
-): ((data: FileData) => Result<string, FileProcessorError>) =>
+): ((data: FileData) => Result.Result<string, FileProcessorError>) =>
   formatter[extension];

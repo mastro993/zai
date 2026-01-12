@@ -5,7 +5,8 @@ export const useAddTransaction = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    async mutationFn(transaction: any) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async mutationFn(_transaction: unknown) {
       return [];
     },
     async onSuccess() {

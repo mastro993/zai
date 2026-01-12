@@ -1,48 +1,56 @@
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
-import { err, ok, ResultAsync } from "neverthrow";
+import { Result } from "@praha/byethrow";
 import { FileProcessorError, FileWriteError, NoFilePathError } from "./error";
 import { getFormatter } from "./formatter";
-import { AcceptedFileExtension, FileData } from "./types";
+import { AcceptedFileExtension } from "./types";
 import { getFilter } from "./utils";
 import { formatDate } from "date-fns";
 
 export type ExportOptions = {
-  data: FileData;
+  data: unknown;
   extension: AcceptedFileExtension;
   fileName: string;
 };
 
-const openSaveDialog = ResultAsync.fromThrowable(
-  (defaultPath: string, extension: AcceptedFileExtension) =>
+const openSaveDialog = Result.try({
+  try: (defaultPath: string, extension: AcceptedFileExtension) =>
     save({
       defaultPath,
       filters: [getFilter(extension)],
       canCreateDirectories: true,
     }),
-  (e) => new FileProcessorError("Failed to open save dialog", e)
-);
+  catch: (e) => new FileProcessorError("Failed to open save dialog", e),
+});
 
-const writeToFile = ResultAsync.fromThrowable(
-  (filePath: string, data: string) => writeTextFile(filePath, data),
-  (e) => new FileWriteError(e)
-);
+const writeToFile = Result.try({
+  try: (filePath: string, data: string) => writeTextFile(filePath, data),
+  catch: (e) => new FileWriteError(e),
+});
 
 export const exportToFile = ({
   data,
   extension,
   fileName,
-}: ExportOptions): ResultAsync<
+}: ExportOptions): Result.ResultAsync<
   void,
   FileProcessorError | NoFilePathError | FileWriteError
 > => {
   const formattedDate = formatDate(new Date(), "yyyy-MM-dd-HH-mm-ss");
   const defaultPath = `${fileName}_${formattedDate}.${extension}`;
+
   const format = getFormatter(extension);
 
-  return format(data).asyncAndThen((data) =>
-    openSaveDialog(defaultPath, extension)
-      .andThen((path) => (path ? ok(path) : err(new NoFilePathError())))
-      .andThen((filePath) => writeToFile(filePath, data))
+  return Result.pipe(
+    openSaveDialog(defaultPath, extension),
+    Result.andThen((path) =>
+      path ? Result.succeed(path) : Result.fail(new NoFilePathError())
+    ),
+    Result.andThen((path) =>
+      Result.pipe(
+        format(data),
+        Result.andThen((formattedData) => writeToFile(path, formattedData))
+      )
+    )
   );
 };

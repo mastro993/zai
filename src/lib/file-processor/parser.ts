@@ -1,29 +1,22 @@
 import Papa from "papaparse";
 import { ParseError } from "./error";
 import { AcceptedFileExtension, ParsedData } from "./types";
-import { ok, err, Result } from "neverthrow";
+import { Result } from "@praha/byethrow";
 
-const parseJson = (jsonString: string): Result<ParsedData, ParseError> => {
-  try {
-    return ok(JSON.parse(jsonString));
-  } catch (e: unknown) {
-    return err(new ParseError(e));
-  }
-};
+const parseJson = Result.try({
+  try: (jsonString: string): ParsedData => JSON.parse(jsonString),
+  catch: (e) => new ParseError(e),
+});
 
-const parseCsv = (csvString: string): Result<ParsedData, ParseError> => {
-  try {
-    return ok(
-      Papa.parse(csvString, { header: true, skipEmptyLines: true }).data
-    );
-  } catch (e: unknown) {
-    return err(new ParseError(e));
-  }
-};
+const parseCsv = Result.try({
+  try: (csvString: string) =>
+    Papa.parse(csvString, { header: true, skipEmptyLines: true }).data,
+  catch: (e) => new ParseError(e),
+});
 
 const parser: Record<
   AcceptedFileExtension,
-  (data: string) => Result<ParsedData, ParseError>
+  (data: string) => Result.Result<ParsedData, ParseError>
 > = {
   json: parseJson,
   csv: parseCsv,
@@ -31,4 +24,5 @@ const parser: Record<
 
 export const getParser = (
   extension: AcceptedFileExtension
-): ((data: string) => Result<ParsedData, ParseError>) => parser[extension];
+): ((data: string) => Result.Result<ParsedData, ParseError>) =>
+  parser[extension];

@@ -7,7 +7,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import * as gocardless from "@/lib/gocardless";
 import { createFileRoute } from "@tanstack/react-router";
 import { BoxIcon, HouseIcon, PanelsTopLeftIcon } from "lucide-react";
 
@@ -16,10 +15,7 @@ export const Route = createFileRoute("/settings/")({
 });
 
 function RouteComponent() {
-  const getAccessToken = async () => {
-    const accessToken = await gocardless.getAccessToken();
-    console.log(accessToken);
-  };
+  const getAccessToken = async () => {};
 
   return (
     <div>

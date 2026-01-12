@@ -16,8 +16,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { importFromFile } from "@/lib/file-processor";
+import { Result } from "@praha/byethrow";
 import { Download, Loader2 } from "lucide-react";
-import { Result } from "neverthrow";
 import { useCallback, useEffect, useState } from "react";
 import { useImportTransactionCategoriesMutation } from "../mutations/useImportTransactionCategoriesMutation";
 import {
@@ -56,13 +56,10 @@ export function TransactionCategoryImportDialog(
 
   const selectFile = useCallback(
     () =>
-      importFromFile()
-        .andThen(
-          Result.fromThrowable((data) => {
-            return TransactionCategoriesSchema.parse(data.value);
-          })
-        )
-        .map((data) => {
+      Result.pipe(
+        importFromFile(),
+        Result.andThen(Result.parse(TransactionCategoriesSchema)),
+        Result.map((data) => {
           return data.map((category) => {
             return {
               ...category,
@@ -71,8 +68,9 @@ export function TransactionCategoryImportDialog(
                 : undefined,
             };
           });
-        })
-        .map(setRawCategories),
+        }),
+        Result.map(setRawCategories)
+      ),
     []
   );
 
