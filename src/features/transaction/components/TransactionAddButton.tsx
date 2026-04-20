@@ -1,5 +1,6 @@
 import { Button } from "@heroui/react";
-import { Plus } from "lucide-react";
+import { PlusSignIcon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/ui/icon";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useAddTransaction } from "../api/useAddTransaction";
 
@@ -22,7 +23,7 @@ export const TransactionAddButton = () => {
 
   return (
     <Button size="sm" onPress={handleAddTransaction}>
-      <Plus size={16} aria-hidden="true" /> Add transaction
+      <Icon icon={PlusSignIcon} size={16} aria-hidden="true" /> Add transaction
     </Button>
   );
 };

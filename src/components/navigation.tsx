@@ -2,24 +2,26 @@ import { Input } from "@heroui/input";
 import { Kbd } from "@heroui/kbd";
 import { Link } from "@heroui/link";
 import {
-  ArrowLeftRight,
-  BarChart,
-  Book,
-  ChartCandlestick,
-  DollarSign,
-  Ellipsis,
-  HelpCircle,
-  Home,
-  LineChart,
-  Megaphone,
-  PiggyBank,
-  Plus,
-  SearchIcon,
-  Settings,
-  Tag,
-  Tags,
-  Wallet,
-} from "lucide-react";
+  ArrowLeftRightIcon,
+  BarChartIcon,
+  Book01Icon,
+  ChartCandlestickIcon,
+  ChartLineData01Icon,
+  Dollar01Icon,
+  HelpCircleIcon,
+  Home01Icon,
+  Megaphone01Icon,
+  MoreHorizontalIcon,
+  PiggyBankIcon,
+  PlusSignIcon,
+  Search01Icon,
+  Settings01Icon,
+  Tag01Icon,
+  TagsIcon,
+  Wallet01Icon,
+  type IconSvgElement,
+} from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/ui/icon";
 
 import { useMatchRoute } from "@tanstack/react-router";
 import { cn as cx } from "@heroui/react";
@@ -46,7 +48,14 @@ import {
   useSidebar,
 } from "./ui/sidebar";
 
-const data = {
+const _data: {
+  navMain: {
+    title: string;
+    url: string;
+    items: { title: string; href: string; icon: IconSvgElement }[];
+  }[];
+  navFooter: { title: string; href: string; icon: IconSvgElement }[];
+} = {
   navMain: [
     {
       title: "Sections",
@@ -55,52 +64,52 @@ const data = {
         {
           title: "Home",
           href: "/",
-          icon: Home,
+          icon: Home01Icon,
         },
         {
           title: "Dashboard",
           href: "/dashboard",
-          icon: LineChart,
+          icon: ChartLineData01Icon,
         },
         {
           title: "Accounts",
           href: "/accounts",
-          icon: Wallet,
+          icon: Wallet01Icon,
         },
         {
           title: "Portfolio",
           href: "/portfolio",
-          icon: ChartCandlestick,
+          icon: ChartCandlestickIcon,
         },
         {
           title: "Transactions",
           href: "/transactions",
-          icon: ArrowLeftRight,
+          icon: ArrowLeftRightIcon,
         },
         {
           title: "Categories",
           href: "/transactions/categories",
-          icon: Tag,
+          icon: Tag01Icon,
         },
         {
           title: "Tags",
           href: "/transactions/tags",
-          icon: Tags,
+          icon: TagsIcon,
         },
         {
           title: "Reports",
           href: "/reports",
-          icon: BarChart,
+          icon: BarChartIcon,
         },
         {
           title: "Events",
           href: "/events",
-          icon: Megaphone,
+          icon: Megaphone01Icon,
         },
         {
           title: "Budgets",
           href: "/budgets",
-          icon: PiggyBank,
+          icon: PiggyBankIcon,
         },
       ],
     },
@@ -109,17 +118,17 @@ const data = {
     {
       title: "Documentation",
       href: "/documentation",
-      icon: Book,
+      icon: Book01Icon,
     },
     {
       title: "Support",
       href: "/support",
-      icon: HelpCircle,
+      icon: HelpCircleIcon,
     },
     {
       title: "Settings",
       href: "/settings",
-      icon: Settings,
+      icon: Settings01Icon,
     },
   ],
 };
@@ -165,7 +174,10 @@ export const Sidebar = () => {
               labelPlacement="outside"
               placeholder="Search..."
               startContent={
-                <SearchIcon className="text-base text-default-400 pointer-events-none flex-shrink-0" />
+                <Icon
+                  icon={Search01Icon}
+                  className="text-base text-default-400 pointer-events-none flex-shrink-0"
+                />
               }
               type="search"
             />
@@ -178,7 +190,7 @@ export const Sidebar = () => {
               isActive={matchRoute({ to: "/" }) !== false}
               tooltip="Docs"
             >
-              <Book />
+              <Icon icon={Book01Icon} />
               <span>Docs</span>
             </SidebarMenuButton>
             <SidebarMenuBadge>4</SidebarMenuBadge>
@@ -195,7 +207,7 @@ export const Sidebar = () => {
           <SidebarGroup>
             <SidebarGroupLabel>Application</SidebarGroupLabel>
             <SidebarGroupAction aria-label="Add Project">
-              <Plus />
+              <Icon icon={PlusSignIcon} />
             </SidebarGroupAction>
             <SidebarGroupContent>
               <SidebarMenuItem>
@@ -205,11 +217,11 @@ export const Sidebar = () => {
                   isActive={matchRoute({ to: "/" }) !== false}
                   tooltip="Kanban"
                 >
-                  <DollarSign />
+                  <Icon icon={Dollar01Icon} />
                   <span>Pricing</span>
                 </SidebarMenuButton>
                 <SidebarMenuAction>
-                  <Ellipsis />
+                  <Icon icon={MoreHorizontalIcon} />
                 </SidebarMenuAction>
               </SidebarMenuItem>
             </SidebarGroupContent>
@@ -217,7 +229,7 @@ export const Sidebar = () => {
 
           <SidebarMenuItem>
             <SidebarMenuButton>
-              <Settings />
+              <Icon icon={Settings01Icon} />
               <span>Public</span>
             </SidebarMenuButton>
             <SidebarMenuSub>
@@ -246,7 +258,7 @@ export const Sidebar = () => {
         <SidebarFooter>
           <SidebarMenuItem>
             <SidebarMenuButton>
-              <Settings />
+              <Icon icon={Settings01Icon} />
               <span>Public</span>
             </SidebarMenuButton>
             <SidebarMenuSub>

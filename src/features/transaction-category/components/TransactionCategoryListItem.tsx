@@ -1,7 +1,8 @@
 import { withMetaKey } from "@/lib/handlers";
 import { cn } from "@heroui/react";
 import { Button, Dropdown } from "@heroui/react";
-import { Ellipsis } from "lucide-react";
+import { MoreHorizontalIcon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/ui/icon";
 import { useMemo, useState } from "react";
 import { useDeleteTransactionCategoryMutation } from "../mutations/useDeleteTransactionCategoryMutation";
 import { useUpdateTransactionCategoryMutation } from "../mutations/useUpdateTransactionCategoryMutation";
@@ -69,7 +70,7 @@ const TransactionCategoryItemMenu = ({ category }: TransactionCategoryItemProps)
             className="shadow-none text-muted-foreground/60"
             aria-label="Edit item"
           >
-            <Ellipsis className="size-5" size={20} aria-hidden="true" />
+            <Icon icon={MoreHorizontalIcon} className="size-5" size={20} aria-hidden="true" />
           </Button>
         </Dropdown.Trigger>
         <Dropdown.Popover>

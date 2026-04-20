@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { LoaderPinwheelIcon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/ui/icon";
 import { useState } from "react";
 
 export const Route = createFileRoute("/documentation/")({
@@ -13,7 +14,7 @@ function RouteComponent() {
     <div className="h-full w-full p-4">
       {!isLoaded && (
         <div className="flex items-center justify-center h-full">
-          <Loader2 className="size-4 animate-spin" />
+          <Icon icon={LoaderPinwheelIcon} className="size-4 animate-spin" />
         </div>
       )}
       <iframe

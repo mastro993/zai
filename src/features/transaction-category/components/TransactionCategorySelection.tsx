@@ -1,5 +1,6 @@
 import { Button } from "@heroui/react";
-import { TrashIcon, X } from "lucide-react";
+import { Cancel01Icon, Delete01Icon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/ui/icon";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useDeleteTransactionCategoryMutation } from "../mutations/useDeleteTransactionCategoryMutation";
 import { useSelectionStore } from "../stores/selection";
@@ -37,11 +38,11 @@ export const TransactionCategorySelection = () => {
           variant="bordered"
           onPress={() => setSelectedCategoryIds(undefined)}
         >
-          <X className="-ms-1 opacity-60" size={16} aria-hidden="true" />
+          <Icon icon={Cancel01Icon} className="-ms-1 opacity-60" size={16} aria-hidden="true" />
           Clear selection
         </Button>
         <Button className="ml-auto" variant="bordered" size="sm" onClick={handleDelete}>
-          <TrashIcon className="-ms-1 opacity-60" size={16} aria-hidden="true" />
+          <Icon icon={Delete01Icon} className="-ms-1 opacity-60" size={16} aria-hidden="true" />
           Delete
           <span className="-me-1 ms-1 inline-flex h-5 max-h-full items-center rounded border border-border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
             {selectedCategoryIds.length}

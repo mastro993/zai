@@ -1,7 +1,8 @@
 import { importFromFile } from "@/lib/file-processor";
 import { Button, Modal, Table } from "@heroui/react";
 import { Result } from "@praha/byethrow";
-import { Download, Loader2 } from "lucide-react";
+import { Download01Icon, LoaderPinwheelIcon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/ui/icon";
 import { useCallback, useEffect, useState } from "react";
 import { useImportTransactionCategoriesMutation } from "../mutations/useImportTransactionCategoriesMutation";
 import type { NewTransactionCategories } from "../types";
@@ -69,7 +70,7 @@ export const TransactionCategoryImportModal = ({ isOpen, onOpenChange, onClose }
                 className="flex-1 bg-base-200 rounded-md flex flex-col items-center justify-center gap-4 cursor-pointer border-dashed border-2 border-base-300"
                 onClick={selectFile}
               >
-                <Download className="w-16 h-16 text-primary" />
+                <Icon icon={Download01Icon} className="w-16 h-16 text-primary" />
                 <p>Drop a file here or click to upload</p>
               </div>
             )}
@@ -86,7 +87,7 @@ export const TransactionCategoryImportModal = ({ isOpen, onOpenChange, onClose }
               onPress={() => importCategories()}
               isDisabled={isImportPending || !rawCategories}
             >
-              {isImportPending && <Loader2 className="animate-spin" />}
+              {isImportPending && <Icon icon={LoaderPinwheelIcon} className="animate-spin" />}
               Import {rawCategories?.length ?? ""} categories
             </Button>
           </Modal.Footer>

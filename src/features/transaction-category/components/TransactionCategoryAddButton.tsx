@@ -1,5 +1,6 @@
 import { Button, useDisclosure } from "@heroui/react";
-import { Plus } from "lucide-react";
+import { PlusSignIcon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/ui/icon";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useCreateTransactionCategoryMutation } from "../mutations/useCreateTransactionCategoryMutation";
 import type { NewTransactionCategory } from "../types";
@@ -19,7 +20,7 @@ export const TransactionCategoryAddButton = () => {
   return (
     <>
       <Button onPress={() => onOpen()}>
-        <Plus /> Add category
+        <Icon icon={PlusSignIcon} /> Add category
       </Button>
 
       <TransactionCategoryFormDialog

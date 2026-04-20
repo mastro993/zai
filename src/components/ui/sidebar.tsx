@@ -14,7 +14,8 @@ import {
   Spinner,
   Tooltip,
 } from "@heroui/react";
-import { PanelLeftIcon } from "lucide-react";
+import { PanelLeftIcon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/ui/icon";
 import * as React from "react";
 
 // --- Constants ---
@@ -235,7 +236,7 @@ function SidebarTrigger({ className, onPress, ...props }: ButtonProps) {
       }}
       {...props}
     >
-      <PanelLeftIcon className="size-5" />
+      <Icon icon={PanelLeftIcon} className="size-5" />
     </Button>
   );
 }
