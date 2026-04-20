@@ -1,4 +1,4 @@
-import { TransactionCategoryColors, type TransactionCategoryColor } from "../types";
+import { TransactionCategoryColors } from "../types";
 import { getColorHsl, getColorHslShade } from "../utils/colorUtils";
 
 export function ColorPalettePreview() {
@@ -25,7 +25,7 @@ export function ColorPalettePreview() {
 
       <div>
         <h3 className="text-sm font-semibold text-default-700 mb-4">
-          Derived Shades (Sample Child Categories)
+          Color Shades (Index 0-9: Luminosity Variation)
         </h3>
         <div className="space-y-4">
           {TransactionCategoryColors.map((parentColor) => (
@@ -33,20 +33,22 @@ export function ColorPalettePreview() {
               <p className="text-xs font-medium text-default-600 mb-2 capitalize">
                 {parentColor} Family
               </p>
-              <div className="grid grid-cols-12 gap-1">
-                {Array.from({ length: 12 }).map((_, index) => {
-                  const childId = `${parentColor}-child-${index}`;
-                  const derived = getColorHslShade(
-                    parentColor as TransactionCategoryColor,
-                    childId,
-                  );
+              <div className="grid grid-cols-10 gap-2">
+                {Array.from({ length: 10 }).map((_, index) => {
+                  const hsl = getColorHslShade(parentColor, index);
+                  const shadeKey = `shade-${index}`;
                   return (
                     <div
-                      key={childId}
-                      className="h-10 rounded border border-default-300 cursor-pointer transition-transform hover:scale-105"
-                      style={{ backgroundColor: derived }}
-                      title={`${parentColor} shade ${index + 1}`}
-                    />
+                      key={shadeKey}
+                      className="flex flex-col items-center gap-1"
+                    >
+                      <div
+                        className="w-12 h-12 rounded border border-default-300 cursor-pointer transition-transform hover:scale-105"
+                        style={{ backgroundColor: hsl }}
+                        title={`${parentColor} shade ${index}`}
+                      />
+                      <span className="text-xs text-default-500">{index}</span>
+                    </div>
                   );
                 })}
               </div>

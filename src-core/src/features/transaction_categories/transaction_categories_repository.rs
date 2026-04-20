@@ -102,7 +102,9 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
-                    // Validate nesting level before creating
+                    let mut final_category = new_category.clone();
+
+                    // Validate nesting level before creating and enforce color inheritance
                     if let Some(parent_id) = &new_category.parent_id {
                         let parent_row = transaction_categories::table
                             .find(parent_id.as_str())
@@ -116,9 +118,12 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                                     .to_string(),
                             ));
                         }
+
+                        // Child categories inherit the parent's base color
+                        final_category.color = parent_row.color;
                     }
 
-                    let mut category: TransactionCategoryRow = new_category.into();
+                    let mut category: TransactionCategoryRow = final_category.into();
                     category.id = new_id.clone();
 
                     diesel::insert_into(transaction_categories::table)
@@ -157,7 +162,9 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
-                    // Validate nesting level before updating
+                    let mut final_category = updated_category.clone();
+
+                    // Validate nesting level before updating and enforce color inheritance
                     if let Some(parent_id) = &updated_category.parent_id {
                         let parent_row = transaction_categories::table
                             .find(parent_id.as_str())
@@ -171,9 +178,12 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                                     .to_string(),
                             ));
                         }
+
+                        // Child categories inherit the parent's base color
+                        final_category.color = parent_row.color;
                     }
 
-                    let mut category: TransactionCategoryRow = updated_category.into();
+                    let mut category: TransactionCategoryRow = final_category.into();
 
                     let existing = transaction_categories::table
                         .find(&category.id)
@@ -532,4 +542,34 @@ mod tests {
 
         assert!(created.len() == 3);
     }
+
+    #[tokio::test]
+    async fn test_child_category_inherits_parent_color() {
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        // Create parent category with red color
+        let parent = NewTransactionCategory {
+            name: "Parent".to_string(),
+            parent_id: None,
+            description: None,
+            color: Some("red".to_string()),
+            id: None,
+        };
+        let created_parent = repo.create_category(parent).await.unwrap();
+
+        // Create child category with blue color (should be overridden to red)
+        let child = NewTransactionCategory {
+            name: "Child".to_string(),
+            parent_id: Some(created_parent.id.clone()),
+            description: None,
+            color: Some("blue".to_string()),
+            id: None,
+        };
+        let created_child = repo.create_category(child).await.unwrap();
+
+        // Verify child has inherited parent's color, not the blue we tried to set
+        assert_eq!(created_child.color.as_deref(), Some("red"));
+    }
 }
+

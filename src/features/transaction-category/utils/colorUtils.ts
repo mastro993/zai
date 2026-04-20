@@ -25,38 +25,20 @@ export const AVAILABLE_PARENT_COLORS: Record<
 };
 
 /**
- * Simple hash function to generate a deterministic number from a string.
- * Used to derive child color shades from category ID.
+ * Derive a color shade by index (0-9), varying only luminosity.
+ * Keeps hue and saturation fixed to maintain color family consistency.
  */
-function simpleHash(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32-bit integer
+export function getColorHslShade(parentColor: TransactionCategoryColor, index: number): string {
+  if (index < 0 || index > 9) {
+    throw new Error("Index must be between 0 and 9");
   }
-  return Math.abs(hash);
-}
 
-/**
- * Derive a child category color shade from parent color and child ID.
- * Creates a deterministic shade by adjusting saturation and luminosity.
- * Always uses the parent's hue to maintain color family consistency.
- */
-export function getColorHslShade(parentColor: TransactionCategoryColor, childId: string): string {
   const parentHSL = AVAILABLE_PARENT_COLORS[parentColor];
-  const hash = simpleHash(childId);
 
-  // Use hash to determine saturation and luminosity adjustments
-  // This creates a pseudo-random but deterministic shade for each child ID
-  const satAdjust = (hash % 40) - 20; // Range: -20 to +20 (relative adjustment in percentage points)
-  const lumAdjust = ((hash >> 8) % 40) - 20; // Range: -20 to +20
+  // Vary luminosity from 20 to 80 in 10 steps
+  const childL = 20 + (index * 60) / 9;
 
-  // Clamp saturation and luminosity to valid ranges
-  const childS = Math.max(0, Math.min(100, parentHSL.s + satAdjust));
-  const childL = Math.max(0, Math.min(100, parentHSL.l + lumAdjust));
-
-  return `hsl(${parentHSL.h}, ${childS}%, ${childL}%)`;
+  return `hsl(${parentHSL.h}, ${parentHSL.s}%, ${childL}%)`;
 }
 
 /**
@@ -66,4 +48,75 @@ export function getColorHslShade(parentColor: TransactionCategoryColor, childId:
 export function getColorHsl(color: TransactionCategoryColor): string {
   const hsl = AVAILABLE_PARENT_COLORS[color];
   return `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+}
+
+/**
+ * Convert HSL color string to hex format.
+ * Input: "hsl(h, s%, l%)"
+ * Output: "#RRGGBB"
+ */
+export function hslToHex(hslString: string): string {
+  const match = hslString.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+  if (!match) return "#000000";
+
+  const h = parseInt(match[1]) / 360;
+  const s = parseInt(match[2]) / 100;
+  const l = parseInt(match[3]) / 100;
+
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h * 6) % 2) - 1));
+  const m = l - c / 2;
+
+  let r = 0, g = 0, b = 0;
+  if (h < 1 / 6) {
+    r = c;
+    g = x;
+  } else if (h < 2 / 6) {
+    r = x;
+    g = c;
+  } else if (h < 3 / 6) {
+    g = c;
+    b = x;
+  } else if (h < 4 / 6) {
+    g = x;
+    b = c;
+  } else if (h < 5 / 6) {
+    r = x;
+    b = c;
+  } else {
+    r = c;
+    b = x;
+  }
+
+  const toHex = (val: number) => Math.round((val + m) * 255).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+}
+
+/**
+ * Derive child color with visual feedback showing shade progression.
+ * Children inherit the parent's base color (ignoring shades during creation).
+ * Returns both hex and hsl representations for UI display.
+ */
+export function deriveChildColorShade(
+  parentColor: TransactionCategoryColor,
+  childId: string,
+): { hex: string; hsl: string } {
+  // Use child ID hash to determine shade index (0-9)
+  let hash = 0;
+  for (let i = 0; i < childId.length; i++) {
+    hash = ((hash << 5) - hash) + childId.charCodeAt(i);
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  const shadeIndex = Math.abs(hash) % 10;
+  const hsl = getColorHslShade(parentColor, shadeIndex);
+  const hex = hslToHex(hsl);
+
+  return { hex, hsl };
+}
+
+/**
+ * Get hex color from a parent color.
+ */
+export function getColorHex(color: TransactionCategoryColor): string {
+  return hslToHex(getColorHsl(color));
 }

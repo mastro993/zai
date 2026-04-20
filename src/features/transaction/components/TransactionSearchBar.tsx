@@ -1,6 +1,4 @@
 import { Input } from "@heroui/react";
-import { Search01Icon } from "@hugeicons/core-free-icons";
-import { Icon } from "@/components/ui/icon";
 import { useRef } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
@@ -16,12 +14,12 @@ export function TransactionSearchBar() {
       ref={searchRef}
       placeholder="Search"
       type="search"
-      startContent={<Icon icon={Search01Icon} size={16} aria-hidden="true" />}
-      endContent={
-        <kbd className="inline-flex h-5 items-center rounded border px-1 text-[0.625rem] font-medium">
-          ⌘K
-        </kbd>
-      }
+      // startContent={<Icon icon={Search01Icon} size={16} aria-hidden="true" />}
+      // endContent={
+      //   <kbd className="inline-flex h-5 items-center rounded border px-1 text-[0.625rem] font-medium">
+      //     ⌘K
+      //   </kbd>
+      // }
     />
   );
 }

@@ -19,7 +19,7 @@ import type {
   TransactionCategoryColor,
 } from "../types";
 import { TransactionCategoryColors } from "../types";
-import { deriveChildColorShade, getColorHex, getColorHsl } from "../utils/colorUtils";
+import { getColorHsl, deriveChildColorShade, getColorHex } from "../utils/colorUtils";
 
 export type TransactionCategoryFormDialogProps = {
   category?: TransactionCategory;
@@ -90,9 +90,7 @@ export function TransactionCategoryFormDialog({
     if (parentCategoryId) {
       const parentCategory = transactionCategories?.find((cat) => cat.id === parentCategoryId);
       if (parentCategory && categoryId) {
-        // For child categories: derive color from parent and child ID
-        // This shows the visual feedback to the user, though color is handled server-side
-        deriveChildColorShade(parentCategory.color, categoryId);
+        // For child categories: set color to parent's base color
         form.setValue("color", parentCategory.color);
       }
     }
@@ -130,7 +128,9 @@ export function TransactionCategoryFormDialog({
                             <div className="flex-1">
                               <Select
                                 selectedKey={field.value ?? null}
-                                onSelectionChange={(key) => field.onChange(key ? String(key) : null)}
+                                onSelectionChange={(key) =>
+                                  field.onChange(key ? String(key) : null)
+                                }
                                 placeholder="Select category"
                               >
                                 <Select.Trigger>
