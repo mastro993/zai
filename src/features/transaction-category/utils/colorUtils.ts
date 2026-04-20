@@ -6,85 +6,23 @@
 import { type TransactionCategoryColor } from "../types";
 
 /**
- * All available parent colors with their HSL values (hard colors and their soft versions).
+ * All available parent colors with their HSL values.
+ * 8 high-contrast colors evenly distributed across the color spectrum.
  * Kebab-case keys map to HSL color objects.
  */
-export const TRANSACTION_CATEGORY_COLOR: Record<
+export const AVAILABLE_PARENT_COLORS: Record<
   TransactionCategoryColor,
   { h: number; s: number; l: number }
 > = {
   red: { h: 0, s: 84, l: 45 },
-  orange: { h: 24, s: 100, l: 50 },
-  yellow: { h: 45, s: 96, l: 53 },
+  orange: { h: 30, s: 100, l: 50 },
+  yellow: { h: 60, s: 92, l: 54 },
   green: { h: 142, s: 76, l: 36 },
-  teal: { h: 174, s: 76, l: 35 },
-  sky: { h: 200, s: 98, l: 39 },
-  blue: { h: 217, s: 91, l: 60 },
-  indigo: { h: 239, s: 84, l: 67 },
-  purple: { h: 280, s: 85, l: 67 },
+  cyan: { h: 180, s: 98, l: 45 },
+  blue: { h: 210, s: 91, l: 60 },
+  purple: { h: 270, s: 85, l: 67 },
   pink: { h: 330, s: 81, l: 60 },
-  neutral: { h: 0, s: 0, l: 45 },
-  "red-soft": { h: 0, s: 25.2, l: 80 },
-  "orange-soft": { h: 24, s: 30, l: 85 },
-  "yellow-soft": { h: 45, s: 28.8, l: 88.8 },
-  "green-soft": { h: 142, s: 22.8, l: 71 },
-  "teal-soft": { h: 174, s: 22.8, l: 70 },
-  "sky-soft": { h: 200, s: 29.4, l: 74.3 },
-  "blue-soft": { h: 217, s: 27.3, l: 80 },
-  "indigo-soft": { h: 239, s: 25.2, l: 82 },
-  "purple-soft": { h: 280, s: 25.5, l: 81.5 },
-  "pink-soft": { h: 330, s: 24.3, l: 80 },
-  "neutral-soft": { h: 0, s: 0, l: 80 },
 };
-
-/**
- * HSL values for hard colors (vibrant).
- * Using Tailwind-like color hues with fixed saturation and luminosity.
- */
-const colorHSLMap: Record<
-  Exclude<TransactionCategoryColor, `${string}-soft`>,
-  { h: number; s: number; l: number }
-> = {
-  red: { h: 0, s: 84, l: 45 },
-  orange: { h: 24, s: 100, l: 50 },
-  yellow: { h: 45, s: 96, l: 53 },
-  green: { h: 142, s: 76, l: 36 },
-  teal: { h: 174, s: 76, l: 35 },
-  sky: { h: 200, s: 98, l: 39 },
-  blue: { h: 217, s: 91, l: 60 },
-  indigo: { h: 239, s: 84, l: 67 },
-  purple: { h: 280, s: 85, l: 67 },
-  pink: { h: 330, s: 81, l: 60 },
-  neutral: { h: 0, s: 0, l: 45 },
-};
-
-/**
- * Derive HSL values for soft colors based on hard colors.
- * Soft colors use same hue with reduced saturation and increased luminosity.
- */
-function getSoftColorHSL(hardColorKey: Exclude<TransactionCategoryColor, `${string}-soft`>): {
-  h: number;
-  s: number;
-  l: number;
-} {
-  const hardColor = colorHSLMap[hardColorKey];
-  return {
-    h: hardColor.h,
-    s: hardColor.s * 0.3, // Reduce saturation to ~30%
-    l: hardColor.l + 35, // Increase luminosity for soft appearance
-  };
-}
-
-/**
- * Get HSL values for any color.
- */
-export function getColorHSL(color: TransactionCategoryColor): { h: number; s: number; l: number } {
-  if (color.endsWith("-soft")) {
-    const hardKey = color.slice(0, -5) as Exclude<TransactionCategoryColor, `${string}-soft`>;
-    return getSoftColorHSL(hardKey);
-  }
-  return colorHSLMap[color as Exclude<TransactionCategoryColor, `${string}-soft`>];
-}
 
 /**
  * Convert HSL to hex color string.
@@ -166,7 +104,7 @@ export function deriveChildColorShade(
   parentColor: TransactionCategoryColor,
   childId: string,
 ): { color: string; hex: string } {
-  const parentHSL = getColorHSL(parentColor);
+  const parentHSL = AVAILABLE_PARENT_COLORS[parentColor];
   const hash = simpleHash(childId);
 
   // Use hash to determine saturation and luminosity adjustments
@@ -191,6 +129,15 @@ export function deriveChildColorShade(
  * For standard colors, returns their hex representation.
  */
 export function getColorHex(color: TransactionCategoryColor): string {
-  const hsl = getColorHSL(color);
+  const hsl = AVAILABLE_PARENT_COLORS[color];
   return hslToHex(hsl.h, hsl.s, hsl.l);
+}
+
+/**
+ * Get the HSL color string for any category color.
+ * Returns format: "hsl(h, s%, l%)"
+ */
+export function getColorHsl(color: TransactionCategoryColor): string {
+  const hsl = AVAILABLE_PARENT_COLORS[color];
+  return `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
 }

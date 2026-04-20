@@ -1,30 +1,14 @@
 import * as z from "zod";
 
 export const TransactionCategoryColors = [
-  // Hard colors
   "red",
   "orange",
   "yellow",
   "green",
-  "teal",
-  "sky",
+  "cyan",
   "blue",
-  "indigo",
   "purple",
   "pink",
-  "neutral",
-  // Soft colors
-  "red-soft",
-  "orange-soft",
-  "yellow-soft",
-  "green-soft",
-  "teal-soft",
-  "sky-soft",
-  "blue-soft",
-  "indigo-soft",
-  "purple-soft",
-  "pink-soft",
-  "neutral-soft",
 ] as const;
 
 export type TransactionCategoryColor = (typeof TransactionCategoryColors)[number];
