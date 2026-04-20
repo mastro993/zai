@@ -13,6 +13,6 @@ pnpm
 
 ## Guidelines
 
-- Always run pnpm lint and pnpm format before considering any task completed
+- Always run pnpm lint and pnpm tsc:check before considering any task completed
 - Always check HeroUI components before creating a new one from scratch
 - Always use Hugeicons for icons

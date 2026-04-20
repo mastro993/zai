@@ -31,24 +31,22 @@ export const TransactionCategorySelection = () => {
   }
 
   return (
-    <>
-      <div className="flex items-center gap-2">
-        <Button
-          className="ml-auto"
-          variant="bordered"
-          onPress={() => setSelectedCategoryIds(undefined)}
-        >
-          <Icon icon={Cancel01Icon} className="-ms-1 opacity-60" size={16} aria-hidden="true" />
-          Clear selection
-        </Button>
-        <Button className="ml-auto" variant="bordered" size="sm" onClick={handleDelete}>
-          <Icon icon={Delete01Icon} className="-ms-1 opacity-60" size={16} aria-hidden="true" />
-          Delete
-          <span className="-me-1 ms-1 inline-flex h-5 max-h-full items-center rounded border border-border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
-            {selectedCategoryIds.length}
-          </span>
-        </Button>
-      </div>
-    </>
+    <div className="flex items-center gap-2">
+      <Button
+        className="ml-auto"
+        variant="ghost"
+        onPress={() => setSelectedCategoryIds(undefined)}
+      >
+        <Icon icon={Cancel01Icon} className="-ms-1 opacity-60" size={16} aria-hidden="true" />
+        Clear selection
+      </Button>
+      <Button className="ml-auto" variant="ghost" size="sm" onClick={handleDelete}>
+        <Icon icon={Delete01Icon} className="-ms-1 opacity-60" size={16} aria-hidden="true" />
+        Delete
+        <span className="-me-1 ms-1 inline-flex h-5 max-h-full items-center rounded border border-border bg-background px-1 font-[inherit] text-[0.625rem] font-medium text-muted-foreground/70">
+          {selectedCategoryIds.length}
+        </span>
+      </Button>
+    </div>
   );
 };

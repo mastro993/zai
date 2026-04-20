@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/Navbar";
+import { Icon } from "@/components/ui/icon";
 import { Button, useOverlayState } from "@heroui/react";
 import { Download01Icon, PlusSignIcon, Upload01Icon } from "@hugeicons/core-free-icons";
-import { Icon } from "@/components/ui/icon";
 import { useHotkeys } from "react-hotkeys-hook";
 import { TransactionCategoryExportDialog } from "../components/TransactionCategoryExportDialog";
 import { TransactionCategoryFormDialog } from "../components/TransactionCategoryFormDialog";
@@ -21,7 +21,7 @@ export const TransactionCategoriesScreen = () => {
       <Navbar title="Categories">
         <div className="flex gap-2">
           <TransactionCategorySelection />
-          <Button variant="solid" onPress={importModal.open}>
+          <Button variant="primary" onPress={importModal.open}>
             <Icon icon={Download01Icon} className="w-4 h-4" /> Import
           </Button>
           <Button onPress={exportModal.open}>

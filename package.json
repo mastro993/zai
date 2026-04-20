@@ -12,6 +12,7 @@
     "tauri": "tauri",
     "clean-db": "node scripts/clean-db.ts",
     "migrate:latest": "pnpm src/database/migrate.ts",
+    "tsc:check": "tsc --noEmit",
     "lint": "oxlint",
     "format": "oxfmt src",
     "format:check": "oxfmt src --check"

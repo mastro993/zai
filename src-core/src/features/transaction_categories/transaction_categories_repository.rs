@@ -102,6 +102,22 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
+                    // Validate nesting level before creating
+                    if let Some(parent_id) = &new_category.parent_id {
+                        let parent_row = transaction_categories::table
+                            .find(parent_id.as_str())
+                            .filter(transaction_categories::deleted_at.is_null())
+                            .first::<TransactionCategoryRow>(conn)
+                            .map_err(|e| Error::NotFound(e.to_string()))?;
+
+                        if parent_row.parent_id.is_some() {
+                            return Err(Error::InvalidData(
+                                "Cannot create categories deeper than 2 levels. The parent category must be a root category."
+                                    .to_string(),
+                            ));
+                        }
+                    }
+
                     let mut category: TransactionCategoryRow = new_category.into();
                     category.id = new_id.clone();
 
@@ -115,8 +131,6 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                     let (category_row, parent_row) = transaction_categories::table
                         .left_join(
                             parent_categories.on(
-                                // Compare the child's parent_id with the aliased parent's id.
-                                // We use .nullable() to match the types, as parent_id is nullable.
                                 transaction_categories::parent_id.eq(parent_categories
                                     .field(transaction_categories::id)
                                     .nullable()),
@@ -143,6 +157,22 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
+                    // Validate nesting level before updating
+                    if let Some(parent_id) = &updated_category.parent_id {
+                        let parent_row = transaction_categories::table
+                            .find(parent_id.as_str())
+                            .filter(transaction_categories::deleted_at.is_null())
+                            .first::<TransactionCategoryRow>(conn)
+                            .map_err(|e| Error::NotFound(e.to_string()))?;
+
+                        if parent_row.parent_id.is_some() {
+                            return Err(Error::InvalidData(
+                                "Cannot create categories deeper than 2 levels. The parent category must be a root category."
+                                    .to_string(),
+                            ));
+                        }
+                    }
+
                     let mut category: TransactionCategoryRow = updated_category.into();
 
                     let existing = transaction_categories::table
@@ -341,9 +371,19 @@ mod tests {
         let temp_db = database::TempDb::new();
         let repo = setup_test_repo(temp_db.path());
 
+        // Create a parent first
+        let parent = NewTransactionCategory {
+            name: "Parent".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            id: None,
+        };
+        let parent = repo.create_category(parent).await.unwrap();
+
         let cat1 = NewTransactionCategory {
             name: "Cat 1".to_string(),
-            parent_id: Some("parent_id".to_string()),
+            parent_id: Some(parent.id.clone()),
             description: None,
             color: None,
             id: None,
@@ -357,7 +397,7 @@ mod tests {
         };
         let cat3 = NewTransactionCategory {
             name: "Cat 3".to_string(),
-            parent_id: Some("parent_id".to_string()),
+            parent_id: Some(parent.id.clone()),
             description: None,
             color: None,
             id: None,
@@ -368,7 +408,7 @@ mod tests {
         let created = repo.create_category(cat3).await.unwrap();
         repo.delete_categories(vec![&created.id]).await.unwrap();
 
-        let all = repo.get_categories(Some("parent_id")).unwrap();
+        let all = repo.get_categories(Some(&parent.id)).unwrap();
         assert!(all.len() == 1);
         assert!(all[0].name == "Cat 1");
     }

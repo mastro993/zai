@@ -116,6 +116,14 @@ impl TransactionCategoryUpdate {
                 "Transaction category name cannot be empty".to_string(),
             ));
         }
+        // Prevent self-reference: a category cannot be its own parent
+        if let Some(parent_id) = &self.parent_id {
+            if parent_id == &self.id {
+                return Err(Error::InvalidData(
+                    "A category cannot be its own parent".to_string(),
+                ));
+            }
+        }
         Ok(())
     }
 }
@@ -203,5 +211,21 @@ mod tests {
         let result = new_category_invalid.validate();
 
         assert!(result.is_err());
+
+        // Test self-reference validation
+        let self_ref = TransactionCategoryUpdate {
+            id: "same-id".to_string(),
+            name: "Test Category".to_string(),
+            parent_id: Some("same-id".to_string()),
+            description: None,
+            color: None,
+        };
+
+        let result = self_ref.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot be its own parent"));
     }
 }
