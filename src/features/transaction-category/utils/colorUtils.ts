@@ -25,63 +25,6 @@ export const AVAILABLE_PARENT_COLORS: Record<
 };
 
 /**
- * Convert HSL to hex color string.
- */
-function hslToHex(h: number, s: number, l: number): string {
-  // Normalize values
-  const hNorm = h;
-  const sNorm = s / 100;
-  const lNorm = l / 100;
-
-  // Calculate RGB from HSL
-  const c = (1 - Math.abs(2 * lNorm - 1)) * sNorm;
-  const x = c * (1 - (((hNorm / 60) % 2) - 1));
-  const m = lNorm - c / 2;
-
-  let r = 0,
-    g = 0,
-    b = 0;
-
-  if (hNorm >= 0 && hNorm < 60) {
-    r = c;
-    g = x;
-    b = 0;
-  } else if (hNorm >= 60 && hNorm < 120) {
-    r = x;
-    g = c;
-    b = 0;
-  } else if (hNorm >= 120 && hNorm < 180) {
-    r = 0;
-    g = c;
-    b = x;
-  } else if (hNorm >= 180 && hNorm < 240) {
-    r = 0;
-    g = x;
-    b = c;
-  } else if (hNorm >= 240 && hNorm < 300) {
-    r = x;
-    g = 0;
-    b = c;
-  } else if (hNorm >= 300 && hNorm < 360) {
-    r = c;
-    g = 0;
-    b = x;
-  }
-
-  const rByte = Math.round((r + m) * 255)
-    .toString(16)
-    .padStart(2, "0");
-  const gByte = Math.round((g + m) * 255)
-    .toString(16)
-    .padStart(2, "0");
-  const bByte = Math.round((b + m) * 255)
-    .toString(16)
-    .padStart(2, "0");
-
-  return `#${rByte}${gByte}${bByte}`.toUpperCase();
-}
-
-/**
  * Simple hash function to generate a deterministic number from a string.
  * Used to derive child color shades from category ID.
  */
@@ -100,10 +43,7 @@ function simpleHash(str: string): number {
  * Creates a deterministic shade by adjusting saturation and luminosity.
  * Always uses the parent's hue to maintain color family consistency.
  */
-export function deriveChildColorShade(
-  parentColor: TransactionCategoryColor,
-  childId: string,
-): { color: string; hex: string } {
+export function getColorHslShade(parentColor: TransactionCategoryColor, childId: string): string {
   const parentHSL = AVAILABLE_PARENT_COLORS[parentColor];
   const hash = simpleHash(childId);
 
@@ -116,21 +56,7 @@ export function deriveChildColorShade(
   const childS = Math.max(0, Math.min(100, parentHSL.s + satAdjust));
   const childL = Math.max(0, Math.min(100, parentHSL.l + lumAdjust));
 
-  const hex = hslToHex(parentHSL.h, childS, childL);
-
-  return {
-    color: `${parentColor}-derived`, // Marker that this is a derived color
-    hex,
-  };
-}
-
-/**
- * Get the hex color value for any category color.
- * For standard colors, returns their hex representation.
- */
-export function getColorHex(color: TransactionCategoryColor): string {
-  const hsl = AVAILABLE_PARENT_COLORS[color];
-  return hslToHex(hsl.h, hsl.s, hsl.l);
+  return `hsl(${parentHSL.h}, ${childS}%, ${childL}%)`;
 }
 
 /**
