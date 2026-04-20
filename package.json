@@ -12,7 +12,9 @@
     "tauri": "tauri",
     "clean-db": "node scripts/clean-db.ts",
     "migrate:latest": "pnpm src/database/migrate.ts",
-    "lint": "eslint . --max-warnings=0"
+    "lint": "oxlint",
+    "format": "oxfmt src",
+    "format:check": "oxfmt src --check"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
@@ -60,7 +62,6 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@eslint/js": "^9.24.0",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/react-query-devtools": "5.74.3",
     "@tanstack/react-router-devtools": "^1.116.0",
@@ -72,16 +73,14 @@
     "@types/papaparse": "^5",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
-    "@typescript-eslint/parser": "^8.32.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "daisyui": "^5.0.0",
-    "eslint": "^9.24.0",
-    "eslint-plugin-react": "^7.37.5",
     "globals": "^16.0.0",
+    "oxfmt": "^0.45.0",
+    "oxlint": "^1.60.0",
     "tailwindcss": "^4.1.4",
     "typescript": "~5.6.2",
-    "typescript-eslint": "^8.29.1",
     "vite": "^6.4.2"
   },
   "packageManager": "pnpm@10.33.0"

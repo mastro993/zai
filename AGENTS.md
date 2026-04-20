@@ -6,9 +6,16 @@ Personal finance desktop app built with Tauri (Rust backend + React frontend).
 
 pnpm
 
+## Project structure
+- /src: all the frontend code, Vite + React
+- /src-core: business logic in pure Rust, source of truth
+- /src-tauri: Tauri related code, plugins, commands
+
 ## Guidelines
 
-- TBD
+## Guidelines
+
+- Always run pnpm lint and pnpm fmt before considering any task completed
 
 <!-- HEROUI-REACT-AGENTS-MD-START -->
 
