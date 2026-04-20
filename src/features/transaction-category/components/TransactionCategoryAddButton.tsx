@@ -1,4 +1,4 @@
-import { Button, useDisclosure } from "@heroui/react";
+import { Button, useOverlayState } from "@heroui/react";
 import { PlusSignIcon } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/ui/icon";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -7,25 +7,25 @@ import type { NewTransactionCategory } from "../types";
 import { TransactionCategoryFormDialog } from "./TransactionCategoryFormDialog";
 
 export const TransactionCategoryAddButton = () => {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const { isOpen, open, setOpen } = useOverlayState();
   const { mutate: addTransactionCategory } = useCreateTransactionCategoryMutation();
 
   const handleSubmit = (data: NewTransactionCategory) => {
     addTransactionCategory(data);
-    setShowFormDialog(false);
+    setOpen(false);
   };
 
-  useHotkeys("mod+n", () => onOpen());
+  useHotkeys("mod+n", () => open());
 
   return (
     <>
-      <Button onPress={() => onOpen()}>
+      <Button onPress={() => open()}>
         <Icon icon={PlusSignIcon} /> Add category
       </Button>
 
       <TransactionCategoryFormDialog
         isOpen={isOpen}
-        onOpenChange={onOpenChange}
+        onOpenChange={setOpen}
         onSubmit={handleSubmit}
       />
     </>

@@ -1,12 +1,11 @@
-import { cn } from "@heroui/react";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "./ui/breadcrumb";
-import { SidebarTrigger } from "./ui/sidebar";
+import { Breadcrumbs, cn } from "@heroui/react";
 
 type Props = {
   title: string;
+  actions?: React.ReactNode;
 };
 
-export const Navbar = ({ title, children }: React.PropsWithChildren<Props>) => {
+export const Navbar = ({ title, children, actions }: React.PropsWithChildren<Props>) => {
   return (
     <div
       className={cn([
@@ -17,16 +16,12 @@ export const Navbar = ({ title, children }: React.PropsWithChildren<Props>) => {
       ])}
     >
       <div className="flex items-center gap-2">
-        <SidebarTrigger />
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbPage>{title}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+        <Breadcrumbs>
+          <Breadcrumbs.Item>{title}</Breadcrumbs.Item>
+        </Breadcrumbs>
       </div>
       {children}
+      {actions}
     </div>
   );
 };

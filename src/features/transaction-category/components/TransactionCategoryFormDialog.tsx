@@ -1,4 +1,11 @@
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   Button,
   Input,
@@ -7,12 +14,12 @@ import {
   Radio,
   RadioGroup,
   Select,
-  Textarea,
+  TextArea,
   cn,
 } from "@heroui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo } from "react";
-import { Form, useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { useCreateTransactionCategoryMutation } from "../mutations/useCreateTransactionCategoryMutation";
 import { useParentTransactionCategories } from "../queries/useParentTransactionCategories";
@@ -151,7 +158,7 @@ export function TransactionCategoryFormDialog({
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea
+                        <TextArea
                           placeholder="Description"
                           {...field}
                           value={field.value ?? undefined}
