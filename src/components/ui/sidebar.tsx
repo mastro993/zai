@@ -5,9 +5,9 @@ import {
   Button,
   type ButtonProps,
   cn,
-  Divider,
-  type DividerProps,
-  extendVariants,
+  Separator,
+  type SeparatorProps,
+  tv,
   Input,
   type InputProps,
   Link,
@@ -229,7 +229,7 @@ function SidebarTrigger({ className, onPress, ...props }: ButtonProps) {
       className={cn("size-7", className)}
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
-      variant="light" // Use HeroUI's light variant for a ghost/icon button
+      variant="ghost" // Use HeroUI's ghost variant for a ghost/icon button
       onPress={(event) => {
         onPress?.(event);
         toggleSidebar();
@@ -289,13 +289,9 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
 function SidebarInput({ className, ...props }: InputProps) {
   return (
     <Input
-      classNames={{
-        base: cn("h-8 w-full shadow-none", className),
-        inputWrapper: "bg-background shadow-none", // Ensure background is correct for input
-      }}
+      className={cn("h-8 w-full shadow-none", className)}
       data-sidebar="input"
       data-slot="sidebar-input"
-      size="sm"
       {...props}
     />
   );
@@ -325,10 +321,10 @@ function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-function SidebarSeparator({ className, ...props }: DividerProps) {
-  // Use HeroUI Divider component
+function SidebarSeparator({ className, ...props }: SeparatorProps) {
+  // Use HeroUI Separator component
   return (
-    <Divider
+    <Separator
       className={cn("mx-2 w-auto bg-divider", className)}
       data-sidebar="separator"
       data-slot="sidebar-separator"
@@ -401,7 +397,7 @@ function SidebarGroupAction({ className, ...props }: ButtonProps) {
       data-sidebar="group-action"
       data-slot="sidebar-group-action"
       size="sm"
-      variant="light"
+      variant="ghost"
       {...props}
     />
   );
@@ -440,35 +436,52 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
   );
 }
 
-// 1. Define the Extended Base Button for Menu Items
-export const SidebarMenuBaseButton = extendVariants(Button, {
-  // We use custom variant/size names to avoid conflicts with HeroUI's base variants.
+// 1. Define variants for sidebar menu items using tv (tailwind-variants)
+const sidebarMenuButtonVariants = tv({
+  base: "peer/menu-button flex w-full items-center gap-2 overflow-hidden text-left outline-hidden ring-focus transition-[width,height,padding] focus-visible:ring-2 disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:opacity-50 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:flex-1 [&>span:last-child]:min-w-0 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 px-2 py-0 justify-start min-w-0",
   variants: {
-    variant: {
+    sidebarVariant: {
       light: "bg-transparent hover:bg-default-100 data-[active=true]:bg-default-100",
       bordered:
         "bg-background border border-divider hover:bg-default-100 data-[active=true]:bg-default-100 hover:border-default-200",
     },
-    size: {
+    sidebarSize: {
       md: "h-8 text-sm",
       sm: "h-7 text-xs",
       lg: "h-12 text-sm group-data-[collapsible=icon]:p-0!",
     },
   },
   defaultVariants: {
-    // Set base HeroUI properties to achieve the minimal/ghost look
-    radius: "md",
-    variant: "light", // Start with HeroUI 'light' variant for transparent background
-    color: "default",
+    sidebarVariant: "light",
+    sidebarSize: "md",
   },
-  compoundVariants: [
-    {
-      // Combined classes for the specific needs of the menu button
-      class:
-        "peer/menu-button flex w-full items-center gap-2 overflow-hidden text-left outline-hidden ring-focus transition-[width,height,padding] focus-visible:ring-2 disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:opacity-50 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:flex-1 [&>span:last-child]:min-w-0 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 px-2 py-0 justify-start min-w-0",
-    },
-  ],
 });
+
+type SidebarMenuBaseButtonVariant = "light" | "bordered";
+type SidebarMenuBaseButtonSize = "sm" | "md" | "lg";
+type SidebarMenuBaseButtonProps = Omit<ButtonProps, "variant" | "size"> & {
+  variant?: SidebarMenuBaseButtonVariant;
+  size?: SidebarMenuBaseButtonSize;
+};
+
+export const SidebarMenuBaseButton = ({
+  variant = "light",
+  size = "md",
+  className,
+  ...props
+}: SidebarMenuBaseButtonProps) => {
+  return (
+    <Button
+      className={sidebarMenuButtonVariants({
+        sidebarVariant: variant,
+        sidebarSize: size,
+        className: typeof className === "string" ? className : undefined,
+      })}
+      variant="ghost"
+      {...props}
+    />
+  );
+};
 
 // Infer the prop types for our extended button
 type ExtendedSidebarMenuButtonProps = React.ComponentProps<typeof SidebarMenuBaseButton>;
@@ -483,7 +496,7 @@ function SidebarMenuButton({
   ...props
 }: ExtendedSidebarMenuButtonProps & {
   isActive?: boolean;
-  tooltip?: string | React.ComponentProps<typeof Tooltip>;
+  tooltip?: string;
 }) {
   const { state } = useSidebar();
 
@@ -507,20 +520,11 @@ function SidebarMenuButton({
     return button;
   }
 
-  // HeroUI Tooltip implementation
-  const tooltipContent =
-    typeof tooltip === "string" ? tooltip : (tooltip.content ?? props.children);
-
+  // HeroUI v3 Tooltip compound component
   return (
-    <Tooltip
-      className="text-foreground"
-      content={tooltipContent}
-      delay={0}
-      isDisabled={state !== "collapsed"}
-      placement="right"
-      {...(typeof tooltip !== "string" ? tooltip : {})}
-    >
-      {button}
+    <Tooltip delay={0} isDisabled={state !== "collapsed"}>
+      <Tooltip.Trigger>{button}</Tooltip.Trigger>
+      <Tooltip.Content placement="right">{tooltip}</Tooltip.Content>
     </Tooltip>
   );
 }
@@ -551,7 +555,7 @@ function SidebarMenuAction({
       data-sidebar="menu-action"
       data-slot="sidebar-menu-action"
       size="sm"
-      variant="light"
+      variant="ghost"
       {...props}
     />
   );
