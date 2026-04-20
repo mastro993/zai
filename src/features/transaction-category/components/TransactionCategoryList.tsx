@@ -10,9 +10,7 @@ export const TransactionCategoryList = () => {
   const { setSelectedCategoryIds } = useSelectionStore();
 
   useHotkeys("mod+a", () => {
-    setSelectedCategoryIds(
-      transactionCategories?.map((category) => category.id),
-    );
+    setSelectedCategoryIds(transactionCategories?.map((category) => category.id));
   });
 
   useEffect(() => {

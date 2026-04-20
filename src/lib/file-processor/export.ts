@@ -43,14 +43,12 @@ export const exportToFile = ({
 
   return Result.pipe(
     openSaveDialog(defaultPath, extension),
-    Result.andThen((path) =>
-      path ? Result.succeed(path) : Result.fail(new NoFilePathError())
-    ),
+    Result.andThen((path) => (path ? Result.succeed(path) : Result.fail(new NoFilePathError()))),
     Result.andThen((path) =>
       Result.pipe(
         format(data),
-        Result.andThen((formattedData) => writeToFile(path, formattedData))
-      )
-    )
+        Result.andThen((formattedData) => writeToFile(path, formattedData)),
+      ),
+    ),
   );
 };

@@ -12,13 +12,13 @@ import { AcceptedFileExtension, AcceptedFileExtensions } from "./types";
 import { getFilter } from "./utils";
 
 const isValidFileExtension = (
-  extension: string | undefined
+  extension: string | undefined,
 ): extension is AcceptedFileExtension => {
   return AcceptedFileExtensions.includes(extension as AcceptedFileExtension);
 };
 
 const getFileExtension = (
-  filePath: string
+  filePath: string,
 ): Result.Result<AcceptedFileExtension, InvalidFileExtensionError> => {
   const extension = filePath.split(".").pop();
 
@@ -46,11 +46,7 @@ const readFile = Result.try({
 export const importFromFile = () =>
   Result.pipe(
     openFileDialog(),
-    Result.andThen((path) =>
-      path ? Result.succeed(path) : Result.fail(new NoFilePathError())
-    ),
-    Result.andThen((path) =>
-      Result.collect([getFileExtension(path), readFile(path)])
-    ),
-    Result.andThen(([extension, data]) => getParser(extension)(data))
+    Result.andThen((path) => (path ? Result.succeed(path) : Result.fail(new NoFilePathError()))),
+    Result.andThen((path) => Result.collect([getFileExtension(path), readFile(path)])),
+    Result.andThen(([extension, data]) => getParser(extension)(data)),
   );

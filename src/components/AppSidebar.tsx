@@ -27,7 +27,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useMatchRoute, useNavigate } from "@tanstack/react-router";
-import { cx } from "class-variance-authority";
+import { cn as cx } from "@heroui/react";
 
 const data = {
   navMain: [

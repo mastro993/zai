@@ -4,9 +4,7 @@ type SelectionStore = {
   selectedCategoryIds: ReadonlyArray<string>;
   toggleCategory: (categoryId: string) => void;
   clearSelection: () => void;
-  setSelectedCategoryIds: (
-    categoryIds: ReadonlyArray<string> | undefined
-  ) => void;
+  setSelectedCategoryIds: (categoryIds: ReadonlyArray<string> | undefined) => void;
 };
 
 const useSelectionStore = create<SelectionStore>((set) => ({

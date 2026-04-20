@@ -25,10 +25,7 @@ export const getRunEnv = (): RUN_ENV => {
   return RUN_ENV.UNSUPPORTED;
 };
 
-export const invokeTauri = async <T>(
-  command: string,
-  payload?: Record<string, unknown>
-) => {
+export const invokeTauri = async <T>(command: string, payload?: Record<string, unknown>) => {
   return await invoke<T>(command, payload);
 };
 

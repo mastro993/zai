@@ -34,6 +34,5 @@ const formatter: Record<
 };
 
 export const getFormatter = (
-  extension: AcceptedFileExtension
-): ((data: FileData) => Result.Result<string, FileProcessorError>) =>
-  formatter[extension];
+  extension: AcceptedFileExtension,
+): ((data: FileData) => Result.Result<string, FileProcessorError>) => formatter[extension];

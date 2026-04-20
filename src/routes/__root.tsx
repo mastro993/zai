@@ -31,11 +31,7 @@ function Root() {
           </div>
         </SidebarInset>
       </SidebarProvider>
-      <ReactQueryDevtools
-        initialIsOpen={false}
-        buttonPosition="bottom-left"
-        position="bottom"
-      />
+      <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" position="bottom" />
       <TanStackRouterDevtools position="bottom-left" />
       <Toaster richColors />
     </div>

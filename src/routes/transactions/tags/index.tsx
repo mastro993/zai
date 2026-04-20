@@ -1,17 +1,15 @@
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollShadow } from "@heroui/react";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/transactions/tags/")({
   component: RouteComponent,
 });
 
-const tags = Array.from({ length: 50 }).map(
-  (_, i, a) => `v1.2.0-beta.${a.length - i}`
-);
+const tags = Array.from({ length: 50 }).map((_, i, a) => `v1.2.0-beta.${a.length - i}`);
 
 function RouteComponent() {
   return (
-    <ScrollArea type="always" className="h-72 w-48 rounded-md border">
+    <ScrollShadow className="h-72 w-48 rounded-md border">
       <div className="p-4">
         <h4 className="mb-4 text-sm font-medium leading-none">Tags</h4>
         {tags.map((tag) => (
@@ -22,6 +20,6 @@ function RouteComponent() {
           </>
         ))}
       </div>
-    </ScrollArea>
+    </ScrollShadow>
   );
 }

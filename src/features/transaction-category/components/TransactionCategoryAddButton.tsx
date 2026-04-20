@@ -7,8 +7,7 @@ import { TransactionCategoryFormDialog } from "./TransactionCategoryFormDialog";
 
 export const TransactionCategoryAddButton = () => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const { mutate: addTransactionCategory } =
-    useCreateTransactionCategoryMutation();
+  const { mutate: addTransactionCategory } = useCreateTransactionCategoryMutation();
 
   const handleSubmit = (data: NewTransactionCategory) => {
     addTransactionCategory(data);

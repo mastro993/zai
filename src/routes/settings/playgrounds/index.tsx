@@ -120,25 +120,13 @@ function RouteComponent() {
             </div>
 
             <div className="flex gap-2">
-              <button
-                className="btn btn-primary"
-                onClick={handleSetValue}
-                disabled={isLoading}
-              >
+              <button className="btn btn-primary" onClick={handleSetValue} disabled={isLoading}>
                 Set Value
               </button>
-              <button
-                className="btn btn-secondary"
-                onClick={handleGetValue}
-                disabled={isLoading}
-              >
+              <button className="btn btn-secondary" onClick={handleGetValue} disabled={isLoading}>
                 Get Value
               </button>
-              <button
-                className="btn btn-error"
-                onClick={handleDeleteValue}
-                disabled={isLoading}
-              >
+              <button className="btn btn-error" onClick={handleDeleteValue} disabled={isLoading}>
                 Delete Value
               </button>
             </div>
@@ -155,9 +143,7 @@ function RouteComponent() {
                   : JSON.stringify(retrievedValue)}
               </pre>
             ) : (
-              <span className="text-base-content/60">
-                No value retrieved yet
-              </span>
+              <span className="text-base-content/60">No value retrieved yet</span>
             )}
           </div>
         </div>

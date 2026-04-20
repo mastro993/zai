@@ -1,204 +1,109 @@
-"use client";
-
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { Button } from "@heroui/react";
+import { CalendarDate, getLocalTimeZone, today } from "@internationalized/date";
+import { DateField, DateRangePicker, RangeCalendar, Label } from "@heroui/react";
 import {
   endOfMonth,
   endOfYear,
-  format,
   startOfMonth,
   startOfYear,
   subDays,
   subMonths,
   subYears,
 } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { Button } from "@heroui/react";
 import { useState } from "react";
-import { DateRange } from "react-day-picker";
+import type { DateValue, RangeValue } from "@heroui/react";
+
+function toCalendarDate(d: Date): CalendarDate {
+  return new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
 
 export default function DatePicker() {
-  const today = new Date();
-  const yesterday = {
-    from: subDays(today, 1),
-    to: subDays(today, 1),
-  };
-  const last7Days = {
-    from: subDays(today, 6),
-    to: today,
-  };
-  const last30Days = {
-    from: subDays(today, 29),
-    to: today,
-  };
-  const monthToDate = {
-    from: startOfMonth(today),
-    to: today,
-  };
-  const lastMonth = {
-    from: startOfMonth(subMonths(today, 1)),
-    to: endOfMonth(subMonths(today, 1)),
-  };
-  const yearToDate = {
-    from: startOfYear(today),
-    to: today,
-  };
-  const lastYear = {
-    from: startOfYear(subYears(today, 1)),
-    to: endOfYear(subYears(today, 1)),
-  };
-  const [month, setMonth] = useState(today);
+  const now = today(getLocalTimeZone());
+  const todayDate = new Date();
 
-  const [date, setDate] = useState<DateRange | undefined>(lastYear);
+  const presets = [
+    { label: "Today", from: todayDate, to: todayDate },
+    { label: "Yesterday", from: subDays(todayDate, 1), to: subDays(todayDate, 1) },
+    { label: "Last 7 days", from: subDays(todayDate, 6), to: todayDate },
+    { label: "Last 30 days", from: subDays(todayDate, 29), to: todayDate },
+    { label: "Month to date", from: startOfMonth(todayDate), to: todayDate },
+    {
+      label: "Last month",
+      from: startOfMonth(subMonths(todayDate, 1)),
+      to: endOfMonth(subMonths(todayDate, 1)),
+    },
+    { label: "Year to date", from: startOfYear(todayDate), to: todayDate },
+    {
+      label: "Last year",
+      from: startOfYear(subYears(todayDate, 1)),
+      to: endOfYear(subYears(todayDate, 1)),
+    },
+  ];
+
+  const [value, setValue] = useState<RangeValue<DateValue> | null>({
+    start: toCalendarDate(presets[7].from),
+    end: toCalendarDate(presets[7].to),
+  });
 
   return (
-    <div className="*:not-first:mt-2">
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="bordered" className="justify-start min-w-62">
-            <CalendarIcon
-              size={16}
-              className="opacity-40 -ms-1 group-hover:text-foreground shrink-0 transition-colors"
-              aria-hidden="true"
-            />
-            <span className={cn("truncate", !date && "text-muted-foreground")}>
-              {date?.from ? (
-                date.to ? (
-                  <>
-                    {format(date.from, "LLL dd, y")} -{" "}
-                    {format(date.to, "LLL dd, y")}
-                  </>
-                ) : (
-                  format(date.from, "LLL dd, y")
-                )
-              ) : (
-                "Pick a date range"
-              )}
-            </span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
-          <div className="flex max-sm:flex-col">
-            <div className="relative py-4 max-sm:order-1 max-sm:border-t sm:w-32">
-              <div className="h-full sm:border-e">
-                <div className="flex flex-col px-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setDate({
-                        from: today,
-                        to: today,
-                      });
-                      setMonth(today);
-                    }}
-                  >
-                    Today
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setDate(yesterday);
-                      setMonth(yesterday.to);
-                    }}
-                  >
-                    Yesterday
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setDate(last7Days);
-                      setMonth(last7Days.to);
-                    }}
-                  >
-                    Last 7 days
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setDate(last30Days);
-                      setMonth(last30Days.to);
-                    }}
-                  >
-                    Last 30 days
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setDate(monthToDate);
-                      setMonth(monthToDate.to);
-                    }}
-                  >
-                    Month to date
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setDate(lastMonth);
-                      setMonth(lastMonth.to);
-                    }}
-                  >
-                    Last month
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setDate(yearToDate);
-                      setMonth(yearToDate.to);
-                    }}
-                  >
-                    Year to date
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setDate(lastYear);
-                      setMonth(lastYear.to);
-                    }}
-                  >
-                    Last year
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <Calendar
-              mode="range"
-              selected={date}
-              onSelect={(newDate) => {
-                if (newDate) {
-                  setDate(newDate);
+    <DateRangePicker value={value} onChange={setValue}>
+      <Label className="sr-only">Date range</Label>
+      <DateField.Group>
+        <DateField.InputContainer>
+          <DateField.Input slot="start">
+            {(segment) => <DateField.Segment segment={segment} />}
+          </DateField.Input>
+          <DateRangePicker.RangeSeparator />
+          <DateField.Input slot="end">
+            {(segment) => <DateField.Segment segment={segment} />}
+          </DateField.Input>
+        </DateField.InputContainer>
+        <DateField.Suffix>
+          <DateRangePicker.Trigger>
+            <DateRangePicker.TriggerIndicator />
+          </DateRangePicker.Trigger>
+        </DateField.Suffix>
+      </DateField.Group>
+      <DateRangePicker.Popover>
+        <div className="flex gap-4">
+          <div className="flex flex-col gap-1 py-2 pe-2 border-e">
+            {presets.map((preset) => (
+              <Button
+                key={preset.label}
+                variant="ghost"
+                size="sm"
+                className="justify-start"
+                onPress={() =>
+                  setValue({
+                    start: toCalendarDate(preset.from),
+                    end: toCalendarDate(preset.to),
+                  })
                 }
-              }}
-              month={month}
-              onMonthChange={setMonth}
-              className="p-2"
-              disabled={[
-                { after: today }, // Dates before today
-              ]}
-            />
+              >
+                {preset.label}
+              </Button>
+            ))}
           </div>
-        </PopoverContent>
-      </Popover>
-    </div>
+          <RangeCalendar aria-label="Choose date range">
+            <RangeCalendar.Header>
+              <RangeCalendar.YearPickerTrigger>
+                <RangeCalendar.YearPickerTriggerHeading />
+                <RangeCalendar.YearPickerTriggerIndicator />
+              </RangeCalendar.YearPickerTrigger>
+              <RangeCalendar.NavButton slot="previous" />
+              <RangeCalendar.NavButton slot="next" />
+            </RangeCalendar.Header>
+            <RangeCalendar.Grid>
+              <RangeCalendar.GridHeader>
+                {(day) => <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>}
+              </RangeCalendar.GridHeader>
+              <RangeCalendar.GridBody>
+                {(date) => <RangeCalendar.Cell date={date} isDisabled={date.compare(now) > 0} />}
+              </RangeCalendar.GridBody>
+            </RangeCalendar.Grid>
+          </RangeCalendar>
+        </div>
+      </DateRangePicker.Popover>
+    </DateRangePicker>
   );
 }

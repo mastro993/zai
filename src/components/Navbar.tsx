@@ -1,10 +1,5 @@
-import { cn } from "@/lib/utils";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "./ui/breadcrumb";
+import { cn } from "@heroui/react";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "./ui/breadcrumb";
 import { SidebarTrigger } from "./ui/sidebar";
 
 type Props = {

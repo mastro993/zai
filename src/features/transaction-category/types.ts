@@ -27,8 +27,7 @@ export const TransactionCategoryColors = [
   "neutral-soft",
 ] as const;
 
-export type TransactionCategoryColor =
-  (typeof TransactionCategoryColors)[number];
+export type TransactionCategoryColor = (typeof TransactionCategoryColors)[number];
 
 const _TransactionCategorySchema = z.object({
   id: z.string(),
@@ -52,14 +51,8 @@ export const NewTransactionCategorySchema = _TransactionCategorySchema.partial({
   id: true,
 });
 
-export type NewTransactionCategory = z.infer<
-  typeof NewTransactionCategorySchema
->;
+export type NewTransactionCategory = z.infer<typeof NewTransactionCategorySchema>;
 
-export const NewTransactionCategoriesSchema = z.array(
-  NewTransactionCategorySchema
-);
+export const NewTransactionCategoriesSchema = z.array(NewTransactionCategorySchema);
 
-export type NewTransactionCategories = z.infer<
-  typeof NewTransactionCategoriesSchema
->;
+export type NewTransactionCategories = z.infer<typeof NewTransactionCategoriesSchema>;

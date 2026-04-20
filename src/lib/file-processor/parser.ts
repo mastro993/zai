@@ -9,8 +9,7 @@ const parseJson = Result.try({
 });
 
 const parseCsv = Result.try({
-  try: (csvString: string) =>
-    Papa.parse(csvString, { header: true, skipEmptyLines: true }).data,
+  try: (csvString: string) => Papa.parse(csvString, { header: true, skipEmptyLines: true }).data,
   catch: (e) => new ParseError(e),
 });
 
@@ -23,6 +22,5 @@ const parser: Record<
 };
 
 export const getParser = (
-  extension: AcceptedFileExtension
-): ((data: string) => Result.Result<ParsedData, ParseError>) =>
-  parser[extension];
+  extension: AcceptedFileExtension,
+): ((data: string) => Result.Result<ParsedData, ParseError>) => parser[extension];

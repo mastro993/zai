@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@heroui/react";
 
 type JsonDisplayProps = {
   data: unknown;
@@ -6,11 +6,7 @@ type JsonDisplayProps = {
   maxHeight?: string;
 };
 
-export const JsonDisplay = ({
-  data,
-  className,
-  maxHeight = "max-h-[500px]",
-}: JsonDisplayProps) => {
+export const JsonDisplay = ({ data, className, maxHeight = "max-h-[500px]" }: JsonDisplayProps) => {
   const formattedJson = JSON.stringify(data, null, 2);
 
   return (

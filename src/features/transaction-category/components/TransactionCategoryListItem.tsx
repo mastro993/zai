@@ -1,7 +1,6 @@
-import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { withMetaKey } from "@/lib/handlers";
-import { cn } from "@/lib/utils";
-import { Button, Dropdown, DropdownItem, DropdownTrigger } from "@heroui/react";
+import { cn } from "@heroui/react";
+import { Button, Dropdown } from "@heroui/react";
 import { Ellipsis } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useDeleteTransactionCategoryMutation } from "../mutations/useDeleteTransactionCategoryMutation";
@@ -15,9 +14,7 @@ export type TransactionCategoryItemProps = {
   category: TransactionCategory;
 };
 
-export const TransactionCategoryListItem = ({
-  category,
-}: TransactionCategoryItemProps) => {
+export const TransactionCategoryListItem = ({ category }: TransactionCategoryItemProps) => {
   const { selectedCategoryIds, toggleCategory } = useSelectionStore();
 
   const isSelected = useMemo(
@@ -38,9 +35,7 @@ export const TransactionCategoryListItem = ({
       <div className={cn(["flex items-center justify-between"])}>
         <div className="flex items-center gap-2 ">
           <TransactionCategoryBadge category={category} />
-          <span className="text-sm text-base-content/50 ">
-            {category.description}
-          </span>
+          <span className="text-sm text-base-content/50 ">{category.description}</span>
         </div>
         <TransactionCategoryItemMenu category={category} />
       </div>
@@ -48,16 +43,12 @@ export const TransactionCategoryListItem = ({
   );
 };
 
-const TransactionCategoryItemMenu = ({
-  category,
-}: TransactionCategoryItemProps) => {
+const TransactionCategoryItemMenu = ({ category }: TransactionCategoryItemProps) => {
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
-  const { mutateAsync: deleteTransactionCategory } =
-    useDeleteTransactionCategoryMutation();
+  const { mutateAsync: deleteTransactionCategory } = useDeleteTransactionCategoryMutation();
 
-  const { mutateAsync: updateTransactionCategory } =
-    useUpdateTransactionCategoryMutation();
+  const { mutateAsync: updateTransactionCategory } = useUpdateTransactionCategoryMutation();
 
   const handleUpdate = async (data: NewTransactionCategory) => {
     await updateTransactionCategory(data);
@@ -70,8 +61,8 @@ const TransactionCategoryItemMenu = ({
 
   return (
     <div>
-      <Dropdown placement="bottom-end" backdrop="blur">
-        <DropdownTrigger>
+      <Dropdown placement="bottom-end">
+        <Dropdown.Trigger>
           <Button
             isIconOnly={true}
             variant="light"
@@ -80,26 +71,26 @@ const TransactionCategoryItemMenu = ({
           >
             <Ellipsis className="size-5" size={20} aria-hidden="true" />
           </Button>
-        </DropdownTrigger>
-        <DropdownMenu>
-          <DropdownItem key="edit" onPress={() => setShowUpdateDialog(true)}>
-            Edit
-          </DropdownItem>
-          <DropdownItem
-            key="delete"
-            className="text-danger"
-            color="danger"
-            onPress={handleDelete}
+        </Dropdown.Trigger>
+        <Dropdown.Popover>
+          <Dropdown.Menu
+            onAction={(key) => {
+              if (key === "edit") setShowUpdateDialog(true);
+              if (key === "delete") handleDelete();
+            }}
           >
-            Delete
-          </DropdownItem>
-        </DropdownMenu>
+            <Dropdown.Item id="edit">Edit</Dropdown.Item>
+            <Dropdown.Item id="delete" variant="danger">
+              Delete
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown.Popover>
       </Dropdown>
 
       <TransactionCategoryFormDialog
         category={category}
         onSubmit={handleUpdate}
-        open={showUpdateDialog}
+        isOpen={showUpdateDialog}
         onOpenChange={setShowUpdateDialog}
       />
     </div>

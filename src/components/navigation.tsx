@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 import { useMatchRoute } from "@tanstack/react-router";
-import { cx } from "class-variance-authority";
+import { cn as cx } from "@heroui/react";
 import {
   Sidebar as InternalSidebar,
   SidebarContent,
@@ -145,9 +145,7 @@ export const Sidebar = () => {
             >
               財
             </div>
-            {state === "expanded" && (
-              <p className="font-bold text-inherit">Zai</p>
-            )}
+            {state === "expanded" && <p className="font-bold text-inherit">Zai</p>}
           </Link>
         </SidebarHeader>
 

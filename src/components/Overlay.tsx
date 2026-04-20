@@ -25,9 +25,7 @@ interface OverlayProps extends React.ComponentProps<"div"> {
   isUnmounting?: boolean;
 }
 
-export const Overlay: React.FC<React.PropsWithChildren<OverlayProps>> = (
-  props
-) => {
+export const Overlay: React.FC<React.PropsWithChildren<OverlayProps>> = (props) => {
   return (
     <>
       <BodyLock />

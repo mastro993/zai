@@ -88,10 +88,7 @@ function SidebarProvider({
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-        (event.metaKey || event.ctrlKey)
-      ) {
+      if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         toggleSidebar();
       }
@@ -409,10 +406,7 @@ function SidebarGroupAction({ className, ...props }: ButtonProps) {
   );
 }
 
-function SidebarGroupContent({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+function SidebarGroupContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       className={cn("w-full text-sm", className)}
@@ -447,12 +441,10 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 
 // 1. Define the Extended Base Button for Menu Items
 export const SidebarMenuBaseButton = extendVariants(Button, {
-  // We use custom variant/size names to avoid conflicts with HeroUI's base variants,
-  // while ensuring we use the same values as the original shadcn component.
+  // We use custom variant/size names to avoid conflicts with HeroUI's base variants.
   variants: {
     variant: {
-      light:
-        "bg-transparent hover:bg-default-100 data-[active=true]:bg-default-100",
+      light: "bg-transparent hover:bg-default-100 data-[active=true]:bg-default-100",
       bordered:
         "bg-background border border-divider hover:bg-default-100 data-[active=true]:bg-default-100 hover:border-default-200",
     },
@@ -478,9 +470,7 @@ export const SidebarMenuBaseButton = extendVariants(Button, {
 });
 
 // Infer the prop types for our extended button
-type ExtendedSidebarMenuButtonProps = React.ComponentProps<
-  typeof SidebarMenuBaseButton
->;
+type ExtendedSidebarMenuButtonProps = React.ComponentProps<typeof SidebarMenuBaseButton>;
 
 function SidebarMenuButton({
   isActive = false,
@@ -566,10 +556,7 @@ function SidebarMenuAction({
   );
 }
 
-function SidebarMenuBadge({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+function SidebarMenuBadge({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       className={cn(
@@ -607,13 +594,7 @@ function SidebarMenuSkeleton({
       data-slot="sidebar-menu-skeleton"
       {...props}
     >
-      {showIcon && (
-        <Spinner
-          className="size-4"
-          data-sidebar="menu-skeleton-icon"
-          size="sm"
-        />
-      )}
+      {showIcon && <Spinner className="size-4" data-sidebar="menu-skeleton-icon" size="sm" />}
       <div
         className="h-4 bg-default-200 rounded-md max-w-(--skeleton-width) flex-1"
         data-sidebar="menu-skeleton-text"
@@ -642,10 +623,7 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
   );
 }
 
-function SidebarMenuSubItem({
-  className,
-  ...props
-}: React.ComponentProps<"li">) {
+function SidebarMenuSubItem({ className, ...props }: React.ComponentProps<"li">) {
   return (
     <li
       className={cn("group/menu-sub-item relative", className)}

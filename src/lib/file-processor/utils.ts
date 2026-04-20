@@ -6,5 +6,4 @@ export const filters: Record<AcceptedFileExtension, DialogFilter> = {
   csv: { name: "CSV", extensions: ["csv"] },
 };
 
-export const getFilter = (extension: AcceptedFileExtension): DialogFilter =>
-  filters[extension];
+export const getFilter = (extension: AcceptedFileExtension): DialogFilter => filters[extension];
