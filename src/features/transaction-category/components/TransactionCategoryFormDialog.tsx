@@ -6,7 +6,17 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Button, Input, ListBox, Modal, Radio, RadioGroup, Select, TextArea } from "@heroui/react";
+import {
+  Button,
+  Chip,
+  Input,
+  ListBox,
+  Modal,
+  Radio,
+  RadioGroup,
+  Select,
+  TextArea,
+} from "@heroui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -19,7 +29,7 @@ import type {
   TransactionCategoryColor,
 } from "../types";
 import { TransactionCategoryColors } from "../types";
-import { getColorHsl, deriveChildColorShade, getColorHex } from "../utils/colorUtils";
+import { getColorHsl } from "../utils/colorUtils";
 
 export type TransactionCategoryFormDialogProps = {
   category?: TransactionCategory;
@@ -206,53 +216,15 @@ export function TransactionCategoryFormDialog({
                     <FormItem>
                       <FormLabel>Color{isChild && " (Auto-derived from parent)"}</FormLabel>
                       <FormControl>
-                        {isChild ? (
-                          <div className="p-4 bg-sidebar rounded-md border border-dashed">
-                            <p className="text-sm text-foreground/60 mb-3">
-                              Child categories automatically get a shade of the parent color.
-                            </p>
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="w-8 h-8 rounded-md border border-foreground/20 shadow-sm"
-                                style={{
-                                  backgroundColor: parentCategoryId
-                                    ? getColorHex(
-                                        transactionCategories?.find(
-                                          (cat) => cat.id === parentCategoryId,
-                                        )?.color ?? "red",
-                                      )
-                                    : "#999",
-                                }}
-                              />
-                              <span className="text-sm">Parent color</span>
-                              <span className="mx-2 text-foreground/40">→</span>
-                              <div
-                                className="w-8 h-8 rounded-md border border-foreground/20 shadow-sm"
-                                style={{
-                                  backgroundColor: parentCategoryId
-                                    ? deriveChildColorShade(
-                                        transactionCategories?.find(
-                                          (cat) => cat.id === parentCategoryId,
-                                        )?.color ?? "red",
-                                        categoryId || "temp",
-                                      ).hex
-                                    : "#999",
-                                }}
-                              />
-                              <span className="text-sm">Child shade</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <RadioGroup
-                            className="grid grid-cols-8 gap-4"
-                            value={field.value ?? "red"}
-                            onChange={field.onChange}
-                          >
-                            {TransactionCategoryColors.map((color) => (
-                              <TransactionCategoryColorRadioItem key={color} color={color} />
-                            ))}
-                          </RadioGroup>
-                        )}
+                        <RadioGroup
+                          className="grid grid-cols-8 gap-4"
+                          value={field.value ?? "red"}
+                          onChange={field.onChange}
+                        >
+                          {TransactionCategoryColors.map((color) => (
+                            <TransactionCategoryColorRadioItem key={color} color={color} />
+                          ))}
+                        </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -262,20 +234,13 @@ export function TransactionCategoryFormDialog({
                   <FormLabel>Preview</FormLabel>
                   <FormControl>
                     <div className="flex justify-center bg-sidebar p-12 rounded-md border-1 border-dashed">
-                      <div
-                        style={{
-                          backgroundColor: isChild
-                            ? deriveChildColorShade(
-                                transactionCategories?.find((cat) => cat.id === parentCategoryId)
-                                  ?.color ?? "red",
-                                categoryId || "temp",
-                              ).hex
-                            : getColorHsl(form.watch("color") || "red"),
-                        }}
-                        className="px-4 py-2 rounded-lg text-black/80 font-semibold text-sm"
+                      <Chip
+                        variant="primary"
+                        className="rounded-full border-2 border-black/30"
+                        style={{ backgroundColor: getColorHsl(form.watch("color") || "red") }}
                       >
-                        {form.watch("name") || "New category"}
-                      </div>
+                        <Chip.Label>Default</Chip.Label>
+                      </Chip>
                     </div>
                   </FormControl>
                   <FormMessage />
