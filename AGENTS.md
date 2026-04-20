@@ -15,7 +15,7 @@ pnpm
 
 ## Guidelines
 
-- Always run pnpm lint and pnpm fmt before considering any task completed
+- Always run pnpm lint and pnpm format before considering any task completed
 
 <!-- HEROUI-REACT-AGENTS-MD-START -->
 

@@ -1,5 +1,5 @@
-import { DialogFilter } from "@tauri-apps/plugin-dialog";
-import { AcceptedFileExtension } from "./types";
+import type { DialogFilter } from "@tauri-apps/plugin-dialog";
+import type { AcceptedFileExtension } from "./types";
 
 export const filters: Record<AcceptedFileExtension, DialogFilter> = {
   json: { name: "JSON", extensions: ["json"] },

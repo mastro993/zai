@@ -1,5 +1,5 @@
 import Papa from "papaparse";
-import { AcceptedFileExtension, FileData } from "./types";
+import type { AcceptedFileExtension, FileData } from "./types";
 import { FileProcessorError } from "./error";
 import { Result } from "@praha/byethrow";
 

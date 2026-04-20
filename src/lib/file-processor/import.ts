@@ -8,7 +8,8 @@ import {
 } from "./error";
 import { getParser } from "./parser";
 import { Result } from "@praha/byethrow";
-import { AcceptedFileExtension, AcceptedFileExtensions } from "./types";
+import type { AcceptedFileExtension } from "./types";
+import { AcceptedFileExtensions } from "./types";
 import { getFilter } from "./utils";
 
 const isValidFileExtension = (

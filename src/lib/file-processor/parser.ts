@@ -1,6 +1,6 @@
 import Papa from "papaparse";
 import { ParseError } from "./error";
-import { AcceptedFileExtension, ParsedData } from "./types";
+import type { AcceptedFileExtension, ParsedData } from "./types";
 import { Result } from "@praha/byethrow";
 
 const parseJson = Result.try({

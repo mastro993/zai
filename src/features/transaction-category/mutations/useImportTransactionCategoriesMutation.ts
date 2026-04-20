@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { NewTransactionCategories } from "../types";
+import type { NewTransactionCategories } from "../types";
 import { importTransactionCategories } from "../commands";
 
 export const useImportTransactionCategoriesMutation = () => {

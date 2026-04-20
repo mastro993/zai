@@ -3,7 +3,7 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { Result } from "@praha/byethrow";
 import { FileProcessorError, FileWriteError, NoFilePathError } from "./error";
 import { getFormatter } from "./formatter";
-import { AcceptedFileExtension } from "./types";
+import type { AcceptedFileExtension } from "./types";
 import { getFilter } from "./utils";
 import { formatDate } from "date-fns";
 

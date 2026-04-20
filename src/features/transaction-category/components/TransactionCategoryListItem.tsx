@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { useDeleteTransactionCategoryMutation } from "../mutations/useDeleteTransactionCategoryMutation";
 import { useUpdateTransactionCategoryMutation } from "../mutations/useUpdateTransactionCategoryMutation";
 import { useSelectionStore } from "../stores/selection";
-import { NewTransactionCategory, TransactionCategory } from "../types";
+import type { NewTransactionCategory, TransactionCategory } from "../types";
 import { TransactionCategoryBadge } from "./TransactionCategoryBadge";
 import { TransactionCategoryFormDialog } from "./TransactionCategoryFormDialog";
 

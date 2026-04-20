@@ -1,5 +1,6 @@
 "use client";
 
+import type { LinkProps } from "@heroui/react";
 import {
   Button,
   type ButtonProps,
@@ -10,7 +11,6 @@ import {
   Input,
   type InputProps,
   Link,
-  LinkProps,
   Spinner,
   Tooltip,
 } from "@heroui/react";

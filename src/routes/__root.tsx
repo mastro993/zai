@@ -16,7 +16,7 @@ function Root() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <span className="loading loading-spinner loading-xl text-primary"></span>
+        <span className="loading loading-spinner loading-xl text-primary" />
       </div>
     );
   }

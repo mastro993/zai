@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { NewTransactionCategory } from "../types";
+import type { NewTransactionCategory } from "../types";
 import { updateTransactionCategory } from "../commands";
 
 export const useUpdateTransactionCategoryMutation = () => {

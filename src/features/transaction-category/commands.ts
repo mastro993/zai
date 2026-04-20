@@ -1,12 +1,11 @@
 import { invokeTauri, logger } from "@/lib/adapters";
-import {
+import type {
   NewTransactionCategories,
   NewTransactionCategory,
   TransactionCategories,
-  TransactionCategoriesSchema,
   TransactionCategory,
-  TransactionCategorySchema,
 } from "./types";
+import { TransactionCategoriesSchema, TransactionCategorySchema } from "./types";
 
 export const getTransactionCategories = async (
   parentId?: string,

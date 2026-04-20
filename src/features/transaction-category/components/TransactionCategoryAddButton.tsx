@@ -2,7 +2,7 @@ import { Button, useDisclosure } from "@heroui/react";
 import { Plus } from "lucide-react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useCreateTransactionCategoryMutation } from "../mutations/useCreateTransactionCategoryMutation";
-import { NewTransactionCategory } from "../types";
+import type { NewTransactionCategory } from "../types";
 import { TransactionCategoryFormDialog } from "./TransactionCategoryFormDialog";
 
 export const TransactionCategoryAddButton = () => {

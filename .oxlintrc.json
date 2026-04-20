@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["react", "typescript", "unicorn", "oxc"],
-  "ignorePatterns": ["scripts/**"],
+  "ignorePatterns": ["scripts/**", ".claude", ".agents"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
@@ -31,7 +31,6 @@
     "react/jsx-no-constructed-context-values": "error",
     "react/jsx-no-useless-fragment": "warn",
     "react/self-closing-comp": "warn",
-    "react/hook-use-state": "warn",
 
     // TypeScript
     "@typescript-eslint/no-explicit-any": "warn",

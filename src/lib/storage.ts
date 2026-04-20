@@ -1,5 +1,5 @@
 import { LazyStore } from "@tauri-apps/plugin-store";
-import { PersistStorage, StorageValue } from "zustand/middleware";
+import type { PersistStorage, StorageValue } from "zustand/middleware";
 import { Stronghold } from "./stronghold";
 
 /**
