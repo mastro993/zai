@@ -38,6 +38,7 @@
     "@tauri-apps/plugin-sql": "^2.4.0",
     "@tauri-apps/plugin-store": "~2.4.2",
     "@tauri-apps/plugin-stronghold": "~2.3.1",
+    "@toolwind/corner-shape": "0.0.8-3",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.29.2",
     "immer": "^10.2.0",
