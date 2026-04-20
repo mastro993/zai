@@ -1,13 +1,12 @@
-import { Button } from "@/components/ui/button";
+import { Button, useDisclosure } from "@heroui/react";
 import { Plus } from "lucide-react";
-import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useCreateTransactionCategoryMutation } from "../mutations/useCreateTransactionCategoryMutation";
 import { NewTransactionCategory } from "../types";
 import { TransactionCategoryFormDialog } from "./TransactionCategoryFormDialog";
 
 export const TransactionCategoryAddButton = () => {
-  const [showFormDialog, setShowFormDialog] = useState(false);
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { mutate: addTransactionCategory } =
     useCreateTransactionCategoryMutation();
 
@@ -16,17 +15,17 @@ export const TransactionCategoryAddButton = () => {
     setShowFormDialog(false);
   };
 
-  useHotkeys("mod+n", () => setShowFormDialog(true));
+  useHotkeys("mod+n", () => onOpen());
 
   return (
     <>
-      <Button size="sm" onClick={() => setShowFormDialog(true)}>
+      <Button onPress={() => onOpen()}>
         <Plus /> Add category
       </Button>
 
       <TransactionCategoryFormDialog
-        open={showFormDialog}
-        onOpenChange={setShowFormDialog}
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
         onSubmit={handleSubmit}
       />
     </>

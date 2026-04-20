@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -11,6 +10,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { exportToFile } from "@/lib/file-processor";
+import { Button } from "@heroui/react";
 import { Result } from "@praha/byethrow";
 import { useCallback, useId, useState } from "react";
 import { toast } from "sonner";
@@ -28,7 +28,7 @@ const exportFormatOptions = [
 ];
 
 export function TransactionCategoryExportDialog(
-  dialogProps: React.ComponentProps<typeof Dialog>
+  dialogProps: React.ComponentProps<typeof Dialog>,
 ) {
   const id = useId();
 
@@ -100,7 +100,7 @@ export function TransactionCategoryExportDialog(
         </fieldset>
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="secondary">
+            <Button type="button" color="secondary">
               Cancel
             </Button>
           </DialogClose>

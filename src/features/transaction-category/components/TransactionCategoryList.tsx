@@ -11,7 +11,7 @@ export const TransactionCategoryList = () => {
 
   useHotkeys("mod+a", () => {
     setSelectedCategoryIds(
-      transactionCategories?.map((category) => category.id)
+      transactionCategories?.map((category) => category.id),
     );
   });
 

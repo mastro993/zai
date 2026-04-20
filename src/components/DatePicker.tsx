@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -8,6 +7,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { Button } from "@heroui/react";
 import {
   endOfMonth,
   endOfYear,
@@ -60,7 +60,7 @@ export default function DatePicker() {
     <div className="*:not-first:mt-2">
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="justify-start min-w-62">
+          <Button variant="bordered" className="justify-start min-w-62">
             <CalendarIcon
               size={16}
               className="opacity-40 -ms-1 group-hover:text-foreground shrink-0 transition-colors"

@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import {
   CommandEmpty,
   CommandGroup,
@@ -7,43 +6,39 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import {
+  Button,
+  Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalHeader,
+  RadioGroup,
+  SelectItem,
+  Textarea,
+} from "@heroui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { SelectContent, SelectTrigger } from "@radix-ui/react-select";
 import { cva } from "class-variance-authority";
 import { CheckIcon, ChevronDownIcon, Command } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Form, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
+import { useCreateTransactionCategoryMutation } from "../mutations/useCreateTransactionCategoryMutation";
 import { useParentTransactionCategories } from "../queries/useParentTransactionCategories";
 import {
   NewTransactionCategory,
@@ -56,12 +51,12 @@ import {
   TransactionCategoryBadgeVariants,
 } from "./TransactionCategoryBadge";
 
-export type TransactionCategoryFormDialogProps = React.ComponentProps<
-  typeof Dialog
-> & {
+export type TransactionCategoryFormDialogProps = {
   category?: TransactionCategory;
-  onSubmit: (data: NewTransactionCategory) => void;
-};
+} & Pick<
+  React.ComponentProps<typeof Modal>,
+  "isOpen" | "onOpenChange" | "onClose"
+>;
 
 export const formSchema = z.object({
   id: z.string().optional(),
@@ -73,10 +68,16 @@ export const formSchema = z.object({
 
 export function TransactionCategoryFormDialog({
   category,
-  onSubmit,
-  ...dialogProps
+  ...modalProps
 }: TransactionCategoryFormDialogProps) {
   const { data: transactionCategories } = useParentTransactionCategories();
+  const { mutate: addTransactionCategory } =
+    useCreateTransactionCategoryMutation();
+
+  const onSubmit = (data: NewTransactionCategory) => {
+    addTransactionCategory(data);
+    modalProps.onOpenChange?.(false);
+  };
 
   const form = useForm<NewTransactionCategory>({
     resolver: zodResolver(formSchema),
@@ -97,7 +98,7 @@ export function TransactionCategoryFormDialog({
   useEffect(() => {
     if (parentCategoryId) {
       const parentCategory = transactionCategories?.find(
-        (category) => category.id === parentCategoryId
+        (category) => category.id === parentCategoryId,
       );
       if (parentCategory) {
         form.setValue("color", parentCategory.color);
@@ -107,7 +108,7 @@ export function TransactionCategoryFormDialog({
 
   const title = useMemo(
     () => (category ? "Edit category" : "New category"),
-    [category]
+    [category],
   );
 
   const description = useMemo(
@@ -115,132 +116,130 @@ export function TransactionCategoryFormDialog({
       category
         ? "Edit the transaction category details"
         : "Create a new category for transactions",
-    [category]
+    [category],
   );
 
   return (
     <Form {...form}>
-      <Dialog {...dialogProps}>
-        <DialogContent onCloseAutoFocus={() => form.reset()}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <DialogHeader>
-              <DialogTitle>{title}</DialogTitle>
-              <DialogDescription>{description}</DialogDescription>
-            </DialogHeader>
-            <FormField
-              control={form.control}
-              name="parentId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Parent</FormLabel>
-                  <FormControl>
-                    <Select
-                      value={field.value ?? undefined}
-                      onValueChange={field.onChange}
-                    >
-                      <SelectTrigger
-                        id={"parent-category-select"}
-                        className="w-auto max-w-full min-w-48"
+      <Modal {...modalProps}>
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">{title}</ModalHeader>
+          <ModalBody>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <FormField
+                control={form.control}
+                name="parentId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Parent</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value ?? undefined}
+                        onValueChange={field.onChange}
                       >
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {transactionCategories?.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
+                        <SelectTrigger
+                          id={"parent-category-select"}
+                          className="w-auto max-w-full min-w-48"
+                        >
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {transactionCategories?.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Name<span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="New category" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Description"
+                        {...field}
+                        value={field.value ?? undefined}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Color</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        className="grid grid-cols-11 gap-4"
+                        defaultValue="neutral"
+                        onValueChange={field.onChange}
+                        value={field.value ?? "neutral"}
+                      >
+                        {TransactionCategoryColors.map((color) => (
+                          <TransactionCategoryColorRadioGroupItem
+                            key={color}
+                            color={color}
+                          />
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Name<span className="text-destructive">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="New category" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Description"
-                      {...field}
-                      value={field.value ?? undefined}
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormItem>
+                <FormLabel>Preview</FormLabel>
+                <FormControl>
+                  <div className="flex justify-center bg-sidebar p-12 rounded-md border-1 border-dashed">
+                    <TransactionCategoryBadge
+                      category={{
+                        name: form.watch("name") || "New category",
+                        color: form.watch("color") || "neutral",
+                      }}
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="color"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Color</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      className="grid grid-cols-11 gap-4"
-                      defaultValue="neutral"
-                      onValueChange={field.onChange}
-                      value={field.value ?? "neutral"}
-                    >
-                      {TransactionCategoryColors.map((color) => (
-                        <TransactionCategoryColorRadioGroupItem
-                          key={color}
-                          color={color}
-                        />
-                      ))}
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormItem>
-              <FormLabel>Preview</FormLabel>
-              <FormControl>
-                <div className="flex justify-center bg-sidebar p-12 rounded-md border-1 border-dashed">
-                  <TransactionCategoryBadge
-                    category={{
-                      name: form.watch("name") || "New category",
-                      color: form.watch("color") || "neutral",
-                    }}
-                  />
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-            <div className="grid gap-2">
-              <Button type="submit" className="w-full">
-                {category ? "Save changes" : "Create category"}
-              </Button>
-              <DialogClose asChild>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+
+              <div className="grid gap-2">
+                <Button type="submit" className="w-full">
+                  {category ? "Save changes" : "Create category"}
+                </Button>
                 <Button type="button" variant="ghost" className="w-full">
                   Cancel
                 </Button>
-              </DialogClose>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+              </div>
+            </form>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Form>
   );
 }
@@ -299,7 +298,7 @@ const TransactionCategoryColorRadioGroupItem = ({
       defaultVariants: {
         color: "neutral-soft",
       },
-    }
+    },
   );
 
   return (
@@ -328,7 +327,7 @@ export default function TransactionCategoryParentSelect({
       <PopoverTrigger asChild>
         <Button
           id={id}
-          variant="outline"
+          variant="bordered"
           role="combobox"
           aria-expanded={open}
           className="bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]"

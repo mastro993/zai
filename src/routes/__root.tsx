@@ -1,4 +1,4 @@
-import { AppSidebar } from "@/components/AppSidebar";
+import { Sidebar } from "@/components/navigation";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
@@ -22,9 +22,9 @@ function Root() {
   }
 
   return (
-    <div className="flex h-screen select-none">
+    <div className="flex h-screen select-none bg-background">
       <SidebarProvider>
-        <AppSidebar />
+        <Sidebar />
         <SidebarInset>
           <div className="@container">
             <Outlet />

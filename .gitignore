@@ -36,3 +36,5 @@ zai.db
 # Tauri
 target
 
+# heroui-agents-md
+.heroui-docs/

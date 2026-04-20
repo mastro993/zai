@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@heroui/react";
 import { Plus } from "lucide-react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useAddTransaction } from "../api/useAddTransaction";
@@ -21,7 +21,7 @@ export const TransactionAddButton = () => {
   });
 
   return (
-    <Button size="sm" onClick={handleAddTransaction}>
+    <Button size="sm" onPress={handleAddTransaction}>
       <Plus size={16} aria-hidden="true" /> Add transaction
     </Button>
   );

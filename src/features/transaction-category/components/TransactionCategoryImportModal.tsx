@@ -1,12 +1,3 @@
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -16,6 +7,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { importFromFile } from "@/lib/file-processor";
+import {
+  Button,
+  Modal,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "@heroui/react";
 import { Result } from "@praha/byethrow";
 import { Download, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -25,9 +23,12 @@ import {
   TransactionCategoriesSchema,
 } from "../types";
 
-export function TransactionCategoryImportDialog(
-  dialogProps: React.ComponentProps<typeof Dialog>
-) {
+type Props = Pick<
+  React.ComponentProps<typeof Modal>,
+  "isOpen" | "onOpenChange" | "onClose"
+>;
+
+export const TransactionCategoryImportModal = (modalProps: Props) => {
   const [rawCategories, setRawCategories] =
     useState<NewTransactionCategories>();
 
@@ -40,9 +41,9 @@ export function TransactionCategoryImportDialog(
   useEffect(() => {
     if (isSuccess) {
       setRawCategories(undefined);
-      dialogProps.onOpenChange?.(false);
+      modalProps.onOpenChange?.(false);
     }
-  }, [isSuccess, dialogProps]);
+  }, [isSuccess, modalProps]);
 
   const importCategories = useCallback(() => {
     if (rawCategories) {
@@ -69,20 +70,17 @@ export function TransactionCategoryImportDialog(
             };
           });
         }),
-        Result.map(setRawCategories)
+        Result.map(setRawCategories),
       ),
-    []
+    [],
   );
 
   return (
-    <Dialog {...dialogProps}>
-      <DialogContent
-        onCloseAutoFocus={clear}
-        className="min-w-2/3 min-h-3/4 max-h-3/4 flex flex-col"
-      >
-        <DialogHeader>
-          <DialogTitle>Import categories</DialogTitle>
-        </DialogHeader>
+    <Modal {...modalProps}>
+      <ModalContent>
+        <ModalHeader className="flex flex-col gap-1">
+          Import categories
+        </ModalHeader>
         {rawCategories ? (
           <RawCategoriesTable categories={rawCategories} />
         ) : (
@@ -94,16 +92,15 @@ export function TransactionCategoryImportDialog(
             <p>Drop a file here or click to upload</p>
           </div>
         )}
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={isImportPending}
-            >
-              Cancel
-            </Button>
-          </DialogClose>
+        <ModalFooter>
+          <Button
+            type="button"
+            color="secondary"
+            disabled={isImportPending}
+            onPress={modalProps.onClose}
+          >
+            Cancel
+          </Button>
           <Button
             onClick={() => importCategories()}
             disabled={isImportPending || !rawCategories}
@@ -111,11 +108,11 @@ export function TransactionCategoryImportDialog(
             {isImportPending && <Loader2 className="animate-spin" />}
             Import {rawCategories?.length ?? ""} categories
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   );
-}
+};
 
 const RawCategoriesTable = ({
   categories,
