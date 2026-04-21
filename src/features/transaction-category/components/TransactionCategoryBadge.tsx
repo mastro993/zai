@@ -1,10 +1,6 @@
+import { changeLuminosity, shouldUseDarkForeground } from "@/utils/color";
 import { Chip } from "@heroui/react";
-import type { TransactionCategory, TransactionCategoryColor } from "../types";
-import { getColorHsl } from "../utils/colorUtils";
-
-export type TransactionCategoryBadgeVariants = {
-  color: Record<TransactionCategoryColor, string>;
-};
+import type { TransactionCategory } from "../types";
 
 export type TransactionCategoryBadgeProps = {
   category: Pick<TransactionCategory, "name" | "color">;
@@ -13,16 +9,24 @@ export type TransactionCategoryBadgeProps = {
 export const TransactionCategoryBadge = ({ category }: TransactionCategoryBadgeProps) => {
   const { name, color } = category;
 
-  // Generate background color from hex
-  const bgColor = getColorHsl(color);
+  if (!color) {
+    return (
+      <Chip size="sm" className="border-1 border-default-300 bg-default-100 text-default-700">
+        {name}
+      </Chip>
+    );
+  }
+
+  const useDarkForeground = shouldUseDarkForeground(color);
 
   return (
     <Chip
-      className="border-2"
+      size="sm"
+      className="border-1"
       style={{
-        backgroundColor: bgColor,
-        borderColor: bgColor,
-        color: "#fff",
+        backgroundColor: color,
+        borderColor: changeLuminosity(color, useDarkForeground ? -18 : 10),
+        color: useDarkForeground ? "#111827" : "#FFFFFF",
       }}
     >
       {name}

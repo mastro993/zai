@@ -1,11 +1,10 @@
+use crate::database::DbConnection;
 use diesel::prelude::*;
 use diesel::query_builder::*;
 use diesel::query_dsl::methods::LoadQuery;
 use diesel::sql_types::BigInt;
 use diesel::sqlite::Sqlite;
 use serde::{Deserialize, Serialize};
-use crate::database::DbConnection;
-
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

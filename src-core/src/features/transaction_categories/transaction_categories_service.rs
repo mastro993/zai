@@ -87,9 +87,9 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
 
             for child in child_categories {
                 let mut owned_child = child.clone();
-
                 owned_child.id = Some(Uuid::new_v4().to_string());
                 owned_child.parent_id = owned_parent_id.clone();
+                owned_child.color = root_category.color.clone();
 
                 categories_to_import.push(owned_child);
             }
@@ -148,19 +148,124 @@ mod tests {
             name: "Child Category".to_string(),
             parent_id: Some("parent1".to_string()),
             description: Some("Child description".to_string()),
-            color: Some("#000000".to_string()),
+            color: Some("#999999".to_string()),
         };
         let child_2 = NewTransactionCategory {
             id: Some("child2".to_string()),
             name: "Child Category".to_string(),
             parent_id: Some("parent1".to_string()),
             description: Some("Child description".to_string()),
-            color: Some("#000000".to_string()),
+            color: Some("#CCCCCC".to_string()),
         };
 
         let categories = vec![parent.clone(), child_1.clone(), child_2.clone()];
         let result = service.import_categories(categories).await;
         assert!(result.is_ok());
-        assert!(result.unwrap().len() == 3);
+        let imported = result.unwrap();
+        assert_eq!(imported.len(), 3);
+
+        let imported_parent = imported
+            .iter()
+            .find(|category| category.parent_id.is_none())
+            .expect("parent category");
+        assert_eq!(imported_parent.color.as_deref(), Some("#FFFFFF"));
+
+        let imported_child_colors = imported
+            .iter()
+            .filter(|category| category.parent_id.as_deref() == Some(imported_parent.id.as_str()))
+            .map(|category| category.color.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(imported_child_colors.len(), 2);
+        assert!(
+            imported_child_colors
+                .iter()
+                .all(|color| color.as_deref() == Some("#FFFFFF"))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_import_categories_rewrites_child_colors_to_match_parent() {
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let service = TransactionCategoriesService::new(Arc::new(repo));
+
+        let parent = NewTransactionCategory {
+            id: Some("parent1".to_string()),
+            name: "Parent Category".to_string(),
+            parent_id: None,
+            description: Some("Parent description".to_string()),
+            color: Some("#D31212".to_string()),
+        };
+        let valid_child = NewTransactionCategory {
+            id: Some("child1".to_string()),
+            name: "Valid Child Category".to_string(),
+            parent_id: Some("parent1".to_string()),
+            description: Some("Child description".to_string()),
+            color: Some("#DB1313".to_string()),
+        };
+        let invalid_child = NewTransactionCategory {
+            id: Some("child2".to_string()),
+            name: "Invalid Child Category".to_string(),
+            parent_id: Some("parent1".to_string()),
+            description: Some("Child description".to_string()),
+            color: Some("#3C99F6".to_string()),
+        };
+
+        let result = service
+            .import_categories(vec![parent, valid_child, invalid_child])
+            .await;
+
+        assert!(result.is_ok());
+        let imported = result.unwrap();
+        assert_eq!(imported.len(), 3);
+        let imported_parent = imported
+            .iter()
+            .find(|category| category.parent_id.is_none())
+            .expect("parent category");
+        assert!(
+            imported
+                .iter()
+                .filter(
+                    |category| category.parent_id.as_deref() == Some(imported_parent.id.as_str())
+                )
+                .all(|category| category.color == imported_parent.color)
+        );
+    }
+
+    #[tokio::test]
+    async fn test_import_categories_keeps_child_without_color_in_sync_with_parent() {
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let service = TransactionCategoriesService::new(Arc::new(repo));
+
+        let parent = NewTransactionCategory {
+            id: Some("parent1".to_string()),
+            name: "Parent Category".to_string(),
+            parent_id: None,
+            description: Some("Parent description".to_string()),
+            color: Some("#D31212".to_string()),
+        };
+        let invalid_child = NewTransactionCategory {
+            id: Some("child1".to_string()),
+            name: "Child Category".to_string(),
+            parent_id: Some("parent1".to_string()),
+            description: Some("Child description".to_string()),
+            color: None,
+        };
+
+        let result = service.import_categories(vec![parent, invalid_child]).await;
+
+        assert!(result.is_ok());
+        let imported = result.unwrap();
+        assert_eq!(imported.len(), 2);
+        let imported_parent = imported
+            .iter()
+            .find(|category| category.parent_id.is_none())
+            .expect("parent category");
+        let imported_child = imported
+            .iter()
+            .find(|category| category.parent_id.as_deref() == Some(imported_parent.id.as_str()))
+            .expect("child category");
+        assert_eq!(imported_child.color, imported_parent.color);
     }
 }

@@ -24,6 +24,33 @@ impl TransactionCategoriesRepository {
     ) -> Self {
         Self { pool, writer }
     }
+
+    fn resolve_category_color(
+        conn: &mut SqliteConnection,
+        parent_id: Option<&str>,
+        color: Option<&str>,
+    ) -> Result<Option<String>> {
+        let normalized_color = normalize_optional_color(color)?;
+
+        if let Some(parent_id) = parent_id {
+            let parent_row = transaction_categories::table
+                .find(parent_id)
+                .filter(transaction_categories::deleted_at.is_null())
+                .first::<TransactionCategoryRow>(conn)
+                .map_err(|e| Error::NotFound(e.to_string()))?;
+
+            if parent_row.parent_id.is_some() {
+                return Err(Error::InvalidData(
+                    "Cannot create categories deeper than 2 levels. The parent category must be a root category."
+                        .to_string(),
+                ));
+            }
+
+            return normalize_optional_color(parent_row.color.as_deref());
+        }
+
+        Ok(normalized_color)
+    }
 }
 
 #[async_trait]
@@ -102,29 +129,16 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
-                    let mut final_category = new_category.clone();
-
-                    // Validate nesting level before creating and enforce color inheritance
-                    if let Some(parent_id) = &new_category.parent_id {
-                        let parent_row = transaction_categories::table
-                            .find(parent_id.as_str())
-                            .filter(transaction_categories::deleted_at.is_null())
-                            .first::<TransactionCategoryRow>(conn)
-                            .map_err(|e| Error::NotFound(e.to_string()))?;
-
-                        if parent_row.parent_id.is_some() {
-                            return Err(Error::InvalidData(
-                                "Cannot create categories deeper than 2 levels. The parent category must be a root category."
-                                    .to_string(),
-                            ));
-                        }
-
-                        // Child categories inherit the parent's base color
-                        final_category.color = parent_row.color;
-                    }
+                    let final_category = new_category.clone();
+                    let resolved_color = Self::resolve_category_color(
+                        conn,
+                        new_category.parent_id.as_deref(),
+                        new_category.color.as_deref(),
+                    )?;
 
                     let mut category: TransactionCategoryRow = final_category.into();
                     category.id = new_id.clone();
+                    category.color = resolved_color;
 
                     diesel::insert_into(transaction_categories::table)
                         .values(&category)
@@ -135,11 +149,11 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
 
                     let (category_row, parent_row) = transaction_categories::table
                         .left_join(
-                            parent_categories.on(
-                                transaction_categories::parent_id.eq(parent_categories
+                            parent_categories.on(transaction_categories::parent_id.eq(
+                                parent_categories
                                     .field(transaction_categories::id)
-                                    .nullable()),
-                            ),
+                                    .nullable(),
+                            )),
                         )
                         .filter(transaction_categories::id.eq(&new_id))
                         .first::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)?;
@@ -162,28 +176,15 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> Result<TransactionCategory> {
-                    let mut final_category = updated_category.clone();
-
-                    // Validate nesting level before updating and enforce color inheritance
-                    if let Some(parent_id) = &updated_category.parent_id {
-                        let parent_row = transaction_categories::table
-                            .find(parent_id.as_str())
-                            .filter(transaction_categories::deleted_at.is_null())
-                            .first::<TransactionCategoryRow>(conn)
-                            .map_err(|e| Error::NotFound(e.to_string()))?;
-
-                        if parent_row.parent_id.is_some() {
-                            return Err(Error::InvalidData(
-                                "Cannot create categories deeper than 2 levels. The parent category must be a root category."
-                                    .to_string(),
-                            ));
-                        }
-
-                        // Child categories inherit the parent's base color
-                        final_category.color = parent_row.color;
-                    }
+                    let final_category = updated_category.clone();
+                    let resolved_color = Self::resolve_category_color(
+                        conn,
+                        updated_category.parent_id.as_deref(),
+                        updated_category.color.as_deref(),
+                    )?;
 
                     let mut category: TransactionCategoryRow = final_category.into();
+                    category.color = resolved_color;
 
                     let existing = transaction_categories::table
                         .find(&category.id)
@@ -453,7 +454,7 @@ mod tests {
             name: "Original".to_string(),
             parent_id: None,
             description: None,
-            color: None,
+            color: Some("#D31212".to_string()),
             id: None,
         };
         let created = repo.create_category(new_category).await.unwrap();
@@ -463,7 +464,7 @@ mod tests {
             name: "Updated".to_string(),
             parent_id: None,
             description: Some("Updated description".to_string()),
-            color: None,
+            color: Some("#3C99F6".to_string()),
         };
 
         let updated_category = repo.update_category(updated).await.unwrap();
@@ -473,6 +474,7 @@ mod tests {
             updated_category.description.as_deref(),
             Some("Updated description")
         );
+        assert_eq!(updated_category.color.as_deref(), Some("#3C99F6"));
     }
 
     #[tokio::test]
@@ -532,7 +534,7 @@ mod tests {
             name: "Test Category 3".to_string(),
             parent_id: Some(new_category_1.id.as_deref().unwrap().to_string()),
             description: Some("Descrizione test".to_string()),
-            color: Some("#FF0000".to_string()),
+            color: Some("#DB1313".to_string()),
         };
 
         let created: Vec<TransactionCategory> = repo
@@ -540,36 +542,135 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(created.len() == 3);
+        assert_eq!(created.len(), 3);
+        assert!(
+            created
+                .iter()
+                .any(|category| category.color.as_deref() == Some("#DB1313"))
+        );
     }
 
     #[tokio::test]
-    async fn test_child_category_inherits_parent_color() {
+    async fn test_create_category_inherits_parent_color() {
         let temp_db = database::TempDb::new();
         let repo = setup_test_repo(temp_db.path());
 
-        // Create parent category with red color
         let parent = NewTransactionCategory {
             name: "Parent".to_string(),
             parent_id: None,
             description: None,
-            color: Some("red".to_string()),
+            color: Some("#D31212".to_string()),
             id: None,
         };
         let created_parent = repo.create_category(parent).await.unwrap();
 
-        // Create child category with blue color (should be overridden to red)
         let child = NewTransactionCategory {
             name: "Child".to_string(),
             parent_id: Some(created_parent.id.clone()),
             description: None,
-            color: Some("blue".to_string()),
+            color: Some("#3C99F6".to_string()),
             id: None,
         };
         let created_child = repo.create_category(child).await.unwrap();
 
-        // Verify child has inherited parent's color, not the blue we tried to set
-        assert_eq!(created_child.color.as_deref(), Some("red"));
+        assert_eq!(created_child.color.as_deref(), Some("#D31212"));
+    }
+
+    #[tokio::test]
+    async fn test_create_category_inherits_parent_color_when_child_color_is_missing() {
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let parent = NewTransactionCategory {
+            name: "Parent".to_string(),
+            parent_id: None,
+            description: None,
+            color: Some("#D31212".to_string()),
+            id: None,
+        };
+        let created_parent = repo.create_category(parent).await.unwrap();
+
+        let child = NewTransactionCategory {
+            name: "Child".to_string(),
+            parent_id: Some(created_parent.id),
+            description: None,
+            color: None,
+            id: None,
+        };
+        let created_child = repo.create_category(child).await.unwrap();
+
+        assert_eq!(created_child.color.as_deref(), Some("#D31212"));
+    }
+
+    #[tokio::test]
+    async fn test_update_category_inherits_parent_color() {
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let parent = NewTransactionCategory {
+            name: "Parent".to_string(),
+            parent_id: None,
+            description: None,
+            color: Some("#D31212".to_string()),
+            id: None,
+        };
+        let created_parent = repo.create_category(parent).await.unwrap();
+
+        let child = NewTransactionCategory {
+            name: "Child".to_string(),
+            parent_id: Some(created_parent.id.clone()),
+            description: None,
+            color: Some("#DB1313".to_string()),
+            id: None,
+        };
+        let created_child = repo.create_category(child).await.unwrap();
+
+        let updated_child = TransactionCategoryUpdate {
+            id: created_child.id,
+            name: "Child Updated".to_string(),
+            parent_id: Some(created_parent.id),
+            description: None,
+            color: Some("#AB63F2".to_string()),
+        };
+
+        let updated_child = repo.update_category(updated_child).await.unwrap();
+
+        assert_eq!(updated_child.color.as_deref(), Some("#D31212"));
+    }
+
+    #[tokio::test]
+    async fn test_update_category_keeps_root_color_when_parent_is_removed() {
+        let temp_db = database::TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let parent = NewTransactionCategory {
+            name: "Parent".to_string(),
+            parent_id: None,
+            description: None,
+            color: Some("#D31212".to_string()),
+            id: None,
+        };
+        let created_parent = repo.create_category(parent).await.unwrap();
+
+        let child = NewTransactionCategory {
+            name: "Child".to_string(),
+            parent_id: Some(created_parent.id.clone()),
+            description: None,
+            color: Some("#DB1313".to_string()),
+            id: None,
+        };
+        let created_child = repo.create_category(child).await.unwrap();
+
+        let updated_child = TransactionCategoryUpdate {
+            id: created_child.id,
+            name: "Promoted Child".to_string(),
+            parent_id: None,
+            description: None,
+            color: Some("#AB63F2".to_string()),
+        };
+
+        let updated_child = repo.update_category(updated_child).await.unwrap();
+
+        assert_eq!(updated_child.color.as_deref(), Some("#AB63F2"));
     }
 }
-

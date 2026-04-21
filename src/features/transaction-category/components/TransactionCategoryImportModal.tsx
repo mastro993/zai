@@ -4,6 +4,7 @@ import { Result } from "@praha/byethrow";
 import { Download01Icon, LoaderPinwheelIcon } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/ui/icon";
 import { useCallback, useEffect, useState } from "react";
+import { shouldUseDarkForeground } from "@/utils/color";
 import { useImportTransactionCategoriesMutation } from "../mutations/useImportTransactionCategoriesMutation";
 import type { NewTransactionCategories } from "../types";
 import { TransactionCategoriesSchema } from "../types";
@@ -117,7 +118,40 @@ const RawCategoriesTable = ({ categories }: { categories: NewTransactionCategori
                     <Table.Cell>{category.name}</Table.Cell>
                     <Table.Cell>{parent?.name}</Table.Cell>
                     <Table.Cell>{category.description}</Table.Cell>
-                    <Table.Cell>{category.color}</Table.Cell>
+                    <Table.Cell>
+                      <div className="flex items-center gap-2">
+                        {category.color ? (
+                          <>
+                            <div
+                              className="flex h-6 w-6 items-center justify-center rounded border border-default-300"
+                              style={{ backgroundColor: category.color }}
+                              aria-hidden="true"
+                            />
+                            <span
+                              className="rounded px-2 py-1 font-mono text-xs"
+                              style={{
+                                backgroundColor: category.color,
+                                color: shouldUseDarkForeground(category.color)
+                                  ? "#111827"
+                                  : "#FFFFFF",
+                              }}
+                            >
+                              {category.color}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <div
+                              className="flex h-6 w-6 items-center justify-center rounded border border-dashed border-default-300 bg-default-100"
+                              aria-hidden="true"
+                            />
+                            <span className="rounded border border-default-300 px-2 py-1 text-xs text-default-600">
+                              No color
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </Table.Cell>
                   </Table.Row>
                 );
               })}

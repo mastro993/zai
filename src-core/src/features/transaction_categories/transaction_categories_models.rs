@@ -4,6 +4,34 @@ use serde::{Deserialize, Serialize};
 
 use crate::Error;
 
+const INVALID_COLOR_MESSAGE: &str =
+    "Transaction category color must be a valid hex color in the format #RRGGBB";
+
+fn validate_color(color: Option<&str>) -> Result<(), Error> {
+    if let Some(color) = color {
+        let is_valid_hex = color.len() == 7
+            && color.starts_with('#')
+            && color.as_bytes()[1..]
+                .iter()
+                .all(|byte| byte.is_ascii_hexdigit());
+
+        if !is_valid_hex {
+            return Err(Error::InvalidData(INVALID_COLOR_MESSAGE.to_string()));
+        }
+    }
+
+    Ok(())
+}
+
+pub(crate) fn normalize_hex_color(color: &str) -> Result<String, Error> {
+    validate_color(Some(color))?;
+    Ok(color.to_ascii_uppercase())
+}
+
+pub(crate) fn normalize_optional_color(color: Option<&str>) -> Result<Option<String>, Error> {
+    color.map(normalize_hex_color).transpose()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionCategory {
@@ -74,6 +102,7 @@ impl NewTransactionCategory {
                 "Transaction category name cannot be empty".to_string(),
             ));
         }
+        validate_color(self.color.as_deref())?;
         Ok(())
     }
 }
@@ -124,6 +153,7 @@ impl TransactionCategoryUpdate {
                 ));
             }
         }
+        validate_color(self.color.as_deref())?;
         Ok(())
     }
 }
@@ -182,6 +212,27 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_new_transaction_category_rejects_invalid_color() {
+        let new_category_invalid = NewTransactionCategory {
+            name: "Test Category".to_string(),
+            parent_id: None,
+            description: Some("Descrizione test".to_string()),
+            color: Some("red".to_string()),
+            id: None,
+        };
+
+        let result = new_category_invalid.validate();
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains(INVALID_COLOR_MESSAGE)
+        );
+    }
+
+    #[tokio::test]
     async fn test_transaction_category_update_validation() {
         let new_category = TransactionCategoryUpdate {
             id: "some-id".to_string(),
@@ -223,9 +274,42 @@ mod tests {
 
         let result = self_ref.validate();
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("cannot be its own parent"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("cannot be its own parent")
+        );
+
+        let invalid_color = TransactionCategoryUpdate {
+            id: "some-id".to_string(),
+            name: "Test Category".to_string(),
+            parent_id: None,
+            description: None,
+            color: Some("#12345".to_string()),
+        };
+
+        let result = invalid_color.validate();
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains(INVALID_COLOR_MESSAGE)
+        );
+    }
+
+    #[tokio::test]
+    async fn test_normalize_optional_color_uppercases_valid_hex() {
+        let normalized = normalize_optional_color(Some("#ff0000")).expect("normalize");
+
+        assert_eq!(normalized.as_deref(), Some("#FF0000"));
+    }
+
+    #[tokio::test]
+    async fn test_normalize_optional_color_keeps_none() {
+        let normalized = normalize_optional_color(None).expect("normalize");
+
+        assert!(normalized.is_none());
     }
 }

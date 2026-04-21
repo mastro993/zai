@@ -1,3 +1,6 @@
+use crate::database::pagination::PaginatedData;
+use crate::database::sorting::Sort;
+use crate::features::transactions::transactions_models::Transaction;
 use crate::{
     errors::Result,
     features::transactions::transactions_models::{
@@ -5,9 +8,6 @@ use crate::{
     },
 };
 use async_trait::async_trait;
-use crate::database::pagination::PaginatedData;
-use crate::database::sorting::Sort;
-use crate::features::transactions::transactions_models::Transaction;
 
 #[async_trait]
 pub trait TransactionsRepositoryTrait: Send + Sync {

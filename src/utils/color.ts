@@ -2,6 +2,38 @@
  * Color utility functions for HEX, HSL conversions and color analysis
  */
 
+export const HEX_COLOR_PATTERN = /^#?(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+
+export type HslColor = {
+  h: number;
+  s: number;
+  l: number;
+};
+
+/**
+ * Normalize a HEX color string to uppercase #RRGGBB format.
+ * @param hex - HEX color string (e.g., '#f00', 'ff0000')
+ * @returns Normalized HEX color string (e.g., '#FF0000')
+ */
+export function normalizeHexColor(hex: string): string {
+  const normalizedHex = hex.trim();
+
+  if (!HEX_COLOR_PATTERN.test(normalizedHex)) {
+    throw new Error(`Invalid HEX color: ${hex}`);
+  }
+
+  const sanitizedHex = normalizedHex.replace("#", "").toUpperCase();
+
+  if (sanitizedHex.length === 3) {
+    return `#${sanitizedHex
+      .split("")
+      .map((char) => char + char)
+      .join("")}`;
+  }
+
+  return `#${sanitizedHex}`;
+}
+
 /**
  * Convert HEX value to RGB ratio
  * @internal
@@ -21,7 +53,7 @@ function hue2rgb(p: number, q: number, t: number): number {
  */
 function rgbValueToHex(value: number): string {
   const hex = Math.round(value * 255).toString(16);
-  return hex.length === 1 ? '0' + hex : hex;
+  return hex.length === 1 ? "0" + hex : hex;
 }
 
 /**
@@ -29,17 +61,8 @@ function rgbValueToHex(value: number): string {
  * @param hex - HEX color string (e.g., '#FF0000' or 'FF0000')
  * @returns HSL object with h (0-360), s (0-100), l (0-100)
  */
-export function hexToHsl(
-  hex: string
-): { h: number; s: number; l: number } {
-  let normalizedHex = hex.replace('#', '').toUpperCase();
-
-  if (normalizedHex.length === 3) {
-    normalizedHex = normalizedHex
-      .split('')
-      .map((char) => char + char)
-      .join('');
-  }
+export function hexToHsl(hex: string): HslColor {
+  const normalizedHex = normalizeHexColor(hex).replace("#", "");
 
   const r = parseInt(normalizedHex.substring(0, 2), 16) / 255;
   const g = parseInt(normalizedHex.substring(2, 4), 16) / 255;
@@ -73,6 +96,19 @@ export function hexToHsl(
     s: Math.round(s * 100),
     l: Math.round(l * 100),
   };
+}
+
+/**
+ * Calculate the perceptual distance between two HSL colors.
+ * Hue is treated as circular and normalized to keep distances comparable.
+ */
+export function getHslDistance(colorA: HslColor, colorB: HslColor): number {
+  const hueDelta = Math.abs(colorA.h - colorB.h);
+  const normalizedHueDelta = Math.min(hueDelta, 360 - hueDelta) / 180;
+  const saturationDelta = (colorA.s - colorB.s) / 100;
+  const lightnessDelta = (colorA.l - colorB.l) / 100;
+
+  return normalizedHueDelta ** 2 + saturationDelta ** 2 + lightnessDelta ** 2;
 }
 
 /**
@@ -122,14 +158,7 @@ export function changeLuminosity(hex: string, lumosity: number): string {
  * @returns true if dark foreground should be used, false if light foreground should be used
  */
 export function shouldUseDarkForeground(hex: string): boolean {
-  let normalizedHex = hex.replace('#', '').toUpperCase();
-
-  if (normalizedHex.length === 3) {
-    normalizedHex = normalizedHex
-      .split('')
-      .map((char) => char + char)
-      .join('');
-  }
+  const normalizedHex = normalizeHexColor(hex).replace("#", "");
 
   const r = parseInt(normalizedHex.substring(0, 2), 16) / 255;
   const g = parseInt(normalizedHex.substring(2, 4), 16) / 255;
@@ -146,11 +175,7 @@ export function shouldUseDarkForeground(hex: string): boolean {
  * Calculate relative luminance (WCAG standard)
  * @internal
  */
-function calculateRelativeLuminance(
-  r: number,
-  g: number,
-  b: number
-): number {
+function calculateRelativeLuminance(r: number, g: number, b: number): number {
   const rsRGB = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
   const gsRGB = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
   const bsRGB = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);

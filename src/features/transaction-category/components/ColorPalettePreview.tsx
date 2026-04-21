@@ -1,60 +1,36 @@
-import { TransactionCategoryColors } from "../types";
-import { getColorHsl, getColorHslShade } from "../utils/colorUtils";
+import { shouldUseDarkForeground } from "@/utils/color";
+import { transactionCategoryPaletteOptions } from "../utils/colorUtils";
 
 export function ColorPalettePreview() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-sm font-semibold text-default-700 mb-4">Base Colors</h3>
-        <div className="grid grid-cols-8 gap-2">
-          {TransactionCategoryColors.map((color) => {
-            const hsl = getColorHsl(color);
-            return (
-              <div key={color} className="flex flex-col items-center gap-2">
-                <div
-                  className="w-12 h-12 rounded-lg border border-default-300 cursor-pointer transition-transform hover:scale-105"
-                  style={{ backgroundColor: hsl }}
-                  title={color}
-                />
-                <span className="text-xs text-default-600">{color}</span>
-              </div>
-            );
-          })}
-        </div>
+    <div className="space-y-4">
+      <div className="max-w-xl space-y-1">
+        <h3 className="text-sm font-semibold text-default-700">Transaction category palette</h3>
+        <p className="text-sm text-default-600">
+          Root categories can use these colors. Child categories inherit the parent color.
+        </p>
       </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {transactionCategoryPaletteOptions.map((option) => {
+          const useDarkForeground = shouldUseDarkForeground(option.color);
 
-      <div>
-        <h3 className="text-sm font-semibold text-default-700 mb-4">
-          Color Shades (Index 0-9: Luminosity Variation)
-        </h3>
-        <div className="space-y-4">
-          {TransactionCategoryColors.map((parentColor) => (
-            <div key={parentColor}>
-              <p className="text-xs font-medium text-default-600 mb-2 capitalize">
-                {parentColor} Family
-              </p>
-              <div className="grid grid-cols-10 gap-2">
-                {Array.from({ length: 10 }).map((_, index) => {
-                  const hsl = getColorHslShade(parentColor, index);
-                  const shadeKey = `shade-${index}`;
-                  return (
-                    <div
-                      key={shadeKey}
-                      className="flex flex-col items-center gap-1"
-                    >
-                      <div
-                        className="w-12 h-12 rounded border border-default-300 cursor-pointer transition-transform hover:scale-105"
-                        style={{ backgroundColor: hsl }}
-                        title={`${parentColor} shade ${index}`}
-                      />
-                      <span className="text-xs text-default-500">{index}</span>
-                    </div>
-                  );
-                })}
+          return (
+            <div key={option.id} className="rounded-lg border border-default-300 p-3">
+              <div
+                className="h-12 rounded-md border border-black/10"
+                style={{
+                  backgroundColor: option.color,
+                  color: useDarkForeground ? "#111827" : "#FFFFFF",
+                }}
+                title={`${option.label} (${option.color})`}
+              />
+              <div className="mt-3 grid gap-0.5">
+                <span className="text-sm font-medium text-default-700">{option.label}</span>
+                <span className="font-mono text-xs text-default-500">{option.color}</span>
               </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
   );
