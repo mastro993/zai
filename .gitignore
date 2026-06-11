@@ -38,3 +38,6 @@ target
 
 # heroui-agents-md
 .heroui-docs/
+
+# PNPM
+.pnpm-store

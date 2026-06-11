@@ -1,9 +1,18 @@
 import * as tauri from "@tauri-apps/plugin-stronghold";
 import { appDataDir } from "@tauri-apps/api/path";
+import { exists } from "@tauri-apps/plugin-fs";
+import { invokeTauri } from "./adapters";
 
 const CLIENT_NAME = "zai-client";
 const VAULT_FILE = `vault.hold`;
-const VAULT_PASSWORD = "WjlWZ1W5tNDc30HamIQegK/nNuYTfuHI6Pe6aoyr6zc=";
+
+const getStrongholdVaultPassword = async (): Promise<string> => {
+  try {
+    return await invokeTauri<string>("get_stronghold_vault_password");
+  } catch {
+    throw new Error("Failed to initialize secure storage");
+  }
+};
 
 /**
  * Stronghold class provides a secure storage solution using the Tauri Stronghold plugin.
@@ -37,7 +46,20 @@ export class Stronghold {
    */
   static async init(): Promise<Stronghold> {
     const vaultPath = `${await appDataDir()}/${VAULT_FILE}`;
-    const stronghold = await tauri.Stronghold.load(vaultPath, VAULT_PASSWORD);
+    const vaultPassword = await getStrongholdVaultPassword();
+
+    let stronghold: tauri.Stronghold;
+    try {
+      stronghold = await tauri.Stronghold.load(vaultPath, vaultPassword);
+    } catch {
+      const vaultExists = await exists(vaultPath);
+      if (vaultExists) {
+        throw new Error(
+          "Existing vault cannot be opened with current credentials. Vault migration is required.",
+        );
+      }
+      throw new Error("Failed to initialize secure storage");
+    }
 
     let client: tauri.Client;
     try {

@@ -63,6 +63,7 @@ fn main() {
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
+            commands::stronghold::get_stronghold_vault_password,
             commands::transaction_categories::get_transaction_category,
             commands::transaction_categories::get_transaction_categories,
             commands::transaction_categories::create_transaction_category,
