@@ -4,13 +4,13 @@ Personal finance desktop app built with Tauri (Rust backend + React frontend).
 
 ## Package Manager
 
-pnpm
+`pnpm`
 
 ## Project structure
 
-- /src: all the frontend code, Vite + React
-- /src-core: business logic in pure Rust, source of truth
-- /src-tauri: Tauri related code, plugins, commands
+- `/src`: all the frontend code, Vite + React
+- `/src-core`: business logic in pure Rust, source of truth
+- `/src-tauri`: Tauri related code, plugins, commands
 
 ## Guidelines
 
@@ -37,3 +37,5 @@ Use the default five-label triage vocabulary. See `docs/agents/triage-labels.md`
 ### Domain docs
 
 This is a single-context Tauri app with layered frontend, Rust core, and Tauri shell code. See `docs/agents/domain.md`.
+
+
