@@ -39,9 +39,11 @@ export const createStrongholdStorage = <S>(): PersistStorage<S> => ({
   async setItem(name, storageValue) {
     const stronghold = await Stronghold.init();
     await stronghold.insert(name, JSON.stringify(storageValue));
+    await stronghold.save();
   },
   async removeItem(name) {
     const stronghold = await Stronghold.init();
     await stronghold.remove(name);
+    await stronghold.save();
   },
 });
