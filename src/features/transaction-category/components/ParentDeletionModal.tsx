@@ -58,7 +58,8 @@ export function ParentDeletionModal({
               <div className="space-y-2">
                 <p className="text-sm text-foreground/60">
                   The category <strong>{parentCategory.name}</strong> has {children.length}{" "}
-                  {children.length === 1 ? "child" : "children"}. Please reassign them before deletion:
+                  {children.length === 1 ? "child" : "children"}. Please reassign them before
+                  deletion:
                 </p>
               </div>
 

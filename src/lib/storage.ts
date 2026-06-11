@@ -9,7 +9,7 @@ import { Stronghold } from "./stronghold";
  * @returns A PersistStorage object that implements the required methods for Zustand persistence
  */
 export const createLocalStorage = <S>(): PersistStorage<S> => {
-  const store = new LazyStore("store.json", { autoSave: 1000 });
+  const store = new LazyStore("store.json", { autoSave: 1000, defaults: {} });
   return {
     getItem: async (name) => {
       const value = await store.get(name);

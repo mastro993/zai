@@ -20,7 +20,7 @@ function RouteComponent() {
       <iframe
         src="https://getzai.app"
         className="w-full h-full border-0"
-        sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+        sandbox="allow-scripts allow-popups allow-forms"
         onLoad={() => setIsLoaded(true)}
       />
     </div>

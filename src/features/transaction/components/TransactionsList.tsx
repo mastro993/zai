@@ -9,8 +9,8 @@ export const TransactionsList = () => {
       {data?.pages
         .flatMap((page) => page.data)
         .map((transaction, index) => (
-          <li>
-            <JsonDisplay key={index} data={transaction} />
+          <li key={`transaction-${index}`}>
+            <JsonDisplay data={transaction} />
           </li>
         ))}
     </ul>

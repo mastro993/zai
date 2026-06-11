@@ -32,11 +32,7 @@ export const TransactionCategorySelection = () => {
 
   return (
     <div className="flex items-center gap-2">
-      <Button
-        className="ml-auto"
-        variant="ghost"
-        onPress={() => setSelectedCategoryIds(undefined)}
-      >
+      <Button className="ml-auto" variant="ghost" onPress={() => setSelectedCategoryIds(undefined)}>
         <Icon icon={Cancel01Icon} className="-ms-1 opacity-60" size={16} aria-hidden="true" />
         Clear selection
       </Button>

@@ -17,7 +17,7 @@ export const TransactionCategoryList = () => {
     return () => {
       setSelectedCategoryIds([]);
     };
-  }, []);
+  }, [setSelectedCategoryIds]);
 
   if (transactionCategories?.length === 0) {
     return <EmptyView message="No categories found" />;

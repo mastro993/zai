@@ -15,7 +15,8 @@
     "tsc:check": "tsc --noEmit",
     "lint": "oxlint",
     "format": "oxfmt src",
-    "format:check": "oxfmt src --check"
+    "format:check": "oxfmt src --check",
+    "check": "pnpm tsc:check && pnpm lint && pnpm format:check && cargo check --workspace && cargo test --workspace"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
