@@ -83,7 +83,7 @@ function SidebarProvider({
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return setOpen((open) => !open);
+    return setOpen((currentOpen) => !currentOpen);
   }, [setOpen]);
 
   // Adds a keyboard shortcut to toggle the sidebar.

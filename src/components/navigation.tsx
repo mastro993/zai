@@ -14,9 +14,10 @@ import {
   Tag01Icon,
   TagsIcon,
   Wallet01Icon,
-  type IconSvgElement,
 } from "@hugeicons/core-free-icons";
-import { Icon } from "@/components/ui/icon";
+import { Icon, type IconProps } from "@/components/ui/icon";
+
+type IconSvgElement = IconProps["icon"];
 import { useMatchRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -73,9 +74,9 @@ function SidebarNavItem({ item, expanded }: { item: NavItem; expanded: boolean }
 
   if (!expanded) {
     return (
-      <Tooltip delay={300} placement="right">
-        {button}
-        <Tooltip.Content>
+      <Tooltip delay={300}>
+        <Tooltip.Trigger>{button}</Tooltip.Trigger>
+        <Tooltip.Content placement="right">
           <p>{item.title}</p>
         </Tooltip.Content>
       </Tooltip>
@@ -120,25 +121,27 @@ export const Sidebar = () => {
           <SidebarNavItem key={item.href} item={item} expanded={expanded} />
         ))}
 
-        <Tooltip delay={300} placement="right">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "w-full h-9 gap-3 font-medium mt-1",
-              expanded ? "justify-start px-3" : "justify-center px-0",
-            )}
-            onPress={() => setExpanded((v) => !v)}
-            aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
-          >
-            <Icon
-              icon={expanded ? PanelLeftCloseIcon : PanelLeftOpenIcon}
-              size={18}
-              className="shrink-0 text-muted-foreground"
-            />
-            {expanded && <span className="truncate text-sm text-muted-foreground">Collapse</span>}
-          </Button>
-          <Tooltip.Content>
+        <Tooltip delay={300}>
+          <Tooltip.Trigger>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "w-full h-9 gap-3 font-medium mt-1",
+                expanded ? "justify-start px-3" : "justify-center px-0",
+              )}
+              onPress={() => setExpanded((v) => !v)}
+              aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
+            >
+              <Icon
+                icon={expanded ? PanelLeftCloseIcon : PanelLeftOpenIcon}
+                size={18}
+                className="shrink-0 text-muted-foreground"
+              />
+              {expanded && <span className="truncate text-sm text-muted-foreground">Collapse</span>}
+            </Button>
+          </Tooltip.Trigger>
+          <Tooltip.Content placement="right">
             <p>{expanded ? "Collapse" : "Expand"}</p>
           </Tooltip.Content>
         </Tooltip>

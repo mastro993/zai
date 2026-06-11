@@ -12,9 +12,10 @@ import {
   Tag01Icon,
   TagsIcon,
   Wallet01Icon,
-  type IconSvgElement,
 } from "@hugeicons/core-free-icons";
-import { Icon } from "@/components/ui/icon";
+import { Icon, type IconProps } from "@/components/ui/icon";
+
+type IconSvgElement = IconProps["icon"];
 
 import {
   Sidebar,
@@ -163,29 +164,28 @@ export function AppSidebar() {
   );
 }
 
-function SidebarItems({ items }: { items: any[] }) {
+type SidebarNavItem = { title: string; href: string; icon: IconSvgElement };
+
+function SidebarItems({ items }: { items: SidebarNavItem[] }) {
   const navigate = useNavigate();
   const matchRoute = useMatchRoute();
 
   return items.map((item) => (
     <SidebarMenuItem key={item.title}>
       <SidebarMenuButton
-        asChild
         className="group/menu-button group-data-[collapsible=icon]:px-[6px]! font-medium gap-3 h-9 [&>svg]:size-auto"
         isActive={matchRoute({ to: item.href }) !== false}
-        onClick={() => navigate({ to: item.href })}
+        onPress={() => navigate({ to: item.href })}
       >
-        <a href={"#"}>
-          {item.icon && (
-            <Icon
-              icon={item.icon}
-              className="text-muted-foreground/65 group-data-[active=true]/menu-button:text-primary"
-              size={18}
-              aria-hidden="true"
-            />
-          )}
-          <span>{item.title}</span>
-        </a>
+        {item.icon && (
+          <Icon
+            icon={item.icon}
+            className="text-muted-foreground/65 group-data-[active=true]/menu-button:text-primary"
+            size={18}
+            aria-hidden="true"
+          />
+        )}
+        <span>{item.title}</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
   ));

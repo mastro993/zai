@@ -84,7 +84,10 @@ export default function DatePicker() {
               </Button>
             ))}
           </div>
-          <RangeCalendar aria-label="Choose date range">
+          <RangeCalendar
+            aria-label="Choose date range"
+            isDateUnavailable={(date) => date.compare(now) > 0}
+          >
             <RangeCalendar.Header>
               <RangeCalendar.YearPickerTrigger>
                 <RangeCalendar.YearPickerTriggerHeading />
@@ -98,7 +101,7 @@ export default function DatePicker() {
                 {(day) => <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>}
               </RangeCalendar.GridHeader>
               <RangeCalendar.GridBody>
-                {(date) => <RangeCalendar.Cell date={date} isDisabled={date.compare(now) > 0} />}
+                {(date) => <RangeCalendar.Cell date={date} />}
               </RangeCalendar.GridBody>
             </RangeCalendar.Grid>
           </RangeCalendar>

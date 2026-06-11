@@ -16,8 +16,8 @@ function RouteComponent() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    Stronghold.init().then((stronghold) => {
-      setStronghold(stronghold);
+    Stronghold.init().then((instance) => {
+      setStronghold(instance);
     });
   }, []);
 
@@ -33,9 +33,8 @@ function RouteComponent() {
       await stronghold.save();
       toast.success("Value saved successfully");
       setValue("");
-    } catch (error) {
+    } catch {
       toast.error("Failed to save value");
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -56,9 +55,8 @@ function RouteComponent() {
       } else {
         toast.success("Value retrieved successfully");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to retrieve value");
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -76,9 +74,8 @@ function RouteComponent() {
       await stronghold.save();
       setRetrievedValue(undefined);
       toast.success("Value deleted successfully");
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete value");
-      console.error(error);
     } finally {
       setIsLoading(false);
     }

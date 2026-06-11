@@ -52,7 +52,7 @@ export function TransactionCategoryExportDialog({ isOpen, onOpenChange }: Export
     toast.success("Transaction categories exported successfully");
     onOpenChange(false);
     setIsExporting(false);
-  }, [isExporting, exportFormat, categories]);
+  }, [isExporting, exportFormat, categories, onOpenChange]);
 
   return (
     <Modal.Backdrop
