@@ -1,34 +1,33 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createRouter, RouterProvider } from "@tanstack/react-router";
-import { StrictMode } from "react";
-import ReactDOM from "react-dom/client";
-import { ThemeProvider } from "./components/ThemeProvider";
-import "./global.css";
-import { routeTree } from "./routeTree.gen";
+import { StrictMode } from "react"
+import { createRoot } from "react-dom/client"
 
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
+import { Button } from "@/components/ui/button"
+
+import "./styles.css"
+
+function App() {
+  return (
+    <main className="flex min-h-svh p-6">
+      <section className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
+        <div>
+          <h1 className="font-medium">Project ready!</h1>
+          <p>You may now add components and start building.</p>
+          <p>We&apos;ve already added the button component for you.</p>
+          <Button className="mt-2">Button</Button>
+        </div>
+      </section>
+    </main>
+  )
 }
 
-// Router instance
-const router = createRouter({ routeTree });
+const root = document.getElementById("root")
 
-// Query client instance
-const queryClient = new QueryClient();
-
-// Render the app
-const rootElement = document.getElementById("root");
-if (rootElement && !rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
-    <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-          <RouterProvider router={router} />
-        </ThemeProvider>
-      </QueryClientProvider>
-    </StrictMode>,
-  );
+if (!root) {
+  throw new Error("Root element not found")
 }
+
+createRoot(root).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+)
