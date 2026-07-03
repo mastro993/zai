@@ -1,9 +1,9 @@
-import { StrictMode } from "react"
-import { createRoot } from "react-dom/client"
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
-import "./styles.css"
+import "./styles.css";
 
 function App() {
   return (
@@ -17,17 +17,17 @@ function App() {
         </div>
       </section>
     </main>
-  )
+  );
 }
 
-const root = document.getElementById("root")
+const root = document.getElementById("root");
 
 if (!root) {
-  throw new Error("Root element not found")
+  throw new Error("Root element not found");
 }
 
 createRoot(root).render(
   <StrictMode>
     <App />
-  </StrictMode>
-)
+  </StrictMode>,
+);
