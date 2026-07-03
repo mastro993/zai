@@ -1,40 +1,21 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
-import path from "path";
+import tailwindcss from "@tailwindcss/vite"
+import react from "@vitejs/plugin-react"
+import path from "node:path"
+import { defineConfig } from "vite"
 
-// https://vitejs.dev/config/
-export default defineConfig(async () => ({
-  plugins: [
-    TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
-    react(),
-    tailwindcss(),
-  ],
-
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent vite from obscuring rust errors
+export default defineConfig({
   clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
-  server: {
-    port: 1420,
-    strictPort: true,
-    watch: {
-      // 3. tell vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
-    },
-  },
-
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
-
-  esbuild: {
-    supported: {
-      "top-level-await": true, //browsers can handle top-level-await features
+  server: {
+    port: 1420,
+    strictPort: true,
+    watch: {
+      ignored: ["**/src-tauri/**"],
     },
   },
-}));
+})
