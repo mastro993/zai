@@ -4,9 +4,8 @@ import { unlink, readFile } from "fs/promises";
 import { platform } from "process";
 
 async function cleanDatabase() {
-  // Read tauri.conf.json
   const tauriConfig = JSON.parse(
-    await readFile(join("src-tauri", "tauri.conf.json"), "utf-8")
+    await readFile(new URL("../tauri.conf.json", import.meta.url), "utf-8")
   );
 
   const appId = tauriConfig.identifier;

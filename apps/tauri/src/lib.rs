@@ -1,5 +1,3 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
 mod commands;
 mod context;
 
@@ -8,7 +6,8 @@ use std::sync::Arc;
 use tauri::Manager;
 use tauri_plugin_log::log::error;
 
-fn main() {
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
     dotenv().ok();
 
     let app = tauri::Builder::default()
@@ -23,7 +22,7 @@ fn main() {
             tauri::async_runtime::block_on(async {
                 let app_data_dir = handle
                     .path()
-                    .app_data_dir()? // Use ? directly on the Result
+                    .app_data_dir()?
                     .to_str()
                     .ok_or("Failed to convert app data dir path to string")?
                     .to_string();
@@ -32,26 +31,20 @@ fn main() {
                     Ok(ctx) => Arc::new(ctx),
                     Err(e) => {
                         error!("Failed to initialize context: {}", e);
-                        // Propagate the original boxed error
                         return Err(e);
                     }
                 };
 
-                handle.manage(context.clone());
+                handle.manage(context);
 
                 Ok(())
-            }) // Handle potential errors from the block_on section
+            })
             .map_err(|e: Box<dyn std::error::Error>| {
                 error!("Critical setup failed: {}", e);
-                // Convert the boxed error into Tauri's setup error type if needed, or handle otherwise
-                tauri::Error::Setup(e.into()) // Or Box::new(tauri::Error::Setup(e.into())) depending on signature needs
+                tauri::Error::Setup(e.into())
             })?;
 
-            let salt_path = app
-                .path()
-                .app_local_data_dir()
-                .expect("could not resolve app local data path")
-                .join("salt.txt");
+            let salt_path = app.path().app_local_data_dir()?.join("salt.txt");
 
             app.handle()
                 .plugin(tauri_plugin_stronghold::Builder::with_argon2(&salt_path).build())?;

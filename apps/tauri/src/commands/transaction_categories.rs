@@ -9,25 +9,25 @@ use zai_core::features::transaction_categories::transaction_categories_models::{
 
 #[tauri::command]
 pub async fn get_transaction_category(
-    category_id: &str,
+    category_id: String,
     state: State<'_, Arc<ServiceContext>>,
 ) -> Result<TransactionCategory, String> {
     debug!("Getting transaction category...{}", category_id);
     state
         .transaction_categories_service()
-        .get_category(category_id)
+        .get_category(&category_id)
         .map_err(|e| format!("Failed to get transaction category {}: {}", category_id, e))
 }
 
 #[tauri::command]
 pub async fn get_transaction_categories(
-    parent_id: Option<&str>,
+    parent_id: Option<String>,
     state: State<'_, Arc<ServiceContext>>,
 ) -> Result<Vec<TransactionCategory>, String> {
     debug!("Fetching transaction categories...");
     state
         .transaction_categories_service()
-        .get_categories(parent_id)
+        .get_categories(parent_id.as_deref())
         .map_err(|e| format!("Failed to load transaction_categories: {}", e))
 }
 
@@ -71,7 +71,7 @@ pub async fn update_transaction_category(
 
 #[tauri::command]
 pub async fn delete_transaction_categories(
-    category_ids: Vec<&str>,
+    category_ids: Vec<String>,
     state: State<'_, Arc<ServiceContext>>,
 ) -> Result<Vec<TransactionCategory>, String> {
     debug!(
@@ -79,9 +79,10 @@ pub async fn delete_transaction_categories(
         category_ids.len(),
         category_ids.join(", ")
     );
+    let category_id_refs = category_ids.iter().map(String::as_str).collect();
     state
         .transaction_categories_service()
-        .delete_categories(category_ids)
+        .delete_categories(category_id_refs)
         .await
         .map_err(|e| format!("Failed to delete transaction categoris: {}", e))
 }

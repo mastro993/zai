@@ -1,7 +1,16 @@
-# Tauri + React + Typescript
+# Zai
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+Personal finance desktop app built as a Tauri monorepo.
 
-## Recommended IDE Setup
+## Structure
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- `apps/frontend` - React UI
+- `apps/tauri` - Tauri shell and commands
+- `crates/core` - Rust business logic
+
+## Commands
+
+- `pnpm dev` - start the frontend
+- `pnpm dev:tauri` - start the desktop app
+- `pnpm build` - build the frontend
+- `pnpm check` - run TypeScript, lint, format, and Rust checks

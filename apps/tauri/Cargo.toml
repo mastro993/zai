@@ -1,17 +1,24 @@
 [package]
-name = "Zai"
-version = "0.1.0"
+name = "zai"
+version.workspace = true
 description = "Your personal finance app"
 authors = ["fedemas"]
-edition = "2021"
+edition.workspace = true
+
+[lib]
+name = "zai_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[lints]
+workspace = true
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 tauri-plugin-shell = "2"
 tauri-plugin-fs = "2"
@@ -20,12 +27,12 @@ tauri-plugin-dialog = "2"
 tauri-plugin-stronghold = "2"
 argon2 = "0.5.3"
 tauri-plugin-store = "2"
-dotenvy = "0.15.7"
+dotenvy = { workspace = true }
 specta = "2.0.0-rc.22"
 specta-typescript = "0.0.9"
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript", "derive"] }
-zai-core = { version = "0.1.0", path = "../src-core" }
-log = "0.4.28"
+zai-core = { workspace = true }
+log = { workspace = true }
 keyring = "3"
 rand = "0.9"
 base64 = "0.22"

@@ -5,6 +5,7 @@ import { defineConfig } from "vite"
 
 export default defineConfig({
   clearScreen: false,
+  envDir: "../..",
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -15,7 +16,11 @@ export default defineConfig({
     port: 1420,
     strictPort: true,
     watch: {
-      ignored: ["**/src-tauri/**"],
+      ignored: ["**/apps/tauri/**"],
     },
+  },
+  build: {
+    outDir: "../../dist",
+    emptyOutDir: true,
   },
 })

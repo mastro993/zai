@@ -37,7 +37,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: "./apps/tauri -> target"
 
       - name: Run verification checks
         run: pnpm check

@@ -1,0 +1,21 @@
+[package]
+name = "zai-core"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+diesel = { workspace = true }
+diesel_migrations = { workspace = true }
+dotenvy = { workspace = true }
+log = { workspace = true }
+r2d2 = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+uuid = { workspace = true }
+futures = { workspace = true }
