@@ -3,10 +3,8 @@
   "compilerOptions": {
     "composite": true,
     "types": ["vite/client"],
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "#/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"]
