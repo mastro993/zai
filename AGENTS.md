@@ -20,13 +20,15 @@ Personal finance desktop app built with Tauri (Rust backend + React frontend).
 ## Project structure
 
 ```json
-apps/frontend/
-├── src/
-│   ├── routes/         # Route pages
-│   ├── components/     # Shared components
-│   ├── features/       # Self-contained feature modules
-│   ├── commands/       # Backend call wrappers (Tauri/Web)
-│   └── adapters/       # Runtime detection (desktop vs web)
+apps/frontend/src/
+├── routes/             # TanStack file-based route pages
+├── components/         # Shared components
+├── features/           # Self-contained feature modules
+├── commands/           # Backend call wrappers (Tauri/Web)
+└── adapters/           # Runtime detection (desktop vs web)
+
+apps/server/src/
+└── api/                # Axum HTTP handlers
 
 apps/tauri/src/
 └── commands/           # Tauri IPC commands
@@ -40,8 +42,7 @@ crates/
 
 ### Adding a feature with backend data
 
-1. **Frontend route/UI** → `apps/frontend/src/pages/`,
-   `apps/frontend/src/routes.tsx`
+1. **Frontend route/UI** → `apps/frontend/src/routes/`
 2. **Command wrapper** → `apps/frontend/src/commands/<domain>.ts` (follow
    `RUN_ENV` pattern)
 3. **Tauri command** → `apps/tauri/src/commands/*.rs`, wire in `mod.rs` +
@@ -55,7 +56,7 @@ crates/
 - Components: `shadcn` and `@base-ui/react`
 - Forms: `react-hook-form` + `zod` schemas from
   `apps/frontend/src/lib/schemas.ts`
-- Theme: tokens in `apps/frontend/src/globals.css`
+- Theme: tokens in `apps/frontend/src/styles.css`
 
 ### Architecture pattern
 
@@ -94,3 +95,17 @@ Frontend → Adapter (tauri) → Command wrapper
 - Never log secrets or financial data
 
 ---
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues, and external PRs are also a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the default Matt Pocock triage label vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Use single-context domain docs. See `docs/agents/domain.md`.

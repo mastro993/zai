@@ -40,5 +40,8 @@ target
 # heroui-agents-md
 .heroui-docs/
 
+# TanStack CLI scratch output
+.scratch
+
 # PNPM
 .pnpm-store
