@@ -1,6 +1,6 @@
-use super::transaction_categories_models::NewTransactionCategory;
+use super::models::NewTransactionCategory;
 use crate::errors::Result;
-use crate::features::transaction_categories::transaction_categories_models::*;
+use crate::features::transaction_categories::models::*;
 use async_trait::async_trait;
 
 #[async_trait]

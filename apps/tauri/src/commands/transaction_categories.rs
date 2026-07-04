@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::context::ServiceContext;
 use log::debug;
 use tauri::State;
-use zai_core::features::transaction_categories::transaction_categories_models::{
+use zai_core::features::transaction_categories::models::{
     NewTransactionCategory, TransactionCategory, TransactionCategoryUpdate,
 };
 

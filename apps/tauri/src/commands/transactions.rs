@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::context::ServiceContext;
 use log::debug;
 use tauri::State;
-use zai_core::features::transactions::transactions_models::Transaction;
+use zai_core::features::transactions::models::Transaction;
 
 #[tauri::command]
 pub async fn get_transaction(

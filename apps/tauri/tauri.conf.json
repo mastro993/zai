@@ -39,9 +39,6 @@
   "plugins": {
     "fs": {
       "requireLiteralLeadingDot": false
-    },
-    "sql": {
-      "preload": ["sqlite:zai.db"]
     }
   }
 }

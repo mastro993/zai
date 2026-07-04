@@ -1,13 +1,13 @@
-use crate::database::pagination::PaginatedData;
-use crate::database::sorting::Sort;
 use crate::errors::Result;
-use crate::features::transactions::transactions_models::{
+use crate::features::transactions::models::{
     NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
 };
-use crate::features::transactions::transactions_traits::{
+use crate::features::transactions::traits::{
     TransactionsRepositoryTrait, TransactionsServiceTrait,
 };
+use crate::query::{PaginatedData, Sort};
 use std::sync::Arc;
+use uuid::Uuid;
 
 pub struct TransactionsService {
     repository: Arc<dyn TransactionsRepositoryTrait>,
@@ -19,7 +19,6 @@ impl TransactionsService {
     }
 }
 
-#[async_trait::async_trait]
 #[async_trait::async_trait]
 impl TransactionsServiceTrait for TransactionsService {
     fn get_transactions(
@@ -37,7 +36,9 @@ impl TransactionsServiceTrait for TransactionsService {
         self.repository.get_transaction(id)
     }
 
-    async fn create_transaction(&self, new_transaction: NewTransaction) -> Result<Transaction> {
+    async fn create_transaction(&self, mut new_transaction: NewTransaction) -> Result<Transaction> {
+        new_transaction.validate()?;
+        ensure_transaction_id(&mut new_transaction);
         self.repository.create_transaction(new_transaction).await
     }
 
@@ -45,14 +46,8 @@ impl TransactionsServiceTrait for TransactionsService {
         &self,
         transaction_update: TransactionUpdate,
     ) -> Result<Transaction> {
+        transaction_update.validate()?;
         self.repository.update_transaction(transaction_update).await
-    }
-
-    async fn update_transactions(
-        &self,
-        _transactions: Vec<TransactionUpdate>,
-    ) -> Result<Transaction> {
-        todo!()
     }
 
     async fn delete_transaction(&self, id: &str) -> Result<Transaction> {
@@ -65,8 +60,22 @@ impl TransactionsServiceTrait for TransactionsService {
 
     async fn import_transactions(
         &self,
-        transactions: Vec<NewTransaction>,
+        mut transactions: Vec<NewTransaction>,
     ) -> Result<Vec<Transaction>> {
+        for transaction in &mut transactions {
+            transaction.validate()?;
+            ensure_transaction_id(transaction);
+        }
         self.repository.import_transactions(transactions).await
+    }
+}
+
+fn ensure_transaction_id(transaction: &mut NewTransaction) {
+    if transaction
+        .id
+        .as_deref()
+        .is_none_or(|id| id.trim().is_empty())
+    {
+        transaction.id = Some(Uuid::new_v4().to_string());
     }
 }

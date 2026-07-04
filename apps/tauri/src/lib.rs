@@ -20,14 +20,9 @@ pub fn run() {
             let handle = app.handle().clone();
 
             tauri::async_runtime::block_on(async {
-                let app_data_dir = handle
-                    .path()
-                    .app_data_dir()?
-                    .to_str()
-                    .ok_or("Failed to convert app data dir path to string")?
-                    .to_string();
+                let app_data_dir = handle.path().app_data_dir()?;
 
-                let context = match context::initialize_context(&app_data_dir).await {
+                let context = match context::initialize_context(&app_data_dir) {
                     Ok(ctx) => Arc::new(ctx),
                     Err(e) => {
                         error!("Failed to initialize context: {}", e);

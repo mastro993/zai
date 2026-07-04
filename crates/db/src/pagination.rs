@@ -1,19 +1,9 @@
-use crate::database::DbConnection;
+use crate::connection::DbConnection;
 use diesel::prelude::*;
 use diesel::query_builder::*;
 use diesel::query_dsl::methods::LoadQuery;
 use diesel::sql_types::BigInt;
 use diesel::sqlite::Sqlite;
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PaginatedData<T> {
-    pub data: Vec<T>,
-    pub page: i64,
-    pub per_page: i64,
-    pub total_pages: i64,
-}
 
 pub trait Paginate: Sized {
     fn paginate(self, page: i64) -> Paginated<Self>;

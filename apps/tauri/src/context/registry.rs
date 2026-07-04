@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use zai_core::features::{
-    transaction_categories::transaction_categories_traits::TransactionCategoriesServiceTrait,
-    transactions::transactions_traits::TransactionsServiceTrait,
+    transaction_categories::traits::TransactionCategoriesServiceTrait,
+    transactions::traits::TransactionsServiceTrait,
 };
 
 pub struct ServiceContext {

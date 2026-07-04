@@ -1,5 +1,3 @@
-use crate::database::errors::DatabaseError;
-use diesel::result::Error as DieselError;
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -22,14 +20,35 @@ pub enum Error {
     Unexpected(String),
 }
 
-impl From<DieselError> for Error {
-    fn from(err: DieselError) -> Self {
-        Error::Database(DatabaseError::QueryFailed(err))
-    }
-}
+#[derive(Error, Debug)]
+pub enum DatabaseError {
+    #[error("Failed to create database directory '{path}': {reason}")]
+    DirectoryCreation { path: String, reason: String },
 
-impl From<r2d2::Error> for Error {
-    fn from(e: r2d2::Error) -> Self {
-        Error::Database(DatabaseError::PoolCreationFailed(e))
-    }
+    #[error("Failed to create database connection pool: {0}")]
+    PoolCreationFailed(String),
+
+    #[error("Failed to connect to the database: {0}")]
+    ConnectionFailed(String),
+
+    #[error("Failed to execute query: {0}")]
+    QueryFailed(String),
+
+    #[error("Record not found: {0}")]
+    NotFound(String),
+
+    #[error("Unique constraint violation: {0}")]
+    UniqueViolation(String),
+
+    #[error("Foreign key violation: {0}")]
+    ForeignKeyViolation(String),
+
+    #[error("Database transaction failed: {0}")]
+    TransactionFailed(String),
+
+    #[error("Database migration failed: {0}")]
+    MigrationFailed(String),
+
+    #[error("Internal database error: {0}")]
+    Internal(String),
 }

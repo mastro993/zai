@@ -1,27 +1,29 @@
-use crate::database::pagination::{Paginate, PaginatedData};
-use crate::database::sorting::Sort;
-use crate::database::{WriteHandle, get_connection};
-use crate::errors::{Error, Result};
-use crate::features::transactions::transactions_models::{
-    NewTransaction, Transaction, TransactionRow, TransactionSearchFilters, TransactionUpdate,
-};
-use crate::features::transactions::transactions_traits::TransactionsRepositoryTrait;
+use super::models::TransactionRow;
+use crate::connection::{DbPool, get_connection};
+use crate::errors::{IntoCore, IntoStorage};
+use crate::pagination::Paginate;
 use crate::schema::transactions;
+use crate::write_actor::WriteHandle;
 use async_trait::async_trait;
 use chrono::Local;
 use diesel::prelude::*;
 use diesel::r2d2::{self, Pool};
 use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
-use uuid::Uuid;
+use zai_core::Result;
+use zai_core::features::transactions::models::{
+    NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
+};
+use zai_core::features::transactions::traits::TransactionsRepositoryTrait;
+use zai_core::query::{PaginatedData, Sort};
 
 pub struct TransactionsRepository {
-    pool: Arc<Pool<r2d2::ConnectionManager<SqliteConnection>>>,
+    pool: Arc<DbPool>,
     writer: WriteHandle,
 }
 
 impl TransactionsRepository {
-    pub fn new(
+    pub(crate) fn new(
         pool: Arc<Pool<r2d2::ConnectionManager<SqliteConnection>>>,
         writer: WriteHandle,
     ) -> Self {
@@ -121,7 +123,8 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
             .select(transactions::all_columns)
             .paginate(page)
             .per_page(per_page)
-            .load_and_count_pages::<TransactionRow>(conn)?;
+            .load_and_count_pages::<TransactionRow>(conn)
+            .into_core()?;
 
         let data = page_rows.into_iter().map(Transaction::from).collect();
 
@@ -140,32 +143,31 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
             .filter(transactions::deleted_at.is_null())
             .find(id)
             .first::<TransactionRow>(&mut conn)
-            .map_err(|e| Error::NotFound(e.to_string()))?;
+            .into_core()?;
 
         Ok(result.into())
     }
 
     async fn create_transaction(&self, new_transaction: NewTransaction) -> Result<Transaction> {
-        new_transaction.validate()?;
-
-        let new_transaction = new_transaction.clone();
-        let new_id = Uuid::new_v4().to_string();
-
         self.writer
-            .exec(move |conn: &mut SqliteConnection| -> Result<Transaction> {
-                let mut transaction: TransactionRow = new_transaction.into();
-                transaction.id = new_id.clone();
+            .exec(
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<Transaction> {
+                    let transaction: TransactionRow = new_transaction.into();
+                    let transaction_id = transaction.id.clone();
 
-                diesel::insert_into(transactions::table)
-                    .values(&transaction)
-                    .execute(conn)?;
+                    diesel::insert_into(transactions::table)
+                        .values(&transaction)
+                        .execute(conn)
+                        .into_storage()?;
 
-                let inserted = transactions::table
-                    .filter(transactions::id.eq(&new_id))
-                    .first::<TransactionRow>(conn)?;
+                    let inserted = transactions::table
+                        .filter(transactions::id.eq(&transaction_id))
+                        .first::<TransactionRow>(conn)
+                        .into_storage()?;
 
-                Ok(inserted.into())
-            })
+                    Ok(inserted.into())
+                },
+            )
             .await
     }
 
@@ -173,26 +175,27 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         &self,
         updated_transaction: TransactionUpdate,
     ) -> Result<Transaction> {
-        updated_transaction.validate()?;
-
         self.writer
-            .exec(move |conn: &mut SqliteConnection| -> Result<Transaction> {
-                let mut transaction: TransactionRow = updated_transaction.into();
+            .exec(
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<Transaction> {
+                    let mut transaction: TransactionRow = updated_transaction.into();
 
-                let existing = transactions::table
-                    .find(&transaction.id)
-                    .first::<TransactionRow>(conn)
-                    .map_err(|e| Error::NotFound(e.to_string()))?;
+                    let existing = transactions::table
+                        .find(&transaction.id)
+                        .first::<TransactionRow>(conn)
+                        .into_storage()?;
 
-                transaction.created_at = existing.created_at;
-                transaction.updated_at = chrono::Utc::now().naive_utc();
+                    transaction.created_at = existing.created_at;
+                    transaction.updated_at = chrono::Utc::now().naive_utc();
 
-                diesel::update(transactions::table.find(&transaction.id))
-                    .set(&transaction)
-                    .execute(conn)?;
+                    diesel::update(transactions::table.find(&transaction.id))
+                        .set(&transaction)
+                        .execute(conn)
+                        .into_storage()?;
 
-                Ok(transaction.into())
-            })
+                    Ok(transaction.into())
+                },
+            )
             .await
     }
 
@@ -200,20 +203,24 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         let transaction_id = id.to_owned();
 
         self.writer
-            .exec(move |conn: &mut SqliteConnection| -> Result<Transaction> {
-                let now = Local::now().naive_utc();
+            .exec(
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<Transaction> {
+                    let now = Local::now().naive_utc();
 
-                diesel::update(transactions::table.find(&transaction_id))
-                    .set(transactions::deleted_at.eq(now))
-                    .execute(conn)?;
+                    diesel::update(transactions::table.find(&transaction_id))
+                        .set(transactions::deleted_at.eq(now))
+                        .execute(conn)
+                        .into_storage()?;
 
-                let deleted = transactions::table
-                    .find(&transaction_id)
-                    .filter(transactions::deleted_at.is_not_null())
-                    .first::<TransactionRow>(conn)?;
+                    let deleted = transactions::table
+                        .find(&transaction_id)
+                        .filter(transactions::deleted_at.is_not_null())
+                        .first::<TransactionRow>(conn)
+                        .into_storage()?;
 
-                Ok(deleted.into())
-            })
+                    Ok(deleted.into())
+                },
+            )
             .await
     }
 
@@ -222,17 +229,19 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 
         self.writer
             .exec(
-                move |conn: &mut SqliteConnection| -> Result<Vec<Transaction>> {
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<Vec<Transaction>> {
                     let now = Local::now().naive_utc();
 
                     diesel::update(transactions::table.filter(transactions::id.eq_any(&owned_ids)))
                         .set(transactions::deleted_at.eq(now))
-                        .execute(conn)?;
+                        .execute(conn)
+                        .into_storage()?;
 
                     let deleted = transactions::table
                         .filter(transactions::id.eq_any(&owned_ids))
                         .filter(transactions::deleted_at.is_not_null())
-                        .load::<TransactionRow>(conn)?;
+                        .load::<TransactionRow>(conn)
+                        .into_storage()?;
 
                     let deleted_transactions: Vec<Transaction> =
                         deleted.into_iter().map(Transaction::from).collect();
@@ -246,23 +255,20 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         &self,
         new_transactions: Vec<NewTransaction>,
     ) -> Result<Vec<Transaction>> {
-        let valid_transactions = new_transactions
-            .iter()
-            .filter(|c| c.validate().is_ok())
-            .cloned()
-            .collect::<Vec<_>>();
+        if new_transactions.is_empty() {
+            return Ok(Vec::new());
+        }
 
         self.writer
             .exec(
-                move |conn: &mut SqliteConnection| -> Result<Vec<Transaction>> {
-                    let transactions_rows: Vec<TransactionRow> = valid_transactions
-                        .iter()
-                        .map(|c| c.clone().into())
-                        .collect();
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<Vec<Transaction>> {
+                    let transactions_rows: Vec<TransactionRow> =
+                        new_transactions.iter().map(|c| c.clone().into()).collect();
 
                     diesel::insert_into(transactions::table)
                         .values(&transactions_rows)
-                        .execute(conn)?;
+                        .execute(conn)
+                        .into_storage()?;
 
                     let ids = transactions_rows
                         .iter()
@@ -271,7 +277,8 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 
                     let inserted = transactions::table
                         .filter(transactions::id.eq_any(&ids))
-                        .load::<TransactionRow>(conn)?;
+                        .load::<TransactionRow>(conn)
+                        .into_storage()?;
 
                     Ok(inserted.into_iter().map(Transaction::from).collect())
                 },

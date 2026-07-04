@@ -1,5 +1,5 @@
 [package]
-name = "zai-core"
+name = "zai-db"
 version.workspace = true
 edition.workspace = true
 
@@ -7,11 +7,16 @@ edition.workspace = true
 workspace = true
 
 [dependencies]
+zai-core = { workspace = true }
+diesel = { workspace = true }
+diesel_migrations = { workspace = true }
+log = { workspace = true }
+r2d2 = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
+tokio = { workspace = true }
 async-trait = { workspace = true }
-uuid = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true }
+uuid = { workspace = true }

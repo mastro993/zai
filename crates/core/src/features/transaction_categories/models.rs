@@ -1,5 +1,3 @@
-use chrono::NaiveDateTime;
-use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::Error;
@@ -43,47 +41,6 @@ pub struct TransactionCategory {
     pub parent: Option<Box<Self>>,
 }
 
-#[derive(
-    Queryable,
-    Identifiable,
-    Insertable,
-    AsChangeset,
-    Selectable,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    Debug,
-    Clone,
-)]
-#[diesel(table_name = crate::schema::transaction_categories)]
-#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
-#[diesel(belongs_to(TransactionCategoryRow, foreign_key = parent_id))]
-pub struct TransactionCategoryRow {
-    pub id: String,
-    pub parent_id: Option<String>,
-    pub name: String,
-    pub description: Option<String>,
-    pub color: Option<String>,
-    #[diesel(skip_insertion)]
-    pub created_at: NaiveDateTime,
-    #[diesel(skip_insertion)]
-    pub updated_at: NaiveDateTime,
-    pub deleted_at: Option<NaiveDateTime>,
-}
-
-impl From<TransactionCategoryRow> for TransactionCategory {
-    fn from(value: TransactionCategoryRow) -> Self {
-        Self {
-            id: value.id,
-            parent_id: value.parent_id,
-            name: value.name,
-            description: value.description,
-            color: value.color,
-            parent: None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewTransactionCategory {
@@ -104,22 +61,6 @@ impl NewTransactionCategory {
         }
         validate_color(self.color.as_deref())?;
         Ok(())
-    }
-}
-
-impl From<NewTransactionCategory> for TransactionCategoryRow {
-    fn from(value: NewTransactionCategory) -> Self {
-        let now = chrono::Utc::now().naive_utc();
-        Self {
-            id: value.id.unwrap_or_default(),
-            parent_id: value.parent_id,
-            name: value.name,
-            description: value.description,
-            color: value.color,
-            created_at: now,
-            updated_at: now,
-            deleted_at: None,
-        }
     }
 }
 
@@ -145,38 +86,21 @@ impl TransactionCategoryUpdate {
                 "Transaction category name cannot be empty".to_string(),
             ));
         }
-        // Prevent self-reference: a category cannot be its own parent
-        if let Some(parent_id) = &self.parent_id {
-            if parent_id == &self.id {
-                return Err(Error::InvalidData(
-                    "A category cannot be its own parent".to_string(),
-                ));
-            }
+        if let Some(parent_id) = &self.parent_id
+            && parent_id == &self.id
+        {
+            return Err(Error::InvalidData(
+                "A category cannot be its own parent".to_string(),
+            ));
         }
         validate_color(self.color.as_deref())?;
         Ok(())
     }
 }
 
-impl From<TransactionCategoryUpdate> for TransactionCategoryRow {
-    fn from(value: TransactionCategoryUpdate) -> Self {
-        let now = chrono::Utc::now().naive_utc();
-        Self {
-            id: value.id,
-            parent_id: value.parent_id,
-            name: value.name,
-            description: value.description,
-            color: value.color,
-            created_at: now,
-            updated_at: now,
-            deleted_at: None,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::features::transaction_categories::transaction_categories_models::*;
+    use crate::features::transaction_categories::models::*;
 
     #[tokio::test]
     async fn test_new_transaction_category_validation() {
