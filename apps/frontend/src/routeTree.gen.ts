@@ -9,17 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TransactionsRouteImport } from './routes/transactions'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as NetWorthRouteImport } from './routes/net-worth'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CashFlowRouteImport } from './routes/cash-flow'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CashFlowIndexRouteImport } from './routes/cash-flow.index'
+import { Route as CashFlowTransactionsRouteImport } from './routes/cash-flow.transactions'
+import { Route as CashFlowCategoriesRouteImport } from './routes/cash-flow.categories'
 
-const TransactionsRoute = TransactionsRouteImport.update({
-  id: '/transactions',
-  path: '/transactions',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -35,65 +33,104 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CashFlowRoute = CashFlowRouteImport.update({
+  id: '/cash-flow',
+  path: '/cash-flow',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CashFlowIndexRoute = CashFlowIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CashFlowRoute,
+} as any)
+const CashFlowTransactionsRoute = CashFlowTransactionsRouteImport.update({
+  id: '/transactions',
+  path: '/transactions',
+  getParentRoute: () => CashFlowRoute,
+} as any)
+const CashFlowCategoriesRoute = CashFlowCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => CashFlowRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/cash-flow': typeof CashFlowRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/net-worth': typeof NetWorthRoute
   '/settings': typeof SettingsRoute
-  '/transactions': typeof TransactionsRoute
+  '/cash-flow/categories': typeof CashFlowCategoriesRoute
+  '/cash-flow/transactions': typeof CashFlowTransactionsRoute
+  '/cash-flow/': typeof CashFlowIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/net-worth': typeof NetWorthRoute
   '/settings': typeof SettingsRoute
-  '/transactions': typeof TransactionsRoute
+  '/cash-flow/categories': typeof CashFlowCategoriesRoute
+  '/cash-flow/transactions': typeof CashFlowTransactionsRoute
+  '/cash-flow': typeof CashFlowIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/cash-flow': typeof CashFlowRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/net-worth': typeof NetWorthRoute
   '/settings': typeof SettingsRoute
-  '/transactions': typeof TransactionsRoute
+  '/cash-flow/categories': typeof CashFlowCategoriesRoute
+  '/cash-flow/transactions': typeof CashFlowTransactionsRoute
+  '/cash-flow/': typeof CashFlowIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/net-worth' | '/settings' | '/transactions'
+  fullPaths:
+    | '/'
+    | '/cash-flow'
+    | '/dashboard'
+    | '/net-worth'
+    | '/settings'
+    | '/cash-flow/categories'
+    | '/cash-flow/transactions'
+    | '/cash-flow/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/net-worth' | '/settings' | '/transactions'
-  id:
-    | '__root__'
+  to:
     | '/'
     | '/dashboard'
     | '/net-worth'
     | '/settings'
-    | '/transactions'
+    | '/cash-flow/categories'
+    | '/cash-flow/transactions'
+    | '/cash-flow'
+  id:
+    | '__root__'
+    | '/'
+    | '/cash-flow'
+    | '/dashboard'
+    | '/net-worth'
+    | '/settings'
+    | '/cash-flow/categories'
+    | '/cash-flow/transactions'
+    | '/cash-flow/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CashFlowRoute: typeof CashFlowRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   NetWorthRoute: typeof NetWorthRoute
   SettingsRoute: typeof SettingsRoute
-  TransactionsRoute: typeof TransactionsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/transactions': {
-      id: '/transactions'
-      path: '/transactions'
-      fullPath: '/transactions'
-      preLoaderRoute: typeof TransactionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -115,6 +152,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cash-flow': {
+      id: '/cash-flow'
+      path: '/cash-flow'
+      fullPath: '/cash-flow'
+      preLoaderRoute: typeof CashFlowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -122,15 +166,52 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cash-flow/': {
+      id: '/cash-flow/'
+      path: '/'
+      fullPath: '/cash-flow/'
+      preLoaderRoute: typeof CashFlowIndexRouteImport
+      parentRoute: typeof CashFlowRoute
+    }
+    '/cash-flow/transactions': {
+      id: '/cash-flow/transactions'
+      path: '/transactions'
+      fullPath: '/cash-flow/transactions'
+      preLoaderRoute: typeof CashFlowTransactionsRouteImport
+      parentRoute: typeof CashFlowRoute
+    }
+    '/cash-flow/categories': {
+      id: '/cash-flow/categories'
+      path: '/categories'
+      fullPath: '/cash-flow/categories'
+      preLoaderRoute: typeof CashFlowCategoriesRouteImport
+      parentRoute: typeof CashFlowRoute
+    }
   }
 }
 
+interface CashFlowRouteChildren {
+  CashFlowCategoriesRoute: typeof CashFlowCategoriesRoute
+  CashFlowTransactionsRoute: typeof CashFlowTransactionsRoute
+  CashFlowIndexRoute: typeof CashFlowIndexRoute
+}
+
+const CashFlowRouteChildren: CashFlowRouteChildren = {
+  CashFlowCategoriesRoute: CashFlowCategoriesRoute,
+  CashFlowTransactionsRoute: CashFlowTransactionsRoute,
+  CashFlowIndexRoute: CashFlowIndexRoute,
+}
+
+const CashFlowRouteWithChildren = CashFlowRoute._addFileChildren(
+  CashFlowRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CashFlowRoute: CashFlowRouteWithChildren,
   DashboardRoute: DashboardRoute,
   NetWorthRoute: NetWorthRoute,
   SettingsRoute: SettingsRoute,
-  TransactionsRoute: TransactionsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

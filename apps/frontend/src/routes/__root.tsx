@@ -27,6 +27,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
@@ -37,7 +40,15 @@ import appCss from "../styles.css?url";
 const navigationItems = [
   { title: "Dashboard", to: "/dashboard", icon: DashboardSquare01Icon },
   { title: "Net Worth", to: "/net-worth", icon: Wallet01Icon },
-  { title: "Transactions", to: "/transactions", icon: TransactionHistoryIcon },
+  {
+    title: "Cash flow",
+    to: "/cash-flow",
+    icon: TransactionHistoryIcon,
+    subItems: [
+      { title: "Transactions", to: "/cash-flow/transactions" },
+      { title: "Categories", to: "/cash-flow/categories" },
+    ],
+  },
   { title: "Settings", to: "/settings", icon: Settings01Icon },
 ] as const;
 
@@ -89,18 +100,39 @@ function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton
-                    isActive={pathname === item.to}
-                    render={<Link to={item.to} preload="intent" />}
-                    tooltip={item.title}
-                  >
-                    <HugeiconsIcon icon={item.icon} strokeWidth={2} />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navigationItems.map((item) => {
+                const hasSubItems = "subItems" in item;
+                const isActive =
+                  pathname === item.to ||
+                  (hasSubItems && item.subItems.some((subItem) => pathname === subItem.to));
+
+                return (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      render={<Link to={item.to} preload="intent" />}
+                      tooltip={item.title}
+                    >
+                      <HugeiconsIcon icon={item.icon} strokeWidth={2} />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                    {hasSubItems ? (
+                      <SidebarMenuSub>
+                        {item.subItems.map((subItem) => (
+                          <SidebarMenuSubItem key={subItem.to}>
+                            <SidebarMenuSubButton
+                              isActive={pathname === subItem.to}
+                              render={<Link to={subItem.to} preload="intent" />}
+                            >
+                              <span>{subItem.title}</span>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    ) : null}
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
