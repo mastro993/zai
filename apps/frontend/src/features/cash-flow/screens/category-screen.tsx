@@ -26,7 +26,9 @@ const getChildren = (categories: Array<TransactionCategory>, parentId: string) =
 export function CategoryScreen() {
   const [categories, setCategories] = useState<Array<TransactionCategory>>([]);
   const [formMode, setFormMode] = useState<CategoryFormMode | null>(null);
+  const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<TransactionCategory | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -54,6 +56,16 @@ export function CategoryScreen() {
     void loadCategories();
   }, []);
 
+  const openFormDrawer = (mode: CategoryFormMode) => {
+    setFormMode(mode);
+    setIsFormDrawerOpen(true);
+  };
+
+  const openDeleteDialog = (category: TransactionCategory) => {
+    setPendingDelete(category);
+    setIsDeleteDialogOpen(true);
+  };
+
   const submitCategory = async (values: CategoryFormValues) => {
     const result =
       formMode?.type === "edit"
@@ -65,7 +77,7 @@ export function CategoryScreen() {
       return;
     }
 
-    setFormMode(null);
+    setIsFormDrawerOpen(false);
     await loadCategories();
   };
 
@@ -78,12 +90,12 @@ export function CategoryScreen() {
 
     if (R.isFailure(result)) {
       setErrorMessage(result.error.message);
-      setPendingDelete(null);
+      setIsDeleteDialogOpen(false);
       setIsDeleting(false);
       return;
     }
 
-    setPendingDelete(null);
+    setIsDeleteDialogOpen(false);
     await loadCategories();
     setIsDeleting(false);
   };
@@ -97,7 +109,7 @@ export function CategoryScreen() {
             Group cash flow with root categories and one child level.
           </p>
         </div>
-        <Button onClick={() => setFormMode({ type: "create-root" })}>New category</Button>
+        <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
       </div>
 
       {errorMessage ? (
@@ -106,17 +118,33 @@ export function CategoryScreen() {
         </div>
       ) : null}
 
-      {pendingDelete ? (
-        <CategoryDeleteConfirmationDialog
-          category={pendingDelete}
-          hasChildren={getChildren(categories, pendingDelete.id).length > 0}
-          isDeleting={isDeleting}
-          onOpenChange={(open) => !open && setPendingDelete(null)}
-          onDelete={() => void deleteCategory(pendingDelete, "block")}
-          onDeleteChildren={() => void deleteCategory(pendingDelete, "delete")}
-          onPromoteChildren={() => void deleteCategory(pendingDelete, "promote")}
-        />
-      ) : null}
+      <CategoryDeleteConfirmationDialog
+        category={pendingDelete}
+        open={isDeleteDialogOpen}
+        hasChildren={pendingDelete ? getChildren(categories, pendingDelete.id).length > 0 : false}
+        isDeleting={isDeleting}
+        onOpenChange={setIsDeleteDialogOpen}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            setPendingDelete(null);
+          }
+        }}
+        onDelete={() => {
+          if (pendingDelete) {
+            void deleteCategory(pendingDelete, "block");
+          }
+        }}
+        onDeleteChildren={() => {
+          if (pendingDelete) {
+            void deleteCategory(pendingDelete, "delete");
+          }
+        }}
+        onPromoteChildren={() => {
+          if (pendingDelete) {
+            void deleteCategory(pendingDelete, "promote");
+          }
+        }}
+      />
 
       <div className="flex flex-col gap-3">
         {isLoading ? <p className="text-sm text-muted-foreground">Loading categories...</p> : null}
@@ -130,16 +158,21 @@ export function CategoryScreen() {
             key={category.id}
             category={category}
             childrenCategories={getChildren(categories, category.id)}
-            onAddChild={() => setFormMode({ type: "create-child", parentId: category.id })}
-            onEdit={setFormMode}
-            onDelete={setPendingDelete}
+            onAddChild={() => openFormDrawer({ type: "create-child", parentId: category.id })}
+            onEdit={openFormDrawer}
+            onDelete={openDeleteDialog}
           />
         ))}
       </div>
 
       <Drawer
-        open={formMode !== null}
-        onOpenChange={(open) => !open && setFormMode(null)}
+        open={isFormDrawerOpen}
+        onOpenChange={setIsFormDrawerOpen}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            setFormMode(null);
+          }
+        }}
         swipeDirection="right"
       >
         {formMode ? (

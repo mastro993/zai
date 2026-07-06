@@ -21,7 +21,9 @@ export function TransactionScreen() {
   const [transactions, setTransactions] = useState<Array<Transaction>>([]);
   const [categories, setCategories] = useState<Array<TransactionCategory>>([]);
   const [formMode, setFormMode] = useState<TransactionFormMode | null>(null);
+  const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -61,6 +63,16 @@ export function TransactionScreen() {
     void loadData();
   }, []);
 
+  const openFormDrawer = (mode: TransactionFormMode) => {
+    setFormMode(mode);
+    setIsFormDrawerOpen(true);
+  };
+
+  const openDeleteDialog = (transaction: Transaction) => {
+    setPendingDelete(transaction);
+    setIsDeleteDialogOpen(true);
+  };
+
   const submitTransaction = async (values: TransactionFormValues) => {
     const result =
       formMode?.type === "edit"
@@ -72,7 +84,7 @@ export function TransactionScreen() {
       return;
     }
 
-    setFormMode(null);
+    setIsFormDrawerOpen(false);
     await loadData();
   };
 
@@ -82,12 +94,12 @@ export function TransactionScreen() {
 
     if (R.isFailure(result)) {
       setErrorMessage(result.error.message);
-      setPendingDelete(null);
+      setIsDeleteDialogOpen(false);
       setIsDeleting(false);
       return;
     }
 
-    setPendingDelete(null);
+    setIsDeleteDialogOpen(false);
     await loadData();
     setIsDeleting(false);
   };
@@ -101,7 +113,7 @@ export function TransactionScreen() {
             Log income and expenses with an optional category.
           </p>
         </div>
-        <Button onClick={() => setFormMode({ type: "create" })}>New transaction</Button>
+        <Button onClick={() => openFormDrawer({ type: "create" })}>New transaction</Button>
       </div>
 
       {errorMessage ? (
@@ -122,15 +134,21 @@ export function TransactionScreen() {
         <TransactionTable
           transactions={transactions}
           categoryById={categoryById}
-          onEdit={setFormMode}
-          onDelete={setPendingDelete}
+          onEdit={openFormDrawer}
+          onDelete={openDeleteDialog}
         />
       ) : null}
 
       <TransactionDeleteConfirmationDialog
         transaction={pendingDelete}
+        open={isDeleteDialogOpen}
         isDeleting={isDeleting}
-        onOpenChange={(open) => !open && setPendingDelete(null)}
+        onOpenChange={setIsDeleteDialogOpen}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            setPendingDelete(null);
+          }
+        }}
         onDelete={() => {
           if (pendingDelete) {
             void removeTransaction(pendingDelete);
@@ -139,8 +157,13 @@ export function TransactionScreen() {
       />
 
       <Drawer
-        open={formMode !== null}
-        onOpenChange={(open) => !open && setFormMode(null)}
+        open={isFormDrawerOpen}
+        onOpenChange={setIsFormDrawerOpen}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            setFormMode(null);
+          }
+        }}
         swipeDirection="right"
       >
         {formMode ? (

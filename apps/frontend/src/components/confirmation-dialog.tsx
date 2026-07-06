@@ -14,6 +14,7 @@ import {
 function ConfirmationDialog({
   open,
   onOpenChange,
+  onOpenChangeComplete,
   title,
   description,
   children,
@@ -22,6 +23,7 @@ function ConfirmationDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenChangeComplete?: (open: boolean) => void;
   title: React.ReactNode;
   description: React.ReactNode;
   children: React.ReactNode;
@@ -37,7 +39,7 @@ function ConfirmationDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange} onOpenChangeComplete={onOpenChangeComplete}>
       <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

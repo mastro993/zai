@@ -5,19 +5,24 @@ import type { Transaction } from "../types/model";
 
 function TransactionDeleteConfirmationDialog({
   transaction,
+  open,
   isDeleting,
   onOpenChange,
+  onOpenChangeComplete,
   onDelete,
 }: {
   transaction: Transaction | null;
+  open: boolean;
   isDeleting: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenChangeComplete: (open: boolean) => void;
   onDelete: () => void;
 }) {
   return (
     <ConfirmationDialog
-      open={transaction !== null}
+      open={open}
       onOpenChange={onOpenChange}
+      onOpenChangeComplete={onOpenChangeComplete}
       title="Delete transaction?"
       description={
         transaction?.description

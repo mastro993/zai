@@ -5,26 +5,31 @@ import type { TransactionCategory } from "../types/model";
 
 function CategoryDeleteConfirmationDialog({
   category,
+  open,
   hasChildren,
   isDeleting,
   onOpenChange,
+  onOpenChangeComplete,
   onDelete,
   onDeleteChildren,
   onPromoteChildren,
 }: {
-  category: TransactionCategory;
+  category: TransactionCategory | null;
+  open: boolean;
   hasChildren: boolean;
   isDeleting: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenChangeComplete: (open: boolean) => void;
   onDelete: () => void;
   onDeleteChildren: () => void;
   onPromoteChildren: () => void;
 }) {
   return (
     <ConfirmationDialog
-      open
+      open={open}
       onOpenChange={onOpenChange}
-      title={`Delete ${category.name}?`}
+      onOpenChangeComplete={onOpenChangeComplete}
+      title={category ? `Delete ${category.name}?` : "Delete category?"}
       description={
         hasChildren
           ? "This category has child categories. Choose what should happen to them."
