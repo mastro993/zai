@@ -1,4 +1,4 @@
-use super::models::NewTransactionCategory;
+use super::models::{CategoryChildrenDeleteStrategy, NewTransactionCategory};
 use crate::errors::Result;
 use crate::features::transaction_categories::models::*;
 use async_trait::async_trait;
@@ -16,7 +16,11 @@ pub trait TransactionCategoriesServiceTrait: Send + Sync {
         &self,
         activity: TransactionCategoryUpdate,
     ) -> Result<TransactionCategory>;
-    async fn delete_categories(&self, ids: Vec<&str>) -> Result<Vec<TransactionCategory>>;
+    async fn delete_categories(
+        &self,
+        ids: Vec<&str>,
+        children_strategy: CategoryChildrenDeleteStrategy,
+    ) -> Result<Vec<TransactionCategory>>;
 
     async fn import_categories(
         &self,
@@ -28,6 +32,13 @@ pub trait TransactionCategoriesServiceTrait: Send + Sync {
 pub trait TransactionCategoriesRepositoryTrait: Send + Sync {
     fn get_categories(&self, parent_id: Option<&str>) -> Result<Vec<TransactionCategory>>;
     fn get_category(&self, id: &str) -> Result<TransactionCategory>;
+    fn category_has_children(&self, id: &str) -> Result<bool>;
+    fn sibling_name_exists(
+        &self,
+        parent_id: Option<&str>,
+        name: &str,
+        excluded_id: Option<&str>,
+    ) -> Result<bool>;
 
     async fn create_category(
         &self,
@@ -37,7 +48,11 @@ pub trait TransactionCategoriesRepositoryTrait: Send + Sync {
         &self,
         updated_category: TransactionCategoryUpdate,
     ) -> Result<TransactionCategory>;
-    async fn delete_categories(&self, ids: Vec<&str>) -> Result<Vec<TransactionCategory>>;
+    async fn delete_categories(
+        &self,
+        ids: Vec<&str>,
+        children_strategy: CategoryChildrenDeleteStrategy,
+    ) -> Result<Vec<TransactionCategory>>;
 
     async fn import_categories(
         &self,

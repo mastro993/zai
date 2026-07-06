@@ -6771,6 +6771,7 @@ version = "0.0.1-alpha.1"
 dependencies = [
  "argon2",
  "base64 0.22.1",
+ "chrono",
  "dotenvy",
  "keyring",
  "log",

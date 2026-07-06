@@ -1,6 +1,6 @@
 use super::models::{
-    NewTransactionCategory, TransactionCategory, TransactionCategoryUpdate,
-    normalize_optional_color,
+    CategoryChildrenDeleteStrategy, NewTransactionCategory, TransactionCategory,
+    TransactionCategoryUpdate, normalize_category_name, normalize_optional_color,
 };
 use super::traits::{TransactionCategoriesRepositoryTrait, TransactionCategoriesServiceTrait};
 use crate::errors::{Error, Result};
@@ -17,20 +17,33 @@ impl TransactionCategoriesService {
     }
 
     fn prepare_new_category(&self, category: &mut NewTransactionCategory) -> Result<()> {
+        category.name = normalize_category_name(&category.name);
         category.validate()?;
         if category.id.as_deref().is_none_or(|id| id.trim().is_empty()) {
             category.id = Some(Uuid::new_v4().to_string());
         }
-        self.apply_parent_rules(&mut category.parent_id, &mut category.color)
+        self.apply_parent_rules(None, &mut category.parent_id, &mut category.color)?;
+        self.ensure_unique_name(category.parent_id.as_deref(), &category.name, None)
     }
 
     fn prepare_category_update(&self, category: &mut TransactionCategoryUpdate) -> Result<()> {
+        category.name = normalize_category_name(&category.name);
         category.validate()?;
-        self.apply_parent_rules(&mut category.parent_id, &mut category.color)
+        self.apply_parent_rules(
+            Some(category.id.as_str()),
+            &mut category.parent_id,
+            &mut category.color,
+        )?;
+        self.ensure_unique_name(
+            category.parent_id.as_deref(),
+            &category.name,
+            Some(category.id.as_str()),
+        )
     }
 
     fn apply_parent_rules(
         &self,
+        category_id: Option<&str>,
         parent_id: &mut Option<String>,
         color: &mut Option<String>,
     ) -> Result<()> {
@@ -39,6 +52,14 @@ impl TransactionCategoriesService {
             *color = normalize_optional_color(color.as_deref())?;
             return Ok(());
         };
+
+        if let Some(id) = category_id
+            && self.repository.category_has_children(id)?
+        {
+            return Err(Error::InvalidData(
+                "A category with child categories cannot become a child category".to_string(),
+            ));
+        }
 
         let parent = self.repository.get_category(pid)?;
         if parent.parent_id.is_some() {
@@ -49,7 +70,24 @@ impl TransactionCategoriesService {
         }
 
         *parent_id = Some(parent.id);
-        *color = parent.color;
+        *color = normalize_optional_color(color.as_deref())?;
+        Ok(())
+    }
+
+    fn ensure_unique_name(
+        &self,
+        parent_id: Option<&str>,
+        name: &str,
+        excluded_id: Option<&str>,
+    ) -> Result<()> {
+        if self
+            .repository
+            .sibling_name_exists(parent_id, name, excluded_id)?
+        {
+            return Err(Error::InvalidData(
+                "A category with this name already exists at the same level".to_string(),
+            ));
+        }
         Ok(())
     }
 }
@@ -80,8 +118,25 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
         self.repository.update_category(category).await
     }
 
-    async fn delete_categories(&self, category_ids: Vec<&str>) -> Result<Vec<TransactionCategory>> {
-        self.repository.delete_categories(category_ids).await
+    async fn delete_categories(
+        &self,
+        category_ids: Vec<&str>,
+        children_strategy: CategoryChildrenDeleteStrategy,
+    ) -> Result<Vec<TransactionCategory>> {
+        if children_strategy == CategoryChildrenDeleteStrategy::Block {
+            for category_id in &category_ids {
+                if self.repository.category_has_children(category_id)? {
+                    return Err(Error::InvalidData(
+                        "Choose whether to delete or promote child categories before deleting this category"
+                            .to_string(),
+                    ));
+                }
+            }
+        }
+
+        self.repository
+            .delete_categories(category_ids, children_strategy)
+            .await
     }
 
     async fn import_categories(
@@ -89,6 +144,8 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
         categories: Vec<NewTransactionCategory>,
     ) -> Result<Vec<TransactionCategory>> {
         for category in &categories {
+            let mut category = category.clone();
+            category.name = normalize_category_name(&category.name);
             category.validate()?;
         }
 
@@ -105,6 +162,7 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
             let mut owned_root = root_category.clone();
             owned_root.id = Some(new_parent_id.clone());
             owned_root.parent_id = None;
+            owned_root.name = normalize_category_name(&owned_root.name);
             owned_root.color = parent_color.clone();
             categories_to_import.push(owned_root);
 
@@ -115,7 +173,8 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
                 let mut owned_child = child.clone();
                 owned_child.id = Some(Uuid::new_v4().to_string());
                 owned_child.parent_id = Some(new_parent_id.clone());
-                owned_child.color = parent_color.clone();
+                owned_child.name = normalize_category_name(&owned_child.name);
+                owned_child.color = normalize_optional_color(owned_child.color.as_deref())?;
                 categories_to_import.push(owned_child);
             }
         }
@@ -181,6 +240,29 @@ mod tests {
                 .ok_or_else(|| Error::NotFound(id.to_string()))
         }
 
+        fn category_has_children(&self, id: &str) -> Result<bool> {
+            Ok(self
+                .categories
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|category| category.parent_id.as_deref() == Some(id)))
+        }
+
+        fn sibling_name_exists(
+            &self,
+            parent_id: Option<&str>,
+            name: &str,
+            excluded_id: Option<&str>,
+        ) -> Result<bool> {
+            let normalized_name = name.trim().to_lowercase();
+            Ok(self.categories.lock().unwrap().iter().any(|category| {
+                category.parent_id.as_deref() == parent_id
+                    && Some(category.id.as_str()) != excluded_id
+                    && category.name.trim().to_lowercase() == normalized_name
+            }))
+        }
+
         async fn create_category(
             &self,
             new_category: NewTransactionCategory,
@@ -212,7 +294,11 @@ mod tests {
             Ok(category)
         }
 
-        async fn delete_categories(&self, ids: Vec<&str>) -> Result<Vec<TransactionCategory>> {
+        async fn delete_categories(
+            &self,
+            ids: Vec<&str>,
+            _children_strategy: CategoryChildrenDeleteStrategy,
+        ) -> Result<Vec<TransactionCategory>> {
             Ok(self
                 .categories
                 .lock()
@@ -242,7 +328,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_category_inherits_parent_color() {
+    async fn create_category_preserves_child_color() {
         let repository = Arc::new(FakeRepository::with_categories(vec![TransactionCategory {
             id: "parent".to_string(),
             parent_id: None,
@@ -264,11 +350,11 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(category.color.as_deref(), Some("#FFFFFF"));
+        assert_eq!(category.color.as_deref(), Some("#000000"));
     }
 
     #[tokio::test]
-    async fn import_categories_rewrites_child_colors_to_match_parent() {
+    async fn import_categories_preserves_child_color() {
         let service = TransactionCategoriesService::new(Arc::new(FakeRepository::default()));
         let parent = NewTransactionCategory {
             id: Some("parent1".to_string()),
@@ -298,7 +384,7 @@ mod tests {
             .find(|category| category.parent_id.as_deref() == Some(imported_parent.id.as_str()))
             .unwrap();
 
-        assert_eq!(imported_child.color, imported_parent.color);
+        assert_eq!(imported_child.color, None);
     }
 
     #[tokio::test]
@@ -313,6 +399,103 @@ mod tests {
                 description: None,
                 color: None,
             }])
+            .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn create_category_fails_when_root_name_matches_existing_root_case_insensitively() {
+        let repository = Arc::new(FakeRepository::with_categories(vec![TransactionCategory {
+            id: "existing".to_string(),
+            parent_id: None,
+            name: "Food".to_string(),
+            description: None,
+            color: None,
+            parent: None,
+        }]));
+        let service = TransactionCategoriesService::new(repository);
+
+        let result = service
+            .create_category(NewTransactionCategory {
+                id: None,
+                name: " food ".to_string(),
+                parent_id: None,
+                description: None,
+                color: None,
+            })
+            .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn update_category_fails_when_category_with_children_gets_parent() {
+        let repository = Arc::new(FakeRepository::with_categories(vec![
+            TransactionCategory {
+                id: "parent".to_string(),
+                parent_id: None,
+                name: "Parent".to_string(),
+                description: None,
+                color: None,
+                parent: None,
+            },
+            TransactionCategory {
+                id: "target".to_string(),
+                parent_id: None,
+                name: "Target".to_string(),
+                description: None,
+                color: None,
+                parent: None,
+            },
+            TransactionCategory {
+                id: "child".to_string(),
+                parent_id: Some("target".to_string()),
+                name: "Child".to_string(),
+                description: None,
+                color: None,
+                parent: None,
+            },
+        ]));
+        let service = TransactionCategoriesService::new(repository);
+
+        let result = service
+            .update_category(TransactionCategoryUpdate {
+                id: "target".to_string(),
+                name: "Target".to_string(),
+                parent_id: Some("parent".to_string()),
+                description: None,
+                color: None,
+            })
+            .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn delete_category_blocks_when_children_exist_without_strategy() {
+        let repository = Arc::new(FakeRepository::with_categories(vec![
+            TransactionCategory {
+                id: "parent".to_string(),
+                parent_id: None,
+                name: "Parent".to_string(),
+                description: None,
+                color: None,
+                parent: None,
+            },
+            TransactionCategory {
+                id: "child".to_string(),
+                parent_id: Some("parent".to_string()),
+                name: "Child".to_string(),
+                description: None,
+                color: None,
+                parent: None,
+            },
+        ]));
+        let service = TransactionCategoriesService::new(repository);
+
+        let result = service
+            .delete_categories(vec!["parent"], CategoryChildrenDeleteStrategy::Block)
             .await;
 
         assert!(result.is_err());

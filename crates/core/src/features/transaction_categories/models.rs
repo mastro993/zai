@@ -2,8 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Error;
 
-const INVALID_COLOR_MESSAGE: &str =
-    "Transaction category color must be a valid hex color in the format #RRGGBB";
+const INVALID_COLOR_MESSAGE: &str = "Category color must be a valid hex color in the format #RRGGBB";
 
 fn validate_color(color: Option<&str>) -> Result<(), Error> {
     if let Some(color) = color {
@@ -30,6 +29,10 @@ pub(crate) fn normalize_optional_color(color: Option<&str>) -> Result<Option<Str
     color.map(normalize_hex_color).transpose()
 }
 
+pub(crate) fn normalize_category_name(name: &str) -> String {
+    name.trim().to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionCategory {
@@ -39,6 +42,14 @@ pub struct TransactionCategory {
     pub description: Option<String>,
     pub color: Option<String>,
     pub parent: Option<Box<Self>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CategoryChildrenDeleteStrategy {
+    Block,
+    Promote,
+    Delete,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,7 +67,7 @@ impl NewTransactionCategory {
     pub fn validate(&self) -> Result<(), Error> {
         if self.name.trim().is_empty() {
             return Err(Error::InvalidData(
-                "Transaction category name cannot be empty".to_string(),
+                "Category name cannot be empty".to_string(),
             ));
         }
         validate_color(self.color.as_deref())?;
@@ -78,12 +89,12 @@ impl TransactionCategoryUpdate {
     pub fn validate(&self) -> Result<(), Error> {
         if self.id.trim().is_empty() {
             return Err(Error::InvalidData(
-                "Transaction category id is required for updates".to_string(),
+                "Category id is required for updates".to_string(),
             ));
         }
         if self.name.trim().is_empty() {
             return Err(Error::InvalidData(
-                "Transaction category name cannot be empty".to_string(),
+                "Category name cannot be empty".to_string(),
             ));
         }
         if let Some(parent_id) = &self.parent_id

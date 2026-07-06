@@ -1,7 +1,7 @@
 use super::models::TransactionCategoryRow;
 use crate::connection::{DbPool, get_connection};
 use crate::errors::{IntoCore, IntoStorage};
-use crate::schema::transaction_categories;
+use crate::schema::{transaction_categories, transactions};
 use crate::write_actor::WriteHandle;
 use async_trait::async_trait;
 use chrono::Local;
@@ -11,7 +11,8 @@ use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
 use zai_core::Result;
 use zai_core::features::transaction_categories::models::{
-    NewTransactionCategory, TransactionCategory, TransactionCategoryUpdate,
+    CategoryChildrenDeleteStrategy, NewTransactionCategory, TransactionCategory,
+    TransactionCategoryUpdate,
 };
 use zai_core::features::transaction_categories::traits::TransactionCategoriesRepositoryTrait;
 
@@ -92,6 +93,51 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         category.parent = parent_row.map(TransactionCategory::from).map(Box::new);
 
         Ok(category)
+    }
+
+    fn category_has_children(&self, id: &str) -> Result<bool> {
+        let conn = &mut get_connection(&self.pool)?;
+
+        let child_count = transaction_categories::table
+            .filter(transaction_categories::parent_id.eq(id))
+            .filter(transaction_categories::deleted_at.is_null())
+            .count()
+            .get_result::<i64>(conn)
+            .into_core()?;
+
+        Ok(child_count > 0)
+    }
+
+    fn sibling_name_exists(
+        &self,
+        parent_id: Option<&str>,
+        name: &str,
+        excluded_id: Option<&str>,
+    ) -> Result<bool> {
+        let conn = &mut get_connection(&self.pool)?;
+        let normalized_name = name.trim().to_lowercase();
+
+        let mut query = transaction_categories::table
+            .filter(transaction_categories::deleted_at.is_null())
+            .into_boxed();
+
+        query = match parent_id {
+            Some(parent_id) => query.filter(transaction_categories::parent_id.eq(parent_id)),
+            None => query.filter(transaction_categories::parent_id.is_null()),
+        };
+
+        if let Some(excluded_id) = excluded_id {
+            query = query.filter(transaction_categories::id.ne(excluded_id));
+        }
+
+        let sibling_names = query
+            .select(transaction_categories::name)
+            .load::<String>(conn)
+            .into_core()?;
+
+        Ok(sibling_names
+            .iter()
+            .any(|sibling_name| sibling_name.trim().to_lowercase() == normalized_name))
     }
 
     async fn create_category(
@@ -181,23 +227,67 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
             .await
     }
 
-    async fn delete_categories(&self, ids: Vec<&str>) -> Result<Vec<TransactionCategory>> {
+    async fn delete_categories(
+        &self,
+        ids: Vec<&str>,
+        children_strategy: CategoryChildrenDeleteStrategy,
+    ) -> Result<Vec<TransactionCategory>> {
         let owned_ids = ids.iter().map(|&s| s.to_string()).collect::<Vec<String>>();
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<Vec<TransactionCategory>> {
                     let now = Local::now().naive_utc();
+                    let mut ids_to_delete = owned_ids.clone();
+
+                    if children_strategy == CategoryChildrenDeleteStrategy::Delete {
+                        let child_ids = transaction_categories::table
+                            .filter(transaction_categories::parent_id.eq_any(&owned_ids))
+                            .filter(transaction_categories::deleted_at.is_null())
+                            .select(transaction_categories::id)
+                            .load::<String>(conn)
+                            .into_storage()?;
+
+                        ids_to_delete.extend(child_ids);
+                        ids_to_delete.sort();
+                        ids_to_delete.dedup();
+                    }
+
+                    if children_strategy == CategoryChildrenDeleteStrategy::Promote {
+                        diesel::update(
+                            transaction_categories::table
+                                .filter(transaction_categories::parent_id.eq_any(&owned_ids))
+                                .filter(transaction_categories::deleted_at.is_null()),
+                        )
+                        .set((
+                            transaction_categories::parent_id.eq(None::<String>),
+                            transaction_categories::updated_at.eq(now),
+                        ))
+                        .execute(conn)
+                        .into_storage()?;
+                    }
 
                     diesel::update(
                         transaction_categories::table
-                            .filter(transaction_categories::id.eq_any(&owned_ids)),
+                            .filter(transaction_categories::id.eq_any(&ids_to_delete)),
                     )
                     .set(transaction_categories::deleted_at.eq(now))
                     .execute(conn)
                     .into_storage()?;
 
+                    diesel::update(
+                        transactions::table.filter(
+                            transactions::transaction_category_id.eq_any(&ids_to_delete),
+                        ),
+                    )
+                    .set((
+                        transactions::transaction_category_id.eq(None::<String>),
+                        transactions::updated_at.eq(now),
+                    ))
+                    .execute(conn)
+                    .into_storage()?;
+
                     let deleted = transaction_categories::table
-                        .filter(transaction_categories::id.eq_any(&owned_ids))
+                        .filter(transaction_categories::id.eq_any(&ids_to_delete))
                         .filter(transaction_categories::deleted_at.is_not_null())
                         .load::<TransactionCategoryRow>(conn)
                         .into_storage()?;
@@ -259,6 +349,7 @@ mod tests {
     use zai_core::features::transaction_categories::models::{
         NewTransactionCategory, TransactionCategory,
     };
+    use zai_core::features::transactions::models::NewTransaction;
 
     fn setup_test_repo(db_path: &str) -> TransactionCategoriesRepository {
         let manager = r2d2::ConnectionManager::<SqliteConnection>::new(db_path);
@@ -271,6 +362,32 @@ mod tests {
         let writer = spawn_writer(pool.clone()).unwrap();
 
         TransactionCategoriesRepository::new(Arc::new(pool), writer)
+    }
+
+    fn insert_transaction_with_category(repo: &TransactionCategoriesRepository, category_id: &str) {
+        let conn = &mut get_connection(&repo.pool).unwrap();
+        let transaction = NewTransaction {
+            id: Some(Uuid::new_v4().to_string()),
+            description: Some("Lunch".to_string()),
+            amount: 1200,
+            transaction_date: chrono::Utc::now().naive_utc(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: Some(category_id.to_string()),
+            notes: None,
+        };
+
+        diesel::insert_into(transactions::table)
+            .values((
+                transactions::id.eq(transaction.id.unwrap()),
+                transactions::description.eq(transaction.description),
+                transactions::amount.eq(transaction.amount),
+                transactions::transaction_date.eq(transaction.transaction_date),
+                transactions::transaction_type.eq(transaction.transaction_type),
+                transactions::transaction_category_id.eq(transaction.transaction_category_id),
+                transactions::notes.eq(transaction.notes),
+            ))
+            .execute(conn)
+            .unwrap();
     }
 
     #[tokio::test]
@@ -303,7 +420,9 @@ mod tests {
         repo.create_category(cat1).await.unwrap();
         repo.create_category(cat2).await.unwrap();
         let created = repo.create_category(cat3).await.unwrap();
-        repo.delete_categories(vec![&created.id]).await.unwrap();
+        repo.delete_categories(vec![&created.id], CategoryChildrenDeleteStrategy::Block)
+            .await
+            .unwrap();
 
         let all = repo.get_categories(None).unwrap();
         assert!(all.len() == 2);
@@ -377,7 +496,9 @@ mod tests {
         repo.create_category(cat1).await.unwrap();
         repo.create_category(cat2).await.unwrap();
         let created = repo.create_category(cat3).await.unwrap();
-        repo.delete_categories(vec![&created.id]).await.unwrap();
+        repo.delete_categories(vec![&created.id], CategoryChildrenDeleteStrategy::Block)
+            .await
+            .unwrap();
 
         let all = repo.get_categories(Some(&parent.id)).unwrap();
         assert!(all.len() == 1);
@@ -452,7 +573,7 @@ mod tests {
         let created_1 = repo.create_category(new_category_1).await.unwrap();
 
         let new_category_2 = NewTransactionCategory {
-            name: "To Delete".to_string(),
+            name: "To Delete Too".to_string(),
             parent_id: None,
             description: None,
             color: None,
@@ -461,7 +582,10 @@ mod tests {
         let created_2 = repo.create_category(new_category_2).await.unwrap();
 
         let deleted = repo
-            .delete_categories(vec![&created_1.id, &created_2.id])
+            .delete_categories(
+                vec![&created_1.id, &created_2.id],
+                CategoryChildrenDeleteStrategy::Block,
+            )
             .await
             .unwrap();
 
@@ -632,5 +756,124 @@ mod tests {
         let updated_child = repo.update_category(updated_child).await.unwrap();
 
         assert_eq!(updated_child.color.as_deref(), Some("#AB63F2"));
+    }
+
+    #[tokio::test]
+    async fn test_sibling_name_exists_compares_trimmed_names_case_insensitively() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        repo.create_category(NewTransactionCategory {
+            name: "Food".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            id: Some(Uuid::new_v4().to_string()),
+        })
+        .await
+        .unwrap();
+
+        let exists = repo
+            .sibling_name_exists(None, " food ", None)
+            .expect("check sibling name");
+
+        assert!(exists);
+    }
+
+    #[tokio::test]
+    async fn test_delete_parent_category_promotes_children() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let parent = repo
+            .create_category(NewTransactionCategory {
+                name: "Parent".to_string(),
+                parent_id: None,
+                description: None,
+                color: None,
+                id: Some(Uuid::new_v4().to_string()),
+            })
+            .await
+            .unwrap();
+        let child = repo
+            .create_category(NewTransactionCategory {
+                name: "Child".to_string(),
+                parent_id: Some(parent.id.clone()),
+                description: None,
+                color: None,
+                id: Some(Uuid::new_v4().to_string()),
+            })
+            .await
+            .unwrap();
+
+        repo.delete_categories(vec![&parent.id], CategoryChildrenDeleteStrategy::Promote)
+            .await
+            .unwrap();
+        let promoted = repo.get_category(&child.id).unwrap();
+
+        assert!(promoted.parent_id.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_delete_parent_category_deletes_children() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let parent = repo
+            .create_category(NewTransactionCategory {
+                name: "Parent".to_string(),
+                parent_id: None,
+                description: None,
+                color: None,
+                id: Some(Uuid::new_v4().to_string()),
+            })
+            .await
+            .unwrap();
+        let child = repo
+            .create_category(NewTransactionCategory {
+                name: "Child".to_string(),
+                parent_id: Some(parent.id.clone()),
+                description: None,
+                color: None,
+                id: Some(Uuid::new_v4().to_string()),
+            })
+            .await
+            .unwrap();
+
+        let deleted = repo
+            .delete_categories(vec![&parent.id], CategoryChildrenDeleteStrategy::Delete)
+            .await
+            .unwrap();
+
+        assert!(deleted.iter().any(|category| category.id == child.id));
+    }
+
+    #[tokio::test]
+    async fn test_delete_category_uncategorizes_transactions() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let category = repo
+            .create_category(NewTransactionCategory {
+                name: "Food".to_string(),
+                parent_id: None,
+                description: None,
+                color: None,
+                id: Some(Uuid::new_v4().to_string()),
+            })
+            .await
+            .unwrap();
+        insert_transaction_with_category(&repo, &category.id);
+
+        repo.delete_categories(vec![&category.id], CategoryChildrenDeleteStrategy::Block)
+            .await
+            .unwrap();
+        let conn = &mut get_connection(&repo.pool).unwrap();
+        let category_id = transactions::table
+            .select(transactions::transaction_category_id)
+            .first::<Option<String>>(conn)
+            .unwrap();
+
+        assert!(category_id.is_none());
     }
 }

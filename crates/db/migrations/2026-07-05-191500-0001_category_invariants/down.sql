@@ -1,0 +1,3 @@
+DROP INDEX transaction_categories_child_name_unique;
+
+DROP INDEX transaction_categories_root_name_unique;

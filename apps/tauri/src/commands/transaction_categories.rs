@@ -4,7 +4,8 @@ use crate::context::ServiceContext;
 use log::debug;
 use tauri::State;
 use zai_core::features::transaction_categories::models::{
-    NewTransactionCategory, TransactionCategory, TransactionCategoryUpdate,
+    CategoryChildrenDeleteStrategy, NewTransactionCategory, TransactionCategory,
+    TransactionCategoryUpdate,
 };
 
 #[tauri::command]
@@ -72,6 +73,7 @@ pub async fn update_transaction_category(
 #[tauri::command]
 pub async fn delete_transaction_categories(
     category_ids: Vec<String>,
+    children_strategy: Option<CategoryChildrenDeleteStrategy>,
     state: State<'_, Arc<ServiceContext>>,
 ) -> Result<Vec<TransactionCategory>, String> {
     debug!(
@@ -82,9 +84,12 @@ pub async fn delete_transaction_categories(
     let category_id_refs = category_ids.iter().map(String::as_str).collect();
     state
         .transaction_categories_service()
-        .delete_categories(category_id_refs)
+        .delete_categories(
+            category_id_refs,
+            children_strategy.unwrap_or(CategoryChildrenDeleteStrategy::Block),
+        )
         .await
-        .map_err(|e| format!("Failed to delete transaction categoris: {}", e))
+        .map_err(|e| format!("Failed to delete transaction categories: {}", e))
 }
 
 #[tauri::command]
