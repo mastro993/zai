@@ -25,6 +25,7 @@ Personal finance desktop app built with Tauri (Rust backend + React frontend).
 apps/frontend/src/
 ├── routes/             # TanStack file-based route pages
 ├── components/         # Shared components
+│   └── ui/             # Shadcn components (do not touch)
 ├── features/           # Self-contained feature modules
 ├── commands/           # Backend call wrappers (Tauri/Web)
 └── adapters/           # Runtime detection (desktop vs web)
