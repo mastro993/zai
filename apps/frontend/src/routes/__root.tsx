@@ -19,6 +19,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -50,8 +51,9 @@ const navigationItems = [
       { title: "Categories", to: "/cash-flow/categories" },
     ],
   },
-  { title: "Settings", to: "/settings", icon: Settings01Icon },
 ] as const;
+
+const settingsItem = { title: "Settings", to: "/settings", icon: Settings01Icon } as const;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -138,6 +140,20 @@ function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={pathname === settingsItem.to}
+              render={<Link to={settingsItem.to} preload="intent" />}
+              tooltip={settingsItem.title}
+            >
+              <HugeiconsIcon icon={settingsItem.icon} strokeWidth={2} />
+              <span>{settingsItem.title}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );
