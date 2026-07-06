@@ -1,9 +1,10 @@
+import { type CommandResult, invokeCommand } from "@/commands/shared";
+
 import type {
   CategoryChildrenDeleteStrategy,
   CategoryFormValues,
   TransactionCategory,
-} from "@/features/cash-flow/model";
-import { type CommandResult, invokeCommand } from "@/commands/shared";
+} from "../types/model";
 
 type CategoryPayload = {
   id?: string;

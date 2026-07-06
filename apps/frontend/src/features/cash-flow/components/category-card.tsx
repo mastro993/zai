@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 
+import { getCategoryDisplayColor } from "../lib/category";
+import type { CategoryFormMode } from "../types/category-types";
+import type { TransactionCategory } from "../types/model";
 import { ColorDot } from "./color-dot";
-import type { CategoryFormMode } from "./category-types";
-import { getCategoryDisplayColor, type TransactionCategory } from "./model";
 
 function CategoryCard({
   category,

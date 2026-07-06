@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_CATEGORY_COLOR, categoryFormSchema, getCategoryDisplayColor } from "./model";
+import { getCategoryDisplayColor } from "../../lib/category";
+import { DEFAULT_CATEGORY_COLOR, categoryFormSchema } from "../model";
 
 describe("cash-flow model", () => {
   it("uses parent color as the child category display color", () => {

@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { TransactionManager } from "@/features/cash-flow/transaction-manager";
+import { TransactionScreen } from "@/features/cash-flow/screens/transaction-screen";
 
 export const Route = createFileRoute("/cash-flow/transactions")({
   component: CashFlowTransactionsPage,
 });
 
 function CashFlowTransactionsPage() {
-  return <TransactionManager />;
+  return <TransactionScreen />;
 }

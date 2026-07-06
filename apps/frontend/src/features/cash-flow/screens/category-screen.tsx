@@ -3,27 +3,27 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
+
 import {
   createTransactionCategory,
   deleteTransactionCategories,
   getTransactionCategories,
   updateTransactionCategory,
-} from "@/commands/transaction-categories";
-
-import { CategoryCard } from "./category-card";
-import { CategoryDeleteConfirmationDialog } from "./category-delete-confirmation-dialog";
-import { CategoryFormDrawer } from "./category-form-drawer";
-import type { CategoryFormMode } from "./category-types";
+} from "../commands/transaction-categories";
+import { CategoryCard } from "../components/category-card";
+import { CategoryDeleteConfirmationDialog } from "../components/category-delete-confirmation-dialog";
+import { CategoryFormDrawer } from "../components/category-form-drawer";
+import type { CategoryFormMode } from "../types/category-types";
 import type {
   CategoryChildrenDeleteStrategy,
   CategoryFormValues,
   TransactionCategory,
-} from "./model";
+} from "../types/model";
 
 const getChildren = (categories: Array<TransactionCategory>, parentId: string) =>
   categories.filter((category) => category.parentId === parentId);
 
-export function CategoryManager() {
+export function CategoryScreen() {
   const [categories, setCategories] = useState<Array<TransactionCategory>>([]);
   const [formMode, setFormMode] = useState<CategoryFormMode | null>(null);
   const [pendingDelete, setPendingDelete] = useState<TransactionCategory | null>(null);

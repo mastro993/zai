@@ -1,7 +1,7 @@
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { Button } from "@/components/ui/button";
 
-import type { Transaction } from "./model";
+import type { Transaction } from "../types/model";
 
 function TransactionDeleteConfirmationDialog({
   transaction,

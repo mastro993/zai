@@ -22,15 +22,15 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-import type { CategoryFormMode } from "./category-types";
+import { isCategoryColor } from "../lib/category";
+import type { CategoryFormMode } from "../types/category-types";
 import {
   CATEGORY_COLORS,
   DEFAULT_CATEGORY_COLOR,
   categoryFormSchema,
   type CategoryFormValues,
   type TransactionCategory,
-  isCategoryColor,
-} from "./model";
+} from "../types/model";
 
 const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
   if (mode.type === "create-root") {

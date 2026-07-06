@@ -3,21 +3,21 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
-import { getTransactionCategories } from "@/commands/transaction-categories";
+
+import { getTransactionCategories } from "../commands/transaction-categories";
 import {
   createTransaction,
   deleteTransaction,
   getTransactions,
   updateTransaction,
-} from "@/commands/transactions";
+} from "../commands/transactions";
+import { TransactionDeleteConfirmationDialog } from "../components/transaction-delete-confirmation-dialog";
+import { TransactionFormDrawer } from "../components/transaction-form-drawer";
+import { TransactionTable } from "../components/transaction-table";
+import type { Transaction, TransactionCategory, TransactionFormValues } from "../types/model";
+import type { TransactionFormMode } from "../types/transaction-types";
 
-import { TransactionDeleteConfirmationDialog } from "./transaction-delete-confirmation-dialog";
-import { TransactionFormDrawer } from "./transaction-form-drawer";
-import { TransactionTable } from "./transaction-table";
-import type { TransactionFormMode } from "./transaction-types";
-import type { Transaction, TransactionCategory, TransactionFormValues } from "./model";
-
-export function TransactionManager() {
+export function TransactionScreen() {
   const [transactions, setTransactions] = useState<Array<Transaction>>([]);
   const [categories, setCategories] = useState<Array<TransactionCategory>>([]);
   const [formMode, setFormMode] = useState<TransactionFormMode | null>(null);

@@ -1,13 +1,10 @@
 import { Button } from "@/components/ui/button";
 
+import { getCategoryDisplayColor } from "../lib/category";
+import { toDateTimeInputValue } from "../lib/transaction";
+import type { TransactionFormMode } from "../types/transaction-types";
+import type { Transaction, TransactionCategory } from "../types/model";
 import { ColorDot } from "./color-dot";
-import type { TransactionFormMode } from "./transaction-types";
-import {
-  getCategoryDisplayColor,
-  toDateTimeInputValue,
-  type Transaction,
-  type TransactionCategory,
-} from "./model";
 
 function TransactionTable({
   transactions,

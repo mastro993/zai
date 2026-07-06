@@ -1,10 +1,7 @@
-import type {
-  PaginatedTransactions,
-  Transaction,
-  TransactionFormValues,
-} from "@/features/cash-flow/model";
-import { toBackendDateTime } from "@/features/cash-flow/model";
 import { type CommandResult, invokeCommand } from "@/commands/shared";
+
+import { toBackendDateTime } from "../lib/transaction";
+import type { PaginatedTransactions, Transaction, TransactionFormValues } from "../types/model";
 
 type TransactionPayload = {
   description?: string | null;

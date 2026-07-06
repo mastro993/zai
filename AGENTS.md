@@ -16,29 +16,30 @@ Personal finance desktop app built with Tauri (Rust backend + React frontend).
 - Investigate problems to the root cause and fix them. Never cover up, ignore,
   or hide a problem just to make it disappear.
 - Never `throw/try/catch`. Use `R.succeed()` / `R.fail()` from `@praha/byethrow`
-- Max 400 LOC files. Break them intol multiple files if necessary.
-- One component per file.
+- Max 400 LOC files. Break them into multiple files when they become too big
 
 ## Project structure
 
 ```json
 apps/frontend/src/
-├── routes/             # TanStack file-based route pages
-├── components/         # Shared components
-│   └── ui/             # Shadcn components (do not touch)
-├── features/           # Self-contained feature modules
-├── commands/           # Backend call wrappers (Tauri/Web)
-└── adapters/           # Runtime detection (desktop vs web)
+├── routes/               # TanStack file-based route pages
+├── components/           # Shared components
+│   └── ui/               # Shadcn components (do not touch)
+├── features/             # Self-contained feature modules
+├── commands/             # Backend call wrappers (Tauri/Web)
+├── lib/                  # Primitives and utilities
+├── adapters/             # Runtime detection (desktop vs web)
+└── types/                # Shared types
 
 apps/server/src/
-└── api/                # Axum HTTP handlers
+└── api/                  # Axum HTTP handlers
 
 apps/tauri/src/
-└── commands/           # Tauri IPC commands
+└── commands/             # Tauri IPC commands
 
 crates/
-├── core/               # Business logic, models, services
-└── db/                 # Diesel ORM, repositories, migrations
+├── core/                 # Business logic, models, services
+└── db/                   # Diesel ORM, repositories, migrations
 ```
 
 ## Agent Playbook

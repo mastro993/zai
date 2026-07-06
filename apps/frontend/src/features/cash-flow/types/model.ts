@@ -14,7 +14,6 @@ export const CATEGORY_COLORS = [
 ] as const;
 
 export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLORS[9];
-
 export const TRANSACTION_TYPES = ["expense", "income"] as const;
 
 const nullableStringSchema = z.string().nullable().optional();
@@ -79,23 +78,3 @@ export type Transaction = z.infer<typeof transactionSchema>;
 export type PaginatedTransactions = z.infer<typeof paginatedTransactionsSchema>;
 export type TransactionType = z.infer<typeof transactionTypeSchema>;
 export type CategoryChildrenDeleteStrategy = "block" | "promote" | "delete";
-
-export const getCategoryDisplayColor = (category: TransactionCategory) => {
-  if (category.parent) {
-    return category.parent.color ?? DEFAULT_CATEGORY_COLOR;
-  }
-
-  return category.color ?? DEFAULT_CATEGORY_COLOR;
-};
-
-export const isCategoryColor = (color: string): color is CategoryColor => {
-  return CATEGORY_COLORS.some((categoryColor) => categoryColor === color);
-};
-
-export const toBackendDateTime = (value: string) => {
-  return value.length === 16 ? `${value}:00` : value;
-};
-
-export const toDateTimeInputValue = (value: string) => {
-  return value.slice(0, 16);
-};

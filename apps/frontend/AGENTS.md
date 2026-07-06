@@ -35,6 +35,27 @@ apps/frontend/
 └── .cta.json             # TanStack CLI project metadata
 ```
 
+## Feature folders
+
+Feature modules live under `src/features/<feature>/`. Create folders only when
+the feature needs them:
+
+```json
+src/features/<feature>/
+├── screens/     # Route-level components imported by src/routes
+├── components/  # Feature-private UI components
+├── types/       # Zod schemas plus inferred/domain/UI types
+├── lib/         # Pure helpers and feature-local utilities
+├── commands/    # Feature-specific backend command wrappers
+└── hooks/       # Feature-specific React hooks, when extraction is worthwhile
+```
+
+- Route files import feature screens directly.
+- Keep imports direct to concrete files; do not add barrel files by default.
+- Keep shared command plumbing in `src/commands`; place feature-specific
+  command wrappers in the owning feature's `commands/` folder.
+- Put tests in the nearest folder-specific `__tests__/` directory.
+
 ## Known gotchas
 
 1. **Route tree**: After adding/removing route files, run `pnpm --filter frontend generate-routes`.
