@@ -1,19 +1,8 @@
 import { R } from "@praha/byethrow";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
 
-import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Drawer } from "@/components/ui/drawer";
 import { getTransactionCategories } from "@/commands/transaction-categories";
 import {
   createTransaction,
@@ -22,47 +11,11 @@ import {
   updateTransaction,
 } from "@/commands/transactions";
 
-import {
-  TRANSACTION_TYPES,
-  type Transaction,
-  type TransactionCategory,
-  type TransactionFormInput,
-  type TransactionFormValues,
-  type TransactionType,
-  getCategoryDisplayColor,
-  toDateTimeInputValue,
-  transactionFormSchema,
-} from "./model";
-
-type TransactionFormMode = { type: "create" } | { type: "edit"; transaction: Transaction };
-
-const getLocalDateTimeInputValue = () => {
-  const date = new Date();
-  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-  return date.toISOString().slice(0, 16);
-};
-
-const getFormDefaults = (mode: TransactionFormMode): TransactionFormValues => {
-  if (mode.type === "create") {
-    return {
-      description: "",
-      amount: 1,
-      transactionDate: getLocalDateTimeInputValue(),
-      transactionType: "expense",
-      transactionCategoryId: "",
-      notes: "",
-    };
-  }
-
-  return {
-    description: mode.transaction.description ?? "",
-    amount: mode.transaction.amount,
-    transactionDate: toDateTimeInputValue(mode.transaction.transactionDate),
-    transactionType: mode.transaction.transactionType as TransactionType,
-    transactionCategoryId: mode.transaction.transactionCategoryId ?? "",
-    notes: mode.transaction.notes ?? "",
-  };
-};
+import { TransactionDeleteConfirmationDialog } from "./transaction-delete-confirmation-dialog";
+import { TransactionFormDrawer } from "./transaction-form-drawer";
+import { TransactionTable } from "./transaction-table";
+import type { TransactionFormMode } from "./transaction-types";
+import type { Transaction, TransactionCategory, TransactionFormValues } from "./model";
 
 export function TransactionManager() {
   const [transactions, setTransactions] = useState<Array<Transaction>>([]);
@@ -166,218 +119,39 @@ export function TransactionManager() {
       ) : null}
 
       {transactions.length > 0 ? (
-        <div className="overflow-x-auto border">
-          <table className="w-full border-collapse text-sm">
-            <thead className="bg-muted/40 text-left">
-              <tr>
-                <th className="p-3 font-medium">Date</th>
-                <th className="p-3 font-medium">Description</th>
-                <th className="p-3 font-medium">Type</th>
-                <th className="p-3 font-medium">Category</th>
-                <th className="p-3 text-right font-medium">Amount</th>
-                <th className="p-3 text-right font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((transaction) => {
-                const category = transaction.transactionCategoryId
-                  ? categoryById.get(transaction.transactionCategoryId)
-                  : undefined;
-
-                return (
-                  <tr key={transaction.id} className="border-t">
-                    <td className="p-3">{toDateTimeInputValue(transaction.transactionDate)}</td>
-                    <td className="p-3">{transaction.description || "No description"}</td>
-                    <td className="p-3 capitalize">{transaction.transactionType}</td>
-                    <td className="p-3">
-                      {category ? (
-                        <span className="inline-flex items-center gap-2">
-                          <span
-                            className="size-3 border"
-                            style={{
-                              backgroundColor: getCategoryDisplayColor(category),
-                            }}
-                            aria-hidden="true"
-                          />
-                          {category.name}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">Uncategorized</span>
-                      )}
-                    </td>
-                    <td className="p-3 text-right tabular-nums">{transaction.amount}</td>
-                    <td className="p-3">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setFormMode({ type: "edit", transaction })}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setPendingDelete(transaction)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <TransactionTable
+          transactions={transactions}
+          categoryById={categoryById}
+          onEdit={setFormMode}
+          onDelete={setPendingDelete}
+        />
       ) : null}
 
-      <ConfirmationDialog
-        open={pendingDelete !== null}
+      <TransactionDeleteConfirmationDialog
+        transaction={pendingDelete}
+        isDeleting={isDeleting}
         onOpenChange={(open) => !open && setPendingDelete(null)}
-        title="Delete transaction?"
-        description={
-          pendingDelete?.description
-            ? `This will permanently delete "${pendingDelete.description}".`
-            : "This will permanently delete this transaction."
-        }
-        isActionPending={isDeleting}
-      >
-        <Button
-          variant="destructive"
-          size="sm"
-          disabled={isDeleting}
-          onClick={() => {
-            if (pendingDelete) {
-              void removeTransaction(pendingDelete);
-            }
-          }}
-        >
-          {isDeleting ? "Deleting..." : "Delete transaction"}
-        </Button>
-      </ConfirmationDialog>
+        onDelete={() => {
+          if (pendingDelete) {
+            void removeTransaction(pendingDelete);
+          }
+        }}
+      />
 
-      <Sheet open={formMode !== null} onOpenChange={(open) => !open && setFormMode(null)}>
+      <Drawer
+        open={formMode !== null}
+        onOpenChange={(open) => !open && setFormMode(null)}
+        swipeDirection="right"
+      >
         {formMode ? (
-          <TransactionFormSheet
+          <TransactionFormDrawer
             key={formMode.type === "edit" ? formMode.transaction.id : "create"}
             mode={formMode}
             categories={categories}
             onSubmit={submitTransaction}
           />
         ) : null}
-      </Sheet>
+      </Drawer>
     </section>
-  );
-}
-
-function TransactionFormSheet({
-  mode,
-  categories,
-  onSubmit,
-}: {
-  mode: TransactionFormMode;
-  categories: Array<TransactionCategory>;
-  onSubmit: (values: TransactionFormValues) => Promise<void>;
-}) {
-  const form = useForm<TransactionFormInput, unknown, TransactionFormValues>({
-    resolver: zodResolver(transactionFormSchema),
-    defaultValues: getFormDefaults(mode),
-  });
-  const title = mode.type === "edit" ? "Edit transaction" : "New transaction";
-  const rootCategories = categories.filter((category) => !category.parentId);
-  const childCategories = categories.filter((category) => category.parentId);
-
-  return (
-    <SheetContent>
-      <SheetHeader>
-        <SheetTitle>{title}</SheetTitle>
-        <SheetDescription>
-          Select a category when useful, or leave the transaction uncategorized.
-        </SheetDescription>
-      </SheetHeader>
-      <form
-        className="flex flex-1 flex-col gap-4 p-4"
-        onSubmit={form.handleSubmit((values) => void onSubmit(values))}
-      >
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Description
-          <Input {...form.register("description")} />
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Amount
-          <Input
-            type="number"
-            min={1}
-            step={1}
-            aria-invalid={Boolean(form.formState.errors.amount)}
-            {...form.register("amount", { valueAsNumber: true })}
-          />
-          {form.formState.errors.amount?.message ? (
-            <span className="text-xs text-destructive">{form.formState.errors.amount.message}</span>
-          ) : null}
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Date
-          <Input
-            type="datetime-local"
-            aria-invalid={Boolean(form.formState.errors.transactionDate)}
-            {...form.register("transactionDate")}
-          />
-          {form.formState.errors.transactionDate?.message ? (
-            <span className="text-xs text-destructive">
-              {form.formState.errors.transactionDate.message}
-            </span>
-          ) : null}
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Type
-          <select
-            className="h-8 border border-input bg-background px-2.5 text-xs capitalize outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
-            {...form.register("transactionType")}
-          >
-            {TRANSACTION_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Category
-          <select
-            className="h-8 border border-input bg-background px-2.5 text-xs outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
-            {...form.register("transactionCategoryId")}
-          >
-            <option value="">Uncategorized</option>
-            {rootCategories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-            {childCategories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.parent?.name ?? "Root"} / {category.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Notes
-          <Input {...form.register("notes")} />
-        </label>
-
-        <SheetFooter className="p-0">
-          <Button type="submit" disabled={form.formState.isSubmitting}>
-            Save transaction
-          </Button>
-        </SheetFooter>
-      </form>
-    </SheetContent>
   );
 }

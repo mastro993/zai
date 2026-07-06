@@ -1,6 +1,6 @@
-import * as React from "react"
+import * as React from "react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
 function ConfirmationDialog({
   open,
@@ -20,21 +20,21 @@ function ConfirmationDialog({
   cancelLabel = "Cancel",
   isActionPending = false,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  title: React.ReactNode
-  description: React.ReactNode
-  children: React.ReactNode
-  cancelLabel?: string
-  isActionPending?: boolean
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  children: React.ReactNode;
+  cancelLabel?: string;
+  isActionPending?: boolean;
 }) {
   const handleOpenChange = (nextOpen: boolean) => {
     if (isActionPending && !nextOpen) {
-      return
+      return;
     }
 
-    onOpenChange(nextOpen)
-  }
+    onOpenChange(nextOpen);
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -51,7 +51,7 @@ function ConfirmationDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
-export { ConfirmationDialog }
+export { ConfirmationDialog };
