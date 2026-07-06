@@ -33,6 +33,7 @@ import {
   SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
+  SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
@@ -73,9 +74,6 @@ function AppLayout() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger />
-        </header>
         <Outlet />
       </SidebarInset>
     </SidebarProvider>
@@ -92,8 +90,17 @@ function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link to="/dashboard" />}>
-              <span className="text-lg font-semibold text-primary">Zai</span>
+            <SidebarMenuButton
+              size="lg"
+              className="group-data-[collapsible=icon]:justify-center"
+              render={<Link to="/dashboard" />}
+            >
+              <span className="flex size-4 shrink-0 items-center justify-center text-lg font-semibold text-primary">
+                財
+              </span>
+              <span className="text-lg font-semibold text-primary group-data-[collapsible=icon]:hidden">
+                Zai
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -153,6 +160,8 @@ function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        <SidebarSeparator />
+        <SidebarTrigger className="h-8 w-full justify-start rounded-none p-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2" />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
