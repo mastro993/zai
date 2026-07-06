@@ -1,9 +1,11 @@
 import { R } from "@praha/byethrow";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 
+import { exportCategories } from "../commands/category-export";
 import {
   createTransactionCategory,
   deleteTransactionCategories,
@@ -29,13 +31,17 @@ export function CategoryScreen() {
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<TransactionCategory | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const rootCategories = useMemo(
     () => categories.filter((category) => !category.parentId),
     [categories],
+  );
+  const categoriesInScreenOrder = useMemo(
+    () => rootCategories.flatMap((category) => [category, ...getChildren(categories, category.id)]),
+    [categories, rootCategories],
   );
 
   const loadCategories = async () => {
@@ -43,13 +49,15 @@ export function CategoryScreen() {
     const result = await getTransactionCategories();
 
     if (R.isFailure(result)) {
-      setErrorMessage(result.error.message);
+      toast.error("Failed to load categories", { description: result.error.message });
+      setIsLoading(false);
+      return false;
     } else {
       setCategories(result.value);
-      setErrorMessage(null);
     }
 
     setIsLoading(false);
+    return true;
   };
 
   useEffect(() => {
@@ -66,6 +74,22 @@ export function CategoryScreen() {
     setIsDeleteDialogOpen(true);
   };
 
+  const exportCategoryCsv = async () => {
+    setIsExporting(true);
+
+    const result = await exportCategories(categoriesInScreenOrder);
+
+    if (R.isFailure(result)) {
+      toast.error("Failed to export categories", { description: result.error.message });
+    } else if (result.value) {
+      toast.success("Categories exported", { description: result.value });
+    } else {
+      toast.info("Category export canceled");
+    }
+
+    setIsExporting(false);
+  };
+
   const submitCategory = async (values: CategoryFormValues) => {
     const result =
       formMode?.type === "edit"
@@ -73,12 +97,14 @@ export function CategoryScreen() {
         : await createTransactionCategory(values);
 
     if (R.isFailure(result)) {
-      setErrorMessage(result.error.message);
+      toast.error("Failed to save category", { description: result.error.message });
       return;
     }
 
     setIsFormDrawerOpen(false);
-    await loadCategories();
+    if (await loadCategories()) {
+      toast.success("Category saved");
+    }
   };
 
   const deleteCategory = async (
@@ -89,15 +115,18 @@ export function CategoryScreen() {
     const result = await deleteTransactionCategories([category.id], childrenStrategy);
 
     if (R.isFailure(result)) {
-      setErrorMessage(result.error.message);
+      toast.error("Failed to delete category", { description: result.error.message });
       setIsDeleteDialogOpen(false);
       setIsDeleting(false);
       return;
     }
 
     setIsDeleteDialogOpen(false);
-    await loadCategories();
+    const didLoadCategories = await loadCategories();
     setIsDeleting(false);
+    if (didLoadCategories) {
+      toast.success("Category deleted");
+    }
   };
 
   return (
@@ -109,14 +138,13 @@ export function CategoryScreen() {
             Group cash flow with root categories and one child level.
           </p>
         </div>
-        <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
-      </div>
-
-      {errorMessage ? (
-        <div className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          {errorMessage}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" disabled={isLoading || isExporting} onClick={exportCategoryCsv}>
+            {isExporting ? "Exporting..." : "Export categories"}
+          </Button>
+          <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
         </div>
-      ) : null}
+      </div>
 
       <CategoryDeleteConfirmationDialog
         category={pendingDelete}

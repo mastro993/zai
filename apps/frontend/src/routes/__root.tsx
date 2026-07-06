@@ -34,6 +34,7 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 
@@ -150,6 +151,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="font-sans antialiased">
         {children}
+        <Toaster position="bottom-right" />
         <TanStackDevtools
           config={{ position: "bottom-right" }}
           plugins={[
