@@ -1,5 +1,6 @@
 import { type CommandResult, invokeCommand } from "@/commands/shared";
 
+import type { CategoryImportPayload } from "../lib/category-import";
 import type {
   CategoryChildrenDeleteStrategy,
   CategoryFormValues,
@@ -56,5 +57,13 @@ export const deleteTransactionCategories = (
   return invokeCommand<Array<TransactionCategory>>("delete_transaction_categories", {
     categoryIds,
     childrenStrategy,
+  });
+};
+
+export const importTransactionCategories = (
+  categories: Array<CategoryImportPayload>,
+): CommandResult<Array<TransactionCategory>> => {
+  return invokeCommand<Array<TransactionCategory>>("import_transaction_categories", {
+    categories,
   });
 };

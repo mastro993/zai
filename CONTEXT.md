@@ -23,3 +23,7 @@ children of the same root category.
 **Effective category color**:
 The color shown for a category. A root category uses its own color; a child
 category uses its parent category's color.
+
+**Category path**:
+The category's identity in the category hierarchy. A root category's path is its
+own name; a child category's path is its root category name plus its own name.

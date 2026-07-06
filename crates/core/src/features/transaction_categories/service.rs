@@ -4,7 +4,10 @@ use super::models::{
 };
 use super::traits::{TransactionCategoriesRepositoryTrait, TransactionCategoriesServiceTrait};
 use crate::errors::{Error, Result};
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 use uuid::Uuid;
 
 pub struct TransactionCategoriesService {
@@ -143,46 +146,104 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
         &self,
         categories: Vec<NewTransactionCategory>,
     ) -> Result<Vec<TransactionCategory>> {
-        for category in &categories {
-            let mut category = category.clone();
+        let mut normalized_categories = Vec::with_capacity(categories.len());
+
+        for mut category in categories {
             category.name = normalize_category_name(&category.name);
             category.validate()?;
+            category.color = normalize_optional_color(category.color.as_deref())?;
+            if is_root_category(&category) {
+                category.parent_id = None;
+            }
+            normalized_categories.push(category);
         }
 
-        let mut categories_to_import = Vec::with_capacity(categories.len());
+        let existing_categories = self.repository.get_categories(None)?;
+        let existing_roots = existing_categories
+            .iter()
+            .filter(|category| category.parent_id.is_none())
+            .map(|category| (category_name_key(&category.name), category))
+            .collect::<HashMap<_, _>>();
+        let existing_child_paths = existing_categories
+            .iter()
+            .filter_map(|category| {
+                category
+                    .parent_id
+                    .as_ref()
+                    .map(|parent_id| (parent_id.clone(), category_name_key(&category.name)))
+            })
+            .collect::<HashSet<_>>();
 
-        for root_category in categories
+        let mut categories_to_import = Vec::with_capacity(normalized_categories.len());
+        let mut root_id_by_original_id = HashMap::<String, String>::new();
+        let mut imported_root_keys = HashMap::<String, String>::new();
+
+        for root_category in normalized_categories
             .iter()
             .filter(|category| is_root_category(category))
         {
-            let original_root_id = root_category.id.clone();
-            let new_parent_id = Uuid::new_v4().to_string();
-            let parent_color = normalize_optional_color(root_category.color.as_deref())?;
+            let root_key = category_name_key(&root_category.name);
+            let resolved_root_id = if let Some(existing_root) = existing_roots.get(&root_key) {
+                existing_root.id.clone()
+            } else if let Some(imported_root_id) = imported_root_keys.get(&root_key) {
+                imported_root_id.clone()
+            } else {
+                let imported_root_id = Uuid::new_v4().to_string();
+                imported_root_keys.insert(root_key, imported_root_id.clone());
 
-            let mut owned_root = root_category.clone();
-            owned_root.id = Some(new_parent_id.clone());
-            owned_root.parent_id = None;
-            owned_root.name = normalize_category_name(&owned_root.name);
-            owned_root.color = parent_color.clone();
-            categories_to_import.push(owned_root);
+                let mut owned_root = root_category.clone();
+                owned_root.id = Some(imported_root_id.clone());
+                owned_root.parent_id = None;
+                categories_to_import.push(owned_root);
 
-            for child in categories.iter().filter(|category| {
-                category.parent_id.is_some()
-                    && category.parent_id.as_deref() == original_root_id.as_deref()
-            }) {
-                let mut owned_child = child.clone();
-                owned_child.id = Some(Uuid::new_v4().to_string());
-                owned_child.parent_id = Some(new_parent_id.clone());
-                owned_child.name = normalize_category_name(&owned_child.name);
-                owned_child.color = normalize_optional_color(owned_child.color.as_deref())?;
-                categories_to_import.push(owned_child);
+                imported_root_id
+            };
+
+            if let Some(original_root_id) = root_category.id.as_deref() {
+                root_id_by_original_id.insert(original_root_id.to_string(), resolved_root_id);
             }
         }
 
-        if categories_to_import.len() != categories.len() {
-            return Err(Error::InvalidData(
-                "Cannot import a child category without its root category".to_string(),
-            ));
+        let existing_root_ids = existing_roots
+            .values()
+            .map(|category| category.id.clone())
+            .collect::<HashSet<_>>();
+        let mut imported_child_paths = HashSet::<(String, String)>::new();
+
+        for child in normalized_categories
+            .into_iter()
+            .filter(|category| !is_root_category(category))
+        {
+            let original_parent_id = child.parent_id.as_deref().unwrap_or_default();
+            let Some(resolved_parent_id) = root_id_by_original_id
+                .get(original_parent_id)
+                .cloned()
+                .or_else(|| {
+                    existing_root_ids
+                        .contains(original_parent_id)
+                        .then(|| original_parent_id.to_string())
+                })
+            else {
+                return Err(Error::InvalidData(
+                    "Cannot import a child category without its root category".to_string(),
+                ));
+            };
+
+            let child_path = (resolved_parent_id.clone(), category_name_key(&child.name));
+
+            if existing_child_paths.contains(&child_path)
+                || imported_child_paths.contains(&child_path)
+            {
+                continue;
+            }
+
+            imported_child_paths.insert(child_path);
+
+            let mut owned_child = child;
+            owned_child.id = Some(Uuid::new_v4().to_string());
+            owned_child.parent_id = Some(resolved_parent_id);
+            owned_child.color = None;
+            categories_to_import.push(owned_child);
         }
 
         self.repository
@@ -196,6 +257,10 @@ fn is_root_category(category: &NewTransactionCategory) -> bool {
         .parent_id
         .as_deref()
         .is_none_or(|parent_id| parent_id.trim().is_empty())
+}
+
+fn category_name_key(name: &str) -> String {
+    normalize_category_name(name).to_lowercase()
 }
 
 #[cfg(test)]
@@ -354,7 +419,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn import_categories_preserves_child_color() {
+    async fn import_categories_ignores_child_color() {
         let service = TransactionCategoriesService::new(Arc::new(FakeRepository::default()));
         let parent = NewTransactionCategory {
             id: Some("parent1".to_string()),
@@ -385,6 +450,114 @@ mod tests {
             .unwrap();
 
         assert_eq!(imported_child.color, None);
+    }
+
+    #[tokio::test]
+    async fn import_categories_skips_existing_category_paths() {
+        let existing_root = TransactionCategory {
+            id: "existing-root".to_string(),
+            parent_id: None,
+            name: "Food".to_string(),
+            description: Some("Existing wins".to_string()),
+            color: Some("#C92A2A".to_string()),
+            parent: None,
+        };
+        let existing_child = TransactionCategory {
+            id: "existing-child".to_string(),
+            parent_id: Some("existing-root".to_string()),
+            name: "Groceries".to_string(),
+            description: None,
+            color: None,
+            parent: None,
+        };
+        let repository = Arc::new(FakeRepository::with_categories(vec![
+            existing_root,
+            existing_child,
+        ]));
+        let service = TransactionCategoriesService::new(repository);
+
+        let imported = service
+            .import_categories(vec![
+                NewTransactionCategory {
+                    id: Some("incoming-root".to_string()),
+                    name: " food ".to_string(),
+                    parent_id: None,
+                    description: Some("Imported ignored".to_string()),
+                    color: Some("#FFFFFF".to_string()),
+                },
+                NewTransactionCategory {
+                    id: Some("incoming-child-duplicate".to_string()),
+                    name: " groceries ".to_string(),
+                    parent_id: Some("incoming-root".to_string()),
+                    description: None,
+                    color: None,
+                },
+                NewTransactionCategory {
+                    id: Some("incoming-child-new".to_string()),
+                    name: "Restaurants".to_string(),
+                    parent_id: Some("incoming-root".to_string()),
+                    description: None,
+                    color: Some("#000000".to_string()),
+                },
+            ])
+            .await
+            .unwrap();
+
+        assert_eq!(imported.len(), 1);
+        assert_eq!(imported[0].name, "Restaurants");
+        assert_eq!(imported[0].parent_id.as_deref(), Some("existing-root"));
+        assert_eq!(imported[0].color, None);
+    }
+
+    #[tokio::test]
+    async fn import_categories_skips_duplicate_paths_in_payload() {
+        let service = TransactionCategoriesService::new(Arc::new(FakeRepository::default()));
+
+        let imported = service
+            .import_categories(vec![
+                NewTransactionCategory {
+                    id: Some("root-1".to_string()),
+                    name: "Food".to_string(),
+                    parent_id: None,
+                    description: None,
+                    color: Some("#C92A2A".to_string()),
+                },
+                NewTransactionCategory {
+                    id: Some("root-2".to_string()),
+                    name: " food ".to_string(),
+                    parent_id: None,
+                    description: Some("Duplicate ignored".to_string()),
+                    color: Some("#FFFFFF".to_string()),
+                },
+                NewTransactionCategory {
+                    id: Some("child-1".to_string()),
+                    name: "Groceries".to_string(),
+                    parent_id: Some("root-1".to_string()),
+                    description: None,
+                    color: None,
+                },
+                NewTransactionCategory {
+                    id: Some("child-2".to_string()),
+                    name: " groceries ".to_string(),
+                    parent_id: Some("root-2".to_string()),
+                    description: Some("Duplicate ignored".to_string()),
+                    color: None,
+                },
+            ])
+            .await
+            .unwrap();
+
+        let root_count = imported
+            .iter()
+            .filter(|category| category.parent_id.is_none())
+            .count();
+        let child_count = imported
+            .iter()
+            .filter(|category| category.parent_id.is_some())
+            .count();
+
+        assert_eq!(root_count, 1);
+        assert_eq!(child_count, 1);
     }
 
     #[tokio::test]

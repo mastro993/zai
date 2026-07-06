@@ -15,6 +15,7 @@ import {
 import { CategoryCard } from "../components/category-card";
 import { CategoryDeleteConfirmationDialog } from "../components/category-delete-confirmation-dialog";
 import { CategoryFormDrawer } from "../components/category-form-drawer";
+import { CategoryImportDialog } from "../components/category-import-dialog";
 import type { CategoryFormMode } from "../types/category-types";
 import type {
   CategoryChildrenDeleteStrategy,
@@ -31,6 +32,8 @@ export function CategoryScreen() {
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<TransactionCategory | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -49,11 +52,12 @@ export function CategoryScreen() {
     const result = await getTransactionCategories();
 
     if (R.isFailure(result)) {
-      toast.error("Failed to load categories", { description: result.error.message });
+      setErrorMessage(result.error.message);
       setIsLoading(false);
       return false;
     } else {
       setCategories(result.value);
+      setErrorMessage(null);
     }
 
     setIsLoading(false);
@@ -88,6 +92,14 @@ export function CategoryScreen() {
     }
 
     setIsExporting(false);
+  };
+
+  const completeCategoryImport = async (createdCount: number, skippedRows: number) => {
+    if (await loadCategories()) {
+      toast.success("Categories imported", {
+        description: `${createdCount} created, ${skippedRows} skipped`,
+      });
+    }
   };
 
   const submitCategory = async (values: CategoryFormValues) => {
@@ -139,12 +151,25 @@ export function CategoryScreen() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            disabled={isLoading}
+            onClick={() => setIsImportDialogOpen(true)}
+          >
+            Import categories
+          </Button>
           <Button variant="outline" disabled={isLoading || isExporting} onClick={exportCategoryCsv}>
             {isExporting ? "Exporting..." : "Export categories"}
           </Button>
           <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
         </div>
       </div>
+
+      {errorMessage ? (
+        <div className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          {errorMessage}
+        </div>
+      ) : null}
 
       <CategoryDeleteConfirmationDialog
         category={pendingDelete}
@@ -172,6 +197,13 @@ export function CategoryScreen() {
             void deleteCategory(pendingDelete, "promote");
           }
         }}
+      />
+
+      <CategoryImportDialog
+        open={isImportDialogOpen}
+        categories={categories}
+        onOpenChange={setIsImportDialogOpen}
+        onImported={completeCategoryImport}
       />
 
       <div className="flex flex-col gap-3">
