@@ -16,6 +16,8 @@ Personal finance desktop app built with Tauri (Rust backend + React frontend).
 - Investigate problems to the root cause and fix them. Never cover up, ignore,
   or hide a problem just to make it disappear.
 - Never `throw/try/catch`. Use `R.succeed()` / `R.fail()` from `@praha/byethrow`
+- Max 400 LOC files. Break them intol multiple files if necessary.
+- One component per file.
 
 ## Project structure
 
