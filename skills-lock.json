@@ -12,6 +12,12 @@
       "skillPath": "skills/heroui-react/SKILL.md",
       "computedHash": "c9e1bb41fbc3cee782faae08bd465ae05cd685a6ed7cc3392464fdf29b3ab467"
     },
+    "improve": {
+      "source": "shadcn/improve",
+      "sourceType": "github",
+      "skillPath": "skills/improve/SKILL.md",
+      "computedHash": "39a9358732dcff385e9e4d3e60b4547856f834e54a58b35e455aa9bd49928c13"
+    },
     "react-hook-form": {
       "source": "pproenca/dot-skills",
       "sourceType": "github",

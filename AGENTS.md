@@ -8,14 +8,13 @@ Personal finance desktop app built with Tauri (Rust backend + React frontend).
 
 ## General guardrails
 
-- Keep it simple: we are not trying to impress nobody. Prefer simple UI over
-  complicated UX.
+- Keep it simple: we are not trying to impress nobody. Prefer simpler flows and
+  clear UIs over complicated UX.
 - Avoid unnecessary comments in code. Add a comment only to explain non-obvious
   rationale, such as difficult logic, magic numbers, or hardcoded strings.
   Treat comments as a code smell by default.
 - Investigate problems to the root cause and fix them. Never cover up, ignore,
   or hide a problem just to make it disappear.
-- Never `throw/try/catch`. Use `R.succeed()` / `R.fail()` from `@praha/byethrow`
 - Max 400 LOC files. Break them into multiple files when they become too big
 
 ## Project structure
@@ -84,6 +83,7 @@ Frontend → Adapter (tauri) → Command wrapper
 - Prefer interfaces over types, avoid enums
 - Functional components, named exports
 - Directory names: lowercase-with-dashes
+- Never `throw/try/catch`. Use `R.succeed()` / `R.fail()` from `@praha/byethrow`
 
 ### Rust
 
