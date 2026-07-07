@@ -1,5 +1,6 @@
 import { R } from "@praha/byethrow";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
@@ -14,6 +15,7 @@ import {
 } from "../commands/transactions";
 import { TransactionDeleteConfirmationDialog } from "../components/transaction-delete-confirmation-dialog";
 import { TransactionFormDrawer } from "../components/transaction-form-drawer";
+import { TransactionImportDialog } from "../components/transaction-import-dialog";
 import { TransactionTable } from "../components/transaction-table";
 import type { Transaction, TransactionCategory, TransactionFormValues } from "../types/model";
 import type { TransactionFormMode } from "../types/transaction-types";
@@ -27,6 +29,7 @@ export function TransactionScreen() {
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -143,6 +146,9 @@ export function TransactionScreen() {
               setQuery(event.target.value);
             }}
           />
+          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+            Import transactions
+          </Button>
           <Button onClick={() => openFormDrawer({ type: "create" })}>New transaction</Button>
         </div>
       </div>
@@ -184,6 +190,20 @@ export function TransactionScreen() {
           if (pendingDelete) {
             void removeTransaction(pendingDelete);
           }
+        }}
+      />
+
+      <TransactionImportDialog
+        open={isImportDialogOpen}
+        categories={categories}
+        transactions={transactions}
+        onOpenChange={setIsImportDialogOpen}
+        onImported={async (createdCount, skippedRows) => {
+          await loadData(debouncedQuery, true);
+          toast.success(`Imported ${createdCount} transactions`, {
+            description:
+              skippedRows > 0 ? `${skippedRows} rows were skipped during preview.` : undefined,
+          });
         }}
       />
 

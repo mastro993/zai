@@ -71,3 +71,11 @@ export const deleteTransaction = (transactionId: string): CommandResult<Transact
     transactionId,
   });
 };
+
+export const importTransactions = (
+  transactions: Array<TransactionPayload & { id?: string }>,
+): CommandResult<Array<Transaction>> => {
+  return invokeCommand<Array<Transaction>>("import_transactions", {
+    transactions,
+  });
+};

@@ -116,7 +116,7 @@ function CategoryImportPreviewTable({
   if (rows.length === 0) {
     return (
       <p className="border border-dashed p-4 text-xs text-muted-foreground">
-        No data rows found after the selected header row.
+        No importable rows. Skipped rows are reflected in the summary above.
       </p>
     );
   }
@@ -369,7 +369,9 @@ function CategoryImportDialog({
                 </p>
               </div>
 
-              <CategoryImportPreviewTable rows={preview.rows} />
+              <CategoryImportPreviewTable
+                rows={preview.rows.filter((row) => row.status === "import")}
+              />
             </>
           ) : null}
         </div>
