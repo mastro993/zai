@@ -23,12 +23,14 @@ function TransactionTable({
       <table className="w-full border-collapse text-sm">
         <thead className="bg-muted/40 text-left">
           <tr>
-            <th className="p-3 font-medium">Date</th>
+            <th className="w-px whitespace-nowrap p-3 font-medium">Date</th>
+            <th className="w-px whitespace-nowrap p-3 font-medium">Type</th>
+            <th className="w-px whitespace-nowrap p-3 font-medium">Category</th>
+            <th className="w-px whitespace-nowrap p-3 text-right font-medium">Amount</th>
             <th className="p-3 font-medium">Description</th>
-            <th className="p-3 font-medium">Type</th>
-            <th className="p-3 font-medium">Category</th>
-            <th className="p-3 text-right font-medium">Amount</th>
-            <th className="p-3 text-right font-medium">Actions</th>
+            <th className="sticky right-0 z-10 whitespace-nowrap bg-muted/40 p-3 text-right font-medium">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -39,10 +41,11 @@ function TransactionTable({
 
             return (
               <tr key={transaction.id} className="border-t">
-                <td className="p-3">{toDateTimeInputValue(transaction.transactionDate)}</td>
-                <td className="p-3">{transaction.description || "No description"}</td>
-                <td className="p-3 capitalize">{transaction.transactionType}</td>
-                <td className="p-3">
+                <td className="whitespace-nowrap p-3">
+                  {toDateTimeInputValue(transaction.transactionDate)}
+                </td>
+                <td className="whitespace-nowrap p-3 capitalize">{transaction.transactionType}</td>
+                <td className="whitespace-nowrap p-3">
                   {category ? (
                     <span className="inline-flex items-center gap-2">
                       <ColorDot color={getCategoryDisplayColor(category)} />
@@ -52,10 +55,13 @@ function TransactionTable({
                     <span className="text-muted-foreground">Uncategorized</span>
                   )}
                 </td>
-                <td className="p-3 text-right tabular-nums">
+                <td className="whitespace-nowrap p-3 text-right tabular-nums">
                   {formatCurrencyFromMinor(transaction.amount, "EUR")}
                 </td>
-                <td className="p-3">
+                <td className="max-w-0 p-3">
+                  <span className="block truncate">{transaction.description || "No description"}</span>
+                </td>
+                <td className="sticky right-0 z-10 bg-background p-3">
                   <div className="flex justify-end gap-2">
                     <Button
                       variant="outline"
