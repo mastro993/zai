@@ -13,30 +13,54 @@ import {
   deleteTransaction,
   getAllTransactions,
   getTransactions,
+  type TransactionFilters,
   updateTransaction,
 } from "../commands/transactions";
+import { TransactionDateFilter } from "../components/transaction-date-filter";
 import { TransactionDeleteConfirmationDialog } from "../components/transaction-delete-confirmation-dialog";
 import { TransactionFormDrawer } from "../components/transaction-form-drawer";
 import { TransactionImportDialog } from "../components/transaction-import-dialog";
 import { TransactionPagination } from "../components/transaction-pagination";
 import { TransactionTable } from "../components/transaction-table";
+import { DEFAULT_TRANSACTION_ROWS_PER_PAGE, type TransactionRowsPerPage } from "../lib/pagination";
 import {
-  DEFAULT_TRANSACTION_ROWS_PER_PAGE,
-  type TransactionRowsPerPage,
-} from "../lib/pagination";
+  DEFAULT_DATE_SELECTION,
+  isActiveSelection,
+  resolveSelection,
+  type DateRangeSelection,
+} from "../lib/date-range";
 import type { Transaction, TransactionCategory, TransactionFormValues } from "../types/model";
 import type { TransactionFormMode } from "../types/transaction-types";
+
+const buildTransactionFilters = (
+  searchQuery: string,
+  selection: DateRangeSelection,
+): TransactionFilters | undefined => {
+  const range = resolveSelection(selection);
+  const filters: TransactionFilters = {};
+
+  if (searchQuery.length > 0) {
+    filters.query = searchQuery;
+  }
+  if (range.startDate) {
+    filters.startDate = range.startDate;
+  }
+  if (range.endDate) {
+    filters.endDate = range.endDate;
+  }
+
+  return Object.keys(filters).length > 0 ? filters : undefined;
+};
 
 export function TransactionScreen() {
   const [transactions, setTransactions] = useState<Array<Transaction>>([]);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState<TransactionRowsPerPage>(
-    DEFAULT_TRANSACTION_ROWS_PER_PAGE,
-  );
+  const [perPage, setPerPage] = useState<TransactionRowsPerPage>(DEFAULT_TRANSACTION_ROWS_PER_PAGE);
   const [totalPages, setTotalPages] = useState(1);
   const [categories, setCategories] = useState<Array<TransactionCategory>>([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [dateSelection, setDateSelection] = useState<DateRangeSelection>(DEFAULT_DATE_SELECTION);
   const [formMode, setFormMode] = useState<TransactionFormMode | null>(null);
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
@@ -57,13 +81,14 @@ export function TransactionScreen() {
     searchQuery: string,
     pageToLoad: number,
     rowsPerPage: TransactionRowsPerPage,
+    selection: DateRangeSelection,
     includeCategories = false,
   ) => {
     setIsLoading(true);
     const transactionsResult = await getTransactions(
       pageToLoad,
       rowsPerPage,
-      searchQuery.length > 0 ? { query: searchQuery } : undefined,
+      buildTransactionFilters(searchQuery, selection),
     );
 
     if (R.isFailure(transactionsResult)) {
@@ -112,8 +137,8 @@ export function TransactionScreen() {
   useEffect(() => {
     const includeCategories = !hasLoadedCategories.current;
     hasLoadedCategories.current = true;
-    void loadData(debouncedQuery, page, perPage, includeCategories);
-  }, [debouncedQuery, page, perPage]);
+    void loadData(debouncedQuery, page, perPage, dateSelection, includeCategories);
+  }, [debouncedQuery, page, perPage, dateSelection]);
 
   const openFormDrawer = (mode: TransactionFormMode) => {
     setFormMode(mode);
@@ -137,14 +162,14 @@ export function TransactionScreen() {
     }
 
     setIsFormDrawerOpen(false);
-    await loadData(debouncedQuery, page, perPage);
+    await loadData(debouncedQuery, page, perPage, dateSelection);
   };
 
   const exportTransactionCsv = async () => {
     setIsExporting(true);
 
     const transactionsResult = await getAllTransactions(
-      debouncedQuery.length > 0 ? { query: debouncedQuery } : undefined,
+      buildTransactionFilters(debouncedQuery, dateSelection),
     );
 
     if (R.isFailure(transactionsResult)) {
@@ -180,7 +205,7 @@ export function TransactionScreen() {
     }
 
     setIsDeleteDialogOpen(false);
-    await loadData(debouncedQuery, page, perPage);
+    await loadData(debouncedQuery, page, perPage, dateSelection);
     setIsDeleting(false);
   };
 
@@ -188,6 +213,20 @@ export function TransactionScreen() {
     setPerPage(nextPerPage);
     setPage(1);
   };
+
+  const changeDateSelection = (selection: DateRangeSelection) => {
+    setDateSelection(selection);
+    setPage(1);
+  };
+
+  const clearFilters = () => {
+    setQuery("");
+    setDebouncedQuery("");
+    setDateSelection(DEFAULT_DATE_SELECTION);
+    setPage(1);
+  };
+
+  const hasActiveFilters = debouncedQuery.length > 0 || isActiveSelection(dateSelection);
 
   return (
     <section className="flex flex-1 flex-col gap-4 p-6">
@@ -198,7 +237,7 @@ export function TransactionScreen() {
             Log income and expenses with an optional category.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Input
             type="search"
             placeholder="Search description or notes..."
@@ -207,6 +246,10 @@ export function TransactionScreen() {
             onChange={(event) => {
               setQuery(event.target.value);
             }}
+          />
+          <TransactionDateFilter
+            selection={dateSelection}
+            onSelectionChange={changeDateSelection}
           />
           <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
             Import transactions
@@ -231,9 +274,18 @@ export function TransactionScreen() {
       {isLoading ? <p className="text-sm text-muted-foreground">Loading transactions...</p> : null}
 
       {!isLoading && transactions.length === 0 ? (
-        <p className="border border-dashed p-6 text-sm text-muted-foreground">
-          No transactions yet. Add income or an expense to start tracking cash flow.
-        </p>
+        hasActiveFilters ? (
+          <div className="flex flex-col items-start gap-3 border border-dashed p-6">
+            <p className="text-sm text-muted-foreground">No transactions match your filters.</p>
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          </div>
+        ) : (
+          <p className="border border-dashed p-6 text-sm text-muted-foreground">
+            No transactions yet. Add income or an expense to start tracking cash flow.
+          </p>
+        )
       ) : null}
 
       {transactions.length > 0 ? (
@@ -277,7 +329,7 @@ export function TransactionScreen() {
         categories={categories}
         onOpenChange={setIsImportDialogOpen}
         onImported={async (createdCount, skippedRows) => {
-          await loadData(debouncedQuery, page, perPage, true);
+          await loadData(debouncedQuery, page, perPage, dateSelection, true);
           toast.success(`Imported ${createdCount} transactions`, {
             description:
               skippedRows > 0 ? `${skippedRows} rows were skipped during preview.` : undefined,

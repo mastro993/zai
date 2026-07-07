@@ -14,7 +14,7 @@ type TransactionPayload = {
   notes?: string | null;
 };
 
-type TransactionFilters = {
+export type TransactionFilters = {
   query?: string;
   categories?: Array<string>;
   transactionType?: string;
