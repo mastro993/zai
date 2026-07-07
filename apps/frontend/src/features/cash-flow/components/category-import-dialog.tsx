@@ -1,6 +1,8 @@
 import { R } from "@praha/byethrow";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowLeft01Icon, ArrowRight01Icon, FileImportIcon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,34 +13,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import { openCategoryImportFile, type CategoryImportFile } from "../commands/category-import";
 import { importTransactionCategories } from "../commands/transaction-categories";
-import {
-  filterImportPreviewRows,
-  getImportPreviewEmptyMessage,
-  IMPORT_PREVIEW_ROW_FILTER_OPTIONS,
-  type ImportPreviewRowFilter,
-} from "../lib/import-preview-filter";
+import type { ImportPreviewRowFilter } from "../lib/import-preview-filter";
 import {
   buildCategoryImportPreview,
   getDefaultCategoryImportMapping,
   parseCategoryCsv,
   type CategoryImportColumnMapping,
-  type CategoryImportLinkMode,
-  type CategoryImportPreviewStatus,
 } from "../lib/category-import";
 import type { TransactionCategory } from "../types/model";
+import {
+  CategoryImportMappingStep,
+  type CategoryImportConfig,
+} from "./category-import-mapping-step";
+import { CategoryImportReviewStep } from "./category-import-review-step";
+import { CategoryImportSourceStep } from "./category-import-source-step";
+import { ImportStepper, type ImportStep } from "./import-stepper";
 
 type CategoryImportDialogProps = {
   open: boolean;
@@ -47,127 +39,18 @@ type CategoryImportDialogProps = {
   onImported: (createdCount: number, skippedRows: number) => Promise<void>;
 };
 
-const EMPTY_COLUMN = "none";
-const DEFAULT_SEPARATOR = " - ";
-
-const statusLabels: Record<CategoryImportPreviewStatus, string> = {
-  import: "Import",
-  duplicate: "Skipped duplicate",
-  invalid: "Skipped invalid",
-  empty: "Skipped empty",
+const EMPTY_MAPPING: CategoryImportColumnMapping = {
+  name: null,
+  parentName: null,
+  color: null,
+  description: null,
 };
 
-const getHeadersForRow = (content: string, headerRowIndex: number) =>
-  parseCategoryCsv(content)[headerRowIndex] ?? [];
-
-const toSelectValue = (column: number | null) => (column === null ? EMPTY_COLUMN : String(column));
-
-const fromSelectValue = (value: unknown) => {
-  const stringValue = String(value ?? EMPTY_COLUMN);
-
-  return stringValue === EMPTY_COLUMN ? null : Number(stringValue);
-};
-
-function ColumnSelect({
-  label,
-  value,
-  headers,
-  allowNone = true,
-  onChange,
-}: {
-  label: string;
-  value: number | null;
-  headers: Array<string>;
-  allowNone?: boolean;
-  onChange: (value: number | null) => void;
-}) {
-  const items = [
-    ...(allowNone ? [{ value: EMPTY_COLUMN, label: "None" }] : []),
-    ...headers.map((header, index) => ({
-      value: String(index),
-      label: header.trim() || `Column ${index + 1}`,
-    })),
-  ];
-
-  return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
-      <Select
-        items={items}
-        value={toSelectValue(value)}
-        onValueChange={(next) => onChange(fromSelectValue(next))}
-      >
-        <SelectTrigger className="w-full" aria-label={label}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent alignItemWithTrigger={false}>
-          <SelectGroup>
-            {items.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-    </Field>
-  );
-}
-
-function CategoryImportPreviewTable({
-  rows,
-  previewFilter,
-}: {
-  rows: ReturnType<typeof buildCategoryImportPreview>["rows"];
-  previewFilter: ImportPreviewRowFilter;
-}) {
-  if (rows.length === 0) {
-    return (
-      <p className="border border-dashed p-4 text-xs text-muted-foreground">
-        {getImportPreviewEmptyMessage(previewFilter)}
-      </p>
-    );
-  }
-
-  return (
-    <div className="max-h-72 overflow-auto border">
-      <table className="w-full min-w-[760px] border-collapse text-left text-xs">
-        <thead className="sticky top-0 bg-muted text-muted-foreground">
-          <tr>
-            <th className="border-b px-3 py-2 font-medium">Row</th>
-            <th className="border-b px-3 py-2 font-medium">Parent</th>
-            <th className="border-b px-3 py-2 font-medium">Name</th>
-            <th className="border-b px-3 py-2 font-medium">Color</th>
-            <th className="border-b px-3 py-2 font-medium">Description</th>
-            <th className="border-b px-3 py-2 font-medium">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.rowNumber}
-              className={
-                row.status === "import" ? "border-b last:border-b-0" : "border-b bg-destructive/5 last:border-b-0"
-              }
-            >
-              <td className="px-3 py-2 text-muted-foreground">{row.rowNumber}</td>
-              <td className="px-3 py-2">{row.parentName || "-"}</td>
-              <td className="px-3 py-2">{row.name || "-"}</td>
-              <td className="px-3 py-2">{row.color || "-"}</td>
-              <td className="px-3 py-2">{row.description || "-"}</td>
-              <td className="px-3 py-2">
-                <span>{statusLabels[row.status]}</span>
-                {row.message ? (
-                  <span className="block text-muted-foreground">{row.message}</span>
-                ) : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+const createDefaultConfig = (): CategoryImportConfig => ({
+  headerRowIndex: 0,
+  linkMode: "columns",
+  separator: " - ",
+});
 
 function CategoryImportDialog({
   open,
@@ -176,18 +59,26 @@ function CategoryImportDialog({
   onImported,
 }: CategoryImportDialogProps) {
   const [file, setFile] = useState<CategoryImportFile | null>(null);
-  const [headerRowIndex, setHeaderRowIndex] = useState(0);
-  const [mapping, setMapping] = useState<CategoryImportColumnMapping>({
-    name: null,
-    parentName: null,
-    color: null,
-    description: null,
-  });
-  const [linkMode, setLinkMode] = useState<CategoryImportLinkMode>("columns");
-  const [separator, setSeparator] = useState(DEFAULT_SEPARATOR);
+  const [mapping, setMapping] = useState<CategoryImportColumnMapping>(EMPTY_MAPPING);
+  const [config, setConfig] = useState<CategoryImportConfig>(createDefaultConfig);
+  const [step, setStep] = useState<ImportStep>(0);
+  const [previewFilter, setPreviewFilter] = useState<ImportPreviewRowFilter>("importable");
   const [isPickingFile, setIsPickingFile] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [previewFilter, setPreviewFilter] = useState<ImportPreviewRowFilter>("importable");
+
+  useEffect(() => {
+    if (open) {
+      setStep(0);
+      setPreviewFilter("importable");
+    }
+  }, [open]);
+
+  const rowCount = useMemo(() => (file ? parseCategoryCsv(file.content).length : 0), [file]);
+
+  const headers = useMemo(
+    () => (file ? (parseCategoryCsv(file.content)[config.headerRowIndex] ?? []) : []),
+    [file, config.headerRowIndex],
+  );
 
   const preview = useMemo(() => {
     if (!file) {
@@ -195,19 +86,25 @@ function CategoryImportDialog({
     }
 
     return buildCategoryImportPreview(file.content, {
-      headerRowIndex,
+      headerRowIndex: config.headerRowIndex,
       mapping,
-      linkMode,
-      separator,
+      linkMode: config.linkMode,
+      separator: config.separator,
       existingCategories: categories,
     });
-  }, [categories, file, headerRowIndex, linkMode, mapping, separator]);
+  }, [file, config, mapping, categories]);
+
+  const mappingReady = mapping.name !== null;
+
+  const canAdvance =
+    step === 0 ? file !== null : step === 1 ? mappingReady : false;
+
+  const updateConfig = (patch: Partial<CategoryImportConfig>) => {
+    setConfig((current) => ({ ...current, ...patch }));
+  };
 
   const updateMapping = (key: keyof CategoryImportColumnMapping, value: number | null) => {
-    setMapping((current) => ({
-      ...current,
-      [key]: value,
-    }));
+    setMapping((current) => ({ ...current, [key]: value }));
   };
 
   const selectFile = async () => {
@@ -224,10 +121,10 @@ function CategoryImportDialog({
       return;
     }
 
-    const headers = getHeadersForRow(result.value.content, 0);
+    const nextHeaders = parseCategoryCsv(result.value.content)[0] ?? [];
     setFile(result.value);
-    setHeaderRowIndex(0);
-    setMapping(getDefaultCategoryImportMapping(headers));
+    setConfig((current) => ({ ...current, headerRowIndex: 0 }));
+    setMapping(getDefaultCategoryImportMapping(nextHeaders));
   };
 
   const changeHeaderRow = (value: string) => {
@@ -235,17 +132,35 @@ function CategoryImportDialog({
       return;
     }
 
-    const rowCount = parseCategoryCsv(file.content).length;
+    const rows = parseCategoryCsv(file.content);
     const parsedValue = Number.parseInt(value, 10);
     const nextHeaderRowIndex = Number.isNaN(parsedValue)
       ? 0
-      : Math.max(0, Math.min(parsedValue, Math.max(rowCount - 1, 0)));
+      : Math.max(0, Math.min(parsedValue, Math.max(rows.length - 1, 0)));
 
-    setHeaderRowIndex(nextHeaderRowIndex);
-    setMapping(getDefaultCategoryImportMapping(getHeadersForRow(file.content, nextHeaderRowIndex)));
+    setConfig((current) => ({ ...current, headerRowIndex: nextHeaderRowIndex }));
+    setMapping(getDefaultCategoryImportMapping(rows[nextHeaderRowIndex] ?? []));
   };
 
-  const importCategories = async () => {
+  const goNext = () => {
+    if (step === 0 && file) {
+      setStep(1);
+    } else if (step === 1 && mappingReady) {
+      setStep(2);
+    }
+  };
+
+  const goBack = () => {
+    setStep((current) => (current > 0 ? ((current - 1) as ImportStep) : current));
+  };
+
+  const goToStep = (target: ImportStep) => {
+    if (target < step) {
+      setStep(target);
+    }
+  };
+
+  const confirmImport = async () => {
     if (!preview || preview.categories.length === 0) {
       return;
     }
@@ -266,169 +181,108 @@ function CategoryImportDialog({
     );
   };
 
+  const importableRows = preview?.summary.importableRows ?? 0;
+  const skippedRows = preview
+    ? preview.summary.duplicateRows + preview.summary.invalidRows + preview.summary.emptyRows
+    : 0;
+
+  const footerHint =
+    step === 0
+      ? file
+        ? `${rowCount.toLocaleString()} rows detected`
+        : "Select a CSV file to begin"
+      : step === 1
+        ? mappingReady
+          ? "Columns mapped — ready to preview"
+          : "Map a category name column to continue"
+        : `${importableRows.toLocaleString()} ready · ${skippedRows.toLocaleString()} skipped`;
+
   return (
     <Dialog open={open} onOpenChange={isImporting ? undefined : onOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-hidden sm:max-w-5xl">
+      <DialogContent className="grid max-h-[calc(100vh-2rem)] grid-rows-[auto_auto_minmax(0,1fr)_auto] sm:max-w-3xl md:max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Import categories</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <HugeiconsIcon
+              icon={FileImportIcon}
+              className="size-4 text-muted-foreground"
+              strokeWidth={1.8}
+            />
+            Import categories
+          </DialogTitle>
           <DialogDescription>
-            Select a CSV, map columns, then review which categories will be created or skipped.
+            Bring in categories from a CSV file in three quick steps.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto pr-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" disabled={isPickingFile} onClick={selectFile}>
-              {isPickingFile ? "Selecting..." : "Select CSV file"}
-            </Button>
-            {file ? (
-              <p className="break-all text-xs text-muted-foreground">{file.path}</p>
-            ) : (
-              <p className="text-xs text-muted-foreground">No CSV selected.</p>
-            )}
-          </div>
+        <ImportStepper current={step} onStepSelect={goToStep} />
 
-          {file && preview ? (
-            <>
-              <FieldGroup className="grid gap-4 md:grid-cols-2">
-                <Field>
-                  <FieldLabel htmlFor="category-import-header-row">
-                    Rows to skip before header
-                  </FieldLabel>
-                  <Input
-                    id="category-import-header-row"
-                    type="number"
-                    min={0}
-                    value={headerRowIndex}
-                    onChange={(event) => changeHeaderRow(event.target.value)}
-                  />
-                  <FieldDescription>
-                    The selected row becomes the header. Data starts on the next row.
-                  </FieldDescription>
-                </Field>
-
-                <Field>
-                  <FieldLabel>Parent and child source</FieldLabel>
-                  <Select
-                    items={[
-                      { value: "columns", label: "Dedicated parent column" },
-                      { value: "single-column", label: "Single column with separator" },
-                    ]}
-                    value={linkMode}
-                    onValueChange={(value) => setLinkMode(value as CategoryImportLinkMode)}
-                  >
-                    <SelectTrigger className="w-full" aria-label="Parent and child source">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent alignItemWithTrigger={false}>
-                      <SelectGroup>
-                        <SelectItem value="columns">Dedicated parent column</SelectItem>
-                        <SelectItem value="single-column">Single column with separator</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
-
-                <ColumnSelect
-                  label={
-                    linkMode === "single-column" ? "Category path column" : "Category name column"
-                  }
-                  value={mapping.name}
-                  headers={preview.headers}
-                  allowNone={false}
-                  onChange={(value) => updateMapping("name", value)}
-                />
-
-                {linkMode === "columns" ? (
-                  <ColumnSelect
-                    label="Parent category column"
-                    value={mapping.parentName}
-                    headers={preview.headers}
-                    onChange={(value) => updateMapping("parentName", value)}
-                  />
-                ) : (
-                  <Field>
-                    <FieldLabel htmlFor="category-import-separator">Separator</FieldLabel>
-                    <Input
-                      id="category-import-separator"
-                      value={separator}
-                      onChange={(event) => setSeparator(event.target.value)}
-                    />
-                    <FieldDescription>
-                      Split on first match. Example: Food - Groceries.
-                    </FieldDescription>
-                  </Field>
-                )}
-
-                <ColumnSelect
-                  label="Color column"
-                  value={mapping.color}
-                  headers={preview.headers}
-                  onChange={(value) => updateMapping("color", value)}
-                />
-                <ColumnSelect
-                  label="Description column"
-                  value={mapping.description}
-                  headers={preview.headers}
-                  onChange={(value) => updateMapping("description", value)}
-                />
-              </FieldGroup>
-
-              <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-                <p>{preview.summary.importableRows} rows ready</p>
-                <p>{preview.summary.categoriesToCreate} categories to create</p>
-                <p>{preview.summary.duplicateRows} duplicates skipped</p>
-                <p>
-                  {preview.summary.invalidRows + preview.summary.emptyRows} invalid/empty skipped
-                </p>
-              </div>
-
-              <Field>
-                <FieldLabel>Preview rows</FieldLabel>
-                <Select
-                  items={IMPORT_PREVIEW_ROW_FILTER_OPTIONS}
-                  value={previewFilter}
-                  onValueChange={(value) => setPreviewFilter(value as ImportPreviewRowFilter)}
-                >
-                  <SelectTrigger className="w-full sm:max-w-xs" aria-label="Preview rows">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent alignItemWithTrigger={false}>
-                    <SelectGroup>
-                      {IMPORT_PREVIEW_ROW_FILTER_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-
-              <CategoryImportPreviewTable
-                previewFilter={previewFilter}
-                rows={filterImportPreviewRows(preview.rows, previewFilter)}
+        <div className="min-h-0 overflow-y-auto pr-1">
+          <div key={step} className="animate-in fade-in-0 duration-150 motion-reduce:animate-none">
+            {step === 0 ? (
+              <CategoryImportSourceStep
+                file={file}
+                rowCount={rowCount}
+                isPickingFile={isPickingFile}
+                onSelectFile={selectFile}
               />
-            </>
-          ) : null}
+            ) : null}
+
+            {step === 1 && file ? (
+              <CategoryImportMappingStep
+                headers={headers}
+                mapping={mapping}
+                config={config}
+                mappingReady={mappingReady}
+                onMappingChange={updateMapping}
+                onConfigChange={updateConfig}
+                onHeaderRowChange={changeHeaderRow}
+              />
+            ) : null}
+
+            {step === 2 && preview ? (
+              <CategoryImportReviewStep
+                preview={preview}
+                previewFilter={previewFilter}
+                onPreviewFilterChange={setPreviewFilter}
+              />
+            ) : null}
+          </div>
         </div>
 
-        <DialogFooter>
-          <Button
-            type="button"
-            disabled={!preview || preview.categories.length === 0 || isImporting}
-            onClick={importCategories}
-          >
-            {isImporting ? "Importing..." : "Confirm import"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isImporting}
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
+        <DialogFooter className="items-center gap-3 sm:justify-between">
+          <p className="text-xs text-muted-foreground">{footerHint}</p>
+          <div className="flex items-center gap-2">
+            {step > 0 ? (
+              <Button type="button" variant="ghost" onClick={goBack} disabled={isImporting}>
+                <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" strokeWidth={1.8} />
+                Back
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isImporting}
+            >
+              Cancel
+            </Button>
+            {step < 2 ? (
+              <Button type="button" onClick={goNext} disabled={!canAdvance}>
+                Next
+                <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" strokeWidth={1.8} />
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={confirmImport}
+                disabled={!preview || preview.categories.length === 0 || isImporting}
+              >
+                {isImporting
+                  ? "Importing…"
+                  : `Import ${(preview?.categories.length ?? 0).toLocaleString()} categories`}
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

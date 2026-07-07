@@ -35,7 +35,7 @@ import type { Transaction, TransactionCategory } from "../types/model";
 import { TransactionImportMappingStep, type ImportConfig } from "./transaction-import-mapping-step";
 import { TransactionImportReviewStep } from "./transaction-import-review-step";
 import { TransactionImportSourceStep } from "./transaction-import-source-step";
-import { TransactionImportStepper, type ImportStep } from "./transaction-import-stepper";
+import { ImportStepper, type ImportStep } from "./import-stepper";
 
 type TransactionImportDialogProps = {
   open: boolean;
@@ -291,7 +291,7 @@ function TransactionImportDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <TransactionImportStepper current={step} onStepSelect={goToStep} />
+        <ImportStepper current={step} onStepSelect={goToStep} />
 
         <div className="min-h-0 overflow-y-auto pr-1">
           <div key={step} className="animate-in fade-in-0 duration-150 motion-reduce:animate-none">
