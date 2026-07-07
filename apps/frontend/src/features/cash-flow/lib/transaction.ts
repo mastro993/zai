@@ -5,3 +5,19 @@ export const toBackendDateTime = (value: string) => {
 export const toDateTimeInputValue = (value: string) => {
   return value.slice(0, 16);
 };
+
+export const splitDateTime = (value: string) => {
+  const normalized = toDateTimeInputValue(value);
+  const [date = "", time = "00:00"] = normalized.split("T");
+
+  return {
+    date,
+    time: time.slice(0, 5) || "00:00",
+  };
+};
+
+export const combineDateTime = (date: string, time: string) => {
+  const normalizedTime = time.length >= 5 ? time.slice(0, 5) : "00:00";
+
+  return `${date}T${normalizedTime}`;
+};
