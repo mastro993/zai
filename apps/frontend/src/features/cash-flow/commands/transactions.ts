@@ -52,8 +52,10 @@ export const getTransactions = (
 
 const IMPORT_DEDUP_PAGE_SIZE = 500;
 
-export const getAllTransactions = async (): Promise<CommandResult<Array<Transaction>>> => {
-  const firstResult = await getTransactions(1, IMPORT_DEDUP_PAGE_SIZE);
+export const getAllTransactions = async (
+  filters?: TransactionFilters,
+): Promise<CommandResult<Array<Transaction>>> => {
+  const firstResult = await getTransactions(1, IMPORT_DEDUP_PAGE_SIZE, filters);
 
   if (R.isFailure(firstResult)) {
     return firstResult;
@@ -62,7 +64,7 @@ export const getAllTransactions = async (): Promise<CommandResult<Array<Transact
   const allTransactions = [...firstResult.value.data];
 
   for (let page = 2; page <= firstResult.value.totalPages; page += 1) {
-    const pageResult = await getTransactions(page, firstResult.value.perPage);
+    const pageResult = await getTransactions(page, firstResult.value.perPage, filters);
 
     if (R.isFailure(pageResult)) {
       return pageResult;

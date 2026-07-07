@@ -40,6 +40,7 @@ export type ImportConfig = {
 const EMPTY_COLUMN = "none";
 
 const DATE_FORMAT_OPTIONS: Array<{ value: TransactionImportDateFormat; label: string }> = [
+  { value: "ISO", label: "ISO datetime (YYYY-MM-DDTHH:mm:ss)" },
   { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
   { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
   { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },

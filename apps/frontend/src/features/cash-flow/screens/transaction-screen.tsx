@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 
+import { exportTransactions } from "../commands/transaction-export";
 import { getTransactionCategories } from "../commands/transaction-categories";
 import {
   createTransaction,
   deleteTransaction,
+  getAllTransactions,
   getTransactions,
   updateTransaction,
 } from "../commands/transactions";
@@ -32,6 +34,7 @@ export function TransactionScreen() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const hasLoadedCategories = useRef(false);
 
@@ -111,6 +114,34 @@ export function TransactionScreen() {
     await loadData(debouncedQuery);
   };
 
+  const exportTransactionCsv = async () => {
+    setIsExporting(true);
+
+    const transactionsResult = await getAllTransactions(
+      debouncedQuery.length > 0 ? { query: debouncedQuery } : undefined,
+    );
+
+    if (R.isFailure(transactionsResult)) {
+      toast.error("Failed to export transactions", {
+        description: transactionsResult.error.message,
+      });
+      setIsExporting(false);
+      return;
+    }
+
+    const result = await exportTransactions(transactionsResult.value, categories);
+
+    if (R.isFailure(result)) {
+      toast.error("Failed to export transactions", { description: result.error.message });
+    } else if (result.value) {
+      toast.success("Transactions exported", { description: result.value });
+    } else {
+      toast.info("Transaction export canceled");
+    }
+
+    setIsExporting(false);
+  };
+
   const removeTransaction = async (transaction: Transaction) => {
     setIsDeleting(true);
     const result = await deleteTransaction(transaction.id);
@@ -148,6 +179,13 @@ export function TransactionScreen() {
           />
           <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
             Import transactions
+          </Button>
+          <Button
+            variant="outline"
+            disabled={isLoading || isExporting}
+            onClick={exportTransactionCsv}
+          >
+            {isExporting ? "Exporting..." : "Export transactions"}
           </Button>
           <Button onClick={() => openFormDrawer({ type: "create" })}>New transaction</Button>
         </div>

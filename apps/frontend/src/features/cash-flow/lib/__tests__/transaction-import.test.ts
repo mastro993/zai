@@ -77,6 +77,17 @@ describe("transaction import", () => {
     expect(preview.transactions.map((transaction) => transaction.amount)).toEqual([1250, 800]);
   });
 
+  it("parses ISO datetime values", () => {
+    expect(parseImportDate("2026-01-15T08:30:00", "ISO")).toEqual({
+      ok: true,
+      value: "2026-01-15T08:30:00",
+    });
+    expect(parseImportDate("2026-01-15T08:30", "ISO")).toEqual({
+      ok: true,
+      value: "2026-01-15T08:30:00",
+    });
+  });
+
   it("parses selected date formats", () => {
     expect(parseImportDate("15/01/2026", "DD/MM/YYYY")).toEqual({
       ok: true,

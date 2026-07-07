@@ -11,6 +11,7 @@ export type TransactionImportCategoryLinkMode = "columns" | "single-column";
 export type TransactionImportMissingCategoryMode = "uncategorized" | "create";
 export type TransactionImportPreviewStatus = "import" | "duplicate" | "invalid" | "empty";
 export type TransactionImportDateFormat =
+  | "ISO"
   | "YYYY-MM-DD"
   | "DD/MM/YYYY"
   | "MM/DD/YYYY"
@@ -96,8 +97,10 @@ const emptyMapping: TransactionImportColumnMapping = {
   categoryParent: null,
 };
 
+const ISO_DATETIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
+
 const DATE_FORMAT_PATTERNS: Record<
-  TransactionImportDateFormat,
+  Exclude<TransactionImportDateFormat, "ISO">,
   { pattern: RegExp; order: ["year", "month", "day"] | ["day", "month", "year"] | ["month", "day", "year"] }
 > = {
   "YYYY-MM-DD": { pattern: /^(\d{4})-(\d{2})-(\d{2})$/, order: ["year", "month", "day"] },
@@ -191,6 +194,24 @@ export const parseImportDate = (
 
   if (!trimmed) {
     return { ok: false, message: "Date is required" };
+  }
+
+  if (format === "ISO") {
+    const match = trimmed.match(ISO_DATETIME_PATTERN);
+
+    if (!match) {
+      return { ok: false, message: "Date must match ISO datetime (YYYY-MM-DDTHH:mm:ss)" };
+    }
+
+    const [, year, month, day, hour, minute, second = "00"] = match;
+    const isoDate = `${year}-${month}-${day}`;
+    const isoDateTime = `${isoDate}T${hour}:${minute}:${second}`;
+
+    if (Number.isNaN(Date.parse(isoDateTime))) {
+      return { ok: false, message: "Invalid date" };
+    }
+
+    return { ok: true, value: isoDateTime };
   }
 
   const { pattern, order } = DATE_FORMAT_PATTERNS[format];
