@@ -43,9 +43,25 @@ export const categorySchema = categoryBaseSchema.extend({
 
 export const transactionTypeSchema = z.enum(TRANSACTION_TYPES);
 
+const amountInputSchema = z
+  .string()
+  .trim()
+  .min(1, "Amount is required")
+  .refine((value) => {
+    const normalized = value.replace(",", ".");
+
+    return /^\d+(\.\d{1,2})?$/.test(normalized);
+  }, "Enter a valid amount")
+  .refine((value) => {
+    const parsed = Number(value.replace(",", "."));
+
+    return Number.isFinite(parsed) && parsed > 0;
+  }, "Amount must be greater than zero")
+  .transform((value) => Math.round(Number(value.replace(",", ".")) * 100));
+
 export const transactionFormSchema = z.object({
   description: z.string().trim().optional(),
-  amount: z.coerce.number().int().positive("Amount must be greater than zero"),
+  amount: amountInputSchema,
   transactionDate: z.string().min(1, "Date is required"),
   transactionType: transactionTypeSchema,
   transactionCategoryId: z.string().optional(),

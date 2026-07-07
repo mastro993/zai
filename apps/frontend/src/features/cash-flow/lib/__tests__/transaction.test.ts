@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   combineDateTime,
+  formatAmountFromMinor,
+  isPartialAmountInput,
   splitDateTime,
   toBackendDateTime,
   toDateTimeInputValue,
@@ -36,5 +38,20 @@ describe("transaction date helpers", () => {
   it("normalizes backend datetime values for the form", () => {
     expect(toDateTimeInputValue("2026-07-07T09:15:00")).toBe("2026-07-07T09:15");
     expect(toBackendDateTime("2026-07-07T09:15")).toBe("2026-07-07T09:15:00");
+  });
+});
+
+describe("transaction amount helpers", () => {
+  it("formats minor units for decimal input", () => {
+    expect(formatAmountFromMinor(1234)).toBe("12.34");
+    expect(formatAmountFromMinor(100)).toBe("1.00");
+  });
+
+  it("accepts partial decimal input while typing", () => {
+    expect(isPartialAmountInput("12.")).toBe(true);
+    expect(isPartialAmountInput("12,3")).toBe(true);
+    expect(isPartialAmountInput("12.34")).toBe(true);
+    expect(isPartialAmountInput("12.345")).toBe(false);
+    expect(isPartialAmountInput("abc")).toBe(false);
   });
 });

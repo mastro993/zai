@@ -32,7 +32,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-import { combineDateTime, splitDateTime, toDateTimeInputValue } from "../lib/transaction";
+import {
+  combineDateTime,
+  formatAmountFromMinor,
+  isPartialAmountInput,
+  splitDateTime,
+  toDateTimeInputValue,
+} from "../lib/transaction";
 import {
   TRANSACTION_TYPES,
   transactionFormSchema,
@@ -49,11 +55,11 @@ const getLocalDateTimeInputValue = () => {
   return date.toISOString().slice(0, 16);
 };
 
-const getFormDefaults = (mode: TransactionFormMode): TransactionFormValues => {
+const getFormDefaults = (mode: TransactionFormMode): TransactionFormInput => {
   if (mode.type === "create") {
     return {
       description: "",
-      amount: 1,
+      amount: "1.00",
       transactionDate: getLocalDateTimeInputValue(),
       transactionType: "expense",
       transactionCategoryId: "",
@@ -63,7 +69,7 @@ const getFormDefaults = (mode: TransactionFormMode): TransactionFormValues => {
 
   return {
     description: mode.transaction.description ?? "",
-    amount: mode.transaction.amount,
+    amount: formatAmountFromMinor(mode.transaction.amount),
     transactionDate: toDateTimeInputValue(mode.transaction.transactionDate),
     transactionType: mode.transaction.transactionType as TransactionType,
     transactionCategoryId: mode.transaction.transactionCategoryId ?? "",
@@ -203,19 +209,34 @@ function TransactionFormDrawer({
 
           <Field data-invalid={Boolean(errors.amount)}>
             <FieldLabel htmlFor="transaction-amount">Amount</FieldLabel>
-            <InputGroup>
-              <InputGroupInput
-                id="transaction-amount"
-                type="number"
-                min={1}
-                step={1}
-                aria-invalid={Boolean(errors.amount)}
-                {...form.register("amount", { valueAsNumber: true })}
-              />
-              <InputGroupAddon align="inline-end">
-                <InputGroupText>EUR</InputGroupText>
-              </InputGroupAddon>
-            </InputGroup>
+            <Controller
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <InputGroup>
+                  <InputGroupInput
+                    id="transaction-amount"
+                    type="text"
+                    inputMode="decimal"
+                    aria-invalid={Boolean(errors.amount)}
+                    value={field.value ?? ""}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    ref={field.ref}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+
+                      if (isPartialAmountInput(nextValue)) {
+                        field.onChange(nextValue);
+                      }
+                    }}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupText>EUR</InputGroupText>
+                  </InputGroupAddon>
+                </InputGroup>
+              )}
+            />
             <FieldError>{errors.amount?.message}</FieldError>
           </Field>
 

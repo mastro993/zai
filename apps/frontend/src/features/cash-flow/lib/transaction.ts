@@ -21,3 +21,13 @@ export const combineDateTime = (date: string, time: string) => {
 
   return `${date}T${normalizedTime}`;
 };
+
+const partialAmountInputPattern = /^\d*[.,]?\d{0,2}$/;
+
+export const formatAmountFromMinor = (minorUnits: number) => {
+  return (minorUnits / 100).toFixed(2);
+};
+
+export const isPartialAmountInput = (value: string) => {
+  return partialAmountInputPattern.test(value);
+};
