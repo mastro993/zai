@@ -25,6 +25,12 @@ import {
 import { openCategoryImportFile, type CategoryImportFile } from "../commands/category-import";
 import { importTransactionCategories } from "../commands/transaction-categories";
 import {
+  filterImportPreviewRows,
+  getImportPreviewEmptyMessage,
+  IMPORT_PREVIEW_ROW_FILTER_OPTIONS,
+  type ImportPreviewRowFilter,
+} from "../lib/import-preview-filter";
+import {
   buildCategoryImportPreview,
   getDefaultCategoryImportMapping,
   parseCategoryCsv,
@@ -110,13 +116,15 @@ function ColumnSelect({
 
 function CategoryImportPreviewTable({
   rows,
+  previewFilter,
 }: {
   rows: ReturnType<typeof buildCategoryImportPreview>["rows"];
+  previewFilter: ImportPreviewRowFilter;
 }) {
   if (rows.length === 0) {
     return (
       <p className="border border-dashed p-4 text-xs text-muted-foreground">
-        No importable rows. Skipped rows are reflected in the summary above.
+        {getImportPreviewEmptyMessage(previewFilter)}
       </p>
     );
   }
@@ -136,7 +144,12 @@ function CategoryImportPreviewTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.rowNumber} className="border-b last:border-b-0">
+            <tr
+              key={row.rowNumber}
+              className={
+                row.status === "import" ? "border-b last:border-b-0" : "border-b bg-destructive/5 last:border-b-0"
+              }
+            >
               <td className="px-3 py-2 text-muted-foreground">{row.rowNumber}</td>
               <td className="px-3 py-2">{row.parentName || "-"}</td>
               <td className="px-3 py-2">{row.name || "-"}</td>
@@ -174,6 +187,7 @@ function CategoryImportDialog({
   const [separator, setSeparator] = useState(DEFAULT_SEPARATOR);
   const [isPickingFile, setIsPickingFile] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [previewFilter, setPreviewFilter] = useState<ImportPreviewRowFilter>("importable");
 
   const preview = useMemo(() => {
     if (!file) {
@@ -369,8 +383,31 @@ function CategoryImportDialog({
                 </p>
               </div>
 
+              <Field>
+                <FieldLabel>Preview rows</FieldLabel>
+                <Select
+                  items={IMPORT_PREVIEW_ROW_FILTER_OPTIONS}
+                  value={previewFilter}
+                  onValueChange={(value) => setPreviewFilter(value as ImportPreviewRowFilter)}
+                >
+                  <SelectTrigger className="w-full sm:max-w-xs" aria-label="Preview rows">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <SelectGroup>
+                      {IMPORT_PREVIEW_ROW_FILTER_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+
               <CategoryImportPreviewTable
-                rows={preview.rows.filter((row) => row.status === "import")}
+                previewFilter={previewFilter}
+                rows={filterImportPreviewRows(preview.rows, previewFilter)}
               />
             </>
           ) : null}

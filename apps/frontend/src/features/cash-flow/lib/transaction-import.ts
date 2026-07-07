@@ -1,8 +1,10 @@
 import { parseCategoryCsv } from "./category-csv";
 import type { CategoryImportPayload } from "./category-import";
+import { parseImportAmount } from "./parse-import-amount";
 import type { Transaction, TransactionCategory, TransactionType } from "../types/model";
 
 export { parseCategoryCsv as parseTransactionCsv } from "./category-csv";
+export { parseImportAmount } from "./parse-import-amount";
 
 export type TransactionImportAmountMode = "signed" | "column-type";
 export type TransactionImportCategoryLinkMode = "columns" | "single-column";
@@ -159,38 +161,6 @@ const parseTypeValueList = (value: string) =>
     .split(",")
     .map((entry) => entry.trim().toLowerCase())
     .filter((entry) => entry.length > 0);
-
-export const parseImportAmount = (
-  raw: string,
-): { ok: true; cents: number; signed: number } | { ok: false; message: string } => {
-  const trimmed = raw.trim();
-
-  if (!trimmed) {
-    return { ok: false, message: "Amount is required" };
-  }
-
-  const stripped = trimmed.replace(/[€$£¥₹\s]/g, "");
-  const hasComma = stripped.includes(",");
-  const hasDot = stripped.includes(".");
-
-  if (hasComma && hasDot) {
-    return { ok: false, message: "Ambiguous amount format" };
-  }
-
-  const normalized = hasComma ? stripped.replace(",", ".") : stripped;
-
-  if (!/^-?\d+(\.\d{1,2})?$/.test(normalized)) {
-    return { ok: false, message: "Invalid amount" };
-  }
-
-  const value = Number(normalized);
-
-  if (!Number.isFinite(value) || value === 0) {
-    return { ok: false, message: "Amount must be non-zero" };
-  }
-
-  return { ok: true, cents: Math.round(Math.abs(value) * 100), signed: value };
-};
 
 export const parseImportDate = (
   raw: string,

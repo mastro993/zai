@@ -55,8 +55,8 @@ const amountInputSchema = z
   .refine((value) => {
     const parsed = Number(value.replace(",", "."));
 
-    return Number.isFinite(parsed) && parsed > 0;
-  }, "Amount must be greater than zero")
+    return Number.isFinite(parsed) && parsed >= 0;
+  }, "Amount must be zero or greater")
   .transform((value) => Math.round(Number(value.replace(",", ".")) * 100));
 
 export const transactionFormSchema = z.object({

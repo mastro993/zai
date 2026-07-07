@@ -26,6 +26,12 @@ import { openTransactionImportFile, type TransactionImportFile } from "../comman
 import { importTransactionCategories } from "../commands/transaction-categories";
 import { importTransactions } from "../commands/transactions";
 import {
+  filterImportPreviewRows,
+  getImportPreviewEmptyMessage,
+  IMPORT_PREVIEW_ROW_FILTER_OPTIONS,
+  type ImportPreviewRowFilter,
+} from "../lib/import-preview-filter";
+import {
   buildTransactionImportPreview,
   getDefaultTransactionImportMapping,
   getDefaultTypeValueInputs,
@@ -124,13 +130,15 @@ function ColumnSelect({
 
 function TransactionImportPreviewTable({
   rows,
+  previewFilter,
 }: {
   rows: ReturnType<typeof buildTransactionImportPreview>["rows"];
+  previewFilter: ImportPreviewRowFilter;
 }) {
   if (rows.length === 0) {
     return (
       <p className="border border-dashed p-4 text-xs text-muted-foreground">
-        No importable rows. Skipped rows are reflected in the summary above.
+        {getImportPreviewEmptyMessage(previewFilter)}
       </p>
     );
   }
@@ -152,7 +160,12 @@ function TransactionImportPreviewTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.rowNumber} className="border-b last:border-b-0">
+            <tr
+              key={row.rowNumber}
+              className={
+                row.status === "import" ? "border-b last:border-b-0" : "border-b bg-destructive/5 last:border-b-0"
+              }
+            >
               <td className="px-3 py-2 text-muted-foreground">{row.rowNumber}</td>
               <td className="px-3 py-2">{row.transactionDate || "-"}</td>
               <td className="px-3 py-2">{row.amount || "-"}</td>
@@ -204,6 +217,7 @@ function TransactionImportDialog({
   const [incomeTypeValues, setIncomeTypeValues] = useState(defaultTypeValues.incomeTypeValues);
   const [isPickingFile, setIsPickingFile] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [previewFilter, setPreviewFilter] = useState<ImportPreviewRowFilter>("importable");
 
   const preview = useMemo(() => {
     if (!file) {
@@ -549,8 +563,31 @@ function TransactionImportDialog({
                 </p>
               </div>
 
+              <Field>
+                <FieldLabel>Preview rows</FieldLabel>
+                <Select
+                  items={IMPORT_PREVIEW_ROW_FILTER_OPTIONS}
+                  value={previewFilter}
+                  onValueChange={(value) => setPreviewFilter(value as ImportPreviewRowFilter)}
+                >
+                  <SelectTrigger className="w-full sm:max-w-xs" aria-label="Preview rows">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <SelectGroup>
+                      {IMPORT_PREVIEW_ROW_FILTER_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+
               <TransactionImportPreviewTable
-                rows={preview.rows.filter((row) => row.status === "import")}
+                previewFilter={previewFilter}
+                rows={filterImportPreviewRows(preview.rows, previewFilter)}
               />
             </>
           ) : null}
