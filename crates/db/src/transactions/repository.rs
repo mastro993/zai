@@ -48,10 +48,12 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 
         if let Some(ref filters) = filters {
             if let Some(ref query_filter) = filters.query {
+                let query_pattern = format!("%{}%", query_filter);
+                let notes_query_pattern = query_pattern.clone();
                 query = query.filter(
                     transactions::description
-                        .like(query_filter)
-                        .or(transactions::notes.like(query_filter)),
+                        .like(query_pattern)
+                        .or(transactions::notes.like(notes_query_pattern)),
                 );
             }
             if let Some(ref categories_filter) = filters.categories {

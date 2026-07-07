@@ -1,8 +1,9 @@
 import { R } from "@praha/byethrow";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
 
 import { getTransactionCategories } from "../commands/transaction-categories";
 import {
@@ -20,6 +21,8 @@ import type { TransactionFormMode } from "../types/transaction-types";
 export function TransactionScreen() {
   const [transactions, setTransactions] = useState<Array<Transaction>>([]);
   const [categories, setCategories] = useState<Array<TransactionCategory>>([]);
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [formMode, setFormMode] = useState<TransactionFormMode | null>(null);
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
@@ -27,41 +30,58 @@ export function TransactionScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const hasLoadedCategories = useRef(false);
 
   const categoryById = useMemo(
     () => new Map(categories.map((category) => [category.id, category] as const)),
     [categories],
   );
 
-  const loadData = async () => {
+  const loadData = async (searchQuery: string, includeCategories = false) => {
     setIsLoading(true);
-    const [transactionsResult, categoriesResult] = await Promise.all([
-      getTransactions(),
-      getTransactionCategories(),
-    ]);
+    const transactionsResult = await getTransactions(
+      1,
+      50,
+      searchQuery.length > 0 ? { query: searchQuery } : undefined,
+    );
 
     if (R.isFailure(transactionsResult)) {
       setErrorMessage(transactionsResult.error.message);
     } else {
       setTransactions(transactionsResult.value.data);
-    }
-
-    if (R.isFailure(categoriesResult)) {
-      setErrorMessage(categoriesResult.error.message);
-    } else {
-      setCategories(categoriesResult.value);
-    }
-
-    if (R.isSuccess(transactionsResult) && R.isSuccess(categoriesResult)) {
       setErrorMessage(null);
+    }
+
+    if (includeCategories) {
+      const categoriesResult = await getTransactionCategories();
+      if (R.isFailure(categoriesResult)) {
+        setErrorMessage(categoriesResult.error.message);
+      } else {
+        setCategories(categoriesResult.value);
+        if (R.isSuccess(transactionsResult)) {
+          setErrorMessage(null);
+        }
+      }
     }
 
     setIsLoading(false);
   };
 
   useEffect(() => {
-    void loadData();
-  }, []);
+    const timeoutId = setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, 250);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [query]);
+
+  useEffect(() => {
+    const includeCategories = !hasLoadedCategories.current;
+    hasLoadedCategories.current = true;
+    void loadData(debouncedQuery, includeCategories);
+  }, [debouncedQuery]);
 
   const openFormDrawer = (mode: TransactionFormMode) => {
     setFormMode(mode);
@@ -85,7 +105,7 @@ export function TransactionScreen() {
     }
 
     setIsFormDrawerOpen(false);
-    await loadData();
+    await loadData(debouncedQuery);
   };
 
   const removeTransaction = async (transaction: Transaction) => {
@@ -100,7 +120,7 @@ export function TransactionScreen() {
     }
 
     setIsDeleteDialogOpen(false);
-    await loadData();
+    await loadData(debouncedQuery);
     setIsDeleting(false);
   };
 
@@ -113,7 +133,18 @@ export function TransactionScreen() {
             Log income and expenses with an optional category.
           </p>
         </div>
-        <Button onClick={() => openFormDrawer({ type: "create" })}>New transaction</Button>
+        <div className="flex items-center gap-2">
+          <Input
+            type="search"
+            placeholder="Search description or notes..."
+            value={query}
+            className="w-72"
+            onChange={(event) => {
+              setQuery(event.target.value);
+            }}
+          />
+          <Button onClick={() => openFormDrawer({ type: "create" })}>New transaction</Button>
+        </div>
       </div>
 
       {errorMessage ? (
