@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-07T10:30:00.000Z",
+  "title": "Design System: Zai",
+  "extensions": {
+    "colorMeta": {
+      "growth-green": {
+        "role": "primary",
+        "displayName": "Growth Green",
+        "canonical": "oklch(0.527 0.154 150.069)",
+        "tonalRamp": [
+          "oklch(0.20 0.08 150)",
+          "oklch(0.28 0.10 150)",
+          "oklch(0.36 0.12 150)",
+          "oklch(0.44 0.13 150)",
+          "oklch(0.527 0.154 150)",
+          "oklch(0.60 0.14 150)",
+          "oklch(0.72 0.10 150)",
+          "oklch(0.88 0.04 150)"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.25 0 0)",
+          "oklch(0.35 0 0)",
+          "oklch(0.45 0 0)",
+          "oklch(0.55 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.85 0 0)",
+          "oklch(1 0 0)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(0.145 0 0)",
+        "tonalRamp": [
+          "oklch(0.10 0 0)",
+          "oklch(0.15 0 0)",
+          "oklch(0.20 0 0)",
+          "oklch(0.30 0 0)",
+          "oklch(0.45 0 0)",
+          "oklch(0.60 0 0)",
+          "oklch(0.75 0 0)",
+          "oklch(0.90 0 0)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Border",
+        "canonical": "oklch(0.922 0 0)",
+        "tonalRamp": [
+          "oklch(0.20 0 0)",
+          "oklch(0.30 0 0)",
+          "oklch(0.40 0 0)",
+          "oklch(0.50 0 0)",
+          "oklch(0.60 0 0)",
+          "oklch(0.75 0 0)",
+          "oklch(0.85 0 0)",
+          "oklch(0.922 0 0)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Screen titles on route pages (Dashboard, Transactions)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Table cells, descriptions, form copy."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Buttons, inputs, badges, table headers — default 12px control text."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.25, 0.1, 0.25, 1)",
+        "purpose": "Button and input state transitions (transition-all on controls)."
+      }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action — import, save, confirm.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Save transaction</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 0.625rem; font-family: \"Inter Variable\", sans-serif; font-size: 0.75rem; font-weight: 500; line-height: 1; color: oklch(0.982 0.018 155.826); background: oklch(0.527 0.154 150.069); border: 1px solid transparent; border-radius: 0; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; } .ds-btn-primary:hover { background: color-mix(in oklch, oklch(0.527 0.154 150.069), transparent 20%); } .ds-btn-primary:focus-visible { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 1px oklch(0.708 0 0 / 0.5); } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary actions — cancel, export, filter.",
+      "html": "<button class=\"ds-btn-outline\" type=\"button\">Cancel</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 0.625rem; font-family: \"Inter Variable\", sans-serif; font-size: 0.75rem; font-weight: 500; color: oklch(0.145 0 0); background: oklch(1 0 0); border: 1px solid oklch(0.922 0 0); border-radius: 0; cursor: pointer; transition: background 0.15s ease; } .ds-btn-outline:hover { background: oklch(0.97 0 0); } .ds-btn-outline:focus-visible { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 1px oklch(0.708 0 0 / 0.5); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Form fields, search, import mapping.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Description\" />",
+      "css": ".ds-input { display: block; width: 100%; height: 2rem; padding: 0.25rem 0.625rem; font-family: \"Inter Variable\", sans-serif; font-size: 0.75rem; color: oklch(0.145 0 0); background: transparent; border: 1px solid oklch(0.922 0 0); border-radius: 0; transition: border-color 0.15s ease, box-shadow 0.15s ease; } .ds-input::placeholder { color: oklch(0.556 0 0); } .ds-input:focus-visible { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 1px oklch(0.708 0 0 / 0.5); }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge-default",
+      "description": "Status and category tags.",
+      "html": "<span class=\"ds-badge\">Income</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; height: 1.25rem; padding: 0.125rem 0.5rem; font-family: \"Inter Variable\", sans-serif; font-size: 0.75rem; font-weight: 500; color: oklch(0.982 0.018 155.826); background: oklch(0.527 0.154 150.069); border: 1px solid transparent; border-radius: 0; }"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "button-ghost",
+      "description": "App shell navigation — active state uses accent on brand.",
+      "html": "<a class=\"ds-nav-item ds-nav-item-active\" href=\"#\"><span class=\"ds-nav-icon\">▣</span><span>Dashboard</span></a>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; font-family: \"Inter Variable\", sans-serif; font-size: 0.875rem; font-weight: 400; color: oklch(0.145 0 0); text-decoration: none; border-radius: 0; transition: background 0.15s ease; } .ds-nav-item:hover { background: oklch(0.97 0 0); } .ds-nav-item-active { background: oklch(0.97 0 0); font-weight: 500; } .ds-nav-icon { color: oklch(0.527 0.154 150.069); font-size: 1rem; }"
+    },
+    {
+      "name": "Data Table Header",
+      "kind": "custom",
+      "refersTo": "badge-default",
+      "description": "Transaction/category tables — muted band + border.",
+      "html": "<table class=\"ds-table\"><thead><tr><th class=\"ds-th\">Date</th><th class=\"ds-th ds-th-right\">Amount</th></tr></thead></table>",
+      "css": ".ds-table { width: 100%; border: 1px solid oklch(0.922 0 0); border-collapse: collapse; font-family: \"Inter Variable\", sans-serif; font-size: 0.875rem; } .ds-th { padding: 0.75rem; font-size: 0.75rem; font-weight: 500; text-align: left; background: oklch(0.97 0 0 / 0.4); border-bottom: 1px solid oklch(0.922 0 0); } .ds-th-right { text-align: right; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Workbench",
+    "overview": "Zai reads like a personal finance workbench on a desktop: squared edges, tight type, neutral surfaces, and one Growth Green accent that marks action and brand — never decoration. Data tables, sidebar navigation, and form drawers carry the product; there is no marketing chrome inside the shell.",
+    "keyCharacteristics": [
+      "Single sans family (Inter Variable) at compact sizes",
+      "Squared interactive controls on Lyra/shadcn primitives",
+      "Growth Green accent on ≤10% of any screen",
+      "Depth via 1px borders and tonal steps, not drop shadows",
+      "Sidebar app shell with icon-collapsible rail",
+      "Dark mode parity on all semantic tokens"
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Growth Green appears on primary CTAs, brand, and key active states only. If green is everywhere, it stops meaning \"go.\"",
+        "section": "colors"
+      },
+      {
+        "name": "The True Neutral Rule",
+        "body": "Body background stays achromatic (chroma 0). Warmth lives in the accent and category color dots, not cream-tinted page bg.",
+        "section": "colors"
+      },
+      {
+        "name": "The Compact Default Rule",
+        "body": "Interactive UI defaults to text-xs (12px). Scale up for page titles only; never shrink below 12px for readable data.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Table Rule",
+        "body": "Transaction and category tables use border + muted header band. No card wrapper around tables unless the section truly needs grouping.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do lead screens with the number or table the user came for.",
+      "Do use Growth Green sparingly for primary actions and brand.",
+      "Do keep controls at 32px height and 12px type unless the element is a page title.",
+      "Do use borders and muted bands to separate regions.",
+      "Do support dark mode with the paired .dark token set.",
+      "Do respect prefers-reduced-motion for non-essential transitions."
+    ],
+    "donts": [
+      "Don't use generic SaaS dashboards: identical card grids, gradient heroes, eyebrow kickers, hero-metric templates.",
+      "Don't add decorative motion, glass chrome, or marketing-page patterns inside the app shell.",
+      "Don't use border-left/right >1px colored stripes on rows, alerts, or cards.",
+      "Don't tint the page background warm cream/sand — stay achromatic neutral.",
+      "Don't wrap every section in nested cards.",
+      "Don't use gradient text or neon chart colors as default semantics."
+    ]
+  }
+}
