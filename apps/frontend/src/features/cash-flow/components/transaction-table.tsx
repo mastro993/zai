@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { formatCurrencyFromMinor } from "@/lib/currency";
 
 import { getCategoryDisplayColor } from "../lib/category";
 import { toDateTimeInputValue } from "../lib/transaction";
@@ -51,7 +52,9 @@ function TransactionTable({
                     <span className="text-muted-foreground">Uncategorized</span>
                   )}
                 </td>
-                <td className="p-3 text-right tabular-nums">{transaction.amount}</td>
+                <td className="p-3 text-right tabular-nums">
+                  {formatCurrencyFromMinor(transaction.amount, "EUR")}
+                </td>
                 <td className="p-3">
                   <div className="flex justify-end gap-2">
                     <Button
