@@ -1,11 +1,20 @@
 import { z } from "zod";
 
-export const CATEGORY_COLORS = [
+export const CATEGORY_COLORS_PASTEL = [
+  "#F5D0D0",
+  "#FFE4C8",
+  "#D4EDCF",
+  "#C8E8F0",
+  "#D4DDF5",
+  "#E4D8F5",
+  "#F0D4E4",
+  "#E5E7EB",
+] as const;
+
+export const CATEGORY_COLORS_SATURATED = [
   "#C92A2A",
   "#B95F00",
-  "#8F7200",
   "#3E7B32",
-  "#007A63",
   "#007A91",
   "#345FD2",
   "#7B4CC2",
@@ -13,7 +22,12 @@ export const CATEGORY_COLORS = [
   "#6B7280",
 ] as const;
 
-export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLORS[9];
+export const CATEGORY_COLORS = [
+  ...CATEGORY_COLORS_PASTEL,
+  ...CATEGORY_COLORS_SATURATED,
+] as const;
+
+export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLORS_SATURATED[7];
 export const TRANSACTION_TYPES = ["expense", "income"] as const;
 
 const nullableStringSchema = z.string().nullable().optional();

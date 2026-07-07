@@ -25,7 +25,8 @@ import { cn } from "@/lib/utils";
 import { isCategoryColor } from "../lib/category";
 import type { CategoryFormMode } from "../types/category-types";
 import {
-  CATEGORY_COLORS,
+  CATEGORY_COLORS_PASTEL,
+  CATEGORY_COLORS_SATURATED,
   DEFAULT_CATEGORY_COLOR,
   categoryFormSchema,
   type CategoryFormValues,
@@ -38,7 +39,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       name: "",
       parentId: "",
       description: "",
-      color: CATEGORY_COLORS[0],
+      color: CATEGORY_COLORS_SATURATED[0],
     };
   }
 
@@ -58,7 +59,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
     color:
       mode.category.color && isCategoryColor(mode.category.color)
         ? mode.category.color
-        : CATEGORY_COLORS[0],
+        : CATEGORY_COLORS_SATURATED[0],
   };
 };
 
@@ -163,26 +164,49 @@ function CategoryFormDrawer({
             <Field data-invalid={Boolean(errors.color)}>
               <FieldLabel>Color</FieldLabel>
               <input type="hidden" {...form.register("color")} />
-              <div className="flex flex-wrap gap-2">
-                {CATEGORY_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    aria-label={`Select ${color}`}
-                    aria-pressed={selectedColor === color}
-                    className={cn(
-                      "size-7 border",
-                      selectedColor === color ? "ring-2 ring-ring" : null,
-                    )}
-                    style={{ backgroundColor: color }}
-                    onClick={() =>
-                      form.setValue("color", color, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      })
-                    }
-                  />
-                ))}
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Pastel colors">
+                  {CATEGORY_COLORS_PASTEL.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      aria-label={`Select pastel ${color}`}
+                      aria-pressed={selectedColor === color}
+                      className={cn(
+                        "size-7 border",
+                        selectedColor === color ? "ring-2 ring-ring" : null,
+                      )}
+                      style={{ backgroundColor: color }}
+                      onClick={() =>
+                        form.setValue("color", color, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Saturated colors">
+                  {CATEGORY_COLORS_SATURATED.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      aria-label={`Select saturated ${color}`}
+                      aria-pressed={selectedColor === color}
+                      className={cn(
+                        "size-7 border",
+                        selectedColor === color ? "ring-2 ring-ring" : null,
+                      )}
+                      style={{ backgroundColor: color }}
+                      onClick={() =>
+                        form.setValue("color", color, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                    />
+                  ))}
+                </div>
               </div>
               <FieldError>{errors.color?.message}</FieldError>
             </Field>
