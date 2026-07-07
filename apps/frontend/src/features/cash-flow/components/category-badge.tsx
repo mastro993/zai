@@ -14,11 +14,11 @@ function CategoryBadge({
   className?: string;
   children: ReactNode;
 }) {
-  const { background, foreground } = getCategoryBadgeColors(color);
+  const { background, foreground, border } = getCategoryBadgeColors(color);
   return (
     <Badge
       className={cn("max-w-full", className)}
-      style={{ backgroundColor: background, color: foreground }}
+      style={{ backgroundColor: background, color: foreground, borderColor: border }}
     >
       <span className="truncate">{children}</span>
     </Badge>

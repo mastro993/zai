@@ -77,6 +77,7 @@ export const toPastelColor = (base: string): string => {
 export interface CategoryBadgeColors {
   background: string;
   foreground: string;
+  border: string;
 }
 
 const badgeCache = new Map<string, CategoryBadgeColors>();
@@ -88,6 +89,11 @@ const lightForeground = (base: ColorInstance): ColorInstance => {
   return Color({ h, s: Math.min(s, 60), l: 92 });
 };
 
+const darkerBorder = (background: string): string => {
+  const color = parse(background);
+  return color ? color.darken(0.2).hex() : background;
+};
+
 // Badges read best as light text on a rich background, so we prefer a light
 // foreground and darken the category color just enough (up to MAX_DARKEN) to
 // clear AA. Colors too luminous to carry light text (yellow, pastels) fall back
@@ -95,7 +101,7 @@ const lightForeground = (base: ColorInstance): ColorInstance => {
 const computeBadgeColors = (color: string): CategoryBadgeColors => {
   const base = parse(color);
   if (!base) {
-    return { background: color, foreground: "#000000" };
+    return { background: color, foreground: "#000000", border: darkerBorder(color) };
   }
 
   const { h, s, l } = base.hsl().object();
@@ -106,11 +112,15 @@ const computeBadgeColors = (color: string): CategoryBadgeColors => {
     const background = Color({ h, s, l: lightness }).hex();
 
     if (Color(background).contrast(Color(foreground)) >= AA_CONTRAST) {
-      return { background, foreground };
+      return { background, foreground, border: darkerBorder(background) };
     }
   }
 
-  return { background: base.hex(), foreground: computeForeground(color) };
+  return {
+    background: base.hex(),
+    foreground: computeForeground(color),
+    border: darkerBorder(base.hex()),
+  };
 };
 
 export const getCategoryBadgeColors = (color: string): CategoryBadgeColors => {

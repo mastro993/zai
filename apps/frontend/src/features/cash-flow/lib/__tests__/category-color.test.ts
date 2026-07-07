@@ -71,4 +71,13 @@ describe("category badge colors", () => {
       );
     }
   });
+
+  it("uses a darker border than the badge background", () => {
+    for (const color of CATEGORY_COLORS) {
+      const { background, border } = getCategoryBadgeColors(color);
+      expect(getContrastRatio(border, "#000000")).toBeLessThan(
+        getContrastRatio(background, "#000000"),
+      );
+    }
+  });
 });
