@@ -19,7 +19,10 @@ import {
   type TransactionImportFile,
 } from "../commands/transaction-import";
 import { importTransactionCategories } from "../commands/transaction-categories";
-import { importTransactions } from "../commands/transactions";
+import {
+  getAllTransactions,
+  importTransactions,
+} from "../commands/transactions";
 import type { ImportPreviewRowFilter } from "../lib/import-preview-filter";
 import {
   buildTransactionImportPreview,
@@ -37,7 +40,6 @@ import { TransactionImportStepper, type ImportStep } from "./transaction-import-
 type TransactionImportDialogProps = {
   open: boolean;
   categories: Array<TransactionCategory>;
-  transactions: Array<Transaction>;
   onOpenChange: (open: boolean) => void;
   onImported: (createdCount: number, skippedRows: number) => Promise<void>;
 };
@@ -70,11 +72,12 @@ const createDefaultConfig = (): ImportConfig => {
 function TransactionImportDialog({
   open,
   categories,
-  transactions,
   onOpenChange,
   onImported,
 }: TransactionImportDialogProps) {
   const [file, setFile] = useState<TransactionImportFile | null>(null);
+  const [existingTransactions, setExistingTransactions] = useState<Array<Transaction>>([]);
+  const [isLoadingExistingTransactions, setIsLoadingExistingTransactions] = useState(false);
   const [mapping, setMapping] = useState<TransactionImportColumnMapping>(EMPTY_MAPPING);
   const [config, setConfig] = useState<ImportConfig>(createDefaultConfig);
   const [step, setStep] = useState<ImportStep>(0);
@@ -87,6 +90,36 @@ function TransactionImportDialog({
       setStep(0);
       setPreviewFilter("importable");
     }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let isActive = true;
+    setIsLoadingExistingTransactions(true);
+
+    void getAllTransactions().then((result) => {
+      if (!isActive) {
+        return;
+      }
+
+      if (R.isFailure(result)) {
+        toast.error("Failed to load existing transactions", {
+          description: result.error.message,
+        });
+        setExistingTransactions([]);
+      } else {
+        setExistingTransactions(result.value);
+      }
+
+      setIsLoadingExistingTransactions(false);
+    });
+
+    return () => {
+      isActive = false;
+    };
   }, [open]);
 
   const rowCount = useMemo(() => (file ? parseTransactionCsv(file.content).length : 0), [file]);
@@ -112,16 +145,21 @@ function TransactionImportDialog({
       expenseTypeValues: config.expenseTypeValues,
       incomeTypeValues: config.incomeTypeValues,
       existingCategories: categories,
-      existingTransactions: transactions,
+      existingTransactions,
     });
-  }, [file, config, mapping, categories, transactions]);
+  }, [file, config, mapping, categories, existingTransactions]);
 
   const mappingReady =
     mapping.amount !== null &&
     mapping.transactionDate !== null &&
     (config.amountMode !== "column-type" || mapping.transactionType !== null);
 
-  const canAdvance = step === 0 ? file !== null : step === 1 ? mappingReady : false;
+  const canAdvance =
+    step === 0
+      ? file !== null
+      : step === 1
+        ? mappingReady && !isLoadingExistingTransactions
+        : false;
 
   const updateConfig = (patch: Partial<ImportConfig>) => {
     setConfig((current) => ({ ...current, ...patch }));
@@ -228,10 +266,12 @@ function TransactionImportDialog({
       ? file
         ? `${rowCount.toLocaleString()} rows detected`
         : "Select a CSV file to begin"
-      : step === 1
-        ? mappingReady
-          ? "Columns mapped — ready to preview"
-          : "Map the required columns to continue"
+        : step === 1
+        ? isLoadingExistingTransactions
+          ? "Loading existing transactions for duplicate check…"
+          : mappingReady
+            ? "Columns mapped — ready to preview"
+            : "Map the required columns to continue"
         : `${importableRows.toLocaleString()} ready · ${skippedRows.toLocaleString()} skipped`;
 
   return (

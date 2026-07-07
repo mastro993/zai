@@ -92,6 +92,14 @@ describe("transaction import", () => {
     expect(parseImportAmount("€12,50")).toEqual({ ok: true, cents: 1250, signed: 12.5 });
   });
 
+  it("maps Name column to description when Category is present", () => {
+    const headers = ["Date", "Type", "Category", "Amount", "Name", "Notes"];
+    const mapping = getDefaultTransactionImportMapping(headers);
+
+    expect(mapping.categoryName).toBe(2);
+    expect(mapping.description).toBe(4);
+  });
+
   it("skips duplicate transactions by date, amount, and description", () => {
     const content = ["date,amount,type,description", "2026-01-15,12.50,expense,Groceries"].join("\n");
     const existingTransactions: Array<Transaction> = [

@@ -196,7 +196,6 @@ export function TransactionScreen() {
       <TransactionImportDialog
         open={isImportDialogOpen}
         categories={categories}
-        transactions={transactions}
         onOpenChange={setIsImportDialogOpen}
         onImported={async (createdCount, skippedRows) => {
           await loadData(debouncedQuery, true);

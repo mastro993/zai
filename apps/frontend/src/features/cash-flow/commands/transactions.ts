@@ -1,3 +1,5 @@
+import { R } from "@praha/byethrow";
+
 import { type CommandResult, invokeCommand } from "@/commands/shared";
 
 import { toBackendDateTime } from "../lib/transaction";
@@ -46,6 +48,30 @@ export const getTransactions = (
     filters: filters ?? null,
     sort: sort ?? null,
   });
+};
+
+const IMPORT_DEDUP_PAGE_SIZE = 500;
+
+export const getAllTransactions = async (): Promise<CommandResult<Array<Transaction>>> => {
+  const firstResult = await getTransactions(1, IMPORT_DEDUP_PAGE_SIZE);
+
+  if (R.isFailure(firstResult)) {
+    return firstResult;
+  }
+
+  const allTransactions = [...firstResult.value.data];
+
+  for (let page = 2; page <= firstResult.value.totalPages; page += 1) {
+    const pageResult = await getTransactions(page, firstResult.value.perPage);
+
+    if (R.isFailure(pageResult)) {
+      return pageResult;
+    }
+
+    allTransactions.push(...pageResult.value.data);
+  }
+
+  return R.succeed(allTransactions);
 };
 
 export const createTransaction = (values: TransactionFormValues): CommandResult<Transaction> => {
