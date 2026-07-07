@@ -16,6 +16,10 @@ type TransactionPayload = {
 
 export type TransactionFilters = {
   query?: string;
+  /**
+   * Omitted means no category filter. An empty array means uncategorized only
+   * (transactions with no category). A non-empty array filters to those categories.
+   */
   categories?: Array<string>;
   transactionType?: string;
   startDate?: string;

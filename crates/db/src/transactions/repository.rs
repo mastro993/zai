@@ -57,8 +57,12 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                 );
             }
             if let Some(ref categories_filter) = filters.categories {
-                query =
-                    query.filter(transactions::transaction_category_id.eq_any(categories_filter));
+                if categories_filter.is_empty() {
+                    query = query.filter(transactions::transaction_category_id.is_null());
+                } else {
+                    query = query
+                        .filter(transactions::transaction_category_id.eq_any(categories_filter));
+                }
             }
             if let Some(ref type_filter) = filters.transaction_type {
                 query = query.filter(transactions::transaction_type.eq(type_filter));

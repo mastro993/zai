@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct TransactionSearchFilters<'a> {
     pub query: Option<&'a str>,
+    /// `None` means no category filter. `Some([])` means uncategorized only
+    /// (`transaction_category_id IS NULL`). `Some([ids])` filters to those categories.
     pub categories: Option<Vec<&'a str>>,
     pub transaction_type: Option<&'a str>,
     pub start_date: Option<NaiveDateTime>,
