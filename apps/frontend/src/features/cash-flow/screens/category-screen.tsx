@@ -12,10 +12,10 @@ import {
   getTransactionCategories,
   updateTransactionCategory,
 } from "../commands/transaction-categories";
-import { CategoryCard } from "../components/category-card";
 import { CategoryDeleteConfirmationDialog } from "../components/category-delete-confirmation-dialog";
 import { CategoryFormDrawer } from "../components/category-form-drawer";
 import { CategoryImportDialog } from "../components/category-import-dialog";
+import { CategoryList, CategoryListSkeleton } from "../components/category-list";
 import type { CategoryFormMode } from "../types/category-types";
 import type {
   CategoryChildrenDeleteStrategy,
@@ -206,24 +206,26 @@ export function CategoryScreen() {
         onImported={completeCategoryImport}
       />
 
-      <div className="flex flex-col gap-3">
-        {isLoading ? <p className="text-sm text-muted-foreground">Loading categories...</p> : null}
-        {!isLoading && rootCategories.length === 0 ? (
-          <p className="border border-dashed p-6 text-sm text-muted-foreground">
-            No categories yet. Create a root category to start organizing transactions.
-          </p>
-        ) : null}
-        {rootCategories.map((category) => (
-          <CategoryCard
-            key={category.id}
-            category={category}
-            childrenCategories={getChildren(categories, category.id)}
-            onAddChild={() => openFormDrawer({ type: "create-child", parentId: category.id })}
-            onEdit={openFormDrawer}
-            onDelete={openDeleteDialog}
-          />
-        ))}
-      </div>
+      {isLoading ? (
+        <CategoryListSkeleton />
+      ) : rootCategories.length === 0 ? (
+        <div className="flex flex-col items-start gap-3 border p-6">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium">No categories yet</p>
+            <p className="text-sm text-muted-foreground">
+              Create a root category to start organizing transactions.
+            </p>
+          </div>
+          <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
+        </div>
+      ) : (
+        <CategoryList
+          categories={categories}
+          onAddChild={(parentId) => openFormDrawer({ type: "create-child", parentId })}
+          onEdit={openFormDrawer}
+          onDelete={openDeleteDialog}
+        />
+      )}
 
       <Drawer
         open={isFormDrawerOpen}
