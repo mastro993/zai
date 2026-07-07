@@ -18,12 +18,22 @@ import {
 import { TransactionDeleteConfirmationDialog } from "../components/transaction-delete-confirmation-dialog";
 import { TransactionFormDrawer } from "../components/transaction-form-drawer";
 import { TransactionImportDialog } from "../components/transaction-import-dialog";
+import { TransactionPagination } from "../components/transaction-pagination";
 import { TransactionTable } from "../components/transaction-table";
+import {
+  DEFAULT_TRANSACTION_ROWS_PER_PAGE,
+  type TransactionRowsPerPage,
+} from "../lib/pagination";
 import type { Transaction, TransactionCategory, TransactionFormValues } from "../types/model";
 import type { TransactionFormMode } from "../types/transaction-types";
 
 export function TransactionScreen() {
   const [transactions, setTransactions] = useState<Array<Transaction>>([]);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState<TransactionRowsPerPage>(
+    DEFAULT_TRANSACTION_ROWS_PER_PAGE,
+  );
+  const [totalPages, setTotalPages] = useState(1);
   const [categories, setCategories] = useState<Array<TransactionCategory>>([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -43,18 +53,33 @@ export function TransactionScreen() {
     [categories],
   );
 
-  const loadData = async (searchQuery: string, includeCategories = false) => {
+  const loadData = async (
+    searchQuery: string,
+    pageToLoad: number,
+    rowsPerPage: TransactionRowsPerPage,
+    includeCategories = false,
+  ) => {
     setIsLoading(true);
     const transactionsResult = await getTransactions(
-      1,
-      50,
+      pageToLoad,
+      rowsPerPage,
       searchQuery.length > 0 ? { query: searchQuery } : undefined,
     );
 
     if (R.isFailure(transactionsResult)) {
       setErrorMessage(transactionsResult.error.message);
     } else {
-      setTransactions(transactionsResult.value.data);
+      const { data, page: loadedPage, totalPages: loadedTotalPages } = transactionsResult.value;
+
+      if (data.length === 0 && loadedPage > 1) {
+        setPage(loadedPage - 1);
+        setIsLoading(false);
+        return;
+      }
+
+      setTransactions(data);
+      setPage(loadedPage);
+      setTotalPages(Math.max(loadedTotalPages, 1));
       setErrorMessage(null);
     }
 
@@ -76,6 +101,7 @@ export function TransactionScreen() {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setDebouncedQuery(query.trim());
+      setPage(1);
     }, 250);
 
     return () => {
@@ -86,8 +112,8 @@ export function TransactionScreen() {
   useEffect(() => {
     const includeCategories = !hasLoadedCategories.current;
     hasLoadedCategories.current = true;
-    void loadData(debouncedQuery, includeCategories);
-  }, [debouncedQuery]);
+    void loadData(debouncedQuery, page, perPage, includeCategories);
+  }, [debouncedQuery, page, perPage]);
 
   const openFormDrawer = (mode: TransactionFormMode) => {
     setFormMode(mode);
@@ -111,7 +137,7 @@ export function TransactionScreen() {
     }
 
     setIsFormDrawerOpen(false);
-    await loadData(debouncedQuery);
+    await loadData(debouncedQuery, page, perPage);
   };
 
   const exportTransactionCsv = async () => {
@@ -154,8 +180,13 @@ export function TransactionScreen() {
     }
 
     setIsDeleteDialogOpen(false);
-    await loadData(debouncedQuery);
+    await loadData(debouncedQuery, page, perPage);
     setIsDeleting(false);
+  };
+
+  const changeRowsPerPage = (nextPerPage: TransactionRowsPerPage) => {
+    setPerPage(nextPerPage);
+    setPage(1);
   };
 
   return (
@@ -206,12 +237,22 @@ export function TransactionScreen() {
       ) : null}
 
       {transactions.length > 0 ? (
-        <TransactionTable
-          transactions={transactions}
-          categoryById={categoryById}
-          onEdit={openFormDrawer}
-          onDelete={openDeleteDialog}
-        />
+        <div className="flex flex-col gap-0">
+          <TransactionTable
+            transactions={transactions}
+            categoryById={categoryById}
+            onEdit={openFormDrawer}
+            onDelete={openDeleteDialog}
+          />
+          <TransactionPagination
+            page={page}
+            perPage={perPage}
+            totalPages={totalPages}
+            visibleCount={transactions.length}
+            onPageChange={setPage}
+            onPerPageChange={changeRowsPerPage}
+          />
+        </div>
       ) : null}
 
       <TransactionDeleteConfirmationDialog
@@ -236,7 +277,7 @@ export function TransactionScreen() {
         categories={categories}
         onOpenChange={setIsImportDialogOpen}
         onImported={async (createdCount, skippedRows) => {
-          await loadData(debouncedQuery, true);
+          await loadData(debouncedQuery, page, perPage, true);
           toast.success(`Imported ${createdCount} transactions`, {
             description:
               skippedRows > 0 ? `${skippedRows} rows were skipped during preview.` : undefined,
