@@ -13,6 +13,17 @@ export const getCategoryDisplayColor = (category: TransactionCategory) => {
   return category.color ?? DEFAULT_CATEGORY_COLOR;
 };
 
+export const getCategoryDisplayName = (
+  category: TransactionCategory,
+  categoryById?: Map<string, TransactionCategory>,
+) => {
+  const parentName =
+    category.parent?.name ??
+    (category.parentId ? categoryById?.get(category.parentId)?.name : undefined);
+
+  return parentName ? `${parentName} / ${category.name}` : category.name;
+};
+
 export const isCategoryColor = (color: string): color is CategoryColor => {
   return CATEGORY_COLORS.some((categoryColor) => categoryColor === color);
 };

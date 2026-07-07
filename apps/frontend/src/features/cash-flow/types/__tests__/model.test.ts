@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getCategoryDisplayColor } from "../../lib/category";
+import { getCategoryDisplayColor, getCategoryDisplayName } from "../../lib/category";
 import { DEFAULT_CATEGORY_COLOR, categoryFormSchema } from "../model";
 
 describe("cash-flow model", () => {
@@ -19,6 +19,56 @@ describe("cash-flow model", () => {
     });
 
     expect(color).toBe("#1479C9");
+  });
+
+  it("shows root category name only", () => {
+    const name = getCategoryDisplayName({
+      id: "root",
+      parentId: null,
+      name: "Food",
+    });
+
+    expect(name).toBe("Food");
+  });
+
+  it("shows parent and child names for child categories", () => {
+    const name = getCategoryDisplayName({
+      id: "child",
+      parentId: "parent",
+      name: "Groceries",
+      parent: {
+        id: "parent",
+        parentId: null,
+        name: "Food",
+      },
+    });
+
+    expect(name).toBe("Food / Groceries");
+  });
+
+  it("resolves parent name from categoryById when parent is missing", () => {
+    const categoryById = new Map([
+      [
+        "parent",
+        {
+          id: "parent",
+          parentId: null,
+          name: "Food",
+        },
+      ],
+      [
+        "child",
+        {
+          id: "child",
+          parentId: "parent",
+          name: "Groceries",
+        },
+      ],
+    ] as const);
+
+    const name = getCategoryDisplayName(categoryById.get("child")!, categoryById);
+
+    expect(name).toBe("Food / Groceries");
   });
 
   it("falls back when a category has no displayable color", () => {

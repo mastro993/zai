@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 
-import { getCategoryDisplayColor } from "../lib/category";
+import { getCategoryDisplayColor, getCategoryDisplayName } from "../lib/category";
 import { toDateTimeInputValue } from "../lib/transaction";
 import type { TransactionFormMode } from "../types/transaction-types";
 import type { Transaction, TransactionCategory } from "../types/model";
@@ -49,7 +49,7 @@ function TransactionTable({
                   {category ? (
                     <span className="inline-flex items-center gap-2">
                       <ColorDot color={getCategoryDisplayColor(category)} />
-                      {category.name}
+                      {getCategoryDisplayName(category, categoryById)}
                     </span>
                   ) : (
                     <span className="text-muted-foreground">Uncategorized</span>
