@@ -1,37 +1,38 @@
 import { describe, expect, it } from "vitest";
 
 import { getCategoryDisplayColor, getCategoryDisplayName } from "../../lib/category";
+import { toPastelColor } from "../../lib/category-color";
 import {
   CATEGORY_COLORS,
-  CATEGORY_COLORS_PASTEL,
-  CATEGORY_COLORS_SATURATED,
   DEFAULT_CATEGORY_COLOR,
   categoryFormSchema,
 } from "../model";
 
 describe("cash-flow model", () => {
-  it("exposes 16 palette colors in pastel then saturated order", () => {
-    expect(CATEGORY_COLORS).toHaveLength(16);
-    expect(CATEGORY_COLORS.slice(0, 8)).toEqual([...CATEGORY_COLORS_PASTEL]);
-    expect(CATEGORY_COLORS.slice(8)).toEqual([...CATEGORY_COLORS_SATURATED]);
+  it("exposes a single palette of unique, valid hex colors", () => {
+    expect(CATEGORY_COLORS.length).toBeGreaterThan(0);
+    for (const color of CATEGORY_COLORS) {
+      expect(color).toMatch(/^#[0-9A-F]{6}$/);
+    }
+    expect(new Set(CATEGORY_COLORS).size).toBe(CATEGORY_COLORS.length);
   });
 
-  it("keeps saturated gray as the default category color", () => {
-    expect(DEFAULT_CATEGORY_COLOR).toBe(CATEGORY_COLORS_SATURATED[7]);
+  it("defaults to the first palette color", () => {
+    expect(DEFAULT_CATEGORY_COLOR).toBe(CATEGORY_COLORS[0]);
   });
 
-  it("accepts both pastel and saturated palette colors", () => {
-    const pastel = categoryFormSchema.safeParse({
-      name: "Food",
-      color: CATEGORY_COLORS_PASTEL[0],
-    });
+  it("accepts palette colors and their computed pastels", () => {
     const saturated = categoryFormSchema.safeParse({
       name: "Food",
-      color: CATEGORY_COLORS_SATURATED[0],
+      color: CATEGORY_COLORS[0],
+    });
+    const pastel = categoryFormSchema.safeParse({
+      name: "Food",
+      color: toPastelColor(CATEGORY_COLORS[0]),
     });
 
-    expect(pastel.success).toBe(true);
     expect(saturated.success).toBe(true);
+    expect(pastel.success).toBe(true);
   });
   it("uses parent color as the child category display color", () => {
     const color = getCategoryDisplayColor({
@@ -112,10 +113,10 @@ describe("cash-flow model", () => {
     expect(color).toBe(DEFAULT_CATEGORY_COLOR);
   });
 
-  it("rejects colors outside the frontend picker pool", () => {
+  it("rejects invalid color strings", () => {
     const result = categoryFormSchema.safeParse({
       name: "Food",
-      color: "#FFFFFF",
+      color: "not-a-color",
     });
 
     expect(result.success).toBe(false);

@@ -16,7 +16,7 @@ import {
 import { toDateTimeInputValue } from "../lib/transaction";
 import type { Transaction, TransactionCategory } from "../types/model";
 import type { TransactionFormMode } from "../types/transaction-types";
-import { ColorDot } from "./color-dot";
+import { CategoryBadge } from "./category-badge";
 
 function TransactionTable({
   transactions,
@@ -67,10 +67,9 @@ function TransactionTable({
               </TableCell>
               <TableCell className="whitespace-nowrap p-3">
                 {category ? (
-                  <span className="inline-flex items-center gap-2">
-                    <ColorDot color={getCategoryDisplayColor(category)} />
+                  <CategoryBadge color={getCategoryDisplayColor(category)}>
                     {getCategoryDisplayName(category, categoryById)}
-                  </span>
+                  </CategoryBadge>
                 ) : (
                   <span className="text-muted-foreground">Uncategorized</span>
                 )}

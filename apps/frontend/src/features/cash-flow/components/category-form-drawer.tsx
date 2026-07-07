@@ -10,7 +10,13 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -20,18 +26,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
 
-import { isCategoryColor } from "../lib/category";
+import { getCategoryDisplayColor, isCategoryColor } from "../lib/category";
 import type { CategoryFormMode } from "../types/category-types";
 import {
-  CATEGORY_COLORS_PASTEL,
-  CATEGORY_COLORS_SATURATED,
+  CATEGORY_COLORS,
   DEFAULT_CATEGORY_COLOR,
   categoryFormSchema,
   type CategoryFormValues,
   type TransactionCategory,
 } from "../types/model";
+import { CategoryBadge } from "./category-badge";
+import { CategoryColorPicker } from "./category-color-picker";
 
 const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
   if (mode.type === "create-root") {
@@ -39,7 +46,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       name: "",
       parentId: "",
       description: "",
-      color: CATEGORY_COLORS_SATURATED[0],
+      color: DEFAULT_CATEGORY_COLOR,
     };
   }
 
@@ -59,9 +66,70 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
     color:
       mode.category.color && isCategoryColor(mode.category.color)
         ? mode.category.color
-        : CATEGORY_COLORS_SATURATED[0],
+        : DEFAULT_CATEGORY_COLOR,
   };
 };
+
+const getFormCopy = (mode: CategoryFormMode) => {
+  if (mode.type === "edit") {
+    return {
+      title: "Edit category",
+      description:
+        "Update the name, parent, or color. Names must stay unique at the same level.",
+    };
+  }
+
+  if (mode.type === "create-child") {
+    return {
+      title: "New subcategory",
+      description:
+        "Subcategories inherit their parent color in lists and reports. Pick a clear, specific name.",
+    };
+  }
+
+  return {
+    title: "New category",
+    description:
+      "Root categories get a colored badge in lists and transactions. Names must be unique among other root categories.",
+  };
+};
+
+function CategoryFormPreview({
+  name,
+  description,
+  displayColor,
+  parentName,
+}: {
+  name: string;
+  description: string;
+  displayColor: string;
+  parentName?: string;
+}) {
+  const previewName = name.trim() || "Category name";
+  const previewDescription = description.trim();
+  const isPlaceholderName = !name.trim();
+
+  return (
+    <div className="border bg-muted/40 px-3 py-2.5">
+      <p className="mb-2 text-xs font-medium text-muted-foreground">
+        List preview
+      </p>
+      <div className="flex min-w-0 flex-col gap-1">
+        <CategoryBadge
+          color={displayColor}
+          className={isPlaceholderName ? "italic" : undefined}
+        >
+          {parentName ? `${parentName} / ${previewName}` : previewName}
+        </CategoryBadge>
+        {previewDescription ? (
+          <span className="truncate text-xs text-muted-foreground">
+            {previewDescription}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 function CategoryFormDrawer({
   mode,
@@ -72,43 +140,68 @@ function CategoryFormDrawer({
   categories: Array<TransactionCategory>;
   onSubmit: (values: CategoryFormValues) => Promise<void>;
 }) {
+  const categoryById = new Map(
+    categories.map((category) => [category.id, category] as const),
+  );
   const categoriesWithChildren = new Set(
     categories
-      .filter((category) => categories.some((child) => child.parentId === category.id))
+      .filter((category) =>
+        categories.some((child) => child.parentId === category.id),
+      )
       .map((category) => category.id),
   );
-  const canChooseParent = mode.type !== "edit" || !categoriesWithChildren.has(mode.category.id);
+  const canChooseParent =
+    mode.type !== "edit" || !categoriesWithChildren.has(mode.category.id);
+  const isCreateChild = mode.type === "create-child";
+  const lockedParent = isCreateChild
+    ? categoryById.get(mode.parentId)
+    : undefined;
   const rootOptions = categories.filter(
-    (category) => !category.parentId && (mode.type !== "edit" || category.id !== mode.category.id),
+    (category) =>
+      !category.parentId &&
+      (mode.type !== "edit" || category.id !== mode.category.id),
   );
   const parentItems = [
     { label: "None", value: null },
-    ...rootOptions.map((category) => ({ label: category.name, value: category.id })),
+    ...rootOptions.map((category) => ({
+      label: category.name,
+      value: category.id,
+    })),
   ];
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
     defaultValues: getFormDefaults(mode),
   });
-  const parentId = useWatch({
-    control: form.control,
-    name: "parentId",
-  });
+  const watchedName = useWatch({ control: form.control, name: "name" }) ?? "";
+  const watchedDescription =
+    useWatch({ control: form.control, name: "description" }) ?? "";
+  const parentId = useWatch({ control: form.control, name: "parentId" });
   const selectedColor =
     useWatch({
       control: form.control,
       name: "color",
     }) ?? DEFAULT_CATEGORY_COLOR;
   const isChildCategory = Boolean(parentId);
-  const title = mode.type === "edit" ? "Edit category" : "New category";
+  const parentCategory = parentId ? categoryById.get(parentId) : undefined;
+  const previewColor = isChildCategory
+    ? getCategoryDisplayColor({
+        id: "preview",
+        parentId: parentId || null,
+        name: watchedName,
+        color: null,
+        parent: parentCategory ?? null,
+      })
+    : selectedColor;
+  const { title, description } = getFormCopy(mode);
   const { errors, isSubmitting } = form.formState;
+  const nameErrorId = "category-name-error";
+  const colorErrorId = "category-color-error";
 
   return (
     <DrawerContent>
       <DrawerHeader>
         <DrawerTitle>{title}</DrawerTitle>
-        <DrawerDescription>
-          Names must be unique among categories at the same level.
-        </DrawerDescription>
+        <DrawerDescription>{description}</DrawerDescription>
       </DrawerHeader>
       <form
         className="flex min-h-0 flex-1 flex-col"
@@ -119,13 +212,32 @@ function CategoryFormDrawer({
             <FieldLabel htmlFor="category-name">Name</FieldLabel>
             <Input
               id="category-name"
+              autoFocus
               aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? nameErrorId : undefined}
+              placeholder="Groceries"
               {...form.register("name")}
             />
-            <FieldError>{errors.name?.message}</FieldError>
+            <FieldDescription>
+              Required. Shown in transaction lists and category reports.
+            </FieldDescription>
+            <FieldError id={nameErrorId}>{errors.name?.message}</FieldError>
           </Field>
 
-          {canChooseParent ? (
+          {isCreateChild && lockedParent ? (
+            <Field>
+              <FieldLabel>Parent category</FieldLabel>
+              <div className="flex h-8 items-center border border-input px-2.5">
+                <CategoryBadge color={getCategoryDisplayColor(lockedParent)}>
+                  {lockedParent.name}
+                </CategoryBadge>
+              </div>
+              <FieldDescription>
+                Subcategories stay under this parent.
+              </FieldDescription>
+              <input type="hidden" {...form.register("parentId")} />
+            </Field>
+          ) : canChooseParent ? (
             <Field>
               <FieldLabel>Parent category</FieldLabel>
               <Controller
@@ -135,15 +247,40 @@ function CategoryFormDrawer({
                   <Select
                     items={parentItems}
                     value={field.value || null}
-                    onValueChange={(value) => field.onChange(value ?? "")}
+                    onValueChange={(value) => {
+                      const nextParentId = value ?? "";
+                      field.onChange(nextParentId);
+
+                      if (nextParentId) {
+                        form.setValue("color", undefined, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                        return;
+                      }
+
+                      const currentColor = form.getValues("color");
+                      if (!currentColor) {
+                        form.setValue("color", DEFAULT_CATEGORY_COLOR, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
                   >
-                    <SelectTrigger className="w-full" aria-label="Parent category">
+                    <SelectTrigger
+                      className="w-full"
+                      aria-label="Parent category"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent alignItemWithTrigger={false}>
                       <SelectGroup>
                         {parentItems.map((item) => (
-                          <SelectItem key={item.value ?? "none"} value={item.value}>
+                          <SelectItem
+                            key={item.value ?? "none"}
+                            value={item.value}
+                          >
                             {item.label}
                           </SelectItem>
                         ))}
@@ -152,72 +289,69 @@ function CategoryFormDrawer({
                   </Select>
                 )}
               />
+              <FieldDescription>
+                Leave as none for a root category, or nest one level under an
+                existing root.
+              </FieldDescription>
             </Field>
           ) : null}
 
           <Field>
             <FieldLabel htmlFor="category-description">Description</FieldLabel>
-            <Input id="category-description" {...form.register("description")} />
+            <Textarea
+              id="category-description"
+              placeholder="Optional note for your own reference"
+              className="min-h-16 resize-y"
+              {...form.register("description")}
+            />
           </Field>
 
           {!isChildCategory ? (
             <Field data-invalid={Boolean(errors.color)}>
               <FieldLabel>Color</FieldLabel>
               <input type="hidden" {...form.register("color")} />
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap gap-2" role="group" aria-label="Pastel colors">
-                  {CATEGORY_COLORS_PASTEL.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      aria-label={`Select pastel ${color}`}
-                      aria-pressed={selectedColor === color}
-                      className={cn(
-                        "size-7 border",
-                        selectedColor === color ? "ring-2 ring-ring" : null,
-                      )}
-                      style={{ backgroundColor: color }}
-                      onClick={() =>
-                        form.setValue("color", color, {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                    />
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-2" role="group" aria-label="Saturated colors">
-                  {CATEGORY_COLORS_SATURATED.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      aria-label={`Select saturated ${color}`}
-                      aria-pressed={selectedColor === color}
-                      className={cn(
-                        "size-7 border",
-                        selectedColor === color ? "ring-2 ring-ring" : null,
-                      )}
-                      style={{ backgroundColor: color }}
-                      onClick={() =>
-                        form.setValue("color", color, {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-              <FieldError>{errors.color?.message}</FieldError>
+              <Controller
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <CategoryColorPicker
+                    value={
+                      (field.value as string | undefined) ??
+                      DEFAULT_CATEGORY_COLOR
+                    }
+                    colors={CATEGORY_COLORS}
+                    onChange={(color) =>
+                      field.onChange(color, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                  />
+                )}
+              />
+              <FieldError id={colorErrorId}>{errors.color?.message}</FieldError>
             </Field>
           ) : null}
+
+          <CategoryFormPreview
+            name={watchedName}
+            description={watchedDescription}
+            displayColor={previewColor}
+            parentName={lockedParent?.name ?? parentCategory?.name}
+          />
         </FieldGroup>
 
         <DrawerFooter>
           <Button type="submit" disabled={isSubmitting}>
-            Save category
+            {isSubmitting ? "Saving..." : "Save category"}
           </Button>
-          <DrawerClose render={<Button type="button" variant="outline" />}>Cancel</DrawerClose>
+          <DrawerClose
+            render={
+              <Button type="button" variant="outline" disabled={isSubmitting} />
+            }
+          >
+            Cancel
+          </DrawerClose>
         </DrawerFooter>
       </form>
     </DrawerContent>

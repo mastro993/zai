@@ -1,33 +1,19 @@
 import { z } from "zod";
 
-export const CATEGORY_COLORS_PASTEL = [
-  "#F5D0D0",
-  "#FFE4C8",
-  "#D4EDCF",
-  "#C8E8F0",
-  "#D4DDF5",
-  "#E4D8F5",
-  "#F0D4E4",
-  "#E5E7EB",
-] as const;
-
-export const CATEGORY_COLORS_SATURATED = [
-  "#C92A2A",
-  "#B95F00",
-  "#3E7B32",
-  "#007A91",
-  "#345FD2",
-  "#7B4CC2",
-  "#B43C7A",
-  "#6B7280",
-] as const;
-
 export const CATEGORY_COLORS = [
-  ...CATEGORY_COLORS_PASTEL,
-  ...CATEGORY_COLORS_SATURATED,
+  "#E53935",
+  "#FB8C00",
+  "#FDD835",
+  "#43A047",
+  "#00ACC1",
+  "#1E88E5",
+  "#5E35B1",
+  "#8E24AA",
+  "#D81B60",
+  "#757575",
 ] as const;
 
-export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLORS_SATURATED[7];
+export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLORS[0];
 export const TRANSACTION_TYPES = ["expense", "income"] as const;
 
 const nullableStringSchema = z.string().nullable().optional();
@@ -40,7 +26,10 @@ export const categoryFormSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   parentId: z.string().optional(),
   description: z.string().trim().optional(),
-  color: z.enum(CATEGORY_COLORS).optional(),
+  color: z
+    .string()
+    .regex(/^#?[0-9a-f]{6}$/i)
+    .optional(),
 });
 
 const categoryBaseSchema = z.object({

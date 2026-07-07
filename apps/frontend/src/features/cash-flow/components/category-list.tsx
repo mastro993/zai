@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCategoryDisplayColor } from "../lib/category";
 import type { CategoryFormMode } from "../types/category-types";
 import type { TransactionCategory } from "../types/model";
-import { ColorDot } from "./color-dot";
+import { CategoryBadge } from "./category-badge";
 
 interface CategoryListProps {
   categories: Array<TransactionCategory>;
@@ -49,9 +49,10 @@ function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryList
           return (
             <li key={category.id}>
               <div className="group/row flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50">
-                <ColorDot color={getCategoryDisplayColor(category)} />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-sm font-medium">{category.name}</span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <CategoryBadge color={getCategoryDisplayColor(category)}>
+                    {category.name}
+                  </CategoryBadge>
                   {category.description ? (
                     <span className="truncate text-xs text-muted-foreground">
                       {category.description}
@@ -97,9 +98,10 @@ function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryList
                       key={child.id}
                       className="group/row flex items-center gap-3 py-2 pr-3 pl-4 hover:bg-muted/50"
                     >
-                      <ColorDot color={getCategoryDisplayColor(child)} />
-                      <div className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-sm">{child.name}</span>
+                      <div className="flex min-w-0 flex-1 flex-col gap-1">
+                        <CategoryBadge color={getCategoryDisplayColor(child)}>
+                          {child.name}
+                        </CategoryBadge>
                         {child.description ? (
                           <span className="truncate text-xs text-muted-foreground">
                             {child.description}
@@ -148,8 +150,7 @@ function CategoryListSkeleton() {
       <ul className="divide-y">
         {[0, 1, 2, 3].map((row) => (
           <li key={row} className="flex items-center gap-3 px-3 py-2.5">
-            <Skeleton className="size-3" />
-            <Skeleton className="h-3.5 w-40" />
+            <Skeleton className="h-5 w-28" />
           </li>
         ))}
       </ul>
