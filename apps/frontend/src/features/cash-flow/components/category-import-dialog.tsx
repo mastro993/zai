@@ -1,4 +1,4 @@
-import { R } from "@praha/byethrow";
+import { Result } from "@praha/byethrow";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -100,7 +100,7 @@ function CategoryImportDialog({
     const result = await openCategoryImportFile();
     setIsPickingFile(false);
 
-    if (R.isFailure(result)) {
+    if (Result.isFailure(result)) {
       toast.error("Failed to read CSV file", { description: result.error.message });
       return;
     }
@@ -157,7 +157,7 @@ function CategoryImportDialog({
     const result = await importTransactionCategories(preview.categories);
     setIsImporting(false);
 
-    if (R.isFailure(result)) {
+    if (Result.isFailure(result)) {
       toast.error("Failed to import categories", { description: result.error.message });
       return;
     }

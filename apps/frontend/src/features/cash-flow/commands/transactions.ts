@@ -1,4 +1,4 @@
-import { R } from "@praha/byethrow";
+import { Result } from "@praha/byethrow";
 
 import { type CommandResult, invokeCommand } from "@/commands/shared";
 
@@ -62,7 +62,7 @@ export const getAllTransactions = async (
 ): CommandResult<Array<Transaction>> => {
   const firstResult = await getTransactions(1, IMPORT_DEDUP_PAGE_SIZE, filters);
 
-  if (R.isFailure(firstResult)) {
+  if (Result.isFailure(firstResult)) {
     return firstResult;
   }
 
@@ -76,7 +76,7 @@ export const getAllTransactions = async (
     );
 
     for (const pageResult of pageResults) {
-      if (R.isFailure(pageResult)) {
+      if (Result.isFailure(pageResult)) {
         return pageResult;
       }
 
@@ -84,7 +84,7 @@ export const getAllTransactions = async (
     }
   }
 
-  return R.succeed(allTransactions);
+  return Result.succeed(allTransactions);
 };
 
 export const createTransaction = (values: TransactionFormValues): CommandResult<Transaction> => {

@@ -1,4 +1,4 @@
-import { R } from "@praha/byethrow";
+import { Result } from "@praha/byethrow";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -119,7 +119,7 @@ export function TransactionScreen() {
       ),
     );
 
-    if (R.isFailure(transactionsResult)) {
+    if (Result.isFailure(transactionsResult)) {
       setErrorMessage(transactionsResult.error.message);
     } else {
       const { data, page: loadedPage, totalPages: loadedTotalPages } = transactionsResult.value;
@@ -138,12 +138,12 @@ export function TransactionScreen() {
 
     if (includeCategories) {
       const categoriesResult = await getTransactionCategories();
-      if (R.isFailure(categoriesResult)) {
+      if (Result.isFailure(categoriesResult)) {
         setErrorMessage(categoriesResult.error.message);
       } else {
         const loadedCategories = categoriesResult.value;
         setCategories(loadedCategories);
-        if (R.isSuccess(transactionsResult)) {
+        if (Result.isSuccess(transactionsResult)) {
           setErrorMessage(null);
         }
 
@@ -159,7 +159,7 @@ export function TransactionScreen() {
             ),
           );
 
-          if (R.isFailure(refetchResult)) {
+          if (Result.isFailure(refetchResult)) {
             setErrorMessage(refetchResult.error.message);
           } else {
             const { data, page: loadedPage, totalPages: loadedTotalPages } = refetchResult.value;
@@ -223,7 +223,7 @@ export function TransactionScreen() {
         ? await updateTransaction(formMode.transaction.id, values)
         : await createTransaction(values);
 
-    if (R.isFailure(result)) {
+    if (Result.isFailure(result)) {
       setErrorMessage(result.error.message);
       return;
     }
@@ -239,7 +239,7 @@ export function TransactionScreen() {
       buildTransactionFilters(debouncedQuery, dateSelection, categorySelection, categories),
     );
 
-    if (R.isFailure(transactionsResult)) {
+    if (Result.isFailure(transactionsResult)) {
       toast.error("Failed to export transactions", {
         description: transactionsResult.error.message,
       });
@@ -249,7 +249,7 @@ export function TransactionScreen() {
 
     const result = await exportTransactions(transactionsResult.value, categories);
 
-    if (R.isFailure(result)) {
+    if (Result.isFailure(result)) {
       toast.error("Failed to export transactions", { description: result.error.message });
     } else if (result.value) {
       toast.success("Transactions exported", { description: result.value });
@@ -264,7 +264,7 @@ export function TransactionScreen() {
     setIsDeleting(true);
     const result = await deleteTransaction(transaction.id);
 
-    if (R.isFailure(result)) {
+    if (Result.isFailure(result)) {
       setErrorMessage(result.error.message);
       setIsDeleteDialogOpen(false);
       setIsDeleting(false);

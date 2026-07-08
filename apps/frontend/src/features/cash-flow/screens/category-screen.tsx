@@ -1,4 +1,4 @@
-import { R } from "@praha/byethrow";
+import { Result } from "@praha/byethrow";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -51,7 +51,7 @@ export function CategoryScreen() {
     setIsLoading(true);
     const result = await getTransactionCategories();
 
-    if (R.isFailure(result)) {
+    if (Result.isFailure(result)) {
       setErrorMessage(result.error.message);
       setIsLoading(false);
       return false;
@@ -83,7 +83,7 @@ export function CategoryScreen() {
 
     const result = await exportCategories(categoriesInScreenOrder);
 
-    if (R.isFailure(result)) {
+    if (Result.isFailure(result)) {
       toast.error("Failed to export categories", { description: result.error.message });
     } else if (result.value) {
       toast.success("Categories exported", { description: result.value });
@@ -108,7 +108,7 @@ export function CategoryScreen() {
         ? await updateTransactionCategory(formMode.category.id, values)
         : await createTransactionCategory(values);
 
-    if (R.isFailure(result)) {
+    if (Result.isFailure(result)) {
       toast.error("Failed to save category", { description: result.error.message });
       return;
     }
@@ -126,7 +126,7 @@ export function CategoryScreen() {
     setIsDeleting(true);
     const result = await deleteTransactionCategories([category.id], childrenStrategy);
 
-    if (R.isFailure(result)) {
+    if (Result.isFailure(result)) {
       toast.error("Failed to delete category", { description: result.error.message });
       setIsDeleteDialogOpen(false);
       setIsDeleting(false);

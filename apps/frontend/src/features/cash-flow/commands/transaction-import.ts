@@ -1,28 +1,20 @@
-import { R } from "@praha/byethrow";
+import { Result } from "@praha/byethrow";
 
-import type { CommandResult } from "@/commands/shared";
+import { CommandError, type CommandResult, toCommandError } from "@/commands/shared";
 
 export type TransactionImportFile = {
   path: string;
   content: string;
 };
 
-const toImportError = (error: unknown) => {
-  if (error instanceof Error) {
-    return error;
-  }
-
-  return new Error(String(error));
-};
-
 export const openTransactionImportFile = (): CommandResult<TransactionImportFile | null> => {
   if (typeof window === "undefined") {
     return Promise.resolve(
-      R.fail(new Error("Transaction import is only available in the desktop app")),
+      Result.fail(new CommandError("Transaction import is only available in the desktop app")),
     );
   }
 
-  return R.try({
+  return Result.try({
     try: async () => {
       const [{ open }, { readTextFile }] = await Promise.all([
         import("@tauri-apps/plugin-dialog"),
@@ -43,6 +35,6 @@ export const openTransactionImportFile = (): CommandResult<TransactionImportFile
         content: await readTextFile(selectedPath),
       };
     },
-    catch: toImportError,
+    catch: toCommandError,
   });
 };

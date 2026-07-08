@@ -1,17 +1,9 @@
-import { R } from "@praha/byethrow";
+import { Result } from "@praha/byethrow";
 
-import type { CommandResult } from "@/commands/shared";
+import { CommandError, type CommandResult, toCommandError } from "@/commands/shared";
 
 import { getCategoryExportFilename, toCategoryExportCsv } from "../lib/category-export";
 import type { TransactionCategory } from "../types/model";
-
-const toExportError = (error: unknown) => {
-  if (error instanceof Error) {
-    return error;
-  }
-
-  return new Error(String(error));
-};
 
 const appendPath = (directory: string, filename: string) => {
   if (directory.endsWith("/") || directory.endsWith("\\")) {
@@ -26,11 +18,11 @@ export const exportCategories = (
 ): CommandResult<string | null> => {
   if (typeof window === "undefined") {
     return Promise.resolve(
-      R.fail(new Error("Category export is only available in the desktop app")),
+      Result.fail(new CommandError("Category export is only available in the desktop app")),
     );
   }
 
-  return R.try({
+  return Result.try({
     try: async () => {
       const [{ save }, { writeTextFile }, { documentDir }] = await Promise.all([
         import("@tauri-apps/plugin-dialog"),
@@ -51,6 +43,6 @@ export const exportCategories = (
 
       return outputPath;
     },
-    catch: toExportError,
+    catch: toCommandError,
   });
 };

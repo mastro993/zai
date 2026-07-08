@@ -1,4 +1,4 @@
-import { R } from "@praha/byethrow";
+import { Result } from "@praha/byethrow";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -90,7 +90,7 @@ function TransactionImportDialog({
         return;
       }
 
-      if (R.isFailure(result)) {
+      if (Result.isFailure(result)) {
         toast.error("Failed to load existing transactions", {
           description: result.error.message,
         });
@@ -159,7 +159,7 @@ function TransactionImportDialog({
     const result = await openTransactionImportFile();
     setIsPickingFile(false);
 
-    if (R.isFailure(result)) {
+    if (Result.isFailure(result)) {
       toast.error("Failed to read CSV file", { description: result.error.message });
       return;
     }
@@ -215,7 +215,7 @@ function TransactionImportDialog({
     setIsImporting(true);
 
     const latestTransactionsResult = await getAllTransactions();
-    if (R.isFailure(latestTransactionsResult)) {
+    if (Result.isFailure(latestTransactionsResult)) {
       setIsImporting(false);
       toast.error("Failed to refresh duplicate check", {
         description: latestTransactionsResult.error.message,
@@ -253,7 +253,7 @@ function TransactionImportDialog({
     );
     setIsImporting(false);
 
-    if (R.isFailure(transactionsResult)) {
+    if (Result.isFailure(transactionsResult)) {
       toast.error("Failed to import transactions", {
         description: transactionsResult.error.message,
       });
