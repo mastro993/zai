@@ -135,6 +135,44 @@ describe("transaction import", () => {
     expect(preview.transactions).toHaveLength(0);
   });
 
+  it("uses day precision and normalized description for duplicate keys", () => {
+    const content = [
+      "date,amount,type,description",
+      "2026-01-15T08:30:00,12.50,expense, Groceries ",
+      "2026-01-15T20:45:00,12.50,expense,groceries",
+      "2026-04-02,-7.00,expense,",
+    ].join("\n");
+
+    const existingTransactions: Array<Transaction> = [
+      {
+        id: "existing-1",
+        description: "groceries",
+        amount: 1250,
+        transactionDate: "2026-01-15T00:00:00",
+        transactionType: "expense",
+        transactionCategoryId: null,
+        notes: null,
+      },
+      {
+        id: "existing-2",
+        description: null,
+        amount: 700,
+        transactionDate: "2026-04-02T14:00:00",
+        transactionType: "expense",
+        transactionCategoryId: null,
+        notes: null,
+      },
+    ];
+
+    const preview = buildPreview(content, {
+      dateFormat: "ISO",
+      existingTransactions,
+    });
+
+    expect(preview.summary.duplicateRows).toBe(3);
+    expect(preview.transactions).toHaveLength(0);
+  });
+
   it("creates missing categories when configured", () => {
     const content = ["date,amount,type,category", "2026-01-15,12.50,expense,Food - Groceries"].join(
       "\n",

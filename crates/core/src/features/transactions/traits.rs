@@ -6,6 +6,7 @@ use crate::{
     query::{PaginatedData, Sort},
 };
 use async_trait::async_trait;
+use chrono::NaiveDateTime;
 
 #[async_trait]
 pub trait TransactionsRepositoryTrait: Send + Sync {
@@ -25,6 +26,11 @@ pub trait TransactionsRepositoryTrait: Send + Sync {
     ) -> Result<Transaction>;
     async fn delete_transaction(&self, id: &str) -> Result<Transaction>;
     async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<Transaction>>;
+    fn find_transactions_in_date_range(
+        &self,
+        start_date: NaiveDateTime,
+        end_date: NaiveDateTime,
+    ) -> Result<Vec<Transaction>>;
 
     async fn import_transactions(
         &self,
