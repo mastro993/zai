@@ -1,6 +1,12 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["react", "typescript", "unicorn", "oxc"],
+  "jsPlugins": [
+    {
+      "name": "byethrow",
+      "specifier": "@praha/byethrow-oxlint"
+    }
+  ],
   "ignorePatterns": ["scripts/**", ".claude", ".agents"],
   "categories": {
     "correctness": "error",
@@ -46,7 +52,11 @@
     "@typescript-eslint/no-unnecessary-type-assertion": "warn",
     "@typescript-eslint/no-unsafe-declaration-merging": "error",
     "@typescript-eslint/prefer-nullish-coalescing": "warn",
-    "@typescript-eslint/ban-ts-comment": "warn"
+    "@typescript-eslint/ban-ts-comment": "warn",
+
+    // Byethrow
+    "byethrow/consistent-namespace": "error",
+    "byethrow/no-ambiguous-error-type": "error"
   },
   "env": {
     "builtin": true,
