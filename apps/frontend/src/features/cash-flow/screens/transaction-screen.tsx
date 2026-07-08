@@ -212,7 +212,7 @@ export function TransactionScreen() {
       categories,
       includeCategories,
     );
-  }, [debouncedQuery, page, perPage, dateSelection, categorySelection]);
+  }, [debouncedQuery, page, perPage, dateSelection, categorySelection, categories]);
 
   const openFormDrawer = (mode: TransactionFormMode) => {
     setFormMode(mode);

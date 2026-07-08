@@ -62,9 +62,9 @@ describe("transaction category filter", () => {
       childrenByParent.get("food") ?? [],
     );
 
-    expect(expandCategoryIdsForApi(selection.categoryIds, categories).sort()).toEqual(
-      ["food", "groceries", "restaurants"].sort(),
-    );
+    const expanded = expandCategoryIdsForApi(selection.categoryIds, categories);
+
+    expect(new Set(expanded)).toEqual(new Set(["food", "groceries", "restaurants"]));
   });
 
   it("breaks rollup when a child is toggled off", () => {
@@ -74,10 +74,15 @@ describe("transaction category filter", () => {
       childrenByParent.get("food") ?? [],
     );
 
-    const partial = toggleChildSelection(rolledUp, categories[1]!, childrenByParent);
+    const groceries = categories[1];
+    if (!groceries) {
+      throw new Error("expected groceries fixture");
+    }
+
+    const partial = toggleChildSelection(rolledUp, groceries, childrenByParent);
 
     expect(partial.categoryIds).toEqual(["restaurants"]);
-    expect(isChildIncludedByRollup(partial, categories[1]!)).toBe(false);
+    expect(isChildIncludedByRollup(partial, groceries)).toBe(false);
   });
 
   it("formats trigger labels", () => {

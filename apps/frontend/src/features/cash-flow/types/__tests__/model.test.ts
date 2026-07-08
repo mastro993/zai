@@ -96,7 +96,12 @@ describe("cash-flow model", () => {
       ],
     ] as const);
 
-    const name = getCategoryDisplayName(categoryById.get("child")!, categoryById);
+    const child = categoryById.get("child");
+    if (!child) {
+      throw new Error("expected child fixture");
+    }
+
+    const name = getCategoryDisplayName(child, categoryById);
 
     expect(name).toBe("Food / Groceries");
   });

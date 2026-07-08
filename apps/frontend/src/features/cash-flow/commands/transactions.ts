@@ -58,7 +58,7 @@ const IMPORT_DEDUP_PAGE_SIZE = 500;
 
 export const getAllTransactions = async (
   filters?: TransactionFilters,
-): Promise<CommandResult<Array<Transaction>>> => {
+): CommandResult<Array<Transaction>> => {
   const firstResult = await getTransactions(1, IMPORT_DEDUP_PAGE_SIZE, filters);
 
   if (R.isFailure(firstResult)) {
@@ -67,14 +67,20 @@ export const getAllTransactions = async (
 
   const allTransactions = [...firstResult.value.data];
 
-  for (let page = 2; page <= firstResult.value.totalPages; page += 1) {
-    const pageResult = await getTransactions(page, firstResult.value.perPage, filters);
+  if (firstResult.value.totalPages > 1) {
+    const pageResults = await Promise.all(
+      Array.from({ length: firstResult.value.totalPages - 1 }, (_, index) =>
+        getTransactions(index + 2, firstResult.value.perPage, filters),
+      ),
+    );
 
-    if (R.isFailure(pageResult)) {
-      return pageResult;
+    for (const pageResult of pageResults) {
+      if (R.isFailure(pageResult)) {
+        return pageResult;
+      }
+
+      allTransactions.push(...pageResult.value.data);
     }
-
-    allTransactions.push(...pageResult.value.data);
   }
 
   return R.succeed(allTransactions);

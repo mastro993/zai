@@ -17,6 +17,7 @@ import {
   isActiveSelection,
   type DateRangePresetId,
   type DateRangeSelection,
+  type RangeDraft,
 } from "../lib/date-range";
 
 type TransactionDateFilterProps = {
@@ -24,7 +25,7 @@ type TransactionDateFilterProps = {
   onSelectionChange: (selection: DateRangeSelection) => void;
 };
 
-const toDraftRange = (selection: DateRangeSelection): DateRange | undefined =>
+const toDraftRange = (selection: DateRangeSelection): RangeDraft | undefined =>
   selection.type === "custom"
     ? { from: parseISO(selection.from), to: parseISO(selection.to) }
     : undefined;
@@ -34,7 +35,7 @@ export function TransactionDateFilter({
   onSelectionChange,
 }: TransactionDateFilterProps) {
   const [open, setOpen] = useState(false);
-  const [draftRange, setDraftRange] = useState<DateRange | undefined>(undefined);
+  const [draftRange, setDraftRange] = useState<RangeDraft | undefined>(undefined);
 
   const active = isActiveSelection(selection);
 
@@ -107,7 +108,11 @@ export function TransactionDateFilter({
               numberOfMonths={2}
               autoFocus
               defaultMonth={draftRange?.from}
-              selected={draftRange}
+              selected={
+                draftRange?.from
+                  ? { from: draftRange.from, to: draftRange.to }
+                  : undefined
+              }
               onSelect={handleDaySelect}
             />
           </div>
