@@ -1,8 +1,6 @@
-import { useMemo } from "react";
-
 import { cn } from "@/lib/utils";
 
-import { toPastelColor } from "../lib/category-color";
+import { CATEGORY_DARK_COLORS, CATEGORY_LIGHT_COLORS } from "../types/model";
 
 function CategoryColorSwatch({
   color,
@@ -61,25 +59,21 @@ function CategoryColorRow({
 function CategoryColorPicker({
   value,
   onChange,
-  colors,
 }: {
   value: string;
   onChange: (color: string) => void;
-  colors: ReadonlyArray<string>;
 }) {
-  const pastelColors = useMemo(() => colors.map(toPastelColor), [colors]);
-
   return (
     <div className="flex flex-col gap-2">
       <CategoryColorRow
         label="Saturated category colors"
-        colors={colors}
+        colors={CATEGORY_DARK_COLORS}
         value={value}
         onChange={onChange}
       />
       <CategoryColorRow
-        label="Pastel category colors"
-        colors={pastelColors}
+        label="Light category colors"
+        colors={CATEGORY_LIGHT_COLORS}
         value={value}
         onChange={onChange}
       />

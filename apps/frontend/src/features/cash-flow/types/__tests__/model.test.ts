@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { getCategoryDisplayColor, getCategoryDisplayName } from "../../lib/category";
-import { toPastelColor } from "../../lib/category-color";
-import { CATEGORY_COLORS, DEFAULT_CATEGORY_COLOR, categoryFormSchema } from "../model";
+import {
+  CATEGORY_COLORS,
+  CATEGORY_LIGHT_COLORS,
+  DEFAULT_CATEGORY_COLOR,
+  categoryFormSchema,
+} from "../model";
 
 describe("cash-flow model", () => {
   it("exposes a single palette of unique, valid hex colors", () => {
@@ -17,18 +21,18 @@ describe("cash-flow model", () => {
     expect(DEFAULT_CATEGORY_COLOR).toBe(CATEGORY_COLORS[0]);
   });
 
-  it("accepts palette colors and their computed pastels", () => {
+  it("accepts dark and light palette colors", () => {
     const saturated = categoryFormSchema.safeParse({
       name: "Food",
       color: CATEGORY_COLORS[0],
     });
-    const pastel = categoryFormSchema.safeParse({
+    const light = categoryFormSchema.safeParse({
       name: "Food",
-      color: toPastelColor(CATEGORY_COLORS[0]),
+      color: CATEGORY_LIGHT_COLORS[0],
     });
 
     expect(saturated.success).toBe(true);
-    expect(pastel.success).toBe(true);
+    expect(light.success).toBe(true);
   });
   it("uses parent color as the child category display color", () => {
     const color = getCategoryDisplayColor({

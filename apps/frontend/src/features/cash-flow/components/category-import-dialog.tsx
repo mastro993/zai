@@ -1,18 +1,6 @@
 import { R } from "@praha/byethrow";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowLeft01Icon, ArrowRight01Icon, FileImportIcon } from "@hugeicons/core-free-icons";
-
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 import { openCategoryImportFile, type CategoryImportFile } from "../commands/category-import";
 import { importTransactionCategories } from "../commands/transaction-categories";
@@ -30,14 +18,15 @@ import {
 } from "./category-import-mapping-step";
 import { CategoryImportReviewStep } from "./category-import-review-step";
 import { CategoryImportSourceStep } from "./category-import-source-step";
-import { ImportStepper, type ImportStep } from "./import-stepper";
+import { ImportWizardDialog } from "./import-wizard-dialog";
+import type { ImportStep } from "./import-stepper";
 
-type CategoryImportDialogProps = {
+interface CategoryImportDialogProps {
   open: boolean;
   categories: Array<TransactionCategory>;
   onOpenChange: (open: boolean) => void;
   onImported: (createdCount: number, skippedRows: number) => Promise<void>;
-};
+}
 
 const EMPTY_MAPPING: CategoryImportColumnMapping = {
   name: null,
@@ -197,94 +186,62 @@ function CategoryImportDialog({
         : `${importableRows.toLocaleString()} ready · ${skippedRows.toLocaleString()} skipped`;
 
   return (
-    <Dialog open={open} onOpenChange={isImporting ? undefined : onOpenChange}>
-      <DialogContent className="grid max-h-[calc(100vh-2rem)] grid-rows-[auto_auto_minmax(0,1fr)_auto] sm:max-w-3xl md:max-w-4xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <HugeiconsIcon
-              icon={FileImportIcon}
-              className="size-4 text-muted-foreground"
-              strokeWidth={1.8}
+    <ImportWizardDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      isBusy={isImporting}
+      title="Import categories"
+      description="Bring in categories from a CSV file in three quick steps."
+      step={step}
+      onStepSelect={goToStep}
+      onBack={goBack}
+      onNext={goNext}
+      onCancel={() => onOpenChange(false)}
+      onConfirm={confirmImport}
+      canAdvance={canAdvance}
+      isImporting={isImporting}
+      footerHint={footerHint}
+      confirmLabel={`Import ${(preview?.categories.length ?? 0).toLocaleString()} categories`}
+      confirmDisabled={!preview || preview.categories.length === 0}
+      renderStep={(currentStep) => {
+        if (currentStep === 0) {
+          return (
+            <CategoryImportSourceStep
+              file={file}
+              rowCount={rowCount}
+              isPickingFile={isPickingFile}
+              onSelectFile={selectFile}
             />
-            Import categories
-          </DialogTitle>
-          <DialogDescription>
-            Bring in categories from a CSV file in three quick steps.
-          </DialogDescription>
-        </DialogHeader>
+          );
+        }
 
-        <ImportStepper current={step} onStepSelect={goToStep} />
+        if (currentStep === 1 && file) {
+          return (
+            <CategoryImportMappingStep
+              headers={headers}
+              mapping={mapping}
+              config={config}
+              mappingReady={mappingReady}
+              onMappingChange={updateMapping}
+              onConfigChange={updateConfig}
+              onHeaderRowChange={changeHeaderRow}
+            />
+          );
+        }
 
-        <div className="min-h-0 overflow-y-auto pr-1">
-          <div key={step} className="animate-in fade-in-0 duration-150 motion-reduce:animate-none">
-            {step === 0 ? (
-              <CategoryImportSourceStep
-                file={file}
-                rowCount={rowCount}
-                isPickingFile={isPickingFile}
-                onSelectFile={selectFile}
-              />
-            ) : null}
+        if (currentStep === 2 && preview) {
+          return (
+            <CategoryImportReviewStep
+              preview={preview}
+              previewFilter={previewFilter}
+              onPreviewFilterChange={setPreviewFilter}
+            />
+          );
+        }
 
-            {step === 1 && file ? (
-              <CategoryImportMappingStep
-                headers={headers}
-                mapping={mapping}
-                config={config}
-                mappingReady={mappingReady}
-                onMappingChange={updateMapping}
-                onConfigChange={updateConfig}
-                onHeaderRowChange={changeHeaderRow}
-              />
-            ) : null}
-
-            {step === 2 && preview ? (
-              <CategoryImportReviewStep
-                preview={preview}
-                previewFilter={previewFilter}
-                onPreviewFilterChange={setPreviewFilter}
-              />
-            ) : null}
-          </div>
-        </div>
-
-        <DialogFooter className="items-center gap-3 sm:justify-between">
-          <p className="text-xs text-muted-foreground">{footerHint}</p>
-          <div className="flex items-center gap-2">
-            {step > 0 ? (
-              <Button type="button" variant="ghost" onClick={goBack} disabled={isImporting}>
-                <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" strokeWidth={1.8} />
-                Back
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isImporting}
-            >
-              Cancel
-            </Button>
-            {step < 2 ? (
-              <Button type="button" onClick={goNext} disabled={!canAdvance}>
-                Next
-                <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" strokeWidth={1.8} />
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={confirmImport}
-                disabled={!preview || preview.categories.length === 0 || isImporting}
-              >
-                {isImporting
-                  ? "Importing…"
-                  : `Import ${(preview?.categories.length ?? 0).toLocaleString()} categories`}
-              </Button>
-            )}
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        return null;
+      }}
+    />
   );
 }
 

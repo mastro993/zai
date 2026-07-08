@@ -2,6 +2,19 @@ use crate::Error;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
+const ALLOWED_TYPES: &[&str] = &["expense", "income"];
+
+fn validate_transaction_type(value: &str) -> Result<(), Error> {
+    let trimmed = value.trim();
+    if ALLOWED_TYPES.contains(&trimmed) {
+        Ok(())
+    } else {
+        Err(Error::InvalidData(format!(
+            "Invalid transaction type: {trimmed}"
+        )))
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionSearchFilters<'a> {
@@ -41,12 +54,7 @@ pub struct NewTransaction {
 
 impl NewTransaction {
     pub fn validate(&self) -> Result<(), Error> {
-        if self.transaction_type.trim().is_empty() {
-            return Err(Error::InvalidData(
-                "Transaction type cannot be empty".to_string(),
-            ));
-        }
-        Ok(())
+        validate_transaction_type(&self.transaction_type)
     }
 }
 
@@ -69,12 +77,7 @@ impl TransactionUpdate {
                 "Transaction id is required for updates".to_string(),
             ));
         }
-        if self.transaction_type.trim().is_empty() {
-            return Err(Error::InvalidData(
-                "Transaction type cannot be empty".to_string(),
-            ));
-        }
-        Ok(())
+        validate_transaction_type(&self.transaction_type)
     }
 }
 
@@ -83,4 +86,86 @@ impl TransactionUpdate {
 pub struct TransactionsSearchResponse {
     pub data: Vec<Transaction>,
     pub total_row_count: i64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_date() -> NaiveDateTime {
+        NaiveDateTime::parse_from_str("2026-07-08T12:00:00", "%Y-%m-%dT%H:%M:%S")
+            .expect("sample date")
+    }
+
+    #[tokio::test]
+    async fn test_new_transaction_validation_accepts_allowed_types() {
+        for transaction_type in ["expense", "income"] {
+            let transaction = NewTransaction {
+                id: None,
+                description: Some("Lunch".to_string()),
+                amount: 1200,
+                transaction_date: sample_date(),
+                transaction_type: transaction_type.to_string(),
+                transaction_category_id: None,
+                notes: None,
+            };
+
+            transaction.validate().expect("validate");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_new_transaction_validation_rejects_invalid_types() {
+        for transaction_type in ["", "transfer", "EXPENSE"] {
+            let transaction = NewTransaction {
+                id: None,
+                description: Some("Lunch".to_string()),
+                amount: 1200,
+                transaction_date: sample_date(),
+                transaction_type: transaction_type.to_string(),
+                transaction_category_id: None,
+                notes: None,
+            };
+
+            let result = transaction.validate();
+
+            assert!(result.is_err());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_transaction_update_validation_accepts_allowed_types() {
+        for transaction_type in ["expense", "income"] {
+            let transaction = TransactionUpdate {
+                id: "txn-1".to_string(),
+                description: Some("Salary".to_string()),
+                amount: 5000,
+                transaction_date: sample_date(),
+                transaction_type: transaction_type.to_string(),
+                transaction_category_id: None,
+                notes: None,
+            };
+
+            transaction.validate().expect("validate");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_transaction_update_validation_rejects_invalid_types() {
+        for transaction_type in ["", "transfer", "EXPENSE"] {
+            let transaction = TransactionUpdate {
+                id: "txn-1".to_string(),
+                description: Some("Salary".to_string()),
+                amount: 5000,
+                transaction_date: sample_date(),
+                transaction_type: transaction_type.to_string(),
+                transaction_category_id: None,
+                notes: None,
+            };
+
+            let result = transaction.validate();
+
+            assert!(result.is_err());
+        }
+    }
 }

@@ -25,7 +25,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { getCategoryDisplayColor, isCategoryColor } from "../lib/category";
 import type { CategoryFormMode } from "../types/category-types";
 import {
-  CATEGORY_COLORS,
   DEFAULT_CATEGORY_COLOR,
   categoryFormSchema,
   type CategoryFormValues,
@@ -283,7 +282,6 @@ function CategoryFormDrawer({
                 render={({ field }) => (
                   <CategoryColorPicker
                     value={(field.value as string | undefined) ?? DEFAULT_CATEGORY_COLOR}
-                    colors={CATEGORY_COLORS}
                     onChange={(color) =>
                       field.onChange(color, {
                         shouldDirty: true,
