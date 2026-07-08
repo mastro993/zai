@@ -7,6 +7,7 @@ use crate::transaction_categories::models::TransactionCategoryRow;
 use crate::write_actor::WriteHandle;
 use async_trait::async_trait;
 use chrono::Local;
+use diesel::expression_methods::EscapeExpressionMethods;
 use diesel::prelude::*;
 use diesel::r2d2::{self, Pool};
 use diesel::sqlite::SqliteConnection;
@@ -20,6 +21,15 @@ use zai_core::features::transactions::models::{
 };
 use zai_core::features::transactions::traits::TransactionsRepositoryTrait;
 use zai_core::query::{PaginatedData, Sort};
+
+const LIKE_ESCAPE: char = '\\';
+
+fn escape_like(input: &str) -> String {
+    input
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
+}
 
 pub struct TransactionsRepository {
     pool: Arc<DbPool>,
@@ -51,13 +61,13 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
             .into_boxed();
 
         if let Some(ref filters) = filters {
-            if let Some(ref query_filter) = filters.query {
-                let query_pattern = format!("%{}%", query_filter);
-                let notes_query_pattern = query_pattern.clone();
+            if let Some(query_filter) = filters.query {
+                let query_pattern = format!("%{}%", escape_like(query_filter));
                 query = query.filter(
                     transactions::description
-                        .like(query_pattern)
-                        .or(transactions::notes.like(notes_query_pattern)),
+                        .like(query_pattern.clone())
+                        .escape(LIKE_ESCAPE)
+                        .or(transactions::notes.like(query_pattern).escape(LIKE_ESCAPE)),
                 );
             }
             if let Some(ref categories_filter) = filters.categories {
@@ -452,5 +462,76 @@ mod tests {
             .get_result::<i64>(conn)
             .expect("count categories");
         assert_eq!(persisted_categories, 0);
+    }
+
+    fn sample_transaction(description: &str) -> NewTransaction {
+        NewTransaction {
+            id: Some(Uuid::new_v4().to_string()),
+            description: Some(description.to_string()),
+            amount: 1000,
+            transaction_date: chrono::Utc::now().naive_utc(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn search_query_treats_percent_as_literal() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        repo.create_transaction(sample_transaction("50% off sale"))
+            .await
+            .expect("create percent transaction");
+        repo.create_transaction(sample_transaction("Regular lunch"))
+            .await
+            .expect("create plain transaction");
+
+        let filters = TransactionSearchFilters {
+            query: Some("%"),
+            categories: None,
+            transaction_type: None,
+            start_date: None,
+            end_date: None,
+        };
+
+        let result = repo
+            .get_transactions(1, 10, Some(filters), None)
+            .expect("search transactions");
+
+        assert_eq!(result.data.len(), 1);
+        assert_eq!(result.data[0].description.as_deref(), Some("50% off sale"));
+    }
+
+    #[tokio::test]
+    async fn search_query_treats_underscore_as_literal() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        repo.create_transaction(sample_transaction("foo_bar purchase"))
+            .await
+            .expect("create underscore transaction");
+        repo.create_transaction(sample_transaction("foobar purchase"))
+            .await
+            .expect("create plain transaction");
+
+        let filters = TransactionSearchFilters {
+            query: Some("_"),
+            categories: None,
+            transaction_type: None,
+            start_date: None,
+            end_date: None,
+        };
+
+        let result = repo
+            .get_transactions(1, 10, Some(filters), None)
+            .expect("search transactions");
+
+        assert_eq!(result.data.len(), 1);
+        assert_eq!(
+            result.data[0].description.as_deref(),
+            Some("foo_bar purchase")
+        );
     }
 }
