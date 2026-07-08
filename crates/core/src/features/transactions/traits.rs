@@ -1,5 +1,6 @@
 use crate::{
     errors::Result,
+    features::transaction_categories::models::{NewTransactionCategory, TransactionCategory},
     features::transactions::models::{
         NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
     },
@@ -36,6 +37,12 @@ pub trait TransactionsRepositoryTrait: Send + Sync {
         &self,
         transactions: Vec<NewTransaction>,
     ) -> Result<Vec<Transaction>>;
+
+    async fn import_transactions_with_categories(
+        &self,
+        categories: Vec<NewTransactionCategory>,
+        transactions: Vec<NewTransaction>,
+    ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)>;
 }
 
 #[async_trait]
@@ -58,4 +65,10 @@ pub trait TransactionsServiceTrait: Send + Sync {
         &self,
         transactions: Vec<NewTransaction>,
     ) -> Result<Vec<Transaction>>;
+
+    async fn import_transactions_with_categories(
+        &self,
+        categories: Vec<NewTransactionCategory>,
+        transactions: Vec<NewTransaction>,
+    ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)>;
 }

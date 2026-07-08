@@ -2,6 +2,7 @@ import { R } from "@praha/byethrow";
 
 import { type CommandResult, invokeCommand } from "@/commands/shared";
 
+import type { CategoryImportPayload } from "../lib/category-import";
 import { toBackendDateTime } from "../lib/transaction";
 import type { PaginatedTransactions, Transaction, TransactionFormValues } from "../types/model";
 
@@ -114,6 +115,16 @@ export const importTransactions = (
   transactions: Array<TransactionPayload & { id?: string }>,
 ): CommandResult<Array<Transaction>> => {
   return invokeCommand<Array<Transaction>>("import_transactions", {
+    transactions,
+  });
+};
+
+export const importTransactionBatch = (
+  categories: Array<CategoryImportPayload>,
+  transactions: Array<TransactionPayload & { id?: string }>,
+): CommandResult<Array<Transaction>> => {
+  return invokeCommand<Array<Transaction>>("import_transaction_batch", {
+    categories,
     transactions,
   });
 };

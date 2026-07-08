@@ -5,6 +5,7 @@ use chrono::NaiveDateTime;
 use log::debug;
 use serde::Deserialize;
 use tauri::State;
+use zai_core::features::transaction_categories::models::NewTransactionCategory;
 use zai_core::features::transactions::models::{
     NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
 };
@@ -129,4 +130,23 @@ pub async fn import_transactions(
         .import_transactions(transactions)
         .await
         .map_err(|e| format!("Failed to import transactions: {}", e))
+}
+
+#[tauri::command]
+pub async fn import_transaction_batch(
+    categories: Vec<NewTransactionCategory>,
+    transactions: Vec<NewTransaction>,
+    state: State<'_, Arc<ServiceContext>>,
+) -> Result<Vec<Transaction>, String> {
+    debug!(
+        "Importing transaction batch with {} categories and {} transactions ...",
+        categories.len(),
+        transactions.len()
+    );
+    state
+        .transactions_service()
+        .import_transactions_with_categories(categories, transactions)
+        .await
+        .map(|(_, imported_transactions)| imported_transactions)
+        .map_err(|e| format!("Failed to import transaction batch: {}", e))
 }

@@ -1,4 +1,7 @@
 use crate::errors::Result;
+use crate::features::transaction_categories::models::{
+    NewTransactionCategory, TransactionCategory,
+};
 use crate::features::transactions::dedup::duplicate_key;
 use crate::features::transactions::models::{
     NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
@@ -73,41 +76,34 @@ impl TransactionsServiceTrait for TransactionsService {
             ensure_transaction_id(transaction);
         }
 
-        let (start_date, end_date) = import_date_range(&transactions);
-        let existing_transactions = self
-            .repository
-            .find_transactions_in_date_range(start_date, end_date)?;
-
-        let mut existing_keys = existing_transactions
-            .iter()
-            .map(|transaction| {
-                duplicate_key(
-                    transaction.transaction_date,
-                    transaction.amount,
-                    transaction.description.as_deref(),
-                )
-            })
-            .collect::<std::collections::HashSet<String>>();
-
-        let mut filtered_transactions = Vec::with_capacity(transactions.len());
-        for transaction in transactions {
-            let dedup_key = duplicate_key(
-                transaction.transaction_date,
-                transaction.amount,
-                transaction.description.as_deref(),
-            );
-
-            if !existing_keys.contains(&dedup_key) {
-                existing_keys.insert(dedup_key);
-                filtered_transactions.push(transaction);
-            }
-        }
+        let filtered_transactions = filter_duplicate_transactions(&self.repository, transactions)?;
 
         if filtered_transactions.is_empty() {
             return Ok(Vec::new());
         }
 
         self.repository.import_transactions(filtered_transactions).await
+    }
+
+    async fn import_transactions_with_categories(
+        &self,
+        categories: Vec<NewTransactionCategory>,
+        mut transactions: Vec<NewTransaction>,
+    ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)> {
+        for transaction in &mut transactions {
+            transaction.validate()?;
+            ensure_transaction_id(transaction);
+        }
+
+        let filtered_transactions = filter_duplicate_transactions(&self.repository, transactions)?;
+
+        if filtered_transactions.is_empty() {
+            return Ok((Vec::new(), Vec::new()));
+        }
+
+        self.repository
+            .import_transactions_with_categories(categories, filtered_transactions)
+            .await
     }
 }
 
@@ -119,6 +115,45 @@ fn ensure_transaction_id(transaction: &mut NewTransaction) {
     {
         transaction.id = Some(Uuid::new_v4().to_string());
     }
+}
+
+fn filter_duplicate_transactions(
+    repository: &Arc<dyn TransactionsRepositoryTrait>,
+    transactions: Vec<NewTransaction>,
+) -> Result<Vec<NewTransaction>> {
+    if transactions.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let (start_date, end_date) = import_date_range(&transactions);
+    let existing_transactions = repository.find_transactions_in_date_range(start_date, end_date)?;
+
+    let mut existing_keys = existing_transactions
+        .iter()
+        .map(|transaction| {
+            duplicate_key(
+                transaction.transaction_date,
+                transaction.amount,
+                transaction.description.as_deref(),
+            )
+        })
+        .collect::<std::collections::HashSet<String>>();
+
+    let mut filtered_transactions = Vec::with_capacity(transactions.len());
+    for transaction in transactions {
+        let dedup_key = duplicate_key(
+            transaction.transaction_date,
+            transaction.amount,
+            transaction.description.as_deref(),
+        );
+
+        if !existing_keys.contains(&dedup_key) {
+            existing_keys.insert(dedup_key);
+            filtered_transactions.push(transaction);
+        }
+    }
+
+    Ok(filtered_transactions)
 }
 
 fn import_date_range(transactions: &[NewTransaction]) -> (NaiveDateTime, NaiveDateTime) {
@@ -230,6 +265,15 @@ mod tests {
                 .collect::<Vec<_>>();
             existing.extend(imported.clone());
             Ok(imported)
+        }
+
+        async fn import_transactions_with_categories(
+            &self,
+            _categories: Vec<NewTransactionCategory>,
+            transactions: Vec<NewTransaction>,
+        ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)> {
+            let imported = self.import_transactions(transactions).await?;
+            Ok((Vec::new(), imported))
         }
     }
 
