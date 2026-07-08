@@ -336,6 +336,22 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
             .await
     }
 
+    fn find_transactions_in_date_range(
+        &self,
+        start_date: chrono::NaiveDateTime,
+        end_date: chrono::NaiveDateTime,
+    ) -> Result<Vec<Transaction>> {
+        let conn = &mut get_connection(&self.pool)?;
+        let rows = transactions::table
+            .filter(transactions::deleted_at.is_null())
+            .filter(transactions::transaction_date.ge(start_date))
+            .filter(transactions::transaction_date.le(end_date))
+            .load::<TransactionRow>(conn)
+            .into_core()?;
+
+        Ok(rows.into_iter().map(Transaction::from).collect())
+    }
+
     async fn import_transactions(
         &self,
         new_transactions: Vec<NewTransaction>,

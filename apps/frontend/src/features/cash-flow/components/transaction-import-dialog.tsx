@@ -219,15 +219,48 @@ function TransactionImportDialog({
   };
 
   const confirmImport = async () => {
-    if (!preview || preview.transactions.length === 0) {
+    if (!preview || !file || preview.transactions.length === 0) {
       return;
     }
 
     setIsImporting(true);
 
+    const latestTransactionsResult = await getAllTransactions();
+    if (R.isFailure(latestTransactionsResult)) {
+      setIsImporting(false);
+      toast.error("Failed to refresh duplicate check", {
+        description: latestTransactionsResult.error.message,
+      });
+      return;
+    }
+
+    const refreshedPreview = buildTransactionImportPreview(file.content, {
+      headerRowIndex: config.headerRowIndex,
+      mapping,
+      amountMode: config.amountMode,
+      dateFormat: config.dateFormat,
+      categoryLinkMode: config.categoryLinkMode,
+      categorySeparator: config.categorySeparator,
+      missingCategoryMode: config.missingCategoryMode,
+      expenseTypeValues: config.expenseTypeValues,
+      incomeTypeValues: config.incomeTypeValues,
+      existingCategories: categories,
+      existingTransactions: latestTransactionsResult.value,
+    });
+
+    setExistingTransactions(latestTransactionsResult.value);
+
+    if (refreshedPreview.transactions.length === 0) {
+      setIsImporting(false);
+      toast.info("No new transactions to import", {
+        description: "All rows are duplicates or invalid after refresh.",
+      });
+      return;
+    }
+
     const transactionsResult = await importTransactionBatch(
-      preview.categories,
-      preview.transactions,
+      refreshedPreview.categories,
+      refreshedPreview.transactions,
     );
     setIsImporting(false);
 
@@ -239,9 +272,14 @@ function TransactionImportDialog({
     }
 
     onOpenChange(false);
+    const serverSkippedRows =
+      refreshedPreview.transactions.length - transactionsResult.value.length;
     await onImported(
       transactionsResult.value.length,
-      preview.summary.duplicateRows + preview.summary.invalidRows + preview.summary.emptyRows,
+      refreshedPreview.summary.invalidRows +
+        refreshedPreview.summary.emptyRows +
+        refreshedPreview.summary.duplicateRows +
+        serverSkippedRows,
     );
   };
 
