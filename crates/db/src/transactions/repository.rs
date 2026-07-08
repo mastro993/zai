@@ -504,6 +504,46 @@ mod tests {
         assert_eq!(result.data[0].description.as_deref(), Some("50% off sale"));
     }
 
+    #[derive(Debug, diesel::QueryableByName)]
+    #[allow(dead_code)]
+    struct ExplainQueryPlanRow {
+        #[diesel(sql_type = diesel::sql_types::Integer)]
+        id: i32,
+        #[diesel(sql_type = diesel::sql_types::Integer)]
+        parent: i32,
+        #[diesel(sql_type = diesel::sql_types::Integer)]
+        notused: i32,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        detail: String,
+    }
+
+    #[tokio::test]
+    async fn active_transactions_by_date_uses_partial_index() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        repo.create_transaction(sample_transaction("Indexed lunch"))
+            .await
+            .expect("create transaction");
+
+        let conn = &mut get_connection(&repo.pool).expect("connection");
+        let plan = diesel::sql_query(
+            "EXPLAIN QUERY PLAN \
+             SELECT * FROM transactions \
+             WHERE deleted_at IS NULL \
+             ORDER BY transaction_date DESC, created_at ASC \
+             LIMIT 10",
+        )
+        .load::<ExplainQueryPlanRow>(conn)
+        .expect("explain query plan");
+
+        assert!(
+            plan.iter()
+                .any(|row| row.detail.contains("transactions_active_date_index")),
+            "expected transactions_active_date_index in query plan: {plan:?}"
+        );
+    }
+
     #[tokio::test]
     async fn search_query_treats_underscore_as_literal() {
         let temp_db = TempDb::new();

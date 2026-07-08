@@ -1,0 +1,3 @@
+DROP INDEX transactions_active_category_date_index;
+
+DROP INDEX transactions_active_date_index;
