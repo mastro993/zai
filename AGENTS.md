@@ -25,13 +25,12 @@ apps/frontend/src/
 ├── components/           # Shared components
 │   └── ui/               # Shadcn components (do not touch)
 ├── features/             # Self-contained feature modules
-├── commands/             # Backend call wrappers (Tauri/Web)
+│   └── <feature>/
+│       ├── types/        # Zod schemas and inferred types
+│       └── commands/     # Feature-specific command wrappers
+├── commands/             # Shared invokeCommand plumbing
 ├── lib/                  # Primitives and utilities
-├── adapters/             # Runtime detection (desktop vs web)
 └── types/                # Shared types
-
-apps/server/src/
-└── api/                  # Axum HTTP handlers
 
 apps/tauri/src/
 └── commands/             # Tauri IPC commands
@@ -41,32 +40,35 @@ crates/
 └── db/                   # Diesel ORM, repositories, migrations
 ```
 
+See `apps/frontend/AGENTS.md` for frontend-specific conventions.
+
 ## Agent Playbook
 
 ### Adding a feature with backend data
 
 1. **Frontend route/UI** → `apps/frontend/src/routes/`
-2. **Command wrapper** → `apps/frontend/src/commands/<domain>.ts` (follow
-   `RUN_ENV` pattern)
+2. **Command wrapper** → `apps/frontend/src/commands/` or
+   `features/<feature>/commands/`
 3. **Tauri command** → `apps/tauri/src/commands/*.rs`, wire in `mod.rs` +
    `lib.rs`
-4. **Web endpoint** → `apps/server/src/api/`, call `crates/core` service
-5. **Core logic** → `crates/core/` services/repos
+4. **Core logic** → `crates/core/` services/repos
+5. **DB** → `crates/db/` repositories, migrations in `crates/db/migrations`
 6. **Tests** → Vitest for TS, `#[test]` for Rust
+
+Web server (`apps/server/`, `RUN_ENV` branching) is deferred—not in the repo
+today.
 
 ### UI patterns
 
 - Components: `shadcn` and `@base-ui/react`
 - Forms: `react-hook-form` + `zod` schemas from
-  `apps/frontend/src/lib/schemas.ts`
+  `apps/frontend/src/features/<feature>/types/`
 - Theme: tokens in `apps/frontend/src/styles.css`
 
 ### Architecture pattern
 
 ```json
-Frontend → Adapter (tauri) → Command wrapper
-                ↓
-            Tauri IPC
+Frontend command wrapper → invokeCommand → Tauri IPC
                 ↓
             crates/core (business logic)
                 ↓
@@ -89,8 +91,8 @@ Frontend → Adapter (tauri) → Command wrapper
 
 - Idiomatic Rust, small focused functions
 - `Result`/`Option`, propagate with `?`, `thiserror` for domain errors
-- Keep Tauri/Axum commands thin—delegate to `crates/core`
-- Migrations in `crates/storage-sqlite/migrations`
+- Keep Tauri commands thin—delegate to `crates/core`
+- Migrations in `crates/db/migrations`
 
 ### Security
 
