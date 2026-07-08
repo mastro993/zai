@@ -1,5 +1,5 @@
 import { Result } from "@praha/byethrow";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -26,15 +26,19 @@ import type {
 const getChildren = (categories: Array<TransactionCategory>, parentId: string) =>
   categories.filter((category) => category.parentId === parentId);
 
-export function CategoryScreen() {
-  const [categories, setCategories] = useState<Array<TransactionCategory>>([]);
+type CategoryScreenProps = {
+  initialCategories: Array<TransactionCategory>;
+};
+
+export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
+  const [categories, setCategories] = useState(initialCategories);
   const [formMode, setFormMode] = useState<CategoryFormMode | null>(null);
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<TransactionCategory | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -63,10 +67,6 @@ export function CategoryScreen() {
     setIsLoading(false);
     return true;
   };
-
-  useEffect(() => {
-    void loadCategories();
-  }, []);
 
   const openFormDrawer = (mode: CategoryFormMode) => {
     setFormMode(mode);

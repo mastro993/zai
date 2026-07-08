@@ -23,7 +23,7 @@ import { TransactionFormDrawer } from "../components/transaction-form-drawer";
 import { TransactionImportDialog } from "../components/transaction-import-dialog";
 import { TransactionPagination } from "../components/transaction-pagination";
 import { TransactionTable } from "../components/transaction-table";
-import { DEFAULT_TRANSACTION_ROWS_PER_PAGE, type TransactionRowsPerPage } from "../lib/pagination";
+import { type TransactionRowsPerPage } from "../lib/pagination";
 import {
   DEFAULT_DATE_SELECTION,
   isActiveSelection,
@@ -36,8 +36,22 @@ import {
   isActiveCategoryFilter,
   type CategoryFilterSelection,
 } from "../lib/transaction-category-filter";
-import type { Transaction, TransactionCategory, TransactionFormValues } from "../types/model";
+import type {
+  PaginatedTransactions,
+  Transaction,
+  TransactionCategory,
+  TransactionFormValues,
+} from "../types/model";
 import type { TransactionFormMode } from "../types/transaction-types";
+
+type TransactionScreenInitialData = {
+  transactions: PaginatedTransactions;
+  categories: Array<TransactionCategory>;
+};
+
+type TransactionScreenProps = {
+  initialData: TransactionScreenInitialData;
+};
 
 const buildTransactionFilters = (
   searchQuery: string,
@@ -70,12 +84,14 @@ const buildTransactionFilters = (
   return Object.keys(filters).length > 0 ? filters : undefined;
 };
 
-export function TransactionScreen() {
-  const [transactions, setTransactions] = useState<Array<Transaction>>([]);
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState<TransactionRowsPerPage>(DEFAULT_TRANSACTION_ROWS_PER_PAGE);
-  const [totalPages, setTotalPages] = useState(1);
-  const [categories, setCategories] = useState<Array<TransactionCategory>>([]);
+export function TransactionScreen({ initialData }: TransactionScreenProps) {
+  const [transactions, setTransactions] = useState(initialData.transactions.data);
+  const [page, setPage] = useState(initialData.transactions.page);
+  const [perPage, setPerPage] = useState<TransactionRowsPerPage>(
+    initialData.transactions.perPage as TransactionRowsPerPage,
+  );
+  const [totalPages, setTotalPages] = useState(Math.max(initialData.transactions.totalPages, 1));
+  const [categories, setCategories] = useState(initialData.categories);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [dateSelection, setDateSelection] = useState<DateRangeSelection>(DEFAULT_DATE_SELECTION);
@@ -88,10 +104,10 @@ export function TransactionScreen() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const hasLoadedCategories = useRef(false);
+  const hasSkippedInitialFetch = useRef(false);
 
   const categoryById = useMemo(
     () => new Map(categories.map((category) => [category.id, category] as const)),
@@ -194,18 +210,13 @@ export function TransactionScreen() {
   }, [query]);
 
   useEffect(() => {
-    const includeCategories = !hasLoadedCategories.current;
-    hasLoadedCategories.current = true;
-    void loadData(
-      debouncedQuery,
-      page,
-      perPage,
-      dateSelection,
-      categorySelection,
-      categories,
-      includeCategories,
-    );
-  }, [debouncedQuery, page, perPage, dateSelection, categorySelection, categories]);
+    if (!hasSkippedInitialFetch.current) {
+      hasSkippedInitialFetch.current = true;
+      return;
+    }
+
+    void loadData(debouncedQuery, page, perPage, dateSelection, categorySelection, categories);
+  }, [debouncedQuery, page, perPage, dateSelection, categorySelection]);
 
   const openFormDrawer = (mode: TransactionFormMode) => {
     setFormMode(mode);
