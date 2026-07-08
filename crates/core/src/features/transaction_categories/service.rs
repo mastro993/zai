@@ -188,7 +188,11 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
             } else if let Some(imported_root_id) = imported_root_keys.get(&root_key) {
                 imported_root_id.clone()
             } else {
-                let imported_root_id = Uuid::new_v4().to_string();
+                let imported_root_id = root_category
+                    .id
+                    .clone()
+                    .filter(|id| is_valid_uuid(id))
+                    .unwrap_or_else(|| Uuid::new_v4().to_string());
                 imported_root_keys.insert(root_key, imported_root_id.clone());
 
                 let mut owned_root = root_category.clone();
@@ -240,7 +244,13 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
             imported_child_paths.insert(child_path);
 
             let mut owned_child = child;
-            owned_child.id = Some(Uuid::new_v4().to_string());
+            owned_child.id = Some(
+                owned_child
+                    .id
+                    .clone()
+                    .filter(|id| is_valid_uuid(id))
+                    .unwrap_or_else(|| Uuid::new_v4().to_string()),
+            );
             owned_child.parent_id = Some(resolved_parent_id);
             owned_child.color = None;
             categories_to_import.push(owned_child);
@@ -261,6 +271,10 @@ fn is_root_category(category: &NewTransactionCategory) -> bool {
 
 fn category_name_key(name: &str) -> String {
     normalize_category_name(name).to_lowercase()
+}
+
+fn is_valid_uuid(value: &str) -> bool {
+    Uuid::parse_str(value).is_ok()
 }
 
 #[cfg(test)]
@@ -558,6 +572,46 @@ mod tests {
 
         assert_eq!(root_count, 1);
         assert_eq!(child_count, 1);
+    }
+
+    #[tokio::test]
+    async fn import_categories_honors_client_supplied_ids() {
+        let service = TransactionCategoriesService::new(Arc::new(FakeRepository::default()));
+        let client_root_id = "11111111-1111-1111-1111-111111111111";
+        let client_child_id = "22222222-2222-2222-2222-222222222222";
+
+        let imported = service
+            .import_categories(vec![
+                NewTransactionCategory {
+                    id: Some(client_root_id.to_string()),
+                    name: "Food".to_string(),
+                    parent_id: None,
+                    description: None,
+                    color: Some("#C92A2A".to_string()),
+                },
+                NewTransactionCategory {
+                    id: Some(client_child_id.to_string()),
+                    name: "Groceries".to_string(),
+                    parent_id: Some(client_root_id.to_string()),
+                    description: None,
+                    color: None,
+                },
+            ])
+            .await
+            .unwrap();
+
+        let imported_root = imported
+            .iter()
+            .find(|category| category.parent_id.is_none())
+            .unwrap();
+        let imported_child = imported
+            .iter()
+            .find(|category| category.parent_id.as_deref() == Some(client_root_id))
+            .unwrap();
+
+        assert_eq!(imported_root.id, client_root_id);
+        assert_eq!(imported_child.id, client_child_id);
+        assert_eq!(imported_child.parent_id.as_deref(), Some(client_root_id));
     }
 
     #[tokio::test]
