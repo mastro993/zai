@@ -7,10 +7,7 @@ import {
   IMPORT_PREVIEW_ROW_FILTER_OPTIONS,
   type ImportPreviewRowFilter,
 } from "../lib/import-preview-filter";
-import type {
-  CategoryImportPreview,
-  CategoryImportPreviewStatus,
-} from "../lib/category-import";
+import type { CategoryImportPreview, CategoryImportPreviewStatus } from "../lib/category-import";
 
 const STATUS_META: Record<CategoryImportPreviewStatus, { label: string; dot: string }> = {
   import: { label: "Ready", dot: "bg-primary" },
@@ -24,7 +21,11 @@ function StatStrip({ summary }: { summary: CategoryImportPreview["summary"] }) {
     { label: "Ready", value: summary.importableRows, tone: "text-primary" },
     { label: "To create", value: summary.categoriesToCreate, tone: "text-foreground" },
     { label: "Auto parents", value: summary.autoCreatedParents, tone: "text-foreground" },
-    { label: "Skipped", value: summary.duplicateRows + summary.invalidRows + summary.emptyRows, tone: "text-foreground" },
+    {
+      label: "Skipped",
+      value: summary.duplicateRows + summary.invalidRows + summary.emptyRows,
+      tone: "text-foreground",
+    },
   ];
 
   return (

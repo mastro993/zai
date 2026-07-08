@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  filterImportPreviewRows,
-  getImportPreviewEmptyMessage,
-} from "../import-preview-filter";
+import { filterImportPreviewRows, getImportPreviewEmptyMessage } from "../import-preview-filter";
 
 describe("import preview filter", () => {
   const rows = [

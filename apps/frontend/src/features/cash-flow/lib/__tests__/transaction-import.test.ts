@@ -60,9 +60,11 @@ describe("transaction import", () => {
   });
 
   it("infers type from signed amounts", () => {
-    const content = ["date,amount,description", "2026-01-15,-12.50,Groceries", "2026-01-16,8,income"].join(
-      "\n",
-    );
+    const content = [
+      "date,amount,description",
+      "2026-01-15,-12.50,Groceries",
+      "2026-01-16,8,income",
+    ].join("\n");
     const headers = parseTransactionCsv(content)[0] ?? [];
 
     const preview = buildPreview(content, {
@@ -112,7 +114,9 @@ describe("transaction import", () => {
   });
 
   it("skips duplicate transactions by date, amount, and description", () => {
-    const content = ["date,amount,type,description", "2026-01-15,12.50,expense,Groceries"].join("\n");
+    const content = ["date,amount,type,description", "2026-01-15,12.50,expense,Groceries"].join(
+      "\n",
+    );
     const existingTransactions: Array<Transaction> = [
       {
         id: "existing",
@@ -132,10 +136,9 @@ describe("transaction import", () => {
   });
 
   it("creates missing categories when configured", () => {
-    const content = [
-      "date,amount,type,category",
-      "2026-01-15,12.50,expense,Food - Groceries",
-    ].join("\n");
+    const content = ["date,amount,type,category", "2026-01-15,12.50,expense,Food - Groceries"].join(
+      "\n",
+    );
     const headers = parseTransactionCsv(content)[0] ?? [];
 
     const preview = buildPreview(content, {
@@ -204,7 +207,7 @@ describe("transaction import", () => {
     });
 
     expect(preview.transactions[0]?.transactionCategoryId).toBe("health-root");
-    expect(preview.rows[0]?.message).toContain("Child category \"Other\" not found");
+    expect(preview.rows[0]?.message).toContain('Child category "Other" not found');
   });
 });
 

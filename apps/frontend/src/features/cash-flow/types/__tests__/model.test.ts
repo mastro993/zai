@@ -2,11 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { getCategoryDisplayColor, getCategoryDisplayName } from "../../lib/category";
 import { toPastelColor } from "../../lib/category-color";
-import {
-  CATEGORY_COLORS,
-  DEFAULT_CATEGORY_COLOR,
-  categoryFormSchema,
-} from "../model";
+import { CATEGORY_COLORS, DEFAULT_CATEGORY_COLOR, categoryFormSchema } from "../model";
 
 describe("cash-flow model", () => {
   it("exposes a single palette of unique, valid hex colors", () => {
@@ -96,7 +92,12 @@ describe("cash-flow model", () => {
       ],
     ] as const);
 
-    const name = getCategoryDisplayName(categoryById.get("child")!, categoryById);
+    const child = categoryById.get("child");
+    if (!child) {
+      throw new Error("expected child fixture");
+    }
+
+    const name = getCategoryDisplayName(child, categoryById);
 
     expect(name).toBe("Food / Groceries");
   });

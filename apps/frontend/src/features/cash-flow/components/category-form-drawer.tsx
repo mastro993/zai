@@ -10,13 +10,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -74,8 +68,7 @@ const getFormCopy = (mode: CategoryFormMode) => {
   if (mode.type === "edit") {
     return {
       title: "Edit category",
-      description:
-        "Update the name, parent, or color. Names must stay unique at the same level.",
+      description: "Update the name, parent, or color. Names must stay unique at the same level.",
     };
   }
 
@@ -111,20 +104,13 @@ function CategoryFormPreview({
 
   return (
     <div className="border bg-muted/40 px-3 py-2.5">
-      <p className="mb-2 text-xs font-medium text-muted-foreground">
-        List preview
-      </p>
+      <p className="mb-2 text-xs font-medium text-muted-foreground">List preview</p>
       <div className="flex min-w-0 flex-col gap-1">
-        <CategoryBadge
-          color={displayColor}
-          className={isPlaceholderName ? "italic" : undefined}
-        >
+        <CategoryBadge color={displayColor} className={isPlaceholderName ? "italic" : undefined}>
           {parentName ? `${parentName} / ${previewName}` : previewName}
         </CategoryBadge>
         {previewDescription ? (
-          <span className="truncate text-xs text-muted-foreground">
-            {previewDescription}
-          </span>
+          <span className="truncate text-xs text-muted-foreground">{previewDescription}</span>
         ) : null}
       </div>
     </div>
@@ -140,26 +126,17 @@ function CategoryFormDrawer({
   categories: Array<TransactionCategory>;
   onSubmit: (values: CategoryFormValues) => Promise<void>;
 }) {
-  const categoryById = new Map(
-    categories.map((category) => [category.id, category] as const),
-  );
+  const categoryById = new Map(categories.map((category) => [category.id, category] as const));
   const categoriesWithChildren = new Set(
     categories
-      .filter((category) =>
-        categories.some((child) => child.parentId === category.id),
-      )
+      .filter((category) => categories.some((child) => child.parentId === category.id))
       .map((category) => category.id),
   );
-  const canChooseParent =
-    mode.type !== "edit" || !categoriesWithChildren.has(mode.category.id);
+  const canChooseParent = mode.type !== "edit" || !categoriesWithChildren.has(mode.category.id);
   const isCreateChild = mode.type === "create-child";
-  const lockedParent = isCreateChild
-    ? categoryById.get(mode.parentId)
-    : undefined;
+  const lockedParent = isCreateChild ? categoryById.get(mode.parentId) : undefined;
   const rootOptions = categories.filter(
-    (category) =>
-      !category.parentId &&
-      (mode.type !== "edit" || category.id !== mode.category.id),
+    (category) => !category.parentId && (mode.type !== "edit" || category.id !== mode.category.id),
   );
   const parentItems = [
     { label: "None", value: null },
@@ -173,8 +150,7 @@ function CategoryFormDrawer({
     defaultValues: getFormDefaults(mode),
   });
   const watchedName = useWatch({ control: form.control, name: "name" }) ?? "";
-  const watchedDescription =
-    useWatch({ control: form.control, name: "description" }) ?? "";
+  const watchedDescription = useWatch({ control: form.control, name: "description" }) ?? "";
   const parentId = useWatch({ control: form.control, name: "parentId" });
   const selectedColor =
     useWatch({
@@ -232,9 +208,7 @@ function CategoryFormDrawer({
                   {lockedParent.name}
                 </CategoryBadge>
               </div>
-              <FieldDescription>
-                Subcategories stay under this parent.
-              </FieldDescription>
+              <FieldDescription>Subcategories stay under this parent.</FieldDescription>
               <input type="hidden" {...form.register("parentId")} />
             </Field>
           ) : canChooseParent ? (
@@ -268,19 +242,13 @@ function CategoryFormDrawer({
                       }
                     }}
                   >
-                    <SelectTrigger
-                      className="w-full"
-                      aria-label="Parent category"
-                    >
+                    <SelectTrigger className="w-full" aria-label="Parent category">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent alignItemWithTrigger={false}>
                       <SelectGroup>
                         {parentItems.map((item) => (
-                          <SelectItem
-                            key={item.value ?? "none"}
-                            value={item.value}
-                          >
+                          <SelectItem key={item.value ?? "none"} value={item.value}>
                             {item.label}
                           </SelectItem>
                         ))}
@@ -290,8 +258,7 @@ function CategoryFormDrawer({
                 )}
               />
               <FieldDescription>
-                Leave as none for a root category, or nest one level under an
-                existing root.
+                Leave as none for a root category, or nest one level under an existing root.
               </FieldDescription>
             </Field>
           ) : null}
@@ -315,10 +282,7 @@ function CategoryFormDrawer({
                 name="color"
                 render={({ field }) => (
                   <CategoryColorPicker
-                    value={
-                      (field.value as string | undefined) ??
-                      DEFAULT_CATEGORY_COLOR
-                    }
+                    value={(field.value as string | undefined) ?? DEFAULT_CATEGORY_COLOR}
                     colors={CATEGORY_COLORS}
                     onChange={(color) =>
                       field.onChange(color, {
@@ -345,11 +309,7 @@ function CategoryFormDrawer({
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Saving..." : "Save category"}
           </Button>
-          <DrawerClose
-            render={
-              <Button type="button" variant="outline" disabled={isSubmitting} />
-            }
-          >
+          <DrawerClose render={<Button type="button" variant="outline" disabled={isSubmitting} />}>
             Cancel
           </DrawerClose>
         </DrawerFooter>

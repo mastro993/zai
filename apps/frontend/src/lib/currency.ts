@@ -24,9 +24,6 @@ const getCurrencyFormatter = (currency: string) => {
  *
  * Example: formatCurrencyFromMinor(1234, "EUR") => "€12.34" (locale-dependent)
  */
-export const formatCurrencyFromMinor = (
-  minorUnits: number,
-  currency: string,
-) => {
+export const formatCurrencyFromMinor = (minorUnits: number, currency: string) => {
   return getCurrencyFormatter(currency).format(minorUnits / 100);
 };

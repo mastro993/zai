@@ -61,10 +61,7 @@ const buildTransactionFilters = (
   if (categorySelection.includeUncategorized) {
     filters.categories = [];
   } else {
-    const expandedCategories = expandCategoryIdsForApi(
-      categorySelection.categoryIds,
-      categories,
-    );
+    const expandedCategories = expandCategoryIdsForApi(categorySelection.categoryIds, categories);
     if (expandedCategories.length > 0) {
       filters.categories = expandedCategories;
     }
@@ -165,11 +162,7 @@ export function TransactionScreen() {
           if (R.isFailure(refetchResult)) {
             setErrorMessage(refetchResult.error.message);
           } else {
-            const {
-              data,
-              page: loadedPage,
-              totalPages: loadedTotalPages,
-            } = refetchResult.value;
+            const { data, page: loadedPage, totalPages: loadedTotalPages } = refetchResult.value;
 
             if (data.length === 0 && loadedPage > 1) {
               setPage(loadedPage - 1);
@@ -212,7 +205,7 @@ export function TransactionScreen() {
       categories,
       includeCategories,
     );
-  }, [debouncedQuery, page, perPage, dateSelection, categorySelection]);
+  }, [debouncedQuery, page, perPage, dateSelection, categorySelection, categories]);
 
   const openFormDrawer = (mode: TransactionFormMode) => {
     setFormMode(mode);
@@ -236,14 +229,7 @@ export function TransactionScreen() {
     }
 
     setIsFormDrawerOpen(false);
-    await loadData(
-      debouncedQuery,
-      page,
-      perPage,
-      dateSelection,
-      categorySelection,
-      categories,
-    );
+    await loadData(debouncedQuery, page, perPage, dateSelection, categorySelection, categories);
   };
 
   const exportTransactionCsv = async () => {
@@ -286,14 +272,7 @@ export function TransactionScreen() {
     }
 
     setIsDeleteDialogOpen(false);
-    await loadData(
-      debouncedQuery,
-      page,
-      perPage,
-      dateSelection,
-      categorySelection,
-      categories,
-    );
+    await loadData(debouncedQuery, page, perPage, dateSelection, categorySelection, categories);
     setIsDeleting(false);
   };
 

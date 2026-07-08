@@ -9,10 +9,7 @@ import {
 } from "@/components/ui/table";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 
-import {
-  getCategoryDisplayColor,
-  getCategoryDisplayName,
-} from "../lib/category";
+import { getCategoryDisplayColor, getCategoryDisplayName } from "../lib/category";
 import { toDateTimeInputValue } from "../lib/transaction";
 import type { Transaction, TransactionCategory } from "../types/model";
 import type { TransactionFormMode } from "../types/transaction-types";
@@ -33,15 +30,9 @@ function TransactionTable({
     <Table className="border text-sm">
       <TableHeader className="bg-muted/40 text-left">
         <TableRow>
-          <TableHead className="w-px whitespace-nowrap p-3 font-medium">
-            Date
-          </TableHead>
-          <TableHead className="w-px whitespace-nowrap p-3 font-medium">
-            Type
-          </TableHead>
-          <TableHead className="w-px whitespace-nowrap p-3 font-medium">
-            Category
-          </TableHead>
+          <TableHead className="w-px whitespace-nowrap p-3 font-medium">Date</TableHead>
+          <TableHead className="w-px whitespace-nowrap p-3 font-medium">Type</TableHead>
+          <TableHead className="w-px whitespace-nowrap p-3 font-medium">Category</TableHead>
           <TableHead className="w-px whitespace-nowrap p-3 text-right font-medium">
             Amount
           </TableHead>
@@ -91,11 +82,7 @@ function TransactionTable({
                   >
                     Edit
                   </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => onDelete(transaction)}
-                  >
+                  <Button variant="destructive" size="sm" onClick={() => onDelete(transaction)}>
                     Delete
                   </Button>
                 </div>

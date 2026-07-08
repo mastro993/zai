@@ -7,9 +7,7 @@ const normalizeLocalizedAmount = (value: string): string | null => {
 
   if (lastComma !== -1 && lastDot !== -1) {
     normalized =
-      lastComma > lastDot
-        ? value.replace(/\./g, "").replace(",", ".")
-        : value.replace(/,/g, "");
+      lastComma > lastDot ? value.replace(/\./g, "").replace(",", ".") : value.replace(/,/g, "");
   } else if (lastComma !== -1) {
     const commaCount = (value.match(/,/g) ?? []).length;
     const fractionalPart = value.slice(lastComma + 1);
@@ -22,8 +20,7 @@ const normalizeLocalizedAmount = (value: string): string | null => {
     const dotCount = (value.match(/\./g) ?? []).length;
     const fractionalPart = value.slice(lastDot + 1);
 
-    normalized =
-      dotCount === 1 && fractionalPart.length <= 2 ? value : value.replace(/\./g, "");
+    normalized = dotCount === 1 && fractionalPart.length <= 2 ? value : value.replace(/\./g, "");
   } else {
     normalized = value;
   }

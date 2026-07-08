@@ -44,7 +44,9 @@ pub async fn get_transactions(
     state: State<'_, Arc<ServiceContext>>,
 ) -> Result<PaginatedData<Transaction>, String> {
     debug!("Getting transactions ...");
-    let filters = filters.as_ref().map(TransactionSearchFiltersDto::as_filters);
+    let filters = filters
+        .as_ref()
+        .map(TransactionSearchFiltersDto::as_filters);
     state
         .transactions_service()
         .get_transactions(page, per_page, filters, sort)
