@@ -272,7 +272,8 @@ function TransactionImportDialog({
     }
 
     onOpenChange(false);
-    const serverSkippedRows = refreshedPreview.transactions.length - transactionsResult.value.length;
+    const serverSkippedRows =
+      refreshedPreview.transactions.length - transactionsResult.value.length;
     await onImported(
       transactionsResult.value.length,
       refreshedPreview.summary.invalidRows +
