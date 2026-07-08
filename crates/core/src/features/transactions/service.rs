@@ -1,4 +1,7 @@
 use crate::errors::Result;
+use crate::features::transaction_categories::models::{
+    NewTransactionCategory, TransactionCategory,
+};
 use crate::features::transactions::models::{
     NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
 };
@@ -67,6 +70,20 @@ impl TransactionsServiceTrait for TransactionsService {
             ensure_transaction_id(transaction);
         }
         self.repository.import_transactions(transactions).await
+    }
+
+    async fn import_transactions_with_categories(
+        &self,
+        categories: Vec<NewTransactionCategory>,
+        mut transactions: Vec<NewTransaction>,
+    ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)> {
+        for transaction in &mut transactions {
+            transaction.validate()?;
+            ensure_transaction_id(transaction);
+        }
+        self.repository
+            .import_transactions_with_categories(categories, transactions)
+            .await
     }
 }
 

@@ -18,8 +18,7 @@ import {
   openTransactionImportFile,
   type TransactionImportFile,
 } from "../commands/transaction-import";
-import { importTransactionCategories } from "../commands/transaction-categories";
-import { getAllTransactions, importTransactions } from "../commands/transactions";
+import { getAllTransactions, importTransactionBatch } from "../commands/transactions";
 import type { ImportPreviewRowFilter } from "../lib/import-preview-filter";
 import {
   buildTransactionImportPreview,
@@ -226,17 +225,10 @@ function TransactionImportDialog({
 
     setIsImporting(true);
 
-    if (preview.categories.length > 0) {
-      const categoriesResult = await importTransactionCategories(preview.categories);
-
-      if (R.isFailure(categoriesResult)) {
-        setIsImporting(false);
-        toast.error("Failed to create categories", { description: categoriesResult.error.message });
-        return;
-      }
-    }
-
-    const transactionsResult = await importTransactions(preview.transactions);
+    const transactionsResult = await importTransactionBatch(
+      preview.categories,
+      preview.transactions,
+    );
     setIsImporting(false);
 
     if (R.isFailure(transactionsResult)) {
