@@ -12,7 +12,7 @@
     "build": "pnpm generate-routes && pnpm -w tsc -b --noEmit && vite build",
     "preview": "vite preview",
     "tsc:check": "pnpm -w tsc -b --noEmit",
-    "lint": "oxlint",
+    "lint": "oxlint $(git ls-files 'src/**/*.ts' 'src/**/*.tsx')",
     "format": "oxfmt src",
     "format:check": "oxfmt src --check",
     "test": "vitest run"
