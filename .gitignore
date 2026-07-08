@@ -45,7 +45,3 @@ target
 
 # PNPM
 .pnpm-store
-
-
-# Agents
-plans/**
