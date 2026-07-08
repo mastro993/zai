@@ -64,12 +64,6 @@ export const getContrastRatio = (foreground: string, background: string): number
   return fg && bg ? fg.contrast(bg) : 0;
 };
 
-// Soft, high-lightness variant of a category color for the picker's pastel row.
-export const toPastelColor = (base: string): string => {
-  const color = parse(base);
-  return color ? color.lightness(85).desaturate(0.25).hex() : base;
-};
-
 export interface CategoryBadgeColors {
   background: string;
   foreground: string;

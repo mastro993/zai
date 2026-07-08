@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { CATEGORY_COLORS } from "../../types/model";
-import {
-  getCategoryBadgeColors,
-  getCategoryForeground,
-  getContrastRatio,
-  toPastelColor,
-} from "../category-color";
+import { CATEGORY_COLORS, CATEGORY_DARK_COLORS, CATEGORY_LIGHT_COLORS } from "../../types/model";
+import { getCategoryBadgeColors, getCategoryForeground, getContrastRatio } from "../category-color";
 
 describe("category badge foreground", () => {
   it("clears WCAG AA (4.5:1) for every palette color", () => {
@@ -16,8 +11,8 @@ describe("category badge foreground", () => {
     }
   });
 
-  it("gives computed pastels a dark foreground", () => {
-    for (const background of CATEGORY_COLORS.map(toPastelColor)) {
+  it("gives light palette colors a dark foreground", () => {
+    for (const background of CATEGORY_LIGHT_COLORS) {
       const foreground = getCategoryForeground(background);
       expect(getContrastRatio(foreground, "#FFFFFF")).toBeGreaterThan(
         getContrastRatio(foreground, "#000000"),
@@ -26,7 +21,7 @@ describe("category badge foreground", () => {
   });
 
   it("gives deep saturated colors a light foreground", () => {
-    for (const background of ["#C92A2A", "#007A91", "#345FD2", "#7B4CC2", "#B43C7A"]) {
+    for (const background of CATEGORY_DARK_COLORS) {
       const foreground = getCategoryForeground(background);
       expect(getContrastRatio(foreground, "#000000")).toBeGreaterThan(
         getContrastRatio(foreground, "#FFFFFF"),
@@ -42,15 +37,15 @@ describe("category badge foreground", () => {
 });
 
 describe("category badge colors", () => {
-  it("clears WCAG AA (4.5:1) for palette colors and their pastels", () => {
-    for (const color of [...CATEGORY_COLORS, ...CATEGORY_COLORS.map(toPastelColor)]) {
+  it("clears WCAG AA (4.5:1) for dark and light palette colors", () => {
+    for (const color of CATEGORY_COLORS) {
       const { background, foreground } = getCategoryBadgeColors(color);
       expect(getContrastRatio(foreground, background)).toBeGreaterThanOrEqual(4.5);
     }
   });
 
   it("darkens deep colors so the foreground is light", () => {
-    for (const color of ["#E53935", "#1E88E5", "#5E35B1"]) {
+    for (const color of ["#B10202", "#0953A8", "#5A3286"]) {
       const { background, foreground } = getCategoryBadgeColors(color);
       expect(getContrastRatio(foreground, "#000000")).toBeGreaterThan(
         getContrastRatio(foreground, "#FFFFFF"),
@@ -62,8 +57,8 @@ describe("category badge colors", () => {
     }
   });
 
-  it("keeps light pastels on a dark foreground", () => {
-    for (const color of CATEGORY_COLORS.map(toPastelColor)) {
+  it("keeps light palette colors on a dark foreground", () => {
+    for (const color of CATEGORY_LIGHT_COLORS) {
       const { background, foreground } = getCategoryBadgeColors(color);
       expect(background).toBe(color);
       expect(getContrastRatio(foreground, "#FFFFFF")).toBeGreaterThan(
