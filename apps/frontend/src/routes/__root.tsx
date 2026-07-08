@@ -1,11 +1,4 @@
-import {
-  HeadContent,
-  Link,
-  Outlet,
-  Scripts,
-  createRootRoute,
-  useRouterState,
-} from "@tanstack/react-router";
+import { Link, Outlet, createRootRoute, useRouterState } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import {
@@ -38,8 +31,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 
-import appCss from "../styles.css?url";
-
 const navigationItems = [
   { title: "Dashboard", to: "/dashboard", icon: DashboardSquare01Icon },
   { title: "Net Worth", to: "/net-worth", icon: Wallet01Icon },
@@ -57,16 +48,7 @@ const navigationItems = [
 const settingsItem = { title: "Settings", to: "/settings", icon: Settings01Icon } as const;
 
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Zai" },
-    ],
-    links: [{ rel: "stylesheet", href: appCss }],
-  }),
   component: AppLayout,
-  shellComponent: RootDocument,
 });
 
 function AppLayout() {
@@ -76,6 +58,16 @@ function AppLayout() {
       <SidebarInset>
         <Outlet />
       </SidebarInset>
+      <Toaster position="bottom-right" />
+      <TanStackDevtools
+        config={{ position: "bottom-right" }}
+        plugins={[
+          {
+            name: "Tanstack Router",
+            render: <TanStackRouterDevtoolsPanel />,
+          },
+        ]}
+      />
     </SidebarProvider>
   );
 }
@@ -165,29 +157,5 @@ function AppSidebar() {
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  );
-}
-
-function RootDocument({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body className="font-sans antialiased">
-        {children}
-        <Toaster position="bottom-right" />
-        <TanStackDevtools
-          config={{ position: "bottom-right" }}
-          plugins={[
-            {
-              name: "Tanstack Router",
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
-        <Scripts />
-      </body>
-    </html>
   );
 }

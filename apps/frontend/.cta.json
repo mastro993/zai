@@ -10,7 +10,7 @@
   "addOnOptions": {},
   "includeExamples": false,
   "envVarValues": {},
-  "routerOnly": false,
+  "routerOnly": true,
   "version": 1,
   "framework": "react",
   "chosenAddOns": []

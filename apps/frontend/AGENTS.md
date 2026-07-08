@@ -5,13 +5,10 @@
 | Layer           | Choice                                                    |
 | --------------- | --------------------------------------------------------- |
 | Framework       | React 19                                                  |
-| Routing         | TanStack Router (file-based, `src/routes/`)               |
-| App shell       | TanStack Start (default CLI blank starter)                |
+| Routing         | TanStack Router (file-based, `src/routes/`, SPA)          |
 | Styling         | Tailwind CSS v4 + existing shadcn tokens                  |
 | Toolchain       | Vite 8, `@tanstack/router-cli`, `@tanstack/devtools-vite` |
 | Package manager | pnpm                                                      |
-
-The CLI `--tailwind` flag is deprecated; Tailwind is always enabled in TanStack Start scaffolds.
 
 ## Frontend scripts
 
@@ -28,8 +25,10 @@ apps/frontend/
 ├── src/
 │   ├── routes/           # File-based routes (__root.tsx, index.tsx, …)
 │   ├── routeTree.gen.ts  # Generated — run generate-routes after route changes
+│   ├── main.tsx          # SPA entry (RouterProvider)
 │   ├── router.tsx        # Router factory + type registration
 │   └── styles.css        # Tailwind + shadcn design tokens
+├── index.html
 ├── tsr.config.json
 ├── vite.config.ts
 └── .cta.json             # TanStack CLI project metadata
@@ -59,13 +58,12 @@ src/features/<feature>/
 ## Known gotchas
 
 1. **Route tree**: After adding/removing route files, run `pnpm --filter frontend generate-routes`.
-2. **Tauri production build**: TanStack Start emits `dist/client` + `dist/server` (SSR). Tauri `frontendDist` expects static assets at `dist/`. Production Tauri builds need a follow-up (static client export or adapter) — dev via `devUrl` works today.
-3. **Intent skills**: TanStack Router/Start skills appear in `intent list` only after their packages are installed in `apps/frontend`.
+2. **Tauri production build**: Vite emits static assets to workspace `dist/`. Tauri `frontendDist` points at `../../dist`.
+3. **Intent skills**: TanStack Router skills appear in `intent list` only after their packages are installed in `apps/frontend`.
 4. **Devtools**: `@tanstack/devtools-vite` strips devtools from production builds automatically.
 
 ## Next steps
 
-- [ ] Resolve Tauri `frontendDist` vs TanStack Start SSR output for release builds
 - [ ] Add route layouts as features grow (`src/routes/_authenticated/`, etc.)
 - [ ] Wire `commands/` and Tauri IPC behind route loaders
 
