@@ -1,6 +1,10 @@
 use chrono::NaiveDateTime;
 
-pub fn duplicate_key(transaction_date: NaiveDateTime, amount: i32, description: Option<&str>) -> String {
+pub fn duplicate_key(
+    transaction_date: NaiveDateTime,
+    amount: i32,
+    description: Option<&str>,
+) -> String {
     let normalized_description = description.unwrap_or_default().trim().to_lowercase();
     format!(
         "{}\u{0000}{}\u{0000}{}",
@@ -34,6 +38,9 @@ mod tests {
         let date = NaiveDateTime::parse_from_str("2026-04-02T00:00:00", "%Y-%m-%dT%H:%M:%S")
             .expect("valid datetime");
 
-        assert_eq!(duplicate_key(date, 700, None), "2026-04-02\u{0000}700\u{0000}");
+        assert_eq!(
+            duplicate_key(date, 700, None),
+            "2026-04-02\u{0000}700\u{0000}"
+        );
     }
 }

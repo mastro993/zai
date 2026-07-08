@@ -82,7 +82,9 @@ impl TransactionsServiceTrait for TransactionsService {
             return Ok(Vec::new());
         }
 
-        self.repository.import_transactions(filtered_transactions).await
+        self.repository
+            .import_transactions(filtered_transactions)
+            .await
     }
 
     async fn import_transactions_with_categories(
@@ -169,14 +171,8 @@ fn import_date_range(transactions: &[NewTransaction]) -> (NaiveDateTime, NaiveDa
         }
     }
 
-    let day_start = min_date
-        .date()
-        .and_hms_opt(0, 0, 0)
-        .unwrap_or(min_date);
-    let day_end = max_date
-        .date()
-        .and_hms_opt(23, 59, 59)
-        .unwrap_or(max_date);
+    let day_start = min_date.date().and_hms_opt(0, 0, 0).unwrap_or(min_date);
+    let day_end = max_date.date().and_hms_opt(23, 59, 59).unwrap_or(max_date);
 
     (day_start, day_end)
 }
@@ -218,7 +214,10 @@ mod tests {
             Err(Error::InvalidData("unused in test".to_string()))
         }
 
-        async fn create_transaction(&self, _new_transaction: NewTransaction) -> Result<Transaction> {
+        async fn create_transaction(
+            &self,
+            _new_transaction: NewTransaction,
+        ) -> Result<Transaction> {
             Err(Error::InvalidData("unused in test".to_string()))
         }
 
@@ -249,7 +248,10 @@ mod tests {
             &self,
             transactions: Vec<NewTransaction>,
         ) -> Result<Vec<Transaction>> {
-            self.imported_batches.lock().unwrap().push(transactions.clone());
+            self.imported_batches
+                .lock()
+                .unwrap()
+                .push(transactions.clone());
             let mut existing = self.existing_in_range.lock().unwrap();
             let imported = transactions
                 .into_iter()
