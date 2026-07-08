@@ -39,21 +39,20 @@ impl<T> Paginated<T> {
         }
     }
 
-    pub fn load_and_count_pages<'a, U>(self, conn: &mut DbConnection) -> QueryResult<(Vec<U>, i64)>
+    pub fn load_page<'a, U>(self, conn: &mut DbConnection) -> QueryResult<Vec<U>>
     where
-        Self: LoadQuery<'a, DbConnection, (U, i64)>,
+        Self: LoadQuery<'a, DbConnection, U>,
     {
-        let per_page = self.per_page;
-        let results = self.load::<(U, i64)>(conn)?;
-        let total = results.first().map(|x| x.1).unwrap_or(0);
-        let records = results.into_iter().map(|x| x.0).collect();
-        let total_pages = (total as f64 / per_page as f64).ceil() as i64;
-        Ok((records, total_pages))
+        self.load(conn)
     }
 }
 
+pub fn total_pages(total: i64, per_page: i64) -> i64 {
+    (total as f64 / per_page as f64).ceil() as i64
+}
+
 impl<T: Query> Query for Paginated<T> {
-    type SqlType = (T::SqlType, BigInt);
+    type SqlType = T::SqlType;
 }
 
 impl<T> RunQueryDsl<DbConnection> for Paginated<T> {}
@@ -63,12 +62,42 @@ where
     T: QueryFragment<Sqlite>,
 {
     fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Sqlite>) -> QueryResult<()> {
-        out.push_sql("SELECT *, COUNT(*) OVER () FROM (");
+        out.push_sql("SELECT * FROM (");
         self.query.walk_ast(out.reborrow())?;
         out.push_sql(") t LIMIT ");
         out.push_bind_param::<BigInt, _>(&self.per_page)?;
         out.push_sql(" OFFSET ");
         out.push_bind_param::<BigInt, _>(&self.offset)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema::transactions;
+    use diesel::QueryDsl;
+
+    #[test]
+    fn paginated_query_does_not_use_window_count() {
+        let query = transactions::table
+            .filter(transactions::deleted_at.is_null())
+            .select(transactions::all_columns)
+            .paginate(2)
+            .per_page(10);
+
+        let sql = diesel::debug_query::<Sqlite, _>(&query).to_string();
+        assert!(
+            !sql.contains("COUNT(*) OVER ()"),
+            "paginated query must not use window count: {sql}"
+        );
+    }
+
+    #[test]
+    fn total_pages_rounds_up() {
+        assert_eq!(total_pages(0, 10), 0);
+        assert_eq!(total_pages(1, 10), 1);
+        assert_eq!(total_pages(10, 10), 1);
+        assert_eq!(total_pages(11, 10), 2);
     }
 }

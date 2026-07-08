@@ -1,8 +1,8 @@
 use super::models::TransactionRow;
 use crate::connection::{DbPool, get_connection};
 use crate::errors::{IntoCore, IntoStorage};
-use crate::pagination::Paginate;
-use crate::schema::{transaction_categories, transactions};
+use crate::pagination::{Paginate, total_pages};
+use crate::schema::{self, transaction_categories, transactions};
 use crate::transaction_categories::models::TransactionCategoryRow;
 use crate::write_actor::WriteHandle;
 use async_trait::async_trait;
@@ -31,6 +31,124 @@ fn escape_like(input: &str) -> String {
         .replace('_', "\\_")
 }
 
+type TransactionBoxedQuery = diesel::helper_types::IntoBoxed<
+    'static,
+    diesel::helper_types::Filter<
+        schema::transactions::table,
+        diesel::dsl::IsNull<schema::transactions::columns::deleted_at>,
+    >,
+    diesel::sqlite::Sqlite,
+>;
+
+fn transactions_base_query() -> TransactionBoxedQuery {
+    transactions::table
+        .filter(transactions::deleted_at.is_null())
+        .into_boxed()
+}
+
+fn apply_transaction_filters(
+    mut query: TransactionBoxedQuery,
+    filters: Option<&TransactionSearchFilters>,
+) -> TransactionBoxedQuery {
+    if let Some(filters) = filters {
+        if let Some(query_filter) = &filters.query {
+            let query_pattern = format!("%{}%", escape_like(query_filter));
+            query = query.filter(
+                transactions::description
+                    .like(query_pattern.clone())
+                    .escape(LIKE_ESCAPE)
+                    .or(transactions::notes.like(query_pattern).escape(LIKE_ESCAPE)),
+            );
+        }
+        if let Some(categories_filter) = &filters.categories {
+            if categories_filter.is_empty() {
+                query = query.filter(transactions::transaction_category_id.is_null());
+            } else {
+                let category_ids = categories_filter
+                    .iter()
+                    .map(|category_id| (*category_id).to_string())
+                    .collect::<Vec<_>>();
+                query = query.filter(transactions::transaction_category_id.eq_any(category_ids));
+            }
+        }
+        if let Some(type_filter) = filters.transaction_type {
+            query = query.filter(transactions::transaction_type.eq(type_filter.to_string()));
+        }
+        if let Some(start_date_filter) = filters.start_date {
+            query = query.filter(transactions::transaction_date.ge(start_date_filter));
+        }
+        if let Some(end_date_filter) = filters.end_date {
+            query = query.filter(transactions::transaction_date.le(end_date_filter));
+        }
+    }
+    query
+}
+
+fn apply_transaction_sort(
+    mut query: TransactionBoxedQuery,
+    sort: Option<&Sort>,
+) -> TransactionBoxedQuery {
+    if let Some(sort) = sort {
+        match sort.field.as_str() {
+            "description" => {
+                if sort.desc {
+                    query = query.order((transactions::description.desc(),));
+                } else {
+                    query = query.order((transactions::description.asc(),));
+                }
+            }
+            "type" => {
+                if sort.desc {
+                    query = query.order((transactions::transaction_type.desc(),));
+                } else {
+                    query = query.order((transactions::transaction_type.asc(),));
+                }
+            }
+            "amount" => {
+                if sort.desc {
+                    query = query.order((transactions::amount.desc(),));
+                } else {
+                    query = query.order((transactions::amount.asc(),));
+                }
+            }
+            "date" => {
+                if sort.desc {
+                    query = query.order((
+                        transactions::transaction_date.desc(),
+                        transactions::created_at.asc(),
+                    ));
+                } else {
+                    query = query.order((
+                        transactions::transaction_date.asc(),
+                        transactions::created_at.asc(),
+                    ));
+                }
+            }
+            _ => {
+                query = query.order((
+                    transactions::transaction_date.desc(),
+                    transactions::created_at.asc(),
+                ))
+            }
+        }
+    } else {
+        query = query.order((
+            transactions::transaction_date.desc(),
+            transactions::created_at.asc(),
+        ));
+    }
+    query
+}
+
+fn count_transactions(
+    conn: &mut diesel::SqliteConnection,
+    filters: Option<&TransactionSearchFilters>,
+) -> diesel::QueryResult<i64> {
+    apply_transaction_filters(transactions_base_query(), filters)
+        .count()
+        .get_result(conn)
+}
+
 pub struct TransactionsRepository {
     pool: Arc<DbPool>,
     writer: WriteHandle,
@@ -56,94 +174,19 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
     ) -> Result<PaginatedData<Transaction>> {
         let conn = &mut get_connection(&self.pool)?;
 
-        let mut query = transactions::table
-            .filter(transactions::deleted_at.is_null())
-            .into_boxed();
+        let total = count_transactions(conn, filters.as_ref()).into_core()?;
+        let total_pages = total_pages(total, per_page);
 
-        if let Some(ref filters) = filters {
-            if let Some(query_filter) = filters.query {
-                let query_pattern = format!("%{}%", escape_like(query_filter));
-                query = query.filter(
-                    transactions::description
-                        .like(query_pattern.clone())
-                        .escape(LIKE_ESCAPE)
-                        .or(transactions::notes.like(query_pattern).escape(LIKE_ESCAPE)),
-                );
-            }
-            if let Some(ref categories_filter) = filters.categories {
-                if categories_filter.is_empty() {
-                    query = query.filter(transactions::transaction_category_id.is_null());
-                } else {
-                    query = query
-                        .filter(transactions::transaction_category_id.eq_any(categories_filter));
-                }
-            }
-            if let Some(ref type_filter) = filters.transaction_type {
-                query = query.filter(transactions::transaction_type.eq(type_filter));
-            }
-            if let Some(ref start_date_filter) = filters.start_date {
-                query = query.filter(transactions::transaction_date.ge(start_date_filter));
-            }
-            if let Some(ref end_date_filter) = filters.end_date {
-                query = query.filter(transactions::transaction_date.le(end_date_filter));
-            }
-        }
+        let query = apply_transaction_sort(
+            apply_transaction_filters(transactions_base_query(), filters.as_ref()),
+            sort.as_ref(),
+        );
 
-        if let Some(ref sort) = sort {
-            match sort.field.as_str() {
-                "description" => {
-                    if sort.desc {
-                        query = query.order((transactions::description.desc(),));
-                    } else {
-                        query = query.order((transactions::description.asc(),));
-                    }
-                }
-                "type" => {
-                    if sort.desc {
-                        query = query.order((transactions::transaction_type.desc(),));
-                    } else {
-                        query = query.order((transactions::transaction_type.asc(),));
-                    }
-                }
-                "amount" => {
-                    if sort.desc {
-                        query = query.order((transactions::amount.desc(),));
-                    } else {
-                        query = query.order((transactions::amount.asc(),));
-                    }
-                }
-                "date" => {
-                    if sort.desc {
-                        query = query.order((
-                            transactions::transaction_date.desc(),
-                            transactions::created_at.asc(),
-                        ));
-                    } else {
-                        query = query.order((
-                            transactions::transaction_date.asc(),
-                            transactions::created_at.asc(),
-                        ));
-                    }
-                }
-                _ => {
-                    query = query.order((
-                        transactions::transaction_date.desc(),
-                        transactions::created_at.asc(),
-                    ))
-                } // Default order
-            }
-        } else {
-            query = query.order((
-                transactions::transaction_date.desc(),
-                transactions::created_at.asc(),
-            )); // Default order
-        }
-
-        let (page_rows, total_pages) = query
+        let page_rows = query
             .select(transactions::all_columns)
             .paginate(page)
             .per_page(per_page)
-            .load_and_count_pages::<TransactionRow>(conn)
+            .load_page::<TransactionRow>(conn)
             .into_core()?;
 
         let data = page_rows.into_iter().map(Transaction::from).collect();
