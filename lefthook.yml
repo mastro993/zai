@@ -1,0 +1,19 @@
+pre-commit:
+  parallel: true
+  commands:
+    frontend-format:
+      glob:
+        - "apps/frontend/src/*.{ts,tsx}"
+        - "apps/frontend/src/**/*.{ts,tsx}"
+      run: pnpm --filter frontend format:check
+    frontend-lint:
+      root: apps/frontend/
+      glob:
+        - "apps/frontend/src/*.{ts,tsx}"
+        - "apps/frontend/src/**/*.{ts,tsx}"
+      run: pnpm exec oxlint {staged_files}
+    frontend-routes:
+      glob:
+        - "apps/frontend/src/routes/*"
+        - "apps/frontend/src/routes/**/*"
+      run: pnpm --filter frontend check:routes
