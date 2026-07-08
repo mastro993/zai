@@ -65,7 +65,7 @@ pub fn run() {
             commands::transactions::delete_transaction,
             commands::transactions::delete_transactions,
             commands::transactions::import_transactions,
-            commands::transactions::import_transaction_import_batch,
+            commands::transactions::import_transaction_batch,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

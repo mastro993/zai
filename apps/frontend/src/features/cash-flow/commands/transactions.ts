@@ -123,7 +123,7 @@ export const importTransactionBatch = (
   categories: Array<CategoryImportPayload>,
   transactions: Array<TransactionPayload & { id?: string }>,
 ): CommandResult<Array<Transaction>> => {
-  return invokeCommand<Array<Transaction>>("import_transaction_import_batch", {
+  return invokeCommand<Array<Transaction>>("import_transaction_batch", {
     categories,
     transactions,
   });

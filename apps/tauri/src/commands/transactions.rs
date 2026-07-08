@@ -133,7 +133,7 @@ pub async fn import_transactions(
 }
 
 #[tauri::command]
-pub async fn import_transaction_import_batch(
+pub async fn import_transaction_batch(
     categories: Vec<NewTransactionCategory>,
     transactions: Vec<NewTransaction>,
     state: State<'_, Arc<ServiceContext>>,
