@@ -101,7 +101,10 @@ const ISO_DATETIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}
 
 const DATE_FORMAT_PATTERNS: Record<
   Exclude<TransactionImportDateFormat, "ISO">,
-  { pattern: RegExp; order: ["year", "month", "day"] | ["day", "month", "year"] | ["month", "day", "year"] }
+  {
+    pattern: RegExp;
+    order: ["year", "month", "day"] | ["day", "month", "year"] | ["month", "day", "year"];
+  }
 > = {
   "YYYY-MM-DD": { pattern: /^(\d{4})-(\d{2})-(\d{2})$/, order: ["year", "month", "day"] },
   "DD/MM/YYYY": { pattern: /^(\d{2})\/(\d{2})\/(\d{4})$/, order: ["day", "month", "year"] },

@@ -2,11 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { getCategoryDisplayColor, getCategoryDisplayName } from "../../lib/category";
 import { toPastelColor } from "../../lib/category-color";
-import {
-  CATEGORY_COLORS,
-  DEFAULT_CATEGORY_COLOR,
-  categoryFormSchema,
-} from "../model";
+import { CATEGORY_COLORS, DEFAULT_CATEGORY_COLOR, categoryFormSchema } from "../model";
 
 describe("cash-flow model", () => {
   it("exposes a single palette of unique, valid hex colors", () => {

@@ -24,9 +24,7 @@ function CategoryColorSwatch({
         "aspect-square w-full min-w-0 border border-border transition-[box-shadow,transform] duration-150",
         "hover:border-foreground/40 motion-reduce:transition-none",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        isSelected
-          ? "ring-2 ring-ring ring-offset-2 ring-offset-background"
-          : null,
+        isSelected ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : null,
       )}
       style={{ backgroundColor: color }}
       onClick={() => onSelect(color)}

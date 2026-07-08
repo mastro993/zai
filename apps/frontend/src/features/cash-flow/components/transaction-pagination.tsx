@@ -110,9 +110,7 @@ function TransactionPagination({
             {pageTokens.map((token, index) =>
               token === "ellipsis" ? (
                 <PaginationItem
-                  key={
-                    pageTokens[index + 1] === totalPages ? "ellipsis-end" : "ellipsis-start"
-                  }
+                  key={pageTokens[index + 1] === totalPages ? "ellipsis-end" : "ellipsis-start"}
                 >
                   <PaginationEllipsis />
                 </PaginationItem>

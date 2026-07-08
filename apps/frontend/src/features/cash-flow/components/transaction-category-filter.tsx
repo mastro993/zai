@@ -37,11 +37,7 @@ type TransactionCategoryFilterProps = {
 
 function CategoryDot({ color }: { color: string }) {
   return (
-    <span
-      aria-hidden
-      className="size-2 shrink-0 rounded-full"
-      style={{ backgroundColor: color }}
-    />
+    <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
   );
 }
 

@@ -2,10 +2,7 @@ import { R } from "@praha/byethrow";
 
 import type { CommandResult } from "@/commands/shared";
 
-import {
-  getTransactionExportFilename,
-  toTransactionExportCsv,
-} from "../lib/transaction-export";
+import { getTransactionExportFilename, toTransactionExportCsv } from "../lib/transaction-export";
 import type { Transaction, TransactionCategory } from "../types/model";
 
 const toExportError = (error: unknown) => {

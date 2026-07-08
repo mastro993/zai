@@ -108,11 +108,7 @@ export function TransactionDateFilter({
               numberOfMonths={2}
               autoFocus
               defaultMonth={draftRange?.from}
-              selected={
-                draftRange?.from
-                  ? { from: draftRange.from, to: draftRange.to }
-                  : undefined
-              }
+              selected={draftRange?.from ? { from: draftRange.from, to: draftRange.to } : undefined}
               onSelect={handleDaySelect}
             />
           </div>

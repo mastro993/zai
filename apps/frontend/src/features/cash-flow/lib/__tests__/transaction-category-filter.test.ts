@@ -32,10 +32,7 @@ const categories: Array<TransactionCategory> = [
 ];
 
 const childrenByParent = new Map([
-  [
-    "food",
-    categories.filter((category) => category.parentId === "food"),
-  ],
+  ["food", categories.filter((category) => category.parentId === "food")],
 ]);
 
 describe("transaction category filter", () => {

@@ -29,8 +29,7 @@ const computeForeground = (background: string): string => {
     return "#000000";
   }
 
-  const goLighter =
-    base.contrast(Color("white")) >= base.contrast(Color("black"));
+  const goLighter = base.contrast(Color("white")) >= base.contrast(Color("black"));
   const { h, s, l } = base.hsl().object();
   const target = goLighter ? 100 : 0;
 
@@ -58,10 +57,7 @@ export const getCategoryForeground = (background: string): string => {
   return foreground;
 };
 
-export const getContrastRatio = (
-  foreground: string,
-  background: string,
-): number => {
+export const getContrastRatio = (foreground: string, background: string): number => {
   const fg = parse(foreground);
   const bg = parse(background);
 

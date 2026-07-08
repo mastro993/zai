@@ -96,8 +96,7 @@ function CategoryImportDialog({
 
   const mappingReady = mapping.name !== null;
 
-  const canAdvance =
-    step === 0 ? file !== null : step === 1 ? mappingReady : false;
+  const canAdvance = step === 0 ? file !== null : step === 1 ? mappingReady : false;
 
   const updateConfig = (patch: Partial<CategoryImportConfig>) => {
     setConfig((current) => ({ ...current, ...patch }));

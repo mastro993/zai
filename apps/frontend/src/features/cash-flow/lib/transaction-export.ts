@@ -51,8 +51,7 @@ const toCategoryExportColumns = (
   }
 
   if (category.parentId) {
-    const parentName =
-      category.parent?.name ?? categoryById.get(category.parentId)?.name ?? "";
+    const parentName = category.parent?.name ?? categoryById.get(category.parentId)?.name ?? "";
 
     return { parent_category: parentName, category: category.name };
   }

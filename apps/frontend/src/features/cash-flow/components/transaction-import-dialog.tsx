@@ -19,10 +19,7 @@ import {
   type TransactionImportFile,
 } from "../commands/transaction-import";
 import { importTransactionCategories } from "../commands/transaction-categories";
-import {
-  getAllTransactions,
-  importTransactions,
-} from "../commands/transactions";
+import { getAllTransactions, importTransactions } from "../commands/transactions";
 import type { ImportPreviewRowFilter } from "../lib/import-preview-filter";
 import {
   buildTransactionImportPreview,
@@ -266,7 +263,7 @@ function TransactionImportDialog({
       ? file
         ? `${rowCount.toLocaleString()} rows detected`
         : "Select a CSV file to begin"
-        : step === 1
+      : step === 1
         ? isLoadingExistingTransactions
           ? "Loading existing transactions for duplicate check…"
           : mappingReady
