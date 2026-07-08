@@ -140,7 +140,7 @@ describe("transaction import", () => {
       "date,amount,type,description",
       "2026-01-15T08:30:00,12.50,expense, Groceries ",
       "2026-01-15T20:45:00,12.50,expense,groceries",
-      "2026-04-02,-7.00,expense,",
+      "2026-04-02T09:00:00,-7.00,expense,",
     ].join("\n");
 
     const existingTransactions: Array<Transaction> = [
