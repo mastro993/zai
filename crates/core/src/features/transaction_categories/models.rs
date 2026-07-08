@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::Error;
 
-const INVALID_COLOR_MESSAGE: &str = "Category color must be a valid hex color in the format #RRGGBB";
+const INVALID_COLOR_MESSAGE: &str =
+    "Category color must be a valid hex color in the format #RRGGBB";
 
 fn validate_color(color: Option<&str>) -> Result<(), Error> {
     if let Some(color) = color {

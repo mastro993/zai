@@ -17,7 +17,8 @@
     "lint": "pnpm --filter frontend lint",
     "format": "pnpm --filter frontend format",
     "format:check": "pnpm --filter frontend format:check",
-    "check": "pnpm tsc:check && pnpm lint && pnpm format:check && cargo check --workspace && cargo test --workspace"
+    "check:routes": "pnpm --filter frontend generate-routes && git diff --exit-code apps/frontend/src/routeTree.gen.ts",
+    "check": "pnpm tsc:check && pnpm lint && pnpm format:check && pnpm --filter frontend test && pnpm check:routes && cargo check --workspace && cargo test --workspace && cargo fmt --all --check"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1",
