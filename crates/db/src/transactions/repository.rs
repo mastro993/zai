@@ -35,81 +35,6 @@ impl TransactionsRepository {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::connection::run_migrations;
-    use crate::schema::transaction_categories;
-    use crate::test_utils::TempDb;
-    use crate::write_actor::spawn_writer;
-    use diesel::r2d2::{self, Pool};
-    use diesel::sqlite::SqliteConnection;
-    use uuid::Uuid;
-    use zai_core::features::transaction_categories::models::NewTransactionCategory;
-
-    fn setup_test_repo(db_path: &str) -> TransactionsRepository {
-        let manager = r2d2::ConnectionManager::<SqliteConnection>::new(db_path);
-        let pool = Pool::builder()
-            .build(manager)
-            .expect("failed to create pool");
-
-        run_migrations(&pool).expect("failed to run migrations");
-
-        let writer = spawn_writer(pool.clone()).expect("failed to spawn writer");
-        TransactionsRepository::new(Arc::new(pool), writer)
-    }
-
-    #[tokio::test]
-    async fn import_transactions_with_categories_rolls_back_when_any_transaction_is_invalid() {
-        let temp_db = TempDb::new();
-        let repo = setup_test_repo(temp_db.path());
-
-        let category_id = Uuid::new_v4().to_string();
-        let categories = vec![NewTransactionCategory {
-            id: Some(category_id.clone()),
-            parent_id: None,
-            name: "Food".to_string(),
-            description: None,
-            color: None,
-        }];
-
-        let valid_transaction = NewTransaction {
-            id: Some(Uuid::new_v4().to_string()),
-            description: Some("Lunch".to_string()),
-            amount: 1200,
-            transaction_date: chrono::Utc::now().naive_utc(),
-            transaction_type: "expense".to_string(),
-            transaction_category_id: Some(category_id),
-            notes: None,
-        };
-        let invalid_transaction = NewTransaction {
-            id: valid_transaction.id.clone(),
-            description: Some("Broken".to_string()),
-            amount: 800,
-            transaction_date: chrono::Utc::now().naive_utc(),
-            transaction_type: "expense".to_string(),
-            transaction_category_id: None,
-            notes: None,
-        };
-
-        let result = repo
-            .import_transactions_with_categories(
-                categories,
-                vec![valid_transaction, invalid_transaction],
-            )
-            .await;
-
-        assert!(result.is_err());
-
-        let conn = &mut get_connection(&repo.pool).expect("connection");
-        let persisted_categories = transaction_categories::table
-            .count()
-            .get_result::<i64>(conn)
-            .expect("count categories");
-        assert_eq!(persisted_categories, 0);
-    }
-}
-
 #[async_trait]
 impl TransactionsRepositoryTrait for TransactionsRepository {
     fn get_transactions(
@@ -452,5 +377,80 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                 },
             )
             .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::connection::run_migrations;
+    use crate::schema::transaction_categories;
+    use crate::test_utils::TempDb;
+    use crate::write_actor::spawn_writer;
+    use diesel::r2d2::{self, Pool};
+    use diesel::sqlite::SqliteConnection;
+    use uuid::Uuid;
+    use zai_core::features::transaction_categories::models::NewTransactionCategory;
+
+    fn setup_test_repo(db_path: &str) -> TransactionsRepository {
+        let manager = r2d2::ConnectionManager::<SqliteConnection>::new(db_path);
+        let pool = Pool::builder()
+            .build(manager)
+            .expect("failed to create pool");
+
+        run_migrations(&pool).expect("failed to run migrations");
+
+        let writer = spawn_writer(pool.clone()).expect("failed to spawn writer");
+        TransactionsRepository::new(Arc::new(pool), writer)
+    }
+
+    #[tokio::test]
+    async fn import_transactions_with_categories_rolls_back_when_any_transaction_is_invalid() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let category_id = Uuid::new_v4().to_string();
+        let categories = vec![NewTransactionCategory {
+            id: Some(category_id.clone()),
+            parent_id: None,
+            name: "Food".to_string(),
+            description: None,
+            color: None,
+        }];
+
+        let valid_transaction = NewTransaction {
+            id: Some(Uuid::new_v4().to_string()),
+            description: Some("Lunch".to_string()),
+            amount: 1200,
+            transaction_date: chrono::Utc::now().naive_utc(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: Some(category_id),
+            notes: None,
+        };
+        let invalid_transaction = NewTransaction {
+            id: valid_transaction.id.clone(),
+            description: Some("Broken".to_string()),
+            amount: 800,
+            transaction_date: chrono::Utc::now().naive_utc(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+        };
+
+        let result = repo
+            .import_transactions_with_categories(
+                categories,
+                vec![valid_transaction, invalid_transaction],
+            )
+            .await;
+
+        assert!(result.is_err());
+
+        let conn = &mut get_connection(&repo.pool).expect("connection");
+        let persisted_categories = transaction_categories::table
+            .count()
+            .get_result::<i64>(conn)
+            .expect("count categories");
+        assert_eq!(persisted_categories, 0);
     }
 }
