@@ -13,12 +13,14 @@
     "tauri": "tauri",
     "dev:tauri": "pnpm tauri dev",
     "build:tauri": "pnpm tauri build",
-    "tsc:check": "tsc -b --noEmit",
+    "test": "pnpm --filter frontend test",
+    "type-check": "tsc -b --noEmit",
     "lint": "pnpm --filter frontend lint",
-    "format": "pnpm --filter frontend format",
-    "format:check": "pnpm --filter frontend format:check",
-    "check:routes": "pnpm --filter frontend generate-routes && git diff --exit-code apps/frontend/src/routeTree.gen.ts",
-    "check": "pnpm tsc:check && pnpm lint && pnpm format:check && pnpm --filter frontend test && pnpm check:routes && cargo check --workspace && cargo test --workspace && cargo fmt --all --check"
+    "format": "pnpm --filter frontend format && cargo fmt --all",
+    "format:check": "pnpm --filter frontend format:check && cargo fmt --all --check",
+    "check:frontend": "pnpm --filter frontend check",
+    "check:backend": "mkdir -p dist && printf '<!doctype html><html><body></body></html>' > dist/index.html && cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace",
+    "check": "pnpm check:frontend && pnpm check:backend"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1",

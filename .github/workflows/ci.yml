@@ -8,16 +8,16 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  check:
+  frontend:
+    name: Frontend checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install dependencies (ubuntu only)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -31,13 +31,39 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Run frontend checks
+        run: pnpm check:frontend
+
+  backend:
+    name: Backend checks
+    runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: 0
+      CARGO_TERM_COLOR: always
+      RUSTFLAGS: "-C debuginfo=0"
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./apps/tauri -> target"
+          workspaces: ". -> target"
 
-      - name: Run verification checks
-        run: pnpm check
+      - name: Run Rust format check
+        run: cargo fmt --all --check
+
+      - name: Create Tauri dist stub
+        run: mkdir -p dist && printf '<!doctype html><html><body></body></html>' > dist/index.html
+
+      - name: Install dependencies (ubuntu only)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Run backend checks
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace

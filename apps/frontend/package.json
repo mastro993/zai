@@ -7,14 +7,16 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "vite dev --port 1420",
+    "dev": "vite dev",
     "generate-routes": "tsr generate",
-    "build": "pnpm generate-routes && pnpm -w tsc -b --noEmit && vite build",
+    "build": "pnpm generate-routes && pnpm type-check && vite build",
     "preview": "vite preview",
-    "tsc:check": "pnpm -w tsc -b --noEmit",
-    "lint": "oxlint $(git ls-files 'src/**/*.ts' 'src/**/*.tsx')",
+    "type-check": "tsc -b --noEmit",
+    "lint": "oxlint src",
     "format": "oxfmt src",
     "format:check": "oxfmt src --check",
+    "check:routes": "pnpm generate-routes && git diff --exit-code -- src/routeTree.gen.ts",
+    "check": "pnpm format:check && pnpm lint && pnpm check:routes && pnpm type-check && pnpm test",
     "test": "vitest run"
   },
   "dependencies": {
