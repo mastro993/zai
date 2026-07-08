@@ -19,7 +19,7 @@
     "format": "pnpm --filter frontend format && cargo fmt --all",
     "format:check": "pnpm --filter frontend format:check && cargo fmt --all --check",
     "check:frontend": "pnpm --filter frontend check",
-    "check:backend": "cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace",
+    "check:backend": "mkdir -p dist && printf '<!doctype html><html><body></body></html>' > dist/index.html && cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace",
     "check": "pnpm check:frontend && pnpm check:backend"
   },
   "devDependencies": {

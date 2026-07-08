@@ -57,6 +57,9 @@ jobs:
       - name: Run Rust format check
         run: cargo fmt --all --check
 
+      - name: Create Tauri dist stub
+        run: mkdir -p dist && printf '<!doctype html><html><body></body></html>' > dist/index.html
+
       - name: Install dependencies (ubuntu only)
         run: |
           sudo apt-get update
