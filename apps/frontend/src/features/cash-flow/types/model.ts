@@ -1,28 +1,23 @@
 import { z } from "zod";
 
-export const CATEGORY_DARK_COLORS = [
-  "#B10202",
-  "#753800",
-  "#473822",
-  "#13724B",
-  "#0953A8",
-  "#215A6C",
-  "#5A3286",
-  "#3D3D3D",
+const CATEGORY_COLOR_PAIRS = [
+  ["#951818", "#F6CACA"],
+  ["#884416", "#F6DCCA"],
+  ["#6C560F", "#F8EDC9"],
+  ["#147B1E", "#CAF6CF"],
+  ["#156D7F", "#CAEFF6"],
+  ["#184E95", "#CADDF6"],
+  ["#291895", "#D0CAF6"],
+  ["#701895", "#E9CAF6"],
+  ["#95185F", "#F6CAE3"],
+  ["#3D3D3D", "#E6E6E6"],
 ] as const;
 
-export const CATEGORY_LIGHT_COLORS = [
-  "#FFCFC9",
-  "#FFC8AA",
-  "#FFE5A0",
-  "#D4ECBC",
-  "#BFE1F6",
-  "#C6DBE1",
-  "#E6CFF2",
-  "#E6E6E6",
-] as const;
+export const CATEGORY_DARK_COLORS = CATEGORY_COLOR_PAIRS.map(([darkColor]) => darkColor);
 
-export const CATEGORY_COLORS = [...CATEGORY_DARK_COLORS, ...CATEGORY_LIGHT_COLORS] as const;
+export const CATEGORY_LIGHT_COLORS = CATEGORY_COLOR_PAIRS.map(([, lightColor]) => lightColor);
+
+export const CATEGORY_COLORS = [...CATEGORY_DARK_COLORS, ...CATEGORY_LIGHT_COLORS];
 
 export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLORS[0];
 export const TRANSACTION_TYPES = ["expense", "income"] as const;
