@@ -154,6 +154,23 @@ describe("transaction import", () => {
     expect(preview.transactions[0]?.transactionCategoryId).toBe("id-2");
   });
 
+  it("keeps transaction category IDs aligned with preview categories", () => {
+    const content = ["date,amount,type,category", "2026-01-15,12.50,expense,Food"].join("\n");
+    const headers = parseTransactionCsv(content)[0] ?? [];
+
+    const preview = buildPreview(content, {
+      mapping: {
+        ...getDefaultTransactionImportMapping(headers),
+        categoryName: findCategoryColumn(headers),
+      },
+      categoryLinkMode: "single-column",
+      missingCategoryMode: "create",
+    });
+
+    expect(preview.categories).toHaveLength(1);
+    expect(preview.transactions[0]?.transactionCategoryId).toBe(preview.categories[0]?.id);
+  });
+
   it("resolves existing category paths in columns mode", () => {
     const root: TransactionCategory = {
       id: "root",
