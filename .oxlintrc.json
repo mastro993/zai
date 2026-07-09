@@ -7,7 +7,13 @@
       "specifier": "@praha/byethrow-oxlint"
     }
   ],
-  "ignorePatterns": ["scripts/**", ".claude", ".agents"],
+  "ignorePatterns": [
+    "scripts/**",
+    ".claude",
+    ".agents",
+    "apps/frontend/src/components/ui/**",
+    "apps/frontend/src/routeTree.gen.ts"
+  ],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
