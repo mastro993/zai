@@ -18,6 +18,7 @@ import {
 } from "../commands/transactions";
 import { TransactionCategoryFilter } from "../components/transaction-category-filter";
 import { TransactionDateFilter } from "../components/transaction-date-filter";
+import { TransactionTypeFilter } from "../components/transaction-type-filter";
 import { TransactionDeleteConfirmationDialog } from "../components/transaction-delete-confirmation-dialog";
 import { TransactionFormDrawer } from "../components/transaction-form-drawer";
 import { TransactionImportDialog } from "../components/transaction-import-dialog";
@@ -36,6 +37,11 @@ import {
   isActiveCategoryFilter,
   type CategoryFilterSelection,
 } from "../lib/transaction-category-filter";
+import {
+  DEFAULT_TYPE_FILTER_SELECTION,
+  isActiveTypeFilter,
+  type TypeFilterSelection,
+} from "../lib/transaction-type-filter";
 import type {
   PaginatedTransactions,
   Transaction,
@@ -56,6 +62,7 @@ type TransactionScreenProps = {
 const buildTransactionFilters = (
   searchQuery: string,
   dateSelection: DateRangeSelection,
+  typeSelection: TypeFilterSelection,
   categorySelection: CategoryFilterSelection,
   categories: Array<TransactionCategory>,
 ): TransactionFilters | undefined => {
@@ -70,6 +77,9 @@ const buildTransactionFilters = (
   }
   if (range.endDate) {
     filters.endDate = range.endDate;
+  }
+  if (typeSelection) {
+    filters.transactionType = typeSelection;
   }
 
   if (categorySelection.includeUncategorized) {
@@ -98,6 +108,9 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
   const [categorySelection, setCategorySelection] = useState<CategoryFilterSelection>(
     DEFAULT_CATEGORY_FILTER_SELECTION,
   );
+  const [typeSelection, setTypeSelection] = useState<TypeFilterSelection>(
+    DEFAULT_TYPE_FILTER_SELECTION,
+  );
   const [formMode, setFormMode] = useState<TransactionFormMode | null>(null);
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
@@ -119,6 +132,7 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
     pageToLoad: number,
     rowsPerPage: TransactionRowsPerPage,
     nextDateSelection: DateRangeSelection,
+    nextTypeSelection: TypeFilterSelection,
     nextCategorySelection: CategoryFilterSelection,
     categoriesForFilters: Array<TransactionCategory>,
     includeCategories = false,
@@ -130,6 +144,7 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
       buildTransactionFilters(
         searchQuery,
         nextDateSelection,
+        nextTypeSelection,
         nextCategorySelection,
         categoriesForFilters,
       ),
@@ -170,6 +185,7 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
             buildTransactionFilters(
               searchQuery,
               nextDateSelection,
+              nextTypeSelection,
               nextCategorySelection,
               loadedCategories,
             ),
@@ -215,8 +231,16 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
       return;
     }
 
-    void loadData(debouncedQuery, page, perPage, dateSelection, categorySelection, categories);
-  }, [debouncedQuery, page, perPage, dateSelection, categorySelection]);
+    void loadData(
+      debouncedQuery,
+      page,
+      perPage,
+      dateSelection,
+      typeSelection,
+      categorySelection,
+      categories,
+    );
+  }, [debouncedQuery, page, perPage, dateSelection, typeSelection, categorySelection]);
 
   const openFormDrawer = (mode: TransactionFormMode) => {
     setFormMode(mode);
@@ -240,14 +264,28 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
     }
 
     setIsFormDrawerOpen(false);
-    await loadData(debouncedQuery, page, perPage, dateSelection, categorySelection, categories);
+    await loadData(
+      debouncedQuery,
+      page,
+      perPage,
+      dateSelection,
+      typeSelection,
+      categorySelection,
+      categories,
+    );
   };
 
   const exportTransactionCsv = async () => {
     setIsExporting(true);
 
     const transactionsResult = await getAllTransactions(
-      buildTransactionFilters(debouncedQuery, dateSelection, categorySelection, categories),
+      buildTransactionFilters(
+        debouncedQuery,
+        dateSelection,
+        typeSelection,
+        categorySelection,
+        categories,
+      ),
     );
 
     if (Result.isFailure(transactionsResult)) {
@@ -283,7 +321,15 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
     }
 
     setIsDeleteDialogOpen(false);
-    await loadData(debouncedQuery, page, perPage, dateSelection, categorySelection, categories);
+    await loadData(
+      debouncedQuery,
+      page,
+      perPage,
+      dateSelection,
+      typeSelection,
+      categorySelection,
+      categories,
+    );
     setIsDeleting(false);
   };
 
@@ -302,10 +348,16 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
     setPage(1);
   };
 
+  const changeTypeSelection = (selection: TypeFilterSelection) => {
+    setTypeSelection(selection);
+    setPage(1);
+  };
+
   const clearFilters = () => {
     setQuery("");
     setDebouncedQuery("");
     setDateSelection(DEFAULT_DATE_SELECTION);
+    setTypeSelection(DEFAULT_TYPE_FILTER_SELECTION);
     setCategorySelection(DEFAULT_CATEGORY_FILTER_SELECTION);
     setPage(1);
   };
@@ -313,6 +365,7 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
   const hasActiveFilters =
     debouncedQuery.length > 0 ||
     isActiveSelection(dateSelection) ||
+    isActiveTypeFilter(typeSelection) ||
     isActiveCategoryFilter(categorySelection);
 
   return (
@@ -337,6 +390,10 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
           <TransactionDateFilter
             selection={dateSelection}
             onSelectionChange={changeDateSelection}
+          />
+          <TransactionTypeFilter
+            selection={typeSelection}
+            onSelectionChange={changeTypeSelection}
           />
           <TransactionCategoryFilter
             categories={categories}
@@ -427,6 +484,7 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
             page,
             perPage,
             dateSelection,
+            typeSelection,
             categorySelection,
             categories,
             true,
