@@ -2,9 +2,11 @@
 
 Personal finance desktop app built with Tauri (Rust backend + React frontend).
 
-## Package Manager
+## Overview
 
-`pnpm`
+- **Frontend**: React + Vite + Tailwind v4 + shadcn (`apps/frontend/`)
+- **Desktop**: Tauri/Rust with SQLite (`apps/tauri/`, `crates/`)
+- **Web mode**: Axum HTTP server (`apps/server/`)
 
 ## General guardrails
 
@@ -35,7 +37,11 @@ apps/frontend/src/
 apps/tauri/src/
 └── commands/             # Tauri IPC commands
 
+apps/server/src/
+└── api/                  # Axum HTTP handlers
+
 crates/
+├── app/                  # Context initialization
 ├── core/                 # Business logic, models, services
 └── db/                   # Diesel ORM, repositories, migrations
 ```
@@ -51,12 +57,10 @@ See `apps/frontend/AGENTS.md` for frontend-specific conventions.
    `features/<feature>/commands/`
 3. **Tauri command** → `apps/tauri/src/commands/*.rs`, wire in `mod.rs` +
    `lib.rs`
-4. **Core logic** → `crates/core/` services/repos
-5. **DB** → `crates/db/` repositories, migrations in `crates/db/migrations`
-6. **Tests** → Vitest for TS, `#[test]` for Rust
-
-Web server (`apps/server/`, `RUN_ENV` branching) is deferred—not in the repo
-today.
+4. **Web endpoint** → `apps/server/src/api/`, call `crates/core` service
+5. **Core logic** → `crates/core/` services/repos
+6. **DB** → `crates/db/` repositories, migrations in `crates/db/migrations`
+7. **Tests** → Vitest for TS, `#[test]` for Rust
 
 ### UI patterns
 
