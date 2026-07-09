@@ -30,8 +30,8 @@ dotenvy = { workspace = true }
 specta = "2.0.0-rc.22"
 specta-typescript = "0.0.9"
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript", "derive"] }
+zai-app = { workspace = true }
 zai-core = { workspace = true }
-zai-db = { workspace = true }
 log = { workspace = true }
 chrono = { workspace = true }
 keyring = "3"
