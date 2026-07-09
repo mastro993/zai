@@ -13,6 +13,7 @@ pub struct TransactionCategoryRow {
     pub id: String,
     pub parent_id: Option<String>,
     pub name: String,
+    #[diesel(treat_none_as_null = true)]
     pub description: Option<String>,
     pub color: Option<String>,
     #[diesel(skip_insertion)]
