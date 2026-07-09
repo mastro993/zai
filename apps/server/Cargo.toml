@@ -13,6 +13,7 @@ workspace = true
 [dependencies]
 axum = "0.8"
 serde = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
 tower-http = { version = "0.6", features = ["cors"] }
@@ -23,5 +24,6 @@ zai-core = { workspace = true }
 axum = "0.8"
 tower = { version = "0.5", features = ["util"] }
 tokio = { workspace = true, features = ["io-util", "net"] }
+serde_json = { workspace = true }
 uuid = { workspace = true }
 zai-app = { workspace = true }

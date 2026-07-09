@@ -1,6 +1,8 @@
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
 use axum::{Json, Router, routing::get};
+
+mod api;
 use serde::Serialize;
 use thiserror::Error;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
@@ -115,6 +117,7 @@ pub fn default_cors_layer() -> CorsLayer {
 pub fn create_router(context: Arc<ServiceContext>) -> Router {
     Router::new()
         .route("/health", get(health))
+        .nest("/api/cash-flow", api::cash_flow::router())
         .layer(default_cors_layer())
         .with_state(context)
 }

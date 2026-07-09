@@ -6930,6 +6930,7 @@ version = "0.0.1-alpha.1"
 dependencies = [
  "axum",
  "serde",
+ "serde_json",
  "thiserror 2.0.16",
  "tokio",
  "tower",
