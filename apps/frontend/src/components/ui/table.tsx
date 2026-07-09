@@ -63,6 +63,62 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   )
 }
 
+const tableRowActionsRevealClassName =
+  "opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100 motion-reduce:transition-none"
+
+function TableRowWithActions({ className, ...props }: React.ComponentProps<"tr">) {
+  return (
+    <TableRow
+      data-slot="table-row-with-actions"
+      className={cn("group/row", className)}
+      {...props}
+    />
+  )
+}
+
+function TableRowActions({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof TableCell>) {
+  return (
+    <TableCell
+      data-slot="table-row-actions"
+      className={cn("w-px p-3", className)}
+      {...props}
+    >
+      <div
+        className={cn(
+          "flex shrink-0 items-center justify-end gap-1",
+          tableRowActionsRevealClassName,
+        )}
+        onClick={(event) => {
+          event.stopPropagation()
+        }}
+        onKeyDown={(event) => {
+          event.stopPropagation()
+        }}
+      >
+        {children}
+      </div>
+    </TableCell>
+  )
+}
+
+function TableHeadActions({
+  className,
+  ...props
+}: React.ComponentProps<typeof TableHead>) {
+  return (
+    <TableHead
+      data-slot="table-head-actions"
+      aria-hidden="true"
+      className={cn("w-px p-3", className)}
+      {...props}
+    />
+  )
+}
+
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
@@ -109,6 +165,9 @@ export {
   TableFooter,
   TableHead,
   TableRow,
+  TableRowWithActions,
+  TableRowActions,
+  TableHeadActions,
   TableCell,
   TableCaption,
 }
