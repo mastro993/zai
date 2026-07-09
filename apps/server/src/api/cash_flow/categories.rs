@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use axum::{
     Json, Router,
-    extract::{Path, Query, State},
     extract::rejection::JsonRejection,
+    extract::{Path, Query, State},
     http::StatusCode,
     routing::{get, post},
 };
@@ -39,18 +39,9 @@ type CategoryResult<T> = Result<T, (StatusCode, Json<crate::api::error::ApiError
 
 pub fn router() -> Router<Arc<ServiceContext>> {
     Router::new()
-        .route(
-            "/categories",
-            get(list_categories).post(create_category),
-        )
-        .route(
-            "/categories/bulk-delete",
-            post(bulk_delete_categories),
-        )
-        .route(
-            "/categories/import",
-            post(import_categories),
-        )
+        .route("/categories", get(list_categories).post(create_category))
+        .route("/categories/bulk-delete", post(bulk_delete_categories))
+        .route("/categories/import", post(import_categories))
         .route(
             "/categories/{category_id}",
             get(get_category).put(update_category),

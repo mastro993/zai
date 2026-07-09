@@ -1,7 +1,4 @@
-use axum::{
-    Json,
-    http::StatusCode,
-};
+use axum::{Json, http::StatusCode};
 use serde::Serialize;
 use zai_core::{DatabaseError, Error};
 
@@ -25,10 +22,7 @@ pub fn command_error(context: &str, error: Error) -> (StatusCode, Json<ApiError>
 }
 
 pub fn bad_request(message: impl Into<String>) -> (StatusCode, Json<ApiError>) {
-    (
-        StatusCode::BAD_REQUEST,
-        Json(ApiError::new(message.into())),
-    )
+    (StatusCode::BAD_REQUEST, Json(ApiError::new(message.into())))
 }
 
 fn status_for_error(error: &Error) -> StatusCode {

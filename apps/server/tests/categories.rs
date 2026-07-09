@@ -303,15 +303,15 @@ async fn import_categories_returns_imported_categories() {
 #[tokio::test]
 async fn get_missing_category_returns_not_found_with_message_body() {
     let app = CategoryTestApp::new();
-    let (status, body) = app
-        .get("/api/cash-flow/categories/missing-category")
-        .await;
+    let (status, body) = app.get("/api/cash-flow/categories/missing-category").await;
 
     assert_eq!(status, StatusCode::NOT_FOUND);
-    assert!(body["message"]
-        .as_str()
-        .expect("message")
-        .contains("Failed to get transaction category missing-category"));
+    assert!(
+        body["message"]
+            .as_str()
+            .expect("message")
+            .contains("Failed to get transaction category missing-category")
+    );
 }
 
 #[tokio::test]
@@ -325,10 +325,12 @@ async fn create_category_with_invalid_color_returns_bad_request() {
         .await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["message"]
-        .as_str()
-        .expect("message")
-        .contains("Failed to create transaction category Food"));
+    assert!(
+        body["message"]
+            .as_str()
+            .expect("message")
+            .contains("Failed to create transaction category Food")
+    );
 }
 
 #[tokio::test]
@@ -342,7 +344,12 @@ async fn create_category_with_empty_name_returns_bad_request() {
         .await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["message"].as_str().expect("message").contains("Invalid data"));
+    assert!(
+        body["message"]
+            .as_str()
+            .expect("message")
+            .contains("Invalid data")
+    );
 }
 
 #[tokio::test]
@@ -370,10 +377,12 @@ async fn create_duplicate_category_id_returns_conflict() {
         .await;
 
     assert_eq!(status, StatusCode::CONFLICT);
-    assert!(body["message"]
-        .as_str()
-        .expect("message")
-        .contains("Failed to create transaction category Travel"));
+    assert!(
+        body["message"]
+            .as_str()
+            .expect("message")
+            .contains("Failed to create transaction category Travel")
+    );
 }
 
 #[tokio::test]
@@ -407,10 +416,12 @@ async fn delete_category_with_children_using_block_strategy_returns_bad_request(
         .await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["message"]
-        .as_str()
-        .expect("message")
-        .contains("Failed to delete transaction categories"));
+    assert!(
+        body["message"]
+            .as_str()
+            .expect("message")
+            .contains("Failed to delete transaction categories")
+    );
 }
 
 #[tokio::test]
