@@ -240,7 +240,7 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
       categorySelection,
       categories,
     );
-  }, [debouncedQuery, page, perPage, dateSelection, typeSelection, categorySelection]);
+  }, [debouncedQuery, page, perPage, dateSelection, typeSelection, categorySelection, categories]);
 
   const openFormDrawer = (mode: TransactionFormMode) => {
     setFormMode(mode);
