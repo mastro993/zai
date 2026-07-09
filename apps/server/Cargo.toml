@@ -1,0 +1,27 @@
+[package]
+name = "zai-server"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "zai-server"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+axum = "0.8"
+serde = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
+tower-http = { version = "0.6", features = ["cors"] }
+zai-app = { workspace = true }
+zai-core = { workspace = true }
+
+[dev-dependencies]
+axum = "0.8"
+tower = { version = "0.5", features = ["util"] }
+tokio = { workspace = true, features = ["io-util", "net"] }
+uuid = { workspace = true }
+zai-app = { workspace = true }
