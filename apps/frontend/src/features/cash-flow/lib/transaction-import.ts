@@ -106,12 +106,14 @@ const DATE_FORMAT_PATTERNS: Record<
     order: ["year", "month", "day"] | ["day", "month", "year"] | ["month", "day", "year"];
   }
 > = {
-  "YYYY-MM-DD": { pattern: /^(\d{4})-(\d{2})-(\d{2})$/, order: ["year", "month", "day"] },
-  "DD/MM/YYYY": { pattern: /^(\d{2})\/(\d{2})\/(\d{4})$/, order: ["day", "month", "year"] },
-  "MM/DD/YYYY": { pattern: /^(\d{2})\/(\d{2})\/(\d{4})$/, order: ["month", "day", "year"] },
-  "DD-MM-YYYY": { pattern: /^(\d{2})-(\d{2})-(\d{4})$/, order: ["day", "month", "year"] },
-  "DD.MM.YYYY": { pattern: /^(\d{2})\.(\d{2})\.(\d{4})$/, order: ["day", "month", "year"] },
+  "YYYY-MM-DD": { pattern: /^(\d{4})-(\d{1,2})-(\d{1,2})$/, order: ["year", "month", "day"] },
+  "DD/MM/YYYY": { pattern: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, order: ["day", "month", "year"] },
+  "MM/DD/YYYY": { pattern: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, order: ["month", "day", "year"] },
+  "DD-MM-YYYY": { pattern: /^(\d{1,2})-(\d{1,2})-(\d{4})$/, order: ["day", "month", "year"] },
+  "DD.MM.YYYY": { pattern: /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/, order: ["day", "month", "year"] },
 };
+
+const padDatePart = (value: string) => value.padStart(2, "0");
 
 const DEFAULT_EXPENSE_TYPE_VALUES = "expense, debit, out";
 const DEFAULT_INCOME_TYPE_VALUES = "income, credit, in";
@@ -234,7 +236,7 @@ export const parseImportDate = (
     [, parts.month, parts.day, parts.year] = match;
   }
 
-  const isoDate = `${parts.year}-${parts.month}-${parts.day}`;
+  const isoDate = `${parts.year}-${padDatePart(parts.month)}-${padDatePart(parts.day)}`;
 
   if (Number.isNaN(Date.parse(`${isoDate}T00:00:00`))) {
     return { ok: false, message: "Invalid date" };

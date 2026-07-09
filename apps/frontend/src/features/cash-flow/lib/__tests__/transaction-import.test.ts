@@ -101,6 +101,17 @@ describe("transaction import", () => {
     });
   });
 
+  it("parses dates without leading zeros", () => {
+    expect(parseImportDate("2/12/2023", "DD/MM/YYYY")).toEqual({
+      ok: true,
+      value: "2023-12-02T00:00:00",
+    });
+    expect(parseImportDate("2023-1-5", "YYYY-MM-DD")).toEqual({
+      ok: true,
+      value: "2023-01-05T00:00:00",
+    });
+  });
+
   it("strips currency symbols and comma decimals", () => {
     expect(parseImportAmount("€12,50")).toEqual({ ok: true, cents: 1250, signed: 12.5 });
   });
