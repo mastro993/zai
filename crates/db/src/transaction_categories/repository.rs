@@ -559,6 +559,36 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_update_category_clears_description() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let created = repo
+            .create_category(NewTransactionCategory {
+                name: "Original".to_string(),
+                parent_id: None,
+                description: Some("Original description".to_string()),
+                color: Some("#D31212".to_string()),
+                id: Some(Uuid::new_v4().to_string()),
+            })
+            .await
+            .unwrap();
+
+        let updated_category = repo
+            .update_category(TransactionCategoryUpdate {
+                id: created.id,
+                name: "Original".to_string(),
+                parent_id: None,
+                description: None,
+                color: Some("#D31212".to_string()),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(updated_category.description, None);
+    }
+
+    #[tokio::test]
     async fn test_delete_categories() {
         let temp_db = TempDb::new();
         let repo = setup_test_repo(temp_db.path());
