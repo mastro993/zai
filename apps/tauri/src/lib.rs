@@ -1,10 +1,10 @@
 mod commands;
-mod context;
 
 use dotenvy::dotenv;
 use std::sync::Arc;
 use tauri::Manager;
 use tauri_plugin_log::log::error;
+use zai_app::initialize_context;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -22,11 +22,11 @@ pub fn run() {
             tauri::async_runtime::block_on(async {
                 let app_data_dir = handle.path().app_data_dir()?;
 
-                let context = match context::initialize_context(&app_data_dir) {
+                let context = match initialize_context(&app_data_dir) {
                     Ok(ctx) => Arc::new(ctx),
                     Err(e) => {
                         error!("Failed to initialize context: {}", e);
-                        return Err(e);
+                        return Err(Box::<dyn std::error::Error>::from(e));
                     }
                 };
 

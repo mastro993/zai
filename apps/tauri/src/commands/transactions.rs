@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use crate::context::ServiceContext;
 use chrono::NaiveDateTime;
 use log::debug;
 use serde::Deserialize;
 use tauri::State;
+use zai_app::ServiceContext;
 use zai_core::features::transaction_categories::models::NewTransactionCategory;
 use zai_core::features::transactions::models::{
     NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
