@@ -60,7 +60,7 @@ today.
 
 ### UI patterns
 
-- Components: `shadcn` and `@base-ui/react`
+- Components: always use `shadcn` and `@base-ui/react`
 - Forms: `react-hook-form` + `zod` schemas from
   `apps/frontend/src/features/<feature>/types/`
 - Theme: tokens in `apps/frontend/src/styles.css`
@@ -85,7 +85,7 @@ Frontend command wrapper → invokeCommand → Tauri IPC
 - Prefer interfaces over types, avoid enums
 - Functional components, named exports
 - Directory names: lowercase-with-dashes
-- Never `throw/try/catch`. Use `R.succeed()` / `R.fail()` from `@praha/byethrow`
+- Never `throw/try/catch`. Use `@praha/byethrow`
 
 ### Rust
 

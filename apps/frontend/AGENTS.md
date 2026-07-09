@@ -62,11 +62,6 @@ src/features/<feature>/
 3. **Intent skills**: TanStack Router skills appear in `intent list` only after their packages are installed in `apps/frontend`.
 4. **Devtools**: `@tanstack/devtools-vite` strips devtools from production builds automatically.
 
-## Next steps
-
-- [ ] Add route layouts as features grow (`src/routes/_authenticated/`, etc.)
-- [ ] Wire `commands/` and Tauri IPC behind route loaders
-
 <!-- intent-skills:start -->
 
 ## Skill Loading
