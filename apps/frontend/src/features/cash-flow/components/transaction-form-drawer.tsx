@@ -12,7 +12,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   InputGroup,
@@ -32,10 +32,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
+import { getCategoryDisplayColor } from "../lib/category";
 import {
   combineDateTime,
   formatAmountFromMinor,
   isPartialAmountInput,
+  normalizeAmountInput,
   splitDateTime,
   toDateTimeInputValue,
 } from "../lib/transaction";
@@ -59,7 +61,7 @@ const getFormDefaults = (mode: TransactionFormMode): TransactionFormInput => {
   if (mode.type === "create") {
     return {
       description: "",
-      amount: "1.00",
+      amount: "0.00",
       transactionDate: getLocalDateTimeInputValue(),
       transactionType: "expense",
       transactionCategoryId: "",
@@ -77,6 +79,20 @@ const getFormDefaults = (mode: TransactionFormMode): TransactionFormInput => {
   };
 };
 
+const getFormCopy = (mode: TransactionFormMode) => {
+  if (mode.type === "edit") {
+    return {
+      title: "Edit transaction",
+      description: "Update the amount, date, or category. Changes apply to this entry only.",
+    };
+  }
+
+  return {
+    title: "New transaction",
+    description: "Record income or an expense. Category is optional.",
+  };
+};
+
 const formatDateLabel = (dateValue: string) => {
   if (!dateValue) {
     return "Pick a date";
@@ -84,6 +100,12 @@ const formatDateLabel = (dateValue: string) => {
 
   return format(parseISO(dateValue), "MMM d, yyyy");
 };
+
+function CategoryDot({ color }: { color: string }) {
+  return (
+    <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+  );
+}
 
 function TransactionFormDrawer({
   mode,
@@ -98,29 +120,112 @@ function TransactionFormDrawer({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: getFormDefaults(mode),
   });
-  const title = mode.type === "edit" ? "Edit transaction" : "New transaction";
+  const { title, description } = getFormCopy(mode);
+  const isCreate = mode.type === "create";
   const rootCategories = categories.filter((category) => !category.parentId);
   const childCategories = categories.filter((category) => category.parentId);
   const categoryById = new Map(categories.map((category) => [category.id, category] as const));
   const parentCategoryItems = [
-    { label: "Uncategorized", value: null },
-    ...rootCategories.map((category) => ({ label: category.name, value: category.id })),
+    { label: "Uncategorized", value: null, color: null },
+    ...rootCategories.map((category) => ({
+      label: category.name,
+      value: category.id,
+      color: getCategoryDisplayColor(category),
+    })),
   ];
   const { errors, isSubmitting } = form.formState;
+  const amountErrorId = "transaction-amount-error";
+  const dateErrorId = "transaction-date-error";
+  const typeErrorId = "transaction-type-error";
 
   return (
     <DrawerContent>
       <DrawerHeader>
         <DrawerTitle>{title}</DrawerTitle>
-        <DrawerDescription>
-          Select a category when useful, or leave the transaction uncategorized.
-        </DrawerDescription>
+        <DrawerDescription>{description}</DrawerDescription>
       </DrawerHeader>
       <form
         className="flex min-h-0 flex-1 flex-col"
         onSubmit={form.handleSubmit((values) => void onSubmit(values))}
       >
         <FieldGroup className="flex-1 overflow-y-auto p-4">
+          <Field data-invalid={Boolean(errors.transactionType)}>
+            <FieldLabel>Type</FieldLabel>
+            <Controller
+              control={form.control}
+              name="transactionType"
+              render={({ field }) => (
+                <ToggleGroup
+                  aria-describedby={errors.transactionType ? typeErrorId : undefined}
+                  aria-invalid={Boolean(errors.transactionType)}
+                  aria-label="Transaction type"
+                  className="w-full"
+                  spacing={0}
+                  variant="outline"
+                  value={[field.value]}
+                  onValueChange={(values) => {
+                    const nextValue = values.at(-1);
+
+                    if (nextValue === "expense" || nextValue === "income") {
+                      field.onChange(nextValue);
+                    }
+                  }}
+                >
+                  {TRANSACTION_TYPES.map((type) => (
+                    <ToggleGroupItem key={type} value={type} className="flex-1 capitalize">
+                      {type}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              )}
+            />
+            <FieldError id={typeErrorId}>{errors.transactionType?.message}</FieldError>
+          </Field>
+
+          <Field data-invalid={Boolean(errors.amount)}>
+            <FieldLabel htmlFor="transaction-amount">Amount</FieldLabel>
+            <Controller
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <InputGroup>
+                  <InputGroupInput
+                    id="transaction-amount"
+                    type="text"
+                    inputMode="decimal"
+                    autoFocus={isCreate}
+                    placeholder="0.00"
+                    aria-describedby={errors.amount ? amountErrorId : undefined}
+                    aria-invalid={Boolean(errors.amount)}
+                    value={field.value ?? ""}
+                    onBlur={(event) => {
+                      field.onBlur();
+                      const normalized = normalizeAmountInput(event.target.value);
+
+                      if (normalized !== event.target.value) {
+                        field.onChange(normalized);
+                      }
+                    }}
+                    name={field.name}
+                    ref={field.ref}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+
+                      if (isPartialAmountInput(nextValue)) {
+                        field.onChange(nextValue);
+                      }
+                    }}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupText>EUR</InputGroupText>
+                  </InputGroupAddon>
+                </InputGroup>
+              )}
+            />
+            <FieldDescription>Zero or greater. Enter the value in euros.</FieldDescription>
+            <FieldError id={amountErrorId}>{errors.amount?.message}</FieldError>
+          </Field>
+
           <Field data-invalid={Boolean(errors.transactionDate)}>
             <FieldLabel>Date</FieldLabel>
             <Controller
@@ -139,6 +244,7 @@ function TransactionFormDrawer({
                             type="button"
                             variant="outline"
                             className="min-w-0 flex-1 justify-start font-normal"
+                            aria-describedby={errors.transactionDate ? dateErrorId : undefined}
                             aria-invalid={Boolean(errors.transactionDate)}
                           />
                         }
@@ -173,71 +279,8 @@ function TransactionFormDrawer({
                 );
               }}
             />
-            <FieldError>{errors.transactionDate?.message}</FieldError>
-          </Field>
-
-          <Field data-invalid={Boolean(errors.transactionType)}>
-            <FieldLabel>Type</FieldLabel>
-            <Controller
-              control={form.control}
-              name="transactionType"
-              render={({ field }) => (
-                <ToggleGroup
-                  aria-label="Transaction type"
-                  className="w-full"
-                  spacing={0}
-                  variant="outline"
-                  value={[field.value]}
-                  onValueChange={(values) => {
-                    const nextValue = values.at(-1);
-
-                    if (nextValue === "expense" || nextValue === "income") {
-                      field.onChange(nextValue);
-                    }
-                  }}
-                >
-                  {TRANSACTION_TYPES.map((type) => (
-                    <ToggleGroupItem key={type} value={type} className="flex-1 capitalize">
-                      {type}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
-              )}
-            />
-            <FieldError>{errors.transactionType?.message}</FieldError>
-          </Field>
-
-          <Field data-invalid={Boolean(errors.amount)}>
-            <FieldLabel htmlFor="transaction-amount">Amount</FieldLabel>
-            <Controller
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <InputGroup>
-                  <InputGroupInput
-                    id="transaction-amount"
-                    type="text"
-                    inputMode="decimal"
-                    aria-invalid={Boolean(errors.amount)}
-                    value={field.value ?? ""}
-                    onBlur={field.onBlur}
-                    name={field.name}
-                    ref={field.ref}
-                    onChange={(event) => {
-                      const nextValue = event.target.value;
-
-                      if (isPartialAmountInput(nextValue)) {
-                        field.onChange(nextValue);
-                      }
-                    }}
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <InputGroupText>EUR</InputGroupText>
-                  </InputGroupAddon>
-                </InputGroup>
-              )}
-            />
-            <FieldError>{errors.amount?.message}</FieldError>
+            <FieldDescription>Date and time when the transaction occurred.</FieldDescription>
+            <FieldError id={dateErrorId}>{errors.transactionDate?.message}</FieldError>
           </Field>
 
           <Controller
@@ -274,7 +317,10 @@ function TransactionFormDrawer({
                         <SelectGroup>
                           {parentCategoryItems.map((item) => (
                             <SelectItem key={item.value ?? "uncategorized"} value={item.value}>
-                              {item.label}
+                              <span className="flex items-center gap-2">
+                                {item.color ? <CategoryDot color={item.color} /> : null}
+                                {item.label}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectGroup>
@@ -282,16 +328,13 @@ function TransactionFormDrawer({
                     </Select>
 
                     {selectedChildren.length > 0 ? (
-                      <div className="flex items-center gap-2 pl-3">
-                        <span className="text-muted-foreground" aria-hidden="true">
-                          └
-                        </span>
+                      <div className="border-l border-border pl-3">
                         <Select
                           items={childCategoryItems}
                           value={selectedChildId || null}
                           onValueChange={(value) => field.onChange(value ?? selectedParentId)}
                         >
-                          <SelectTrigger className="min-w-0 flex-1" aria-label="Child category">
+                          <SelectTrigger className="min-w-0 w-full" aria-label="Child category">
                             <SelectValue placeholder="Other" />
                           </SelectTrigger>
                           <SelectContent alignItemWithTrigger={false}>
@@ -307,6 +350,11 @@ function TransactionFormDrawer({
                       </div>
                     ) : null}
                   </div>
+                  <FieldDescription>
+                    {rootCategories.length > 0
+                      ? "Optional. Pick a root category, then refine with a subcategory when available."
+                      : "Optional. Create categories under Cash flow → Categories to group transactions."}
+                  </FieldDescription>
                 </Field>
               );
             }}
@@ -314,20 +362,32 @@ function TransactionFormDrawer({
 
           <Field>
             <FieldLabel htmlFor="transaction-description">Description</FieldLabel>
-            <Input id="transaction-description" {...form.register("description")} />
+            <Input
+              id="transaction-description"
+              placeholder="Coffee, salary, rent..."
+              {...form.register("description")}
+            />
+            <FieldDescription>Short label shown in the transaction list.</FieldDescription>
           </Field>
 
           <Field>
             <FieldLabel htmlFor="transaction-notes">Notes</FieldLabel>
-            <Textarea id="transaction-notes" {...form.register("notes")} />
+            <Textarea
+              id="transaction-notes"
+              placeholder="Optional details for your own reference"
+              className="min-h-16 resize-y"
+              {...form.register("notes")}
+            />
           </Field>
         </FieldGroup>
 
         <DrawerFooter>
           <Button type="submit" disabled={isSubmitting}>
-            Save transaction
+            {isSubmitting ? "Saving..." : "Save transaction"}
           </Button>
-          <DrawerClose render={<Button type="button" variant="outline" />}>Cancel</DrawerClose>
+          <DrawerClose render={<Button type="button" variant="outline" disabled={isSubmitting} />}>
+            Cancel
+          </DrawerClose>
         </DrawerFooter>
       </form>
     </DrawerContent>

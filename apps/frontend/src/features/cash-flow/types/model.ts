@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { prepareAmountForValidation } from "../lib/transaction";
+
 const CATEGORY_COLOR_PAIRS = [
   ["#951818", "#F6CACA"],
   ["#884416", "#F6DCCA"],
@@ -55,18 +57,19 @@ export const transactionTypeSchema = z.enum(TRANSACTION_TYPES);
 const amountInputSchema = z
   .string()
   .trim()
-  .min(1, "Amount is required")
-  .refine((value) => {
-    const normalized = value.replace(",", ".");
+  .transform(prepareAmountForValidation)
+  .pipe(
+    z
+      .string()
+      .min(1, "Amount is required")
+      .refine((value) => /^\d+(\.\d{1,2})?$/.test(value), "Enter a valid amount")
+      .refine((value) => {
+        const parsed = Number(value);
 
-    return /^\d+(\.\d{1,2})?$/.test(normalized);
-  }, "Enter a valid amount")
-  .refine((value) => {
-    const parsed = Number(value.replace(",", "."));
-
-    return Number.isFinite(parsed) && parsed >= 0;
-  }, "Amount must be zero or greater")
-  .transform((value) => Math.round(Number(value.replace(",", ".")) * 100));
+        return Number.isFinite(parsed) && parsed >= 0;
+      }, "Amount must be zero or greater")
+      .transform((value) => Math.round(Number(value) * 100)),
+  );
 
 export const transactionFormSchema = z.object({
   description: z.string().trim().optional(),

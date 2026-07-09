@@ -4,6 +4,8 @@ import {
   combineDateTime,
   formatAmountFromMinor,
   isPartialAmountInput,
+  normalizeAmountInput,
+  prepareAmountForValidation,
   splitDateTime,
   toBackendDateTime,
   toDateTimeInputValue,
@@ -45,6 +47,18 @@ describe("transaction amount helpers", () => {
   it("formats minor units for decimal input", () => {
     expect(formatAmountFromMinor(1234)).toBe("12.34");
     expect(formatAmountFromMinor(100)).toBe("1.00");
+    expect(formatAmountFromMinor(0)).toBe("0.00");
+  });
+
+  it("prepares leading-dot amounts for validation", () => {
+    expect(prepareAmountForValidation(".00")).toBe("0.00");
+    expect(prepareAmountForValidation("0")).toBe("0");
+  });
+
+  it("normalizes complete amount input on blur", () => {
+    expect(normalizeAmountInput("0")).toBe("0.00");
+    expect(normalizeAmountInput(".00")).toBe("0.00");
+    expect(normalizeAmountInput("12")).toBe("12.00");
   });
 
   it("accepts partial decimal input while typing", () => {

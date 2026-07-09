@@ -23,9 +23,44 @@ export const combineDateTime = (date: string, time: string) => {
 };
 
 const partialAmountInputPattern = /^\d*[.,]?\d{0,2}$/;
+const completeAmountPattern = /^\d+(\.\d{1,2})?$/;
 
 export const formatAmountFromMinor = (minorUnits: number) => {
   return (minorUnits / 100).toFixed(2);
+};
+
+export const prepareAmountForValidation = (value: string) => {
+  const trimmed = value.trim().replace(",", ".");
+
+  if (!trimmed) {
+    return "";
+  }
+
+  if (trimmed.startsWith(".")) {
+    return `0${trimmed}`;
+  }
+
+  return trimmed;
+};
+
+export const normalizeAmountInput = (value: string) => {
+  const prepared = prepareAmountForValidation(value);
+
+  if (!prepared) {
+    return value.trim();
+  }
+
+  if (!completeAmountPattern.test(prepared)) {
+    return value;
+  }
+
+  const parsed = Number(prepared);
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return value;
+  }
+
+  return parsed.toFixed(2);
 };
 
 export const isPartialAmountInput = (value: string) => {
