@@ -6790,6 +6790,17 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-plugin-stronghold",
  "tauri-specta",
+ "zai-app",
+ "zai-core",
+]
+
+[[package]]
+name = "zai-app"
+version = "0.0.1-alpha.1"
+dependencies = [
+ "log",
+ "tokio",
+ "uuid",
  "zai-core",
  "zai-db",
 ]

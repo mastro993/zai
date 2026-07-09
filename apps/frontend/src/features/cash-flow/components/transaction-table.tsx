@@ -1,3 +1,5 @@
+import { Delete02Icon, PencilEdit02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -7,8 +9,11 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TableHeadActions,
   TableHeader,
   TableRow,
+  TableRowActions,
+  TableRowWithActions,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { formatCurrencyFromMinor } from "@/lib/currency";
@@ -137,9 +142,7 @@ function TransactionTable({
               Amount
             </TableHead>
             <TableHead className="p-3 font-medium">Description</TableHead>
-            <TableHead className="sticky right-0 z-10 whitespace-nowrap bg-muted/40 p-3 text-right font-medium">
-              Actions
-            </TableHead>
+            <TableHeadActions />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -149,8 +152,10 @@ function TransactionTable({
               : undefined;
             const isSelected = selectedIds.has(transaction.id);
 
+            const transactionLabel = transaction.description || transaction.id;
+
             return (
-              <TableRow
+              <TableRowWithActions
                 key={transaction.id}
                 data-state={isSelected ? "selected" : undefined}
                 className={cn("border-t", isSelected && "bg-muted/30", "cursor-pointer")}
@@ -199,36 +204,32 @@ function TransactionTable({
                     {transaction.description || "No description"}
                   </span>
                 </TableCell>
-                <TableCell
-                  className={cn(
-                    "sticky right-0 z-10 p-3",
-                    isSelected ? "bg-muted/30" : "bg-background",
-                  )}
-                >
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onEdit({ type: "edit", transaction });
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onDelete(transaction);
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
+                <TableRowActions>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Edit ${transactionLabel}`}
+                    title="Edit"
+                    onClick={() => {
+                      onEdit({ type: "edit", transaction });
+                    }}
+                  >
+                    <HugeiconsIcon icon={PencilEdit02Icon} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label={`Delete ${transactionLabel}`}
+                    title="Delete"
+                    onClick={() => {
+                      onDelete(transaction);
+                    }}
+                  >
+                    <HugeiconsIcon icon={Delete02Icon} />
+                  </Button>
+                </TableRowActions>
+              </TableRowWithActions>
             );
           })}
         </TableBody>

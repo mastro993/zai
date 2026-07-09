@@ -1,0 +1,16 @@
+[package]
+name = "zai-app"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+zai-core = { workspace = true }
+zai-db = { workspace = true }
+log = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+uuid = { workspace = true }
