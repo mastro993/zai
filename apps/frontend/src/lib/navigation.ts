@@ -66,7 +66,7 @@ export const resolveScreenBreadcrumbs = (pathname: string): Array<BreadcrumbSegm
       return [{ label: item.title }];
     }
 
-    if (item.subItems) {
+    if ("subItems" in item && item.subItems) {
       for (const subItem of item.subItems) {
         const subPath = normalizePathname(subItem.to);
 

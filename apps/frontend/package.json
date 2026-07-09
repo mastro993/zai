@@ -7,9 +7,11 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "vite dev",
+    "dev": "VITE_ZAI_BUILD_TARGET=tauri vite dev",
+    "dev:web": "VITE_ZAI_BUILD_TARGET=web vite dev",
     "generate-routes": "tsr generate",
-    "build": "pnpm generate-routes && pnpm type-check && vite build",
+    "build": "pnpm generate-routes && pnpm type-check && VITE_ZAI_BUILD_TARGET=tauri vite build",
+    "build:web": "pnpm generate-routes && pnpm type-check && VITE_ZAI_BUILD_TARGET=web vite build",
     "preview": "vite preview",
     "type-check": "tsc -b --noEmit",
     "lint": "oxlint src --deny-warnings",
@@ -17,7 +19,7 @@
     "format:check": "oxfmt src --check",
     "check:routes": "pnpm generate-routes && git diff --exit-code -- src/routeTree.gen.ts",
     "check": "pnpm format:check && pnpm lint && pnpm check:routes && pnpm type-check && pnpm test",
-    "test": "vitest run"
+    "test": "VITE_ZAI_BUILD_TARGET=tauri vitest run"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
