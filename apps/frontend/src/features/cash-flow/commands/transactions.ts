@@ -111,6 +111,14 @@ export const deleteTransaction = (transactionId: string): CommandResult<Transact
   });
 };
 
+export const deleteTransactions = (
+  transactionIds: Array<string>,
+): CommandResult<Array<Transaction>> => {
+  return invokeCommand<Array<Transaction>>("delete_transactions", {
+    transactionIds,
+  });
+};
+
 export const importTransactions = (
   transactions: Array<TransactionPayload & { id?: string }>,
 ): CommandResult<Array<Transaction>> => {

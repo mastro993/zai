@@ -11,15 +11,18 @@ import { getTransactionCategories } from "../commands/transaction-categories";
 import {
   createTransaction,
   deleteTransaction,
+  deleteTransactions,
   getAllTransactions,
   getTransactions,
   type TransactionFilters,
   updateTransaction,
 } from "../commands/transactions";
+import { TransactionBulkDeleteDialog } from "../components/transaction-bulk-delete-dialog";
 import { TransactionCategoryFilter } from "../components/transaction-category-filter";
 import { TransactionDateFilter } from "../components/transaction-date-filter";
 import { TransactionTypeFilter } from "../components/transaction-type-filter";
 import { TransactionDeleteConfirmationDialog } from "../components/transaction-delete-confirmation-dialog";
+import { TransactionSelectionBar } from "../components/transaction-selection-bar";
 import { TransactionFormDrawer } from "../components/transaction-form-drawer";
 import { TransactionImportDialog } from "../components/transaction-import-dialog";
 import { TransactionPagination } from "../components/transaction-pagination";
@@ -48,6 +51,7 @@ import type {
   TransactionCategory,
   TransactionFormValues,
 } from "../types/model";
+import { useTransactionSelection } from "../hooks/use-transaction-selection";
 import type { TransactionFormMode } from "../types/transaction-types";
 
 type TransactionScreenInitialData = {
@@ -120,7 +124,35 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
   const hasSkippedInitialFetch = useRef(false);
+
+  const activeFilters = useMemo(
+    () =>
+      buildTransactionFilters(
+        debouncedQuery,
+        dateSelection,
+        typeSelection,
+        categorySelection,
+        categories,
+      ),
+    [debouncedQuery, dateSelection, typeSelection, categorySelection, categories],
+  );
+
+  const {
+    selectedIds,
+    selectedCount,
+    selectAllMatching,
+    pageCheckboxState,
+    clearSelection,
+    syncFilterFingerprint,
+    toggleRow,
+    togglePage,
+    applySelectAllMatching,
+    removeFromSelection,
+  } = useTransactionSelection(transactions);
 
   const categoryById = useMemo(
     () => new Map(categories.map((category) => [category.id, category] as const)),
@@ -226,6 +258,10 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
   }, [query]);
 
   useEffect(() => {
+    syncFilterFingerprint(activeFilters);
+  }, [activeFilters, syncFilterFingerprint]);
+
+  useEffect(() => {
     if (!hasSkippedInitialFetch.current) {
       hasSkippedInitialFetch.current = true;
       return;
@@ -277,33 +313,55 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
 
   const exportTransactionCsv = async () => {
     setIsExporting(true);
+    const isSelectedExport = selectedCount > 0;
 
-    const transactionsResult = await getAllTransactions(
-      buildTransactionFilters(
-        debouncedQuery,
-        dateSelection,
-        typeSelection,
-        categorySelection,
-        categories,
-      ),
-    );
+    let transactionsToExport: Array<Transaction>;
 
-    if (Result.isFailure(transactionsResult)) {
-      toast.error("Failed to export transactions", {
-        description: transactionsResult.error.message,
-      });
-      setIsExporting(false);
-      return;
+    if (isSelectedExport) {
+      const allTransactionsResult = await getAllTransactions();
+
+      if (Result.isFailure(allTransactionsResult)) {
+        toast.error("Failed to export selected transactions", {
+          description: allTransactionsResult.error.message,
+        });
+        setIsExporting(false);
+        return;
+      }
+
+      transactionsToExport = allTransactionsResult.value.filter((transaction) =>
+        selectedIds.has(transaction.id),
+      );
+    } else {
+      const filteredTransactionsResult = await getAllTransactions(activeFilters);
+
+      if (Result.isFailure(filteredTransactionsResult)) {
+        toast.error("Failed to export transactions", {
+          description: filteredTransactionsResult.error.message,
+        });
+        setIsExporting(false);
+        return;
+      }
+
+      transactionsToExport = filteredTransactionsResult.value;
     }
 
-    const result = await exportTransactions(transactionsResult.value, categories);
+    const result = await exportTransactions(transactionsToExport, categories);
 
     if (Result.isFailure(result)) {
-      toast.error("Failed to export transactions", { description: result.error.message });
+      toast.error(
+        isSelectedExport
+          ? "Failed to export selected transactions"
+          : "Failed to export transactions",
+        { description: result.error.message },
+      );
     } else if (result.value) {
-      toast.success("Transactions exported", { description: result.value });
+      toast.success(isSelectedExport ? "Selected transactions exported" : "Transactions exported", {
+        description: result.value,
+      });
     } else {
-      toast.info("Transaction export canceled");
+      toast.info(
+        isSelectedExport ? "Selected transaction export canceled" : "Transaction export canceled",
+      );
     }
 
     setIsExporting(false);
@@ -320,6 +378,7 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
       return;
     }
 
+    removeFromSelection(transaction.id);
     setIsDeleteDialogOpen(false);
     await loadData(
       debouncedQuery,
@@ -331,6 +390,59 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
       categories,
     );
     setIsDeleting(false);
+  };
+
+  const selectAllMatchingTransactions = async () => {
+    setIsSelectingAllMatching(true);
+
+    const transactionsResult = await getAllTransactions(activeFilters);
+
+    if (Result.isFailure(transactionsResult)) {
+      toast.error("Failed to select matching transactions", {
+        description: transactionsResult.error.message,
+      });
+      setIsSelectingAllMatching(false);
+      return;
+    }
+
+    applySelectAllMatching(transactionsResult.value, activeFilters);
+    setIsSelectingAllMatching(false);
+  };
+
+  const removeSelectedTransactions = async () => {
+    const transactionIds = [...selectedIds];
+
+    if (transactionIds.length === 0) {
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    const result = await deleteTransactions(transactionIds);
+
+    if (Result.isFailure(result)) {
+      setErrorMessage(result.error.message);
+      setIsBulkDeleteDialogOpen(false);
+      setIsBulkDeleting(false);
+      return;
+    }
+
+    const deletedCount = result.value.length;
+
+    clearSelection();
+    setIsBulkDeleteDialogOpen(false);
+    await loadData(
+      debouncedQuery,
+      page,
+      perPage,
+      dateSelection,
+      typeSelection,
+      categorySelection,
+      categories,
+    );
+    setIsBulkDeleting(false);
+    toast.success(
+      deletedCount === 1 ? "Deleted 1 transaction" : `Deleted ${deletedCount} transactions`,
+    );
   };
 
   const changeRowsPerPage = (nextPerPage: TransactionRowsPerPage) => {
@@ -409,16 +521,33 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
             disabled={isLoading || isExporting}
             onClick={exportTransactionCsv}
           >
-            {isExporting ? "Exporting..." : "Export transactions"}
+            {isExporting
+              ? selectedCount > 0
+                ? "Exporting selected..."
+                : "Exporting..."
+              : selectedCount > 0
+                ? "Export selected transactions"
+                : "Export transactions"}
           </Button>
           <Button onClick={() => openFormDrawer({ type: "create" })}>New transaction</Button>
         </div>
       </div>
 
+      <TransactionSelectionBar
+        selectedCount={selectedCount}
+        isDeleting={isBulkDeleting}
+        onDelete={() => setIsBulkDeleteDialogOpen(true)}
+        onClearSelection={clearSelection}
+      />
+
       {errorMessage ? (
         <div className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {errorMessage}
         </div>
+      ) : null}
+
+      {isSelectingAllMatching ? (
+        <p className="text-sm text-muted-foreground">Selecting matching transactions...</p>
       ) : null}
 
       {isLoading ? <p className="text-sm text-muted-foreground">Loading transactions...</p> : null}
@@ -443,6 +572,17 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
           <TransactionTable
             transactions={transactions}
             categoryById={categoryById}
+            selectedIds={selectedIds}
+            pageCheckboxState={pageCheckboxState}
+            selectAllMatching={selectAllMatching}
+            page={page}
+            perPage={perPage}
+            totalPages={totalPages}
+            onToggleRow={toggleRow}
+            onTogglePage={(selectAll) => {
+              togglePage(transactions, selectAll);
+            }}
+            onSelectAllMatching={selectAllMatchingTransactions}
             onEdit={openFormDrawer}
             onDelete={openDeleteDialog}
           />
@@ -471,6 +611,17 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
           if (pendingDelete) {
             void removeTransaction(pendingDelete);
           }
+        }}
+      />
+
+      <TransactionBulkDeleteDialog
+        selectedCount={selectedCount}
+        open={isBulkDeleteDialogOpen}
+        isDeleting={isBulkDeleting}
+        onOpenChange={setIsBulkDeleteDialogOpen}
+        onOpenChangeComplete={() => undefined}
+        onDelete={() => {
+          void removeSelectedTransactions();
         }}
       />
 

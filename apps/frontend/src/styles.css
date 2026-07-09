@@ -131,4 +131,17 @@
   html {
     @apply font-sans;
   }
+  [data-slot="checkbox"][data-indeterminate="true"] {
+    @apply border-primary bg-primary text-primary-foreground;
+  }
+  [data-slot="checkbox"][data-indeterminate="true"] [data-slot="checkbox-indicator"] svg {
+    display: none;
+  }
+  [data-slot="checkbox"][data-indeterminate="true"] [data-slot="checkbox-indicator"]::before {
+    content: "";
+    display: block;
+    width: 0.5rem;
+    height: 1px;
+    background-color: currentColor;
+  }
 }
