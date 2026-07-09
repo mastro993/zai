@@ -506,6 +506,12 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
       }
     >
       <div className="flex flex-wrap items-center justify-end gap-2">
+        <TransactionSelectionBar
+          selectedCount={selectedCount}
+          isDeleting={isBulkDeleting}
+          onDelete={() => setIsBulkDeleteDialogOpen(true)}
+          onClearSelection={clearSelection}
+        />
         <Input
           type="search"
           placeholder="Search description or notes..."
@@ -524,13 +530,6 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
           onSelectionChange={changeCategorySelection}
         />
       </div>
-
-      <TransactionSelectionBar
-        selectedCount={selectedCount}
-        isDeleting={isBulkDeleting}
-        onDelete={() => setIsBulkDeleteDialogOpen(true)}
-        onClearSelection={clearSelection}
-      />
 
       {errorMessage ? (
         <div className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
