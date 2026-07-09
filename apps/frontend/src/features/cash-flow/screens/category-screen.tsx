@@ -2,6 +2,7 @@ import { Result } from "@praha/byethrow";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 
@@ -142,15 +143,9 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
   };
 
   return (
-    <section className="flex flex-1 flex-col gap-4 p-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-medium">Categories</h1>
-          <p className="text-sm text-muted-foreground">
-            Group cash flow with root categories and one child level.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <ScreenBase
+      actions={
+        <>
           <Button
             variant="outline"
             disabled={isLoading}
@@ -162,9 +157,9 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
             {isExporting ? "Exporting..." : "Export categories"}
           </Button>
           <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
-        </div>
-      </div>
-
+        </>
+      }
+    >
       {errorMessage ? (
         <div className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {errorMessage}
@@ -250,6 +245,6 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
           />
         ) : null}
       </Drawer>
-    </section>
+    </ScreenBase>
   );
 }

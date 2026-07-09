@@ -2,6 +2,7 @@ import { Result } from "@praha/byethrow";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
@@ -481,38 +482,9 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
     isActiveCategoryFilter(categorySelection);
 
   return (
-    <section className="flex flex-1 flex-col gap-4 p-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-medium">Transactions</h1>
-          <p className="text-sm text-muted-foreground">
-            Log income and expenses with an optional category.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Input
-            type="search"
-            placeholder="Search description or notes..."
-            value={query}
-            className="w-72"
-            onChange={(event) => {
-              setQuery(event.target.value);
-            }}
-          />
-          <TransactionDateFilter
-            selection={dateSelection}
-            onSelectionChange={changeDateSelection}
-          />
-          <TransactionTypeFilter
-            selection={typeSelection}
-            onSelectionChange={changeTypeSelection}
-          />
-          <TransactionCategoryFilter
-            categories={categories}
-            selection={categorySelection}
-            isLoading={isLoading && categories.length === 0}
-            onSelectionChange={changeCategorySelection}
-          />
+    <ScreenBase
+      actions={
+        <>
           <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
             Import transactions
           </Button>
@@ -530,7 +502,27 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
                 : "Export transactions"}
           </Button>
           <Button onClick={() => openFormDrawer({ type: "create" })}>New transaction</Button>
-        </div>
+        </>
+      }
+    >
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Input
+          type="search"
+          placeholder="Search description or notes..."
+          value={query}
+          className="w-72"
+          onChange={(event) => {
+            setQuery(event.target.value);
+          }}
+        />
+        <TransactionDateFilter selection={dateSelection} onSelectionChange={changeDateSelection} />
+        <TransactionTypeFilter selection={typeSelection} onSelectionChange={changeTypeSelection} />
+        <TransactionCategoryFilter
+          categories={categories}
+          selection={categorySelection}
+          isLoading={isLoading && categories.length === 0}
+          onSelectionChange={changeCategorySelection}
+        />
       </div>
 
       <TransactionSelectionBar
@@ -666,6 +658,6 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
           />
         ) : null}
       </Drawer>
-    </section>
+    </ScreenBase>
   );
 }

@@ -1,12 +1,6 @@
 import { Link, Outlet, createRootRoute, useRouterState } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
-import {
-  DashboardSquare01Icon,
-  Settings01Icon,
-  TransactionHistoryIcon,
-  Wallet01Icon,
-} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
 import {
@@ -27,25 +21,9 @@ import {
   SidebarProvider,
   SidebarRail,
   SidebarSeparator,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-
-const navigationItems = [
-  { title: "Dashboard", to: "/dashboard", icon: DashboardSquare01Icon },
-  { title: "Net Worth", to: "/net-worth", icon: Wallet01Icon },
-  {
-    title: "Cash flow",
-    to: "/cash-flow",
-    icon: TransactionHistoryIcon,
-    subItems: [
-      { title: "Transactions", to: "/cash-flow/transactions" },
-      { title: "Categories", to: "/cash-flow/categories" },
-    ],
-  },
-] as const;
-
-const settingsItem = { title: "Settings", to: "/settings", icon: Settings01Icon } as const;
+import { navigationItems, settingsItem } from "@/lib/navigation";
 
 export const Route = createRootRoute({
   component: AppLayout,
@@ -53,9 +31,9 @@ export const Route = createRootRoute({
 
 function AppLayout() {
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-svh overflow-hidden">
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-h-0 overflow-hidden">
         <Outlet />
       </SidebarInset>
       <Toaster position="bottom-right" />
@@ -103,7 +81,7 @@ function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => {
-                const hasSubItems = "subItems" in item;
+                const hasSubItems = "subItems" in item && item.subItems !== undefined;
                 const isActive =
                   pathname === item.to ||
                   (hasSubItems && item.subItems.some((subItem) => pathname === subItem.to));
@@ -153,7 +131,6 @@ function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
         <SidebarSeparator />
-        <SidebarTrigger className="h-8 w-full justify-start rounded-none p-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2" />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 
+import { ScreenBase } from "@/components/screen-base";
 import {
   Field,
   FieldContent,
@@ -32,12 +33,11 @@ const isThemeMode = (value: string | undefined): value is ThemeMode =>
 
 function SettingsPage() {
   return (
-    <section className="flex flex-1 flex-col gap-4 p-6">
-      <h1 className="text-2xl font-medium">Settings</h1>
+    <ScreenBase>
       <FieldGroup className="max-w-3xl gap-3">
         <ThemeModeSetting />
       </FieldGroup>
-    </section>
+    </ScreenBase>
   );
 }
 
