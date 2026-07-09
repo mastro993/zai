@@ -9,7 +9,9 @@
   "scripts": {
     "prepare": "pnpm exec lefthook install",
     "dev": "pnpm --filter frontend dev",
+    "dev:web": "pnpm --filter frontend dev:web",
     "build": "pnpm --filter frontend build",
+    "build:web": "pnpm --filter frontend build:web",
     "preview": "pnpm --filter frontend preview",
     "tauri": "tauri",
     "dev:tauri": "pnpm tauri dev",
