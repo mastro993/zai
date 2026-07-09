@@ -1,3 +1,4 @@
+import { formatTransactionTypeLabel } from "./transaction-type-display";
 import type { TransactionType } from "../types/model";
 
 export type TypeFilterSelection = TransactionType | null;
@@ -9,8 +10,8 @@ export const TYPE_FILTER_OPTIONS: ReadonlyArray<{
   label: string;
 }> = [
   { value: null, label: "All types" },
-  { value: "income", label: "Income" },
-  { value: "expense", label: "Expense" },
+  { value: "income", label: formatTransactionTypeLabel("income") },
+  { value: "expense", label: formatTransactionTypeLabel("expense") },
 ];
 
 export const isActiveTypeFilter = (selection: TypeFilterSelection): boolean => selection !== null;

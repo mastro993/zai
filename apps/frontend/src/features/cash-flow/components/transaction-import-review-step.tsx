@@ -11,6 +11,7 @@ import type {
   TransactionImportPreview,
   TransactionImportPreviewStatus,
 } from "../lib/transaction-import";
+import { TransactionTypeBadge } from "./transaction-type-badge";
 
 const STATUS_META: Record<TransactionImportPreviewStatus, { label: string; dot: string }> = {
   import: { label: "Ready", dot: "bg-primary" },
@@ -129,8 +130,12 @@ export function TransactionImportReviewStep({
                     </TableCell>
                     <TableCell className="tabular-nums">{row.transactionDate || "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{row.amount || "—"}</TableCell>
-                    <TableCell className="capitalize text-muted-foreground">
-                      {row.transactionType || "—"}
+                    <TableCell>
+                      {row.transactionType ? (
+                        <TransactionTypeBadge type={row.transactionType} />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="max-w-[16rem] truncate" title={row.description}>
                       {row.description || "—"}

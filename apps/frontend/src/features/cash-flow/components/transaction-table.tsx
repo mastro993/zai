@@ -14,6 +14,7 @@ import { toDateTimeInputValue } from "../lib/transaction";
 import type { Transaction, TransactionCategory } from "../types/model";
 import type { TransactionFormMode } from "../types/transaction-types";
 import { CategoryBadge } from "./category-badge";
+import { TransactionTypeBadge } from "./transaction-type-badge";
 
 function TransactionTable({
   transactions,
@@ -53,8 +54,8 @@ function TransactionTable({
               <TableCell className="whitespace-nowrap p-3">
                 {toDateTimeInputValue(transaction.transactionDate)}
               </TableCell>
-              <TableCell className="whitespace-nowrap p-3 capitalize">
-                {transaction.transactionType}
+              <TableCell className="whitespace-nowrap p-3">
+                <TransactionTypeBadge type={transaction.transactionType} />
               </TableCell>
               <TableCell className="whitespace-nowrap p-3">
                 {category ? (

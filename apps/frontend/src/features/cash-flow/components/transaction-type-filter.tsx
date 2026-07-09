@@ -13,6 +13,7 @@ import {
   isActiveTypeFilter,
   type TypeFilterSelection,
 } from "../lib/transaction-type-filter";
+import { TransactionTypeBadge } from "./transaction-type-badge";
 
 type TransactionTypeFilterProps = {
   selection: TypeFilterSelection;
@@ -58,7 +59,7 @@ export function TransactionTypeFilter({
                 className="justify-start"
                 onClick={() => selectOption(option.value)}
               >
-                {option.label}
+                {option.value ? <TransactionTypeBadge type={option.value} /> : option.label}
               </Button>
             ))}
           </div>
