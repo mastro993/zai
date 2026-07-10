@@ -32,12 +32,13 @@ fn percent_decode(input: &str) -> String {
     let mut index = 0;
 
     while index < bytes.len() {
-        if bytes[index] == b'%' && index + 2 < bytes.len() {
-            if let Ok(byte) = u8::from_str_radix(&input[index + 1..index + 3], 16) {
-                out.push(byte);
-                index += 3;
-                continue;
-            }
+        if bytes[index] == b'%'
+            && index + 2 < bytes.len()
+            && let Ok(byte) = u8::from_str_radix(&input[index + 1..index + 3], 16)
+        {
+            out.push(byte);
+            index += 3;
+            continue;
         }
 
         out.push(bytes[index]);
