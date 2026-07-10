@@ -32,3 +32,14 @@ Create a GitHub issue.
 ## When a skill says "fetch the relevant ticket"
 
 Resolve the number with `gh pr view <number>` first, then fall back to `gh issue view <number> --comments`.
+
+## Wayfinding operations
+
+Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
+
+- **Map**: a single issue labelled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body. `gh issue create --label wayfinder:map`.
+- **Child ticket**: an issue linked to the map as a GitHub sub-issue (`gh api` on the sub-issues endpoint). Where sub-issues aren't enabled, add the child to a task list in the map body and put `Part of #<map>` at the top of the child body. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.
+- **Blocking**: GitHub's **native issue dependencies** are canonical. Add an edge with `gh api --method POST repos/<owner>/<repo>/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-db-id>`, where `<blocker-db-id>` is the blocker's numeric database id from `gh api repos/<owner>/<repo>/issues/<n> --jq .id`. Where dependencies aren't available, fall back to a `Blocked by: #<n>, #<n>` line at the top of the child body. A ticket is unblocked when every blocker is closed.
+- **Frontier query**: list the map's open children, then drop any with an open blocker or an assignee; first in map order wins.
+- **Claim**: `gh issue edit <n> --add-assignee @me`.
+- **Resolve**: comment with the answer, close the ticket, then append a context pointer to the map's Decisions-so-far.

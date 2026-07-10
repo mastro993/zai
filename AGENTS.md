@@ -8,7 +8,30 @@ Personal finance desktop app built with Tauri (Rust backend + React frontend).
 - **Desktop**: Tauri/Rust with SQLite (`apps/tauri/`, `crates/`)
 - **Web mode**: Axum HTTP server (`apps/server/`)
 
-## General guardrails
+## Pillars
+
+Before making any architectural, implementation, or product decision, evaluate
+it against these four fundamental pillars. If a solution violates one, reject
+it or explicitly justify the trade-off.
+
+- **Secure**: Protect user data at every layer. Store secrets securely, encrypt
+  sensitive data when appropriate, validate inputs, and follow the principle of
+  least privilege.
+- **Reliable**: Zai must always behave predictably and consistently. Data
+  integrity, correctness, recoverability, and deterministic behavior take p
+  riority over convenience.
+- **Efficient**: Performance is a core requirement, not an afterthought.
+  Optimize for low latency, minimal resource usage, and scalability. The
+  architecture should be capable of handling thousands of operations per second
+  without fundamental redesign.
+- **Private**: User data belongs exclusively to the user. Zai is local-first:
+  no cloud services, no telemetry, no remote storage, and no external data
+  processing unless the user explicitly requests it.
+
+When in doubt, choose the solution that best satisfies all four pillars. If a
+trade-off is unavoidable, state it explicitly.
+
+## Implementation guardrails
 
 - Keep it simple: we are not trying to impress nobody. Prefer simpler flows and
   clear UIs over complicated UX.
