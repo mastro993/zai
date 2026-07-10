@@ -46,6 +46,49 @@ export const resolveWebApiBaseUrl = (): string => {
     : defaultApiBaseUrl;
 };
 
+const readNumber = (value: unknown, fallback: number): number => {
+  return typeof value === "number" ? value : fallback;
+};
+
+export const buildTransactionsListQuery = (args: CommandArgs = {}): string => {
+  const params = new URLSearchParams();
+  params.set("page", String(readNumber(args.page, 1)));
+  params.set("perPage", String(readNumber(args.perPage, 50)));
+
+  const filters = readRecord(args.filters);
+  if (filters?.query && typeof filters.query === "string") {
+    params.set("query", filters.query);
+  }
+  if (filters?.transactionType && typeof filters.transactionType === "string") {
+    params.set("transactionType", filters.transactionType);
+  }
+  if (filters?.startDate && typeof filters.startDate === "string") {
+    params.set("startDate", filters.startDate);
+  }
+  if (filters?.endDate && typeof filters.endDate === "string") {
+    params.set("endDate", filters.endDate);
+  }
+  if (Array.isArray(filters?.categories)) {
+    if (filters.categories.length === 0) {
+      params.set("uncategorized", "true");
+    } else {
+      for (const categoryId of filters.categories) {
+        if (typeof categoryId === "string") {
+          params.append("categoryId", categoryId);
+        }
+      }
+    }
+  }
+
+  const sort = readRecord(args.sort);
+  if (sort?.field && typeof sort.field === "string") {
+    params.set("sortField", sort.field);
+    params.set("sortDesc", String(sort.desc === true));
+  }
+
+  return params.toString();
+};
+
 export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): WebRequestSpec => {
   switch (command) {
     case "get_transaction_categories": {
@@ -112,6 +155,90 @@ export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): We
         method: "POST",
         path: "/categories/import",
         body: { categories },
+      };
+    }
+    case "get_transactions": {
+      const search = buildTransactionsListQuery(args);
+      return {
+        method: "GET",
+        path: search ? `/transactions?${search}` : "/transactions",
+      };
+    }
+    case "get_transaction": {
+      const transactionId = readString(args.transactionId);
+      if (!transactionId) {
+        throw new CommandError("get_transaction requires transactionId");
+      }
+      return {
+        method: "GET",
+        path: `/transactions/${transactionId}`,
+      };
+    }
+    case "create_transaction": {
+      const newTransaction = readRecord(args.newTransaction);
+      if (!newTransaction) {
+        throw new CommandError("create_transaction requires newTransaction");
+      }
+      return {
+        method: "POST",
+        path: "/transactions",
+        body: newTransaction,
+      };
+    }
+    case "update_transaction": {
+      const updatedTransaction = readRecord(args.updatedTransaction);
+      const transactionId = readString(updatedTransaction?.id);
+      if (!updatedTransaction || !transactionId) {
+        throw new CommandError("update_transaction requires updatedTransaction.id");
+      }
+      return {
+        method: "PUT",
+        path: `/transactions/${transactionId}`,
+        body: omitId(updatedTransaction),
+      };
+    }
+    case "delete_transaction": {
+      const transactionId = readString(args.transactionId);
+      if (!transactionId) {
+        throw new CommandError("delete_transaction requires transactionId");
+      }
+      return {
+        method: "DELETE",
+        path: `/transactions/${transactionId}`,
+      };
+    }
+    case "delete_transactions": {
+      const transactionIds = readStringArray(args.transactionIds);
+      if (!transactionIds) {
+        throw new CommandError("delete_transactions requires transactionIds");
+      }
+      return {
+        method: "POST",
+        path: "/transactions/bulk-delete",
+        body: { transactionIds },
+      };
+    }
+    case "import_transactions": {
+      const transactions = args.transactions;
+      if (!Array.isArray(transactions)) {
+        throw new CommandError("import_transactions requires transactions");
+      }
+      return {
+        method: "POST",
+        path: "/transactions/import",
+        body: { transactions },
+      };
+    }
+    case "import_transaction_batch": {
+      const categories = args.categories;
+      const transactions = args.transactions;
+      if (!Array.isArray(categories) || !Array.isArray(transactions)) {
+        throw new CommandError("import_transaction_batch requires categories and transactions");
+      }
+      return {
+        method: "POST",
+        path: "/transactions/import-batch",
+        body: { categories, transactions },
       };
     }
     default:

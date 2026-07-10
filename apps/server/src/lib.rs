@@ -2,12 +2,13 @@ use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
 use axum::{Json, Router, routing::get};
 
-mod api;
 use serde::Serialize;
 use thiserror::Error;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use zai_app::{ServiceContext, initialize_context};
 use zai_core::Result as CoreResult;
+
+mod api;
 
 const DEFAULT_BIND_HOST: &str = "127.0.0.1";
 const DEFAULT_BIND_PORT: u16 = 3000;
@@ -100,6 +101,12 @@ pub fn default_cors_layer() -> CorsLayer {
             "http://127.0.0.1:5173"
                 .parse()
                 .expect("loopback origin should parse"),
+            "http://localhost:1420"
+                .parse()
+                .expect("vite dev origin should parse"),
+            "http://127.0.0.1:1420"
+                .parse()
+                .expect("vite loopback dev origin should parse"),
         ]))
         .allow_methods(AllowMethods::list([
             axum::http::Method::GET,
