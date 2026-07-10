@@ -341,11 +341,7 @@ async fn bulk_delete_transactions(
     body: Result<Json<BulkDeleteBody>, JsonRejection>,
 ) -> TransactionResult<Json<Vec<Transaction>>> {
     let Json(payload) = parse_json(body)?;
-    let transaction_id_refs = payload
-        .transaction_ids
-        .iter()
-        .map(String::as_str)
-        .collect();
+    let transaction_id_refs = payload.transaction_ids.iter().map(String::as_str).collect();
 
     context
         .transactions_service()

@@ -247,10 +247,12 @@ async fn create_get_update_delete_transaction_round_trip() {
     )
     .await;
     assert_eq!(missing_status, StatusCode::NOT_FOUND);
-    assert!(missing_body["message"]
-        .as_str()
-        .expect("message")
-        .contains("Failed to load transaction"));
+    assert!(
+        missing_body["message"]
+            .as_str()
+            .expect("message")
+            .contains("Failed to load transaction")
+    );
 }
 
 #[tokio::test]
@@ -304,10 +306,12 @@ async fn create_transaction_rejects_invalid_type() {
     .await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["message"]
-        .as_str()
-        .expect("message")
-        .contains("Failed to create transaction"));
+    assert!(
+        body["message"]
+            .as_str()
+            .expect("message")
+            .contains("Failed to create transaction")
+    );
 }
 
 #[tokio::test]
