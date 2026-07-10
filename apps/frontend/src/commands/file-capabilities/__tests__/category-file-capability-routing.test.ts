@@ -96,6 +96,32 @@ describe("category file capability routing", () => {
     expect(result).toBe("zai_transaction_categories_20260706_162830.csv");
   });
 
+  it("routes transaction CSV import through the web adapter in web mode", async () => {
+    import.meta.env.VITE_ZAI_BUILD_TARGET = "web";
+    webSelectMock.mockResolvedValue({ name: "transactions.csv", content: "date,amount" });
+
+    const result = await selectCsvImportFile({ title: "Import transactions" });
+
+    expect(webSelectMock).toHaveBeenCalledWith({ title: "Import transactions" });
+    expect(tauriSelectMock).not.toHaveBeenCalled();
+    expect(result).toEqual({ name: "transactions.csv", content: "date,amount" });
+  });
+
+  it("routes transaction CSV export through the Tauri adapter in desktop mode", async () => {
+    import.meta.env.VITE_ZAI_BUILD_TARGET = "tauri";
+    tauriDownloadMock.mockResolvedValue("zai_transactions_20260710_112700.csv");
+
+    const result = await downloadTextFile({
+      title: "Export transactions",
+      filename: "zai_transactions_20260710_112700.csv",
+      content: "date,amount,type,description",
+    });
+
+    expect(tauriDownloadMock).toHaveBeenCalled();
+    expect(webDownloadMock).not.toHaveBeenCalled();
+    expect(result).toBe("zai_transactions_20260710_112700.csv");
+  });
+
   it("fails when the build target is missing", async () => {
     Reflect.deleteProperty(import.meta.env, "VITE_ZAI_BUILD_TARGET");
 
