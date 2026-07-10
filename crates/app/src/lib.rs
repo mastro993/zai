@@ -1,6 +1,7 @@
 use std::{path::Path, sync::Arc};
 
 use zai_core::features::{
+    budgets::{service::BudgetsService, traits::BudgetsServiceTrait},
     transaction_categories::{
         service::TransactionCategoriesService, traits::TransactionCategoriesServiceTrait,
     },
@@ -10,6 +11,7 @@ use zai_core::features::{
 pub struct ServiceContext {
     pub transaction_categories_service: Arc<dyn TransactionCategoriesServiceTrait>,
     pub transactions_service: Arc<dyn TransactionsServiceTrait>,
+    pub budgets_service: Arc<dyn BudgetsServiceTrait>,
 }
 
 impl ServiceContext {
@@ -20,6 +22,10 @@ impl ServiceContext {
     pub fn transactions_service(&self) -> Arc<dyn TransactionsServiceTrait> {
         Arc::clone(&self.transactions_service)
     }
+
+    pub fn budgets_service(&self) -> Arc<dyn BudgetsServiceTrait> {
+        Arc::clone(&self.budgets_service)
+    }
 }
 
 pub fn initialize_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<ServiceContext> {
@@ -28,12 +34,18 @@ pub fn initialize_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<Se
 
     let transaction_categories_repository = database.transaction_categories_repository();
     let transactions_repository = database.transactions_repository();
+    let budgets_repository = database.budgets_repository();
 
     Ok(ServiceContext {
         transaction_categories_service: Arc::new(TransactionCategoriesService::new(
             transaction_categories_repository,
         )),
         transactions_service: Arc::new(TransactionsService::new(transactions_repository)),
+        budgets_service: Arc::new(BudgetsService::new(
+            budgets_repository,
+            database.transaction_categories_repository(),
+            database.transactions_repository(),
+        )),
     })
 }
 

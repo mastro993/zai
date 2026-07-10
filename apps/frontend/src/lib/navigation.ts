@@ -32,6 +32,7 @@ export const navigationItems = [
     subItems: [
       { title: "Transactions", to: "/cash-flow/transactions" },
       { title: "Categories", to: "/cash-flow/categories" },
+      { title: "Budgets", to: "/cash-flow/budgets" },
     ],
   },
 ] as const satisfies Array<NavigationItem>;
