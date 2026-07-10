@@ -1,9 +1,12 @@
 mod common;
 
+#[path = "common/list_filters.rs"]
+mod list_filters;
+
 use axum::http::StatusCode;
-use common::{
-    request_json, seed_filter_test_transactions, setup_app, transaction_descriptions,
-    transaction_field_values,
+use common::{request_json, setup_app};
+use list_filters::{
+    seed_filter_test_transactions, transaction_descriptions, transaction_field_values,
 };
 
 #[tokio::test]

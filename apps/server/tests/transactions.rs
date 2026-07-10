@@ -1,9 +1,20 @@
 mod common;
 
 use axum::http::StatusCode;
-use common::{request_json, sample_transaction_payload, setup_app};
+use common::{request_json, setup_app};
 use serde_json::{Value, json};
 use tower::ServiceExt;
+
+fn sample_transaction_payload() -> Value {
+    json!({
+        "description": "Coffee",
+        "amount": 350,
+        "transactionDate": "2026-07-09T12:30:00",
+        "transactionType": "expense",
+        "transactionCategoryId": null,
+        "notes": "Morning coffee"
+    })
+}
 
 #[tokio::test]
 async fn list_transactions_returns_paginated_defaults() {
