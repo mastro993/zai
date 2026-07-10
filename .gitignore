@@ -45,3 +45,7 @@ target
 
 # PNPM
 .pnpm-store
+
+# Playwright
+test-results/
+playwright-report/

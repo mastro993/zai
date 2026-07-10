@@ -8,10 +8,10 @@
   },
   "scripts": {
     "dev": "VITE_ZAI_BUILD_TARGET=tauri vite dev",
-    "dev:web": "VITE_ZAI_BUILD_TARGET=web vite dev",
+    "dev:web": "VITE_ZAI_BUILD_TARGET=web vite dev --mode web",
     "generate-routes": "tsr generate",
     "build": "pnpm generate-routes && pnpm type-check && VITE_ZAI_BUILD_TARGET=tauri vite build",
-    "build:web": "pnpm generate-routes && pnpm type-check && VITE_ZAI_BUILD_TARGET=web vite build",
+    "build:web": "pnpm generate-routes && pnpm type-check && VITE_ZAI_BUILD_TARGET=web vite build --mode web",
     "preview": "vite preview",
     "type-check": "tsc -b --noEmit",
     "lint": "oxlint src --deny-warnings",
