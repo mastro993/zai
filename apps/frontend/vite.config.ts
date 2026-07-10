@@ -6,9 +6,16 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   clearScreen: false,
   envDir: "../..",
+  ...(mode === "web"
+    ? {
+        define: {
+          "import.meta.env.VITE_ZAI_BUILD_TARGET": JSON.stringify("web"),
+        },
+      }
+    : {}),
   resolve: {
     tsconfigPaths: true,
     alias: {
@@ -36,4 +43,4 @@ export default defineConfig({
     outDir: "../../dist",
     emptyOutDir: true,
   },
-});
+}));

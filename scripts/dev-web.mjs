@@ -13,7 +13,6 @@ const dataDir =
 const sharedEnv = {
   ...process.env,
   ZAI_DATA_DIR: dataDir,
-  VITE_ZAI_BUILD_TARGET: "web",
   VITE_ZAI_API_ORIGIN: apiOrigin,
 };
 

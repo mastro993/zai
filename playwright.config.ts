@@ -34,7 +34,6 @@ export default defineConfig({
       command: "pnpm --filter frontend dev:web",
       url: "http://127.0.0.1:1420",
       env: {
-        VITE_ZAI_BUILD_TARGET: "web",
         VITE_ZAI_API_ORIGIN: apiOrigin,
       },
       reuseExistingServer: !process.env.CI,
