@@ -18,8 +18,6 @@ export function CategoryImportSourceStep({
   isPickingFile: boolean;
   onSelectFile: () => void;
 }) {
-  const fileName = file ? (file.path.split(/[/\\]/).pop() ?? file.path) : "";
-
   if (!file) {
     return (
       <button
@@ -58,14 +56,11 @@ export function CategoryImportSourceStep({
       </span>
       <div className="flex min-w-0 flex-col gap-0.5">
         <div className="flex items-center gap-2">
-          <span className="truncate text-xs font-medium text-foreground">{fileName}</span>
+          <span className="truncate text-xs font-medium text-foreground">{file.name}</span>
           <Badge variant="outline" className="shrink-0 uppercase">
             CSV
           </Badge>
         </div>
-        <span className="truncate text-[0.6875rem] text-muted-foreground" title={file.path}>
-          {file.path}
-        </span>
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-3 pl-2">
         <span className="text-xs text-muted-foreground tabular-nums">
