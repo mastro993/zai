@@ -1,6 +1,10 @@
 import { CommandError } from "./errors";
 import type { CommandArgs, CommandTransport } from "./types";
-import { buildWebRequestSpec, buildWebRequestUrl, resolveWebApiBaseUrl } from "./web-command-map";
+import {
+  buildWebRequestSpec,
+  buildWebRequestUrl,
+  resolveCashFlowApiBaseUrl,
+} from "./web-command-map";
 
 type ApiErrorBody = {
   message?: string;
@@ -22,7 +26,7 @@ const parseApiErrorMessage = async (response: Response): Promise<string> => {
 export const createWebCommandTransport = (): CommandTransport => ({
   invoke: async <T>(command: string, args?: CommandArgs) => {
     const spec = buildWebRequestSpec(command, args);
-    const response = await fetch(buildWebRequestUrl(resolveWebApiBaseUrl(), spec), {
+    const response = await fetch(buildWebRequestUrl(resolveCashFlowApiBaseUrl(), spec), {
       method: spec.method,
       headers: spec.body ? { "Content-Type": "application/json" } : undefined,
       body: spec.body ? JSON.stringify(spec.body) : undefined,

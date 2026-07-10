@@ -25,14 +25,13 @@ dist-ssr
 *.sw?
 
 .env
-.env.local
-.env.development
-.env.production
-.env.test
-.env.test.local
+.env.*
+!.env.example
+!.env.web.example
 
 # Local development db
 zai.db
+.local/
 
 # Tauri
 target
@@ -45,3 +44,7 @@ target
 
 # PNPM
 .pnpm-store
+
+# Playwright
+test-results/
+playwright-report/

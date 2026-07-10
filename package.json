@@ -9,7 +9,7 @@
   "scripts": {
     "prepare": "pnpm exec lefthook install",
     "dev": "pnpm --filter frontend dev",
-    "dev:web": "pnpm --filter frontend dev:web",
+    "dev:web": "node scripts/dev-web.mjs",
     "dev:tauri": "pnpm tauri dev",
     "build": "pnpm --filter frontend build",
     "build:web": "pnpm --filter frontend build:web",
@@ -23,9 +23,11 @@
     "format:check": "pnpm --filter frontend format:check && cargo fmt --all --check",
     "check:frontend": "pnpm --filter frontend check",
     "check:backend": "mkdir -p dist && printf '<!doctype html><html><body></body></html>' > dist/index.html && cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace",
-    "check": "pnpm check:frontend && pnpm check:backend"
+    "check": "pnpm check:frontend && pnpm check:backend",
+    "test:e2e:web": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@praha/byethrow-docs": "^0.12.0",
     "@praha/byethrow-oxlint": "^0.12.0",
     "@tauri-apps/cli": "^2.10.1",
