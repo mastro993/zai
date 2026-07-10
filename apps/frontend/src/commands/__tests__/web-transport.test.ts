@@ -4,7 +4,12 @@ import { Result } from "@praha/byethrow";
 
 import { CommandError } from "../errors";
 import { invokeCommand } from "../shared";
-import { buildWebRequestSpec, buildWebRequestUrl, resolveWebApiBaseUrl } from "../web-command-map";
+import {
+  buildTransactionsListQuery,
+  buildWebRequestSpec,
+  buildWebRequestUrl,
+  resolveWebApiBaseUrl,
+} from "../web-command-map";
 import { createWebCommandTransport } from "../web-transport";
 
 const fetchMock = vi.hoisted(() => vi.fn());
@@ -98,6 +103,108 @@ describe("web command map", () => {
     });
   });
 
+  it("maps get_transactions to GET /transactions with default pagination", () => {
+    expect(buildWebRequestSpec("get_transactions")).toEqual({
+      method: "GET",
+      path: "/transactions?page=1&perPage=50",
+    });
+  });
+
+  it("maps create_transaction to POST /transactions", () => {
+    const newTransaction = {
+      description: "Coffee",
+      amount: 350,
+      transactionDate: "2026-07-09T12:30:00",
+      transactionType: "expense",
+    };
+
+    expect(buildWebRequestSpec("create_transaction", { newTransaction })).toEqual({
+      method: "POST",
+      path: "/transactions",
+      body: newTransaction,
+    });
+  });
+
+  it("maps update_transaction to PUT /transactions/:id without body id", () => {
+    expect(
+      buildWebRequestSpec("update_transaction", {
+        updatedTransaction: {
+          id: "txn-1",
+          description: "Updated",
+          amount: 100,
+          transactionDate: "2026-07-09T12:30:00",
+          transactionType: "expense",
+        },
+      }),
+    ).toEqual({
+      method: "PUT",
+      path: "/transactions/txn-1",
+      body: {
+        description: "Updated",
+        amount: 100,
+        transactionDate: "2026-07-09T12:30:00",
+        transactionType: "expense",
+      },
+    });
+  });
+
+  it("maps delete_transaction to DELETE /transactions/:id", () => {
+    expect(buildWebRequestSpec("delete_transaction", { transactionId: "txn-1" })).toEqual({
+      method: "DELETE",
+      path: "/transactions/txn-1",
+    });
+  });
+
+  it("maps delete_transactions to POST /transactions/bulk-delete", () => {
+    expect(
+      buildWebRequestSpec("delete_transactions", {
+        transactionIds: ["txn-1", "txn-2"],
+      }),
+    ).toEqual({
+      method: "POST",
+      path: "/transactions/bulk-delete",
+      body: { transactionIds: ["txn-1", "txn-2"] },
+    });
+  });
+
+  it("builds transaction list query params from command args", () => {
+    const query = buildTransactionsListQuery({
+      page: 2,
+      perPage: 25,
+      filters: {
+        query: "coffee",
+        categories: ["cat-1", "cat-2"],
+        transactionType: "expense",
+        startDate: "2026-07-01T00:00:00",
+        endDate: "2026-07-31T23:59:59",
+      },
+      sort: {
+        field: "amount",
+        desc: true,
+      },
+    });
+
+    const params = new URLSearchParams(query);
+    expect(params.get("page")).toBe("2");
+    expect(params.get("perPage")).toBe("25");
+    expect(params.get("query")).toBe("coffee");
+    expect(params.getAll("categoryId")).toEqual(["cat-1", "cat-2"]);
+    expect(params.get("uncategorized")).toBeNull();
+    expect(params.get("transactionType")).toBe("expense");
+    expect(params.get("sortField")).toBe("amount");
+    expect(params.get("sortDesc")).toBe("true");
+  });
+
+  it("maps uncategorized filters to uncategorized=true", () => {
+    const query = buildTransactionsListQuery({
+      filters: {
+        categories: [],
+      },
+    });
+
+    expect(new URLSearchParams(query).get("uncategorized")).toBe("true");
+  });
+
   it("builds absolute URLs from the configured API base", () => {
     const url = buildWebRequestUrl("http://127.0.0.1:3000/api/cash-flow", {
       method: "GET",
@@ -155,17 +262,17 @@ describe("web command transport", () => {
 
   it("maps non-2xx JSON error bodies into CommandError messages", async () => {
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ message: "Failed to load transaction_categories: boom" }), {
-        status: 500,
+      new Response(JSON.stringify({ message: "Failed to load transaction: Not found" }), {
+        status: 404,
         headers: { "Content-Type": "application/json" },
       }),
     );
 
     const transport = createWebCommandTransport();
 
-    await expect(
-      transport.invoke("get_transaction_categories", { parentId: null }),
-    ).rejects.toEqual(new CommandError("Failed to load transaction_categories: boom"));
+    await expect(transport.invoke("get_transaction", { transactionId: "txn-404" })).rejects.toEqual(
+      new CommandError("Failed to load transaction: Not found"),
+    );
   });
 
   it("falls back to a status-derived message when error JSON is malformed", async () => {

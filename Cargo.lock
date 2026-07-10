@@ -6929,6 +6929,7 @@ name = "zai-server"
 version = "0.0.1-alpha.1"
 dependencies = [
  "axum",
+ "chrono",
  "serde",
  "serde_json",
  "thiserror 2.0.16",
