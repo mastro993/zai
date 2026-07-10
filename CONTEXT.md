@@ -27,3 +27,16 @@ category uses its parent category's color.
 **Category path**:
 The category's identity in the category hierarchy. A root category's path is its
 own name; a child category's path is its root category name plus its own name.
+
+**Budget**:
+A recurring Cash Flow spending limit with a category scope, a non-negative minor-unit allowance, and a period history.
+It has a user-chosen name, initially suggested from its category scope. Saving a budget starts its first period immediately; a draft exists only while the creation form is unsaved. Edits to an active budget take effect immediately in its current period.
+
+**Deactivated budget**:
+A retained Budget that does not contribute to statistics or trigger automated behavior. It remains editable and its period history is not frozen.
+
+**Budget scope**:
+The categories whose expenses count toward a budget. A root-category scope includes all of that root category's current child categories; an individual child-category scope includes only that child category.
+Active budget scopes may overlap, but no two active budgets may share the same scope and cadence.
+Deleting a category selected directly by an active budget requires removing or replacing it in every affected budget; deletion from a root-category scope is allowed with a warning. Past budget periods do not change.
+Re-parenting a child category requires confirmation when it changes an active root-category scope, listing every affected budget.
