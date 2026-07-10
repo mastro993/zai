@@ -1,7 +1,8 @@
 import { CommandError } from "./errors";
 import type { CommandArgs } from "./types";
+import { joinWebApiUrl, resolveWebApiOrigin } from "./web-api";
 
-const defaultApiBaseUrl = "http://127.0.0.1:3000/api/cash-flow";
+export const CASH_FLOW_API_PREFIX = "api/cash-flow";
 
 export type WebRequestSpec = {
   method: "GET" | "POST" | "PUT" | "DELETE";
@@ -39,12 +40,8 @@ const omitId = (payload: Record<string, unknown>): Record<string, unknown> => {
   return rest;
 };
 
-export const resolveWebApiBaseUrl = (): string => {
-  const configuredBaseUrl = import.meta.env.VITE_ZAI_API_BASE_URL;
-  return typeof configuredBaseUrl === "string" && configuredBaseUrl.length > 0
-    ? configuredBaseUrl
-    : defaultApiBaseUrl;
-};
+export const resolveCashFlowApiBaseUrl = (): string =>
+  joinWebApiUrl(resolveWebApiOrigin(), CASH_FLOW_API_PREFIX);
 
 const readNumber = (value: unknown, fallback: number): number => {
   return typeof value === "number" ? value : fallback;

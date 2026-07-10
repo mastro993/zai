@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 const dataDir = process.env.ZAI_DATA_DIR ?? mkdtempSync(path.join(tmpdir(), "zai-e2e-"));
-const apiBaseUrl = process.env.VITE_ZAI_API_BASE_URL ?? "http://127.0.0.1:3000/api/cash-flow";
+const apiOrigin = process.env.VITE_ZAI_API_ORIGIN ?? "http://127.0.0.1:3000";
 
 export default defineConfig({
   testDir: "e2e",
@@ -35,7 +35,7 @@ export default defineConfig({
       url: "http://127.0.0.1:1420",
       env: {
         VITE_ZAI_BUILD_TARGET: "web",
-        VITE_ZAI_API_BASE_URL: apiBaseUrl,
+        VITE_ZAI_API_ORIGIN: apiOrigin,
       },
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,

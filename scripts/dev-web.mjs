@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const apiBaseUrl = process.env.VITE_ZAI_API_BASE_URL ?? "http://127.0.0.1:3000/api/cash-flow";
+const apiOrigin = process.env.VITE_ZAI_API_ORIGIN ?? "http://127.0.0.1:3000";
 const usesTempDataDir = !process.env.ZAI_DATA_DIR;
 const dataDir =
   process.env.ZAI_DATA_DIR ?? (await mkdtemp(path.join(tmpdir(), "zai-web-dev-")));
@@ -14,7 +14,7 @@ const sharedEnv = {
   ...process.env,
   ZAI_DATA_DIR: dataDir,
   VITE_ZAI_BUILD_TARGET: "web",
-  VITE_ZAI_API_BASE_URL: apiBaseUrl,
+  VITE_ZAI_API_ORIGIN: apiOrigin,
 };
 
 const children = [];
@@ -60,7 +60,7 @@ process.on("SIGTERM", () => {
 });
 
 console.log(`Zai web dev using data directory: ${dataDir}`);
-console.log(`API base URL: ${apiBaseUrl}`);
+console.log(`API origin: ${apiOrigin}`);
 
 const server = run("cargo", ["run", "-p", "zai-server"]);
 const frontend = run("pnpm", ["--filter", "frontend", "dev:web"]);

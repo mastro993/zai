@@ -8,8 +8,9 @@ import {
   buildTransactionsListQuery,
   buildWebRequestSpec,
   buildWebRequestUrl,
-  resolveWebApiBaseUrl,
+  resolveCashFlowApiBaseUrl,
 } from "../web-command-map";
+import { joinWebApiUrl, resolveWebApiOrigin } from "../web-api";
 import { createWebCommandTransport } from "../web-transport";
 
 const fetchMock = vi.hoisted(() => vi.fn());
@@ -300,10 +301,34 @@ describe("web command map", () => {
     expect(url).toBe("http://127.0.0.1:3000/api/cash-flow/categories?parentId=parent-1");
   });
 
-  it("falls back to the default API base URL", () => {
-    expect(resolveWebApiBaseUrl()).toBe("http://127.0.0.1:3000/api/cash-flow");
+  it("resolves the Cash flow API base from origin and feature prefix", () => {
+    expect(resolveCashFlowApiBaseUrl()).toBe("http://127.0.0.1:3000/api/cash-flow");
+  });
+});
+
+describe("web api config", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
+  it("falls back to the default API origin", () => {
+    vi.stubEnv("VITE_ZAI_API_ORIGIN", "");
+    expect(resolveWebApiOrigin()).toBe("http://127.0.0.1:3000");
+  });
+
+  it("strips trailing slashes from the configured API origin", () => {
+    vi.stubEnv("VITE_ZAI_API_ORIGIN", "http://127.0.0.1:3000/");
+    expect(resolveWebApiOrigin()).toBe("http://127.0.0.1:3000");
+  });
+
+  it("joins origin and feature prefixes without duplicate slashes", () => {
+    expect(joinWebApiUrl("http://127.0.0.1:3000", "api/cash-flow")).toBe(
+      "http://127.0.0.1:3000/api/cash-flow",
+    );
+  });
+});
+
+describe("web command map errors", () => {
   it("rejects unknown commands", () => {
     expect(() => buildWebRequestSpec("missing_command")).toThrowError(
       new CommandError("Unknown web command: missing_command"),
