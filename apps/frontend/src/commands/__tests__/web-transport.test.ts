@@ -167,6 +167,42 @@ describe("web command map", () => {
     });
   });
 
+  it("maps import_transactions to POST /transactions/import", () => {
+    const transactions = [
+      {
+        description: "Coffee",
+        amount: 350,
+        transactionDate: "2026-07-09T12:30:00",
+        transactionType: "expense",
+      },
+    ];
+
+    expect(buildWebRequestSpec("import_transactions", { transactions })).toEqual({
+      method: "POST",
+      path: "/transactions/import",
+      body: { transactions },
+    });
+  });
+
+  it("maps import_transaction_batch to POST /transactions/import-batch", () => {
+    const categories = [{ name: "Food", color: "#ff0000" }];
+    const transactions = [
+      {
+        description: "Coffee",
+        amount: 350,
+        transactionDate: "2026-07-09T12:30:00",
+        transactionType: "expense",
+        categoryName: "Food",
+      },
+    ];
+
+    expect(buildWebRequestSpec("import_transaction_batch", { categories, transactions })).toEqual({
+      method: "POST",
+      path: "/transactions/import-batch",
+      body: { categories, transactions },
+    });
+  });
+
   it("builds transaction list query params from command args", () => {
     const query = buildTransactionsListQuery({
       page: 2,
