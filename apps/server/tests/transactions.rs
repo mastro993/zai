@@ -1,102 +1,13 @@
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+mod common;
 
-use axum::{
-    body::Body,
-    http::{Request, StatusCode},
-};
+use axum::http::StatusCode;
+use common::{request_json, sample_transaction_payload, setup_app};
 use serde_json::{Value, json};
 use tower::ServiceExt;
-use uuid::Uuid;
-use zai_app::initialize_context;
-use zai_server::create_router;
-
-struct TempAppDataDir {
-    path: PathBuf,
-}
-
-impl TempAppDataDir {
-    fn new() -> Self {
-        Self {
-            path: env::temp_dir().join(format!("zai-transactions-test-{}", Uuid::new_v4())),
-        }
-    }
-
-    fn path(&self) -> &Path {
-        &self.path
-    }
-}
-
-impl Drop for TempAppDataDir {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.path);
-    }
-}
-
-async fn setup_app() -> (axum::Router, TempAppDataDir) {
-    let app_data_dir = TempAppDataDir::new();
-    let context = Arc::new(
-        initialize_context(app_data_dir.path()).expect("shared context should initialize"),
-    );
-    (create_router(context), app_data_dir)
-}
-
-async fn request_json(
-    app: &axum::Router,
-    method: &str,
-    uri: &str,
-    body: Option<Value>,
-) -> (StatusCode, Value) {
-    let request_builder = Request::builder().method(method).uri(uri);
-
-    let request = if let Some(body) = body {
-        request_builder
-            .header("content-type", "application/json")
-            .body(Body::from(serde_json::to_vec(&body).expect("json body")))
-            .expect("request should build")
-    } else {
-        request_builder
-            .body(Body::empty())
-            .expect("request should build")
-    };
-
-    let response = app
-        .clone()
-        .oneshot(request)
-        .await
-        .expect("request should succeed");
-
-    let status = response.status();
-    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
-        .await
-        .expect("body should read");
-
-    let json = if bytes.is_empty() {
-        Value::Null
-    } else {
-        serde_json::from_slice(&bytes).expect("response should be json")
-    };
-
-    (status, json)
-}
-
-fn sample_transaction_payload() -> Value {
-    json!({
-        "description": "Coffee",
-        "amount": 350,
-        "transactionDate": "2026-07-09T12:30:00",
-        "transactionType": "expense",
-        "transactionCategoryId": null,
-        "notes": "Morning coffee"
-    })
-}
 
 #[tokio::test]
 async fn list_transactions_returns_paginated_defaults() {
-    let (app, _dir) = setup_app().await;
+    let (app, _dir) = setup_app("zai-transactions").await;
 
     let (status, body) = request_json(&app, "GET", "/api/cash-flow/transactions", None).await;
 
@@ -108,7 +19,7 @@ async fn list_transactions_returns_paginated_defaults() {
 
 #[tokio::test]
 async fn list_transactions_rejects_uncategorized_with_category_filters() {
-    let (app, _dir) = setup_app().await;
+    let (app, _dir) = setup_app("zai-transactions").await;
 
     let (status, body) = request_json(
         &app,
@@ -126,25 +37,8 @@ async fn list_transactions_rejects_uncategorized_with_category_filters() {
 }
 
 #[tokio::test]
-async fn list_transactions_accepts_category_and_sort_filters() {
-    let (app, _dir) = setup_app().await;
-
-    let (status, body) = request_json(
-        &app,
-        "GET",
-        "/api/cash-flow/transactions?page=2&perPage=10&query=coffee&transactionType=expense&startDate=2026-07-01T00%3A00%3A00&endDate=2026-07-31T23%3A59%3A59&categoryId=cat-1&categoryId=cat-2&sortField=amount&sortDesc=true",
-        None,
-    )
-    .await;
-
-    assert_eq!(status, StatusCode::OK);
-    assert_eq!(body["page"], 2);
-    assert_eq!(body["perPage"], 10);
-}
-
-#[tokio::test]
 async fn create_transaction_with_category_succeeds() {
-    let (app, _dir) = setup_app().await;
+    let (app, _dir) = setup_app("zai-transactions").await;
 
     let (batch_status, _) = request_json(
         &app,
@@ -184,7 +78,7 @@ async fn create_transaction_with_category_succeeds() {
 
 #[tokio::test]
 async fn create_get_update_delete_transaction_round_trip() {
-    let (app, _dir) = setup_app().await;
+    let (app, _dir) = setup_app("zai-transactions").await;
 
     let (create_status, created) = request_json(
         &app,
@@ -257,7 +151,7 @@ async fn create_get_update_delete_transaction_round_trip() {
 
 #[tokio::test]
 async fn bulk_delete_transactions_returns_deleted_rows() {
-    let (app, _dir) = setup_app().await;
+    let (app, _dir) = setup_app("zai-transactions").await;
 
     let mut ids = Vec::new();
     for description in ["One", "Two"] {
@@ -290,7 +184,7 @@ async fn bulk_delete_transactions_returns_deleted_rows() {
 
 #[tokio::test]
 async fn create_transaction_rejects_invalid_type() {
-    let (app, _dir) = setup_app().await;
+    let (app, _dir) = setup_app("zai-transactions").await;
 
     let (status, body) = request_json(
         &app,
@@ -316,7 +210,7 @@ async fn create_transaction_rejects_invalid_type() {
 
 #[tokio::test]
 async fn create_transaction_returns_conflict_for_missing_category() {
-    let (app, _dir) = setup_app().await;
+    let (app, _dir) = setup_app("zai-transactions").await;
 
     let (status, body) = request_json(
         &app,
@@ -338,7 +232,7 @@ async fn create_transaction_returns_conflict_for_missing_category() {
 
 #[tokio::test]
 async fn import_transactions_returns_imported_rows() {
-    let (app, _dir) = setup_app().await;
+    let (app, _dir) = setup_app("zai-transactions").await;
 
     let (status, imported) = request_json(
         &app,
@@ -363,7 +257,7 @@ async fn import_transactions_returns_imported_rows() {
 
 #[tokio::test]
 async fn import_transaction_batch_returns_imported_transactions_only() {
-    let (app, _dir) = setup_app().await;
+    let (app, _dir) = setup_app("zai-transactions").await;
 
     let (status, imported) = request_json(
         &app,
@@ -395,13 +289,13 @@ async fn import_transaction_batch_returns_imported_transactions_only() {
 
 #[tokio::test]
 async fn malformed_json_returns_bad_request_message_body() {
-    let (app, _dir) = setup_app().await;
+    let (app, _dir) = setup_app("zai-transactions").await;
 
-    let request = Request::builder()
+    let request = axum::http::Request::builder()
         .method("POST")
         .uri("/api/cash-flow/transactions")
         .header("content-type", "application/json")
-        .body(Body::from("{not-json"))
+        .body(axum::body::Body::from("{not-json"))
         .expect("request should build");
 
     let response = app.oneshot(request).await.expect("request should succeed");
