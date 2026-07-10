@@ -205,6 +205,55 @@ describe("web command map", () => {
     expect(new URLSearchParams(query).get("uncategorized")).toBe("true");
   });
 
+  it("maps date filters to startDate and endDate query params", () => {
+    const query = buildTransactionsListQuery({
+      filters: {
+        startDate: "2026-07-01T00:00:00",
+        endDate: "2026-07-31T23:59:59",
+      },
+    });
+
+    const params = new URLSearchParams(query);
+    expect(params.get("startDate")).toBe("2026-07-01T00:00:00");
+    expect(params.get("endDate")).toBe("2026-07-31T23:59:59");
+  });
+
+  it("maps ascending sort to sortDesc=false", () => {
+    const query = buildTransactionsListQuery({
+      sort: {
+        field: "date",
+        desc: false,
+      },
+    });
+
+    const params = new URLSearchParams(query);
+    expect(params.get("sortField")).toBe("date");
+    expect(params.get("sortDesc")).toBe("false");
+  });
+
+  it("maps get_transactions with filters to the expected REST path", () => {
+    expect(
+      buildWebRequestSpec("get_transactions", {
+        page: 2,
+        perPage: 25,
+        filters: {
+          query: "coffee",
+          categories: ["cat-1"],
+          transactionType: "expense",
+          startDate: "2026-07-01T00:00:00",
+          endDate: "2026-07-31T23:59:59",
+        },
+        sort: {
+          field: "amount",
+          desc: true,
+        },
+      }),
+    ).toEqual({
+      method: "GET",
+      path: "/transactions?page=2&perPage=25&query=coffee&transactionType=expense&startDate=2026-07-01T00%3A00%3A00&endDate=2026-07-31T23%3A59%3A59&categoryId=cat-1&sortField=amount&sortDesc=true",
+    });
+  });
+
   it("builds absolute URLs from the configured API base", () => {
     const url = buildWebRequestUrl("http://127.0.0.1:3000/api/cash-flow", {
       method: "GET",
