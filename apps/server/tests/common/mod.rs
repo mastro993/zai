@@ -154,7 +154,12 @@ pub fn transaction_descriptions(body: &Value) -> Vec<String> {
         .as_array()
         .expect("data array")
         .iter()
-        .map(|row| row["description"].as_str().expect("description").to_string())
+        .map(|row| {
+            row["description"]
+                .as_str()
+                .expect("description")
+                .to_string()
+        })
         .collect()
 }
 

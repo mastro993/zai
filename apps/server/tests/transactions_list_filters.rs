@@ -79,7 +79,10 @@ async fn list_transactions_filters_by_date_range() {
     .await;
 
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(transaction_descriptions(&body), vec!["Train ticket".to_string()]);
+    assert_eq!(
+        transaction_descriptions(&body),
+        vec!["Train ticket".to_string()]
+    );
 }
 
 #[tokio::test]
@@ -135,7 +138,10 @@ async fn list_transactions_filters_uncategorized_only() {
     assert_eq!(status, StatusCode::OK);
     let rows = body["data"].as_array().expect("data");
     assert_eq!(rows.len(), 2);
-    assert!(rows.iter().all(|row| row["transactionCategoryId"].is_null()));
+    assert!(
+        rows.iter()
+            .all(|row| row["transactionCategoryId"].is_null())
+    );
 }
 
 #[tokio::test]
