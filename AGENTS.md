@@ -1,6 +1,6 @@
 # Zai
 
-Personal finance desktop app built with Tauri (Rust backend + React frontend).
+Personal finance app built with Tauri and Axum (Rust backend + React frontend).
 
 ## Overview
 
@@ -18,8 +18,8 @@ it or explicitly justify the trade-off.
   sensitive data when appropriate, validate inputs, and follow the principle of
   least privilege.
 - **Reliable**: Zai must always behave predictably and consistently. Data
-  integrity, correctness, recoverability, and deterministic behavior take p
-  riority over convenience.
+  integrity, correctness, recoverability, and deterministic behavior take
+  priority over convenience.
 - **Efficient**: Performance is a core requirement, not an afterthought.
   Optimize for low latency, minimal resource usage, and scalability. The
   architecture should be capable of handling thousands of operations per second
