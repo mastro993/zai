@@ -1,4 +1,11 @@
-import { CommandError } from "./errors";
+import { Result } from "@praha/byethrow";
+
+import {
+  CommandError,
+  commandErrorFromEnvelope,
+  toCommandError,
+  type CommandErrorEnvelope,
+} from "./errors";
 import type { CommandArgs, CommandTransport } from "./types";
 import {
   buildWebRequestSpec,
@@ -6,21 +13,33 @@ import {
   resolveCashFlowApiBaseUrl,
 } from "./web-command-map";
 
-type ApiErrorBody = {
-  message?: string;
-};
+const parseApiError = async (response: Response): Promise<CommandError> => {
+  const bodyResult = await Result.try({
+    try: () => response.json(),
+    catch: () => undefined,
+  });
 
-const parseApiErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const body = (await response.json()) as ApiErrorBody;
-    if (typeof body.message === "string" && body.message.length > 0) {
-      return body.message;
+  if (Result.isSuccess(bodyResult)) {
+    const body = bodyResult.value as Partial<CommandErrorEnvelope>;
+    const envelopeError = commandErrorFromEnvelope(body);
+    if (envelopeError) {
+      return envelopeError;
     }
-  } catch {
-    // ponytail: fall back to status text when error body is missing or malformed
+    if (typeof body.message === "string" && body.message.length > 0) {
+      return new CommandError(body.message);
+    }
   }
 
-  return `Request failed with status ${response.status}`;
+  return new CommandError(`Request failed with status ${response.status}`);
+};
+
+const parseJsonResponse = async <T>(response: Response): Promise<T> => {
+  const result = await Result.try({
+    try: () => response.json() as Promise<T>,
+    catch: toCommandError,
+  });
+
+  return Result.isSuccess(result) ? result.value : Promise.reject(result.error);
 };
 
 export const createWebCommandTransport = (): CommandTransport => ({
@@ -33,19 +52,13 @@ export const createWebCommandTransport = (): CommandTransport => ({
     });
 
     if (!response.ok) {
-      throw new CommandError(await parseApiErrorMessage(response));
+      return Promise.reject(await parseApiError(response));
     }
 
     if (response.status === 204) {
       return undefined as T;
     }
 
-    try {
-      return (await response.json()) as T;
-    } catch (error) {
-      throw new CommandError(
-        error instanceof Error ? error.message : "Failed to parse response JSON",
-      );
-    }
+    return parseJsonResponse<T>(response);
   },
 });

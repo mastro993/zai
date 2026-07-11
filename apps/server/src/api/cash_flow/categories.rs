@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     Json, Router,
-    extract::rejection::JsonRejection,
+    extract::rejection::{JsonRejection, QueryRejection},
     extract::{Path, Query, State},
     http::StatusCode,
     routing::{get, post},
@@ -50,8 +50,9 @@ pub fn router() -> Router<Arc<ServiceContext>> {
 
 pub async fn list_categories(
     State(context): State<Arc<ServiceContext>>,
-    Query(query): Query<ListCategoriesQuery>,
+    query: Result<Query<ListCategoriesQuery>, QueryRejection>,
 ) -> CategoryResult<Json<Vec<TransactionCategory>>> {
+    let Query(query) = query.map_err(|rejection| bad_request(rejection.body_text()))?;
     context
         .transaction_categories_service()
         .get_categories(query.parent_id.as_deref())

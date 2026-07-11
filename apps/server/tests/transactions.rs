@@ -41,6 +41,7 @@ async fn list_transactions_rejects_uncategorized_with_category_filters() {
     .await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["code"], "validation");
     assert_eq!(
         body["message"],
         "Choose either category filters or uncategorized only"
@@ -152,6 +153,7 @@ async fn create_get_update_delete_transaction_round_trip() {
     )
     .await;
     assert_eq!(missing_status, StatusCode::NOT_FOUND);
+    assert_eq!(missing_body["code"], "notFound");
     assert!(
         missing_body["message"]
             .as_str()
@@ -211,6 +213,7 @@ async fn create_transaction_rejects_invalid_type() {
     .await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["code"], "validation");
     assert!(
         body["message"]
             .as_str()
@@ -238,6 +241,7 @@ async fn create_transaction_returns_conflict_for_missing_category() {
     .await;
 
     assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["code"], "conflict");
     assert!(body["message"].is_string());
 }
 
@@ -316,5 +320,6 @@ async fn malformed_json_returns_bad_request_message_body() {
         .await
         .expect("body should read");
     let body: Value = serde_json::from_slice(&bytes).expect("json body");
+    assert_eq!(body["code"], "validation");
     assert!(body["message"].is_string());
 }

@@ -52,4 +52,26 @@ describe("desktop command transport", () => {
     expect(result.error).toBeInstanceOf(CommandError);
     expect(result.error.message).toBe("IPC failed");
   });
+
+  it("preserves structured fields from rejected desktop invocations", async () => {
+    invokeMock.mockRejectedValue({
+      code: "conflict",
+      message: "Failed to create transaction category: Conflict",
+      details: { resource: "category" },
+    });
+
+    const result = await invokeCommand("create_transaction_category", {
+      newCategory: { name: "Food" },
+    });
+
+    expect(Result.isFailure(result)).toBe(true);
+    if (Result.isSuccess(result)) {
+      return;
+    }
+    expect(result.error).toMatchObject({
+      code: "conflict",
+      details: { resource: "category" },
+      message: "Failed to create transaction category: Conflict",
+    });
+  });
 });
