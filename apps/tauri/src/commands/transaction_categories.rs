@@ -8,45 +8,52 @@ use zai_core::features::transaction_categories::models::{
     TransactionCategoryUpdate,
 };
 
+use super::{CommandResult, command_error};
+
 #[tauri::command]
 pub async fn get_transaction_category(
     category_id: String,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<TransactionCategory, String> {
+) -> CommandResult<TransactionCategory> {
     debug!("Getting transaction category...{}", category_id);
     state
         .transaction_categories_service()
         .get_category(&category_id)
-        .map_err(|e| format!("Failed to get transaction category {}: {}", category_id, e))
+        .map_err(|error| {
+            command_error(
+                format!("Failed to get transaction category {category_id}"),
+                error,
+            )
+        })
 }
 
 #[tauri::command]
 pub async fn get_transaction_categories(
     parent_id: Option<String>,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<Vec<TransactionCategory>, String> {
+) -> CommandResult<Vec<TransactionCategory>> {
     debug!("Fetching transaction categories...");
     state
         .transaction_categories_service()
         .get_categories(parent_id.as_deref())
-        .map_err(|e| format!("Failed to load transaction_categories: {}", e))
+        .map_err(|error| command_error("Failed to load transaction_categories", error))
 }
 
 #[tauri::command]
 pub async fn create_transaction_category(
     new_category: NewTransactionCategory,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<TransactionCategory, String> {
+) -> CommandResult<TransactionCategory> {
     debug!("Creating transaction category...");
     let category_name = new_category.name.clone();
     state
         .transaction_categories_service()
         .create_category(new_category)
         .await
-        .map_err(|e| {
-            format!(
-                "Failed to create transaction category {}: {}",
-                category_name, e
+        .map_err(|error| {
+            command_error(
+                format!("Failed to create transaction category {category_name}"),
+                error,
             )
         })
 }
@@ -55,17 +62,17 @@ pub async fn create_transaction_category(
 pub async fn update_transaction_category(
     updated_category: TransactionCategoryUpdate,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<TransactionCategory, String> {
+) -> CommandResult<TransactionCategory> {
     debug!("Updating transaction category...");
     let category_name = updated_category.name.clone();
     state
         .transaction_categories_service()
         .update_category(updated_category)
         .await
-        .map_err(|e| {
-            format!(
-                "Failed to update transaction category {}: {}",
-                category_name, e
+        .map_err(|error| {
+            command_error(
+                format!("Failed to update transaction category {category_name}"),
+                error,
             )
         })
 }
@@ -75,7 +82,7 @@ pub async fn delete_transaction_categories(
     category_ids: Vec<String>,
     children_strategy: Option<CategoryChildrenDeleteStrategy>,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<Vec<TransactionCategory>, String> {
+) -> CommandResult<Vec<TransactionCategory>> {
     debug!(
         "Deleting {} transaction categories [{}]...",
         category_ids.len(),
@@ -89,18 +96,18 @@ pub async fn delete_transaction_categories(
             children_strategy.unwrap_or(CategoryChildrenDeleteStrategy::Block),
         )
         .await
-        .map_err(|e| format!("Failed to delete transaction categories: {}", e))
+        .map_err(|error| command_error("Failed to delete transaction categories", error))
 }
 
 #[tauri::command]
 pub async fn import_transaction_categories(
     categories: Vec<NewTransactionCategory>,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<Vec<TransactionCategory>, String> {
+) -> CommandResult<Vec<TransactionCategory>> {
     debug!("Importing {} transaction categories...", categories.len());
     state
         .transaction_categories_service()
         .import_categories(categories)
         .await
-        .map_err(|e| format!("Failed to import transaction categories: {}", e))
+        .map_err(|error| command_error("Failed to import transaction categories", error))
 }

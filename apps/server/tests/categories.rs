@@ -206,6 +206,18 @@ async fn list_categories_filters_by_parent_id() {
 }
 
 #[tokio::test]
+async fn malformed_category_query_returns_validation_envelope() {
+    let app = CategoryTestApp::new();
+    let (status, body) = app
+        .get("/api/cash-flow/categories?parentId=one&parentId=two")
+        .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["code"], "validation");
+    assert!(body["message"].is_string());
+}
+
+#[tokio::test]
 async fn get_category_returns_single_category() {
     let app = CategoryTestApp::new();
     let (_, created) = app
@@ -306,6 +318,7 @@ async fn get_missing_category_returns_not_found_with_message_body() {
     let (status, body) = app.get("/api/cash-flow/categories/missing-category").await;
 
     assert_eq!(status, StatusCode::NOT_FOUND);
+    assert_eq!(body["code"], "notFound");
     assert!(
         body["message"]
             .as_str()
@@ -325,6 +338,7 @@ async fn create_category_with_invalid_color_returns_bad_request() {
         .await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["code"], "validation");
     assert!(
         body["message"]
             .as_str()
@@ -344,6 +358,7 @@ async fn create_category_with_empty_name_returns_bad_request() {
         .await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["code"], "validation");
     assert!(
         body["message"]
             .as_str()
@@ -377,6 +392,7 @@ async fn create_duplicate_category_id_returns_conflict() {
         .await;
 
     assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["code"], "conflict");
     assert!(
         body["message"]
             .as_str()
@@ -386,7 +402,7 @@ async fn create_duplicate_category_id_returns_conflict() {
 }
 
 #[tokio::test]
-async fn delete_category_with_children_using_block_strategy_returns_bad_request() {
+async fn delete_category_with_children_using_block_strategy_returns_conflict() {
     let app = CategoryTestApp::new();
     let (_, root) = app
         .post_json(
@@ -415,7 +431,8 @@ async fn delete_category_with_children_using_block_strategy_returns_bad_request(
         )
         .await;
 
-    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["code"], "conflict");
     assert!(
         body["message"]
             .as_str()
@@ -480,5 +497,6 @@ async fn malformed_json_returns_bad_request_with_message_body() {
         .await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["code"], "validation");
     assert!(body["message"].is_string());
 }

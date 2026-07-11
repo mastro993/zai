@@ -370,19 +370,31 @@ describe("web command transport", () => {
     expect(result).toEqual(payload);
   });
 
-  it("maps non-2xx JSON error bodies into CommandError messages", async () => {
+  it("preserves structured fields from non-2xx JSON error bodies", async () => {
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ message: "Failed to load transaction: Not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({
+          code: "notFound",
+          message: "Failed to load transaction: Not found",
+          details: { resource: "transaction", id: "txn-404" },
+        }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
 
     const transport = createWebCommandTransport();
 
-    await expect(transport.invoke("get_transaction", { transactionId: "txn-404" })).rejects.toEqual(
-      new CommandError("Failed to load transaction: Not found"),
-    );
+    await expect(
+      transport.invoke("get_transaction", { transactionId: "txn-404" }),
+    ).rejects.toMatchObject({
+      name: "CommandError",
+      code: "notFound",
+      message: "Failed to load transaction: Not found",
+      details: { resource: "transaction", id: "txn-404" },
+    });
   });
 
   it("falls back to a status-derived message when error JSON is malformed", async () => {
@@ -401,10 +413,16 @@ describe("web command transport", () => {
 
   it("preserves CommandResult semantics through invokeCommand", async () => {
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ message: "Failed to create transaction category Food: bad" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({
+          code: "validation",
+          message: "Failed to create transaction category Food: bad",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
 
     const result = await invokeCommand("create_transaction_category", {
@@ -416,6 +434,7 @@ describe("web command transport", () => {
       return;
     }
     expect(result.error).toBeInstanceOf(CommandError);
+    expect(result.error).toMatchObject({ code: "validation" });
     expect(result.error.message).toBe("Failed to create transaction category Food: bad");
   });
 });

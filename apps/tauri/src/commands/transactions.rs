@@ -11,6 +11,8 @@ use zai_core::features::transactions::models::{
 };
 use zai_core::query::{PaginatedData, Sort};
 
+use super::{CommandResult, command_error};
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionSearchFiltersDto {
@@ -43,7 +45,7 @@ pub async fn get_transactions(
     filters: Option<TransactionSearchFiltersDto>,
     sort: Option<Sort>,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<PaginatedData<Transaction>, String> {
+) -> CommandResult<PaginatedData<Transaction>> {
     debug!("Getting transactions ...");
     let filters = filters
         .as_ref()
@@ -51,85 +53,85 @@ pub async fn get_transactions(
     state
         .transactions_service()
         .get_transactions(page, per_page, filters, sort)
-        .map_err(|e| format!("Failed to load transactions: {}", e))
+        .map_err(|error| command_error("Failed to load transactions", error))
 }
 
 #[tauri::command]
 pub async fn get_transaction(
     transaction_id: String,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<Transaction, String> {
+) -> CommandResult<Transaction> {
     debug!("Getting transaction ...{}", transaction_id);
     state
         .transactions_service()
         .get_transaction(&transaction_id)
-        .map_err(|e| format!("Failed to load transaction: {}", e))
+        .map_err(|error| command_error("Failed to load transaction", error))
 }
 
 #[tauri::command]
 pub async fn create_transaction(
     new_transaction: NewTransaction,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<Transaction, String> {
+) -> CommandResult<Transaction> {
     debug!("Creating transaction ...");
     state
         .transactions_service()
         .create_transaction(new_transaction)
         .await
-        .map_err(|e| format!("Failed to create transaction: {}", e))
+        .map_err(|error| command_error("Failed to create transaction", error))
 }
 
 #[tauri::command]
 pub async fn update_transaction(
     updated_transaction: TransactionUpdate,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<Transaction, String> {
+) -> CommandResult<Transaction> {
     debug!("Updating transaction ...");
     state
         .transactions_service()
         .update_transaction(updated_transaction)
         .await
-        .map_err(|e| format!("Failed to update transaction: {}", e))
+        .map_err(|error| command_error("Failed to update transaction", error))
 }
 
 #[tauri::command]
 pub async fn delete_transaction(
     transaction_id: String,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<Transaction, String> {
+) -> CommandResult<Transaction> {
     debug!("Deleting transaction ...{}", transaction_id);
     state
         .transactions_service()
         .delete_transaction(&transaction_id)
         .await
-        .map_err(|e| format!("Failed to delete transaction: {}", e))
+        .map_err(|error| command_error("Failed to delete transaction", error))
 }
 
 #[tauri::command]
 pub async fn delete_transactions(
     transaction_ids: Vec<String>,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<Vec<Transaction>, String> {
+) -> CommandResult<Vec<Transaction>> {
     debug!("Deleting {} transactions ...", transaction_ids.len());
     let transaction_id_refs = transaction_ids.iter().map(String::as_str).collect();
     state
         .transactions_service()
         .delete_transactions(transaction_id_refs)
         .await
-        .map_err(|e| format!("Failed to delete transactions: {}", e))
+        .map_err(|error| command_error("Failed to delete transactions", error))
 }
 
 #[tauri::command]
 pub async fn import_transactions(
     transactions: Vec<NewTransaction>,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<Vec<Transaction>, String> {
+) -> CommandResult<Vec<Transaction>> {
     debug!("Importing {} transactions ...", transactions.len());
     state
         .transactions_service()
         .import_transactions(transactions)
         .await
-        .map_err(|e| format!("Failed to import transactions: {}", e))
+        .map_err(|error| command_error("Failed to import transactions", error))
 }
 
 #[tauri::command]
@@ -137,7 +139,7 @@ pub async fn import_transaction_batch(
     categories: Vec<NewTransactionCategory>,
     transactions: Vec<NewTransaction>,
     state: State<'_, Arc<ServiceContext>>,
-) -> Result<Vec<Transaction>, String> {
+) -> CommandResult<Vec<Transaction>> {
     debug!(
         "Importing transaction batch with {} categories and {} transactions ...",
         categories.len(),
@@ -148,5 +150,5 @@ pub async fn import_transaction_batch(
         .import_transactions_with_categories(categories, transactions)
         .await
         .map(|(_, imported_transactions)| imported_transactions)
-        .map_err(|e| format!("Failed to import transaction batch: {}", e))
+        .map_err(|error| command_error("Failed to import transaction batch", error))
 }

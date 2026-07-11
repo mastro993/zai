@@ -59,14 +59,14 @@ impl TransactionCategoriesService {
         if let Some(id) = category_id
             && self.repository.category_has_children(id)?
         {
-            return Err(Error::InvalidData(
+            return Err(Error::Conflict(
                 "A category with child categories cannot become a child category".to_string(),
             ));
         }
 
         let parent = self.repository.get_category(pid)?;
         if parent.parent_id.is_some() {
-            return Err(Error::InvalidData(
+            return Err(Error::Conflict(
                 "Cannot create categories deeper than 2 levels. The parent category must be a root category."
                     .to_string(),
             ));
@@ -87,7 +87,7 @@ impl TransactionCategoriesService {
             .repository
             .sibling_name_exists(parent_id, name, excluded_id)?
         {
-            return Err(Error::InvalidData(
+            return Err(Error::Conflict(
                 "A category with this name already exists at the same level".to_string(),
             ));
         }
@@ -129,7 +129,7 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
         if children_strategy == CategoryChildrenDeleteStrategy::Block {
             for category_id in &category_ids {
                 if self.repository.category_has_children(category_id)? {
-                    return Err(Error::InvalidData(
+                    return Err(Error::Conflict(
                         "Choose whether to delete or promote child categories before deleting this category"
                             .to_string(),
                     ));
