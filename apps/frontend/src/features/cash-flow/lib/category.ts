@@ -2,6 +2,7 @@ import {
   CATEGORY_COLORS,
   DEFAULT_CATEGORY_COLOR,
   type CategoryColor,
+  type CategoryRole,
   type TransactionCategory,
 } from "../types/model";
 
@@ -23,6 +24,9 @@ export const getCategoryDisplayName = (
 
   return parentName ? `${parentName} / ${category.name}` : category.name;
 };
+
+export const getCategoryRoleLabel = (role: CategoryRole) =>
+  role === "income" ? "Income" : "Spending";
 
 export const isCategoryColor = (color: string): color is CategoryColor => {
   return CATEGORY_COLORS.some((categoryColor) => categoryColor === color);

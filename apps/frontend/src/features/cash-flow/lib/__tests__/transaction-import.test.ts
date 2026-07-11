@@ -227,6 +227,7 @@ describe("transaction import", () => {
       name: "Food",
       description: null,
       color: "#C92A2A",
+      role: "spending",
       parent: null,
     };
     const child: TransactionCategory = {
@@ -235,6 +236,7 @@ describe("transaction import", () => {
       name: "Groceries",
       description: null,
       color: null,
+      role: "spending",
       parent: root,
     };
     const content = [
@@ -256,6 +258,7 @@ describe("transaction import", () => {
       name: "Health",
       description: null,
       color: "#C92A2A",
+      role: "spending",
       parent: null,
     };
     const content = ["date,amount,type,category", "2026-01-15,12.50,expense,Health - Other"].join(

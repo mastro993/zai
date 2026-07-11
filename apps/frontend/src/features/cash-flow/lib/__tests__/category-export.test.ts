@@ -17,6 +17,7 @@ describe("category export", () => {
       name: 'Food, "Home"',
       description: "Monthly\nneeds",
       color: "#C92A2A",
+      role: "spending",
       parent: null,
     };
     const child: TransactionCategory = {
@@ -25,6 +26,7 @@ describe("category export", () => {
       name: "Groceries",
       description: null,
       color: "#B95F00",
+      role: "spending",
       parent: root,
     };
 

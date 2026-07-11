@@ -1,6 +1,6 @@
 use super::models::TransactionRow;
 use crate::connection::{DbPool, get_connection};
-use crate::errors::{IntoCore, IntoStorage};
+use crate::errors::{IntoCore, IntoStorage, StorageError};
 use crate::pagination::{Paginate, total_pages};
 use crate::schema::{self, transaction_categories, transactions};
 use crate::transaction_categories::models::TransactionCategoryRow;
@@ -405,8 +405,8 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                             .load::<TransactionCategoryRow>(conn)
                             .into_storage()?
                             .into_iter()
-                            .map(TransactionCategory::from)
-                            .collect()
+                            .map(|row| row.try_into().map_err(StorageError::CoreError))
+                            .collect::<crate::errors::Result<Vec<TransactionCategory>>>()?
                     };
 
                     let inserted_transactions = if transactions_rows.is_empty() {
@@ -469,6 +469,7 @@ mod tests {
             name: "Food".to_string(),
             description: None,
             color: None,
+            role: None,
         }];
 
         let valid_transaction = NewTransaction {

@@ -1,5 +1,5 @@
 use super::models::{
-    CategoryChildrenDeleteStrategy, NewTransactionCategory, TransactionCategory,
+    CategoryChildrenDeleteStrategy, CategoryRole, NewTransactionCategory, TransactionCategory,
     TransactionCategoryUpdate, normalize_category_name, normalize_optional_color,
 };
 use super::traits::{TransactionCategoriesRepositoryTrait, TransactionCategoriesServiceTrait};
@@ -25,7 +25,12 @@ impl TransactionCategoriesService {
         if category.id.as_deref().is_none_or(|id| id.trim().is_empty()) {
             category.id = Some(Uuid::new_v4().to_string());
         }
-        self.apply_parent_rules(None, &mut category.parent_id, &mut category.color)?;
+        self.apply_parent_rules(
+            None,
+            &mut category.parent_id,
+            &mut category.color,
+            &mut category.role,
+        )?;
         self.ensure_unique_name(category.parent_id.as_deref(), &category.name, None)
     }
 
@@ -36,6 +41,7 @@ impl TransactionCategoriesService {
             Some(category.id.as_str()),
             &mut category.parent_id,
             &mut category.color,
+            &mut category.role,
         )?;
         self.ensure_unique_name(
             category.parent_id.as_deref(),
@@ -49,6 +55,7 @@ impl TransactionCategoriesService {
         category_id: Option<&str>,
         parent_id: &mut Option<String>,
         color: &mut Option<String>,
+        role: &mut Option<CategoryRole>,
     ) -> Result<()> {
         let Some(pid) = parent_id.as_deref().filter(|id| !id.trim().is_empty()) else {
             *parent_id = None;
@@ -73,6 +80,7 @@ impl TransactionCategoriesService {
         }
 
         *parent_id = Some(parent.id);
+        *role = Some(parent.role);
         *color = normalize_optional_color(color.as_deref())?;
         Ok(())
     }
@@ -150,11 +158,12 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
 
         for mut category in categories {
             category.name = normalize_category_name(&category.name);
-            category.validate()?;
-            category.color = normalize_optional_color(category.color.as_deref())?;
             if is_root_category(&category) {
                 category.parent_id = None;
+                category.role.get_or_insert_default();
             }
+            category.validate()?;
+            category.color = normalize_optional_color(category.color.as_deref())?;
             normalized_categories.push(category);
         }
 
@@ -174,34 +183,46 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
             })
             .collect::<HashSet<_>>();
 
-        let mut categories_to_import = Vec::with_capacity(normalized_categories.len());
+        let mut categories_to_import: Vec<NewTransactionCategory> =
+            Vec::with_capacity(normalized_categories.len());
         let mut root_id_by_original_id = HashMap::<String, String>::new();
         let mut imported_root_keys = HashMap::<String, String>::new();
+        let mut root_role_by_resolved_id = HashMap::<String, CategoryRole>::new();
 
         for root_category in normalized_categories
             .iter()
             .filter(|category| is_root_category(category))
         {
             let root_key = category_name_key(&root_category.name);
-            let resolved_root_id = if let Some(existing_root) = existing_roots.get(&root_key) {
-                existing_root.id.clone()
-            } else if let Some(imported_root_id) = imported_root_keys.get(&root_key) {
-                imported_root_id.clone()
-            } else {
-                let imported_root_id = root_category
-                    .id
-                    .clone()
-                    .filter(|id| is_valid_uuid(id))
-                    .unwrap_or_else(|| Uuid::new_v4().to_string());
-                imported_root_keys.insert(root_key, imported_root_id.clone());
+            let (resolved_root_id, resolved_root_role) =
+                if let Some(existing_root) = existing_roots.get(&root_key) {
+                    (existing_root.id.clone(), existing_root.role)
+                } else if let Some(imported_root_id) = imported_root_keys.get(&root_key) {
+                    let role = categories_to_import
+                        .iter()
+                        .find(|category| category.id.as_deref() == Some(imported_root_id.as_str()))
+                        .and_then(|category| category.role)
+                        .unwrap_or_default();
+                    (imported_root_id.clone(), role)
+                } else {
+                    let imported_root_id = root_category
+                        .id
+                        .clone()
+                        .filter(|id| is_valid_uuid(id))
+                        .unwrap_or_else(|| Uuid::new_v4().to_string());
+                    imported_root_keys.insert(root_key, imported_root_id.clone());
 
-                let mut owned_root = root_category.clone();
-                owned_root.id = Some(imported_root_id.clone());
-                owned_root.parent_id = None;
-                categories_to_import.push(owned_root);
+                    let mut owned_root = root_category.clone();
+                    owned_root.id = Some(imported_root_id.clone());
+                    owned_root.parent_id = None;
+                    owned_root.role = Some(owned_root.role.unwrap_or_default());
+                    let role = owned_root.role.unwrap_or_default();
+                    categories_to_import.push(owned_root);
 
-                imported_root_id
-            };
+                    (imported_root_id, role)
+                };
+
+            root_role_by_resolved_id.insert(resolved_root_id.clone(), resolved_root_role);
 
             if let Some(original_root_id) = root_category.id.as_deref() {
                 root_id_by_original_id.insert(original_root_id.to_string(), resolved_root_id);
@@ -218,14 +239,14 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
             .into_iter()
             .filter(|category| !is_root_category(category))
         {
-            let original_parent_id = child.parent_id.as_deref().unwrap_or_default();
+            let original_parent_id = child.parent_id.clone().unwrap_or_default();
             let Some(resolved_parent_id) = root_id_by_original_id
-                .get(original_parent_id)
+                .get(&original_parent_id)
                 .cloned()
                 .or_else(|| {
                     existing_root_ids
-                        .contains(original_parent_id)
-                        .then(|| original_parent_id.to_string())
+                        .contains(&original_parent_id)
+                        .then(|| original_parent_id.clone())
                 })
             else {
                 return Err(Error::InvalidData(
@@ -253,6 +274,14 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
             );
             owned_child.parent_id = Some(resolved_parent_id);
             owned_child.color = None;
+            owned_child.role = root_role_by_resolved_id
+                .get(&original_parent_id)
+                .copied()
+                .or_else(|| {
+                    root_role_by_resolved_id
+                        .get(owned_child.parent_id.as_deref().unwrap_or_default())
+                        .copied()
+                });
             categories_to_import.push(owned_child);
         }
 
@@ -352,6 +381,7 @@ mod tests {
                 name: new_category.name,
                 description: new_category.description,
                 color: new_category.color,
+                role: new_category.role.unwrap_or_default(),
                 parent: None,
             };
             self.categories.lock().unwrap().push(category.clone());
@@ -368,6 +398,7 @@ mod tests {
                 name: updated_category.name,
                 description: updated_category.description,
                 color: updated_category.color,
+                role: updated_category.role.unwrap_or_default(),
                 parent: None,
             };
             Ok(category)
@@ -400,6 +431,7 @@ mod tests {
                     name: category.name,
                     description: category.description,
                     color: category.color,
+                    role: category.role.unwrap_or_default(),
                     parent: None,
                 })
                 .collect())
@@ -414,6 +446,7 @@ mod tests {
             name: "Parent".to_string(),
             description: None,
             color: Some("#FFFFFF".to_string()),
+            role: CategoryRole::Spending,
             parent: None,
         }]));
         let service = TransactionCategoriesService::new(repository);
@@ -425,11 +458,40 @@ mod tests {
                 parent_id: Some("parent".to_string()),
                 description: None,
                 color: Some("#000000".to_string()),
+                role: None,
             })
             .await
             .unwrap();
 
         assert_eq!(category.color.as_deref(), Some("#000000"));
+    }
+
+    #[tokio::test]
+    async fn child_category_inherits_the_root_role() {
+        let repository = Arc::new(FakeRepository::with_categories(vec![TransactionCategory {
+            id: "parent".to_string(),
+            parent_id: None,
+            name: "Salary".to_string(),
+            description: None,
+            color: None,
+            role: CategoryRole::Income,
+            parent: None,
+        }]));
+        let service = TransactionCategoriesService::new(repository);
+
+        let category = service
+            .create_category(NewTransactionCategory {
+                id: None,
+                name: "Bonus".to_string(),
+                parent_id: Some("parent".to_string()),
+                description: None,
+                color: None,
+                role: None,
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(category.role, CategoryRole::Income);
     }
 
     #[tokio::test]
@@ -441,6 +503,7 @@ mod tests {
             parent_id: None,
             description: Some("Parent description".to_string()),
             color: Some("#D31212".to_string()),
+            role: Some(CategoryRole::Spending),
         };
         let child = NewTransactionCategory {
             id: Some("child1".to_string()),
@@ -448,6 +511,7 @@ mod tests {
             parent_id: Some("parent1".to_string()),
             description: Some("Child description".to_string()),
             color: None,
+            role: None,
         };
 
         let imported = service
@@ -474,6 +538,7 @@ mod tests {
             name: "Food".to_string(),
             description: Some("Existing wins".to_string()),
             color: Some("#C92A2A".to_string()),
+            role: CategoryRole::Spending,
             parent: None,
         };
         let existing_child = TransactionCategory {
@@ -482,6 +547,7 @@ mod tests {
             name: "Groceries".to_string(),
             description: None,
             color: None,
+            role: CategoryRole::Spending,
             parent: None,
         };
         let repository = Arc::new(FakeRepository::with_categories(vec![
@@ -498,6 +564,7 @@ mod tests {
                     parent_id: None,
                     description: Some("Imported ignored".to_string()),
                     color: Some("#FFFFFF".to_string()),
+                    role: Some(CategoryRole::Income),
                 },
                 NewTransactionCategory {
                     id: Some("incoming-child-duplicate".to_string()),
@@ -505,6 +572,7 @@ mod tests {
                     parent_id: Some("incoming-root".to_string()),
                     description: None,
                     color: None,
+                    role: None,
                 },
                 NewTransactionCategory {
                     id: Some("incoming-child-new".to_string()),
@@ -512,6 +580,7 @@ mod tests {
                     parent_id: Some("incoming-root".to_string()),
                     description: None,
                     color: Some("#000000".to_string()),
+                    role: None,
                 },
             ])
             .await
@@ -535,6 +604,7 @@ mod tests {
                     parent_id: None,
                     description: None,
                     color: Some("#C92A2A".to_string()),
+                    role: Some(CategoryRole::Spending),
                 },
                 NewTransactionCategory {
                     id: Some("root-2".to_string()),
@@ -542,6 +612,7 @@ mod tests {
                     parent_id: None,
                     description: Some("Duplicate ignored".to_string()),
                     color: Some("#FFFFFF".to_string()),
+                    role: Some(CategoryRole::Spending),
                 },
                 NewTransactionCategory {
                     id: Some("child-1".to_string()),
@@ -549,6 +620,7 @@ mod tests {
                     parent_id: Some("root-1".to_string()),
                     description: None,
                     color: None,
+                    role: None,
                 },
                 NewTransactionCategory {
                     id: Some("child-2".to_string()),
@@ -556,6 +628,7 @@ mod tests {
                     parent_id: Some("root-2".to_string()),
                     description: Some("Duplicate ignored".to_string()),
                     color: None,
+                    role: None,
                 },
             ])
             .await
@@ -588,6 +661,7 @@ mod tests {
                     parent_id: None,
                     description: None,
                     color: Some("#C92A2A".to_string()),
+                    role: Some(CategoryRole::Spending),
                 },
                 NewTransactionCategory {
                     id: Some(client_child_id.to_string()),
@@ -595,6 +669,7 @@ mod tests {
                     parent_id: Some(client_root_id.to_string()),
                     description: None,
                     color: None,
+                    role: None,
                 },
             ])
             .await
@@ -625,6 +700,7 @@ mod tests {
                 parent_id: None,
                 description: None,
                 color: None,
+                role: Some(CategoryRole::Spending),
             }])
             .await;
 
@@ -639,6 +715,7 @@ mod tests {
             name: "Food".to_string(),
             description: None,
             color: None,
+            role: CategoryRole::Spending,
             parent: None,
         }]));
         let service = TransactionCategoriesService::new(repository);
@@ -650,6 +727,7 @@ mod tests {
                 parent_id: None,
                 description: None,
                 color: None,
+                role: Some(CategoryRole::Spending),
             })
             .await;
 
@@ -665,6 +743,7 @@ mod tests {
                 name: "Parent".to_string(),
                 description: None,
                 color: None,
+                role: CategoryRole::Spending,
                 parent: None,
             },
             TransactionCategory {
@@ -673,6 +752,7 @@ mod tests {
                 name: "Target".to_string(),
                 description: None,
                 color: None,
+                role: CategoryRole::Spending,
                 parent: None,
             },
             TransactionCategory {
@@ -681,6 +761,7 @@ mod tests {
                 name: "Child".to_string(),
                 description: None,
                 color: None,
+                role: CategoryRole::Spending,
                 parent: None,
             },
         ]));
@@ -693,6 +774,7 @@ mod tests {
                 parent_id: Some("parent".to_string()),
                 description: None,
                 color: None,
+                role: Some(CategoryRole::Spending),
             })
             .await;
 
@@ -708,6 +790,7 @@ mod tests {
                 name: "Parent".to_string(),
                 description: None,
                 color: None,
+                role: CategoryRole::Spending,
                 parent: None,
             },
             TransactionCategory {
@@ -716,6 +799,7 @@ mod tests {
                 name: "Child".to_string(),
                 description: None,
                 color: None,
+                role: CategoryRole::Spending,
                 parent: None,
             },
         ]));

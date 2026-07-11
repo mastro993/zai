@@ -131,7 +131,8 @@ async fn create_root_category_returns_created_category() {
             json!({
                 "name": "Food",
                 "description": "Meals",
-                "color": "#ff0000"
+                "color": "#ff0000",
+                "role": "spending"
             }),
         )
         .await;
@@ -140,6 +141,7 @@ async fn create_root_category_returns_created_category() {
     assert_eq!(body["name"], "Food");
     assert_eq!(body["description"], "Meals");
     assert_eq!(body["color"], "#FF0000");
+    assert_eq!(body["role"], "spending");
     assert!(body["id"].is_string());
     assert!(body["parentId"].is_null());
 }
@@ -150,7 +152,7 @@ async fn create_child_category_returns_created_category() {
     let (_, root) = app
         .post_json(
             "/api/cash-flow/categories",
-            json!({ "name": "Food", "color": "#ff0000" }),
+            json!({ "name": "Food", "color": "#ff0000", "role": "spending" }),
         )
         .await;
     let root_id = root["id"].as_str().expect("root id");
@@ -169,6 +171,84 @@ async fn create_child_category_returns_created_category() {
     assert_eq!(status, StatusCode::CREATED);
     assert_eq!(body["name"], "Groceries");
     assert_eq!(body["parentId"], root_id);
+    assert_eq!(body["role"], "spending");
+}
+
+#[tokio::test]
+async fn category_roles_validate_and_inherit_across_the_http_contract() {
+    let app = CategoryTestApp::new();
+    let (missing_role_status, missing_role_body) = app
+        .post_json(
+            "/api/cash-flow/categories",
+            json!({ "name": "Salary", "color": "#ff0000" }),
+        )
+        .await;
+
+    assert_eq!(missing_role_status, StatusCode::BAD_REQUEST);
+    assert_eq!(missing_role_body["code"], "validation");
+
+    let (_, root) = app
+        .post_json(
+            "/api/cash-flow/categories",
+            json!({ "name": "Salary", "color": "#ff0000", "role": "income" }),
+        )
+        .await;
+    let root_id = root["id"].as_str().expect("root id");
+
+    let (child_status, child) = app
+        .post_json(
+            "/api/cash-flow/categories",
+            json!({ "name": "Bonus", "parentId": root_id }),
+        )
+        .await;
+    assert_eq!(child_status, StatusCode::CREATED);
+    assert_eq!(child["role"], "income");
+
+    let (invalid_child_status, invalid_child) = app
+        .post_json(
+            "/api/cash-flow/categories",
+            json!({
+                "name": "Salary sacrifice",
+                "parentId": root_id,
+                "role": "spending"
+            }),
+        )
+        .await;
+    assert_eq!(invalid_child_status, StatusCode::BAD_REQUEST);
+    assert_eq!(invalid_child["code"], "validation");
+}
+
+#[tokio::test]
+async fn updating_a_root_role_updates_child_reads() {
+    let app = CategoryTestApp::new();
+    let (_, root) = app
+        .post_json(
+            "/api/cash-flow/categories",
+            json!({ "name": "Salary", "role": "income" }),
+        )
+        .await;
+    let root_id = root["id"].as_str().expect("root id");
+    let (_, child) = app
+        .post_json(
+            "/api/cash-flow/categories",
+            json!({ "name": "Bonus", "parentId": root_id }),
+        )
+        .await;
+    let child_id = child["id"].as_str().expect("child id");
+
+    let (status, _) = app
+        .put_json(
+            &format!("/api/cash-flow/categories/{root_id}"),
+            json!({ "name": "Salary", "role": "spending" }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (child_status, child) = app
+        .get(&format!("/api/cash-flow/categories/{child_id}"))
+        .await;
+    assert_eq!(child_status, StatusCode::OK);
+    assert_eq!(child["role"], "spending");
 }
 
 #[tokio::test]
@@ -177,7 +257,7 @@ async fn list_categories_filters_by_parent_id() {
     let (_, root) = app
         .post_json(
             "/api/cash-flow/categories",
-            json!({ "name": "Food", "color": "#ff0000" }),
+            json!({ "name": "Food", "color": "#ff0000", "role": "spending" }),
         )
         .await;
     let root_id = root["id"].as_str().expect("root id");
@@ -192,7 +272,7 @@ async fn list_categories_filters_by_parent_id() {
     .await;
     app.post_json(
         "/api/cash-flow/categories",
-        json!({ "name": "Travel", "color": "#0000ff" }),
+        json!({ "name": "Travel", "color": "#0000ff", "role": "spending" }),
     )
     .await;
 
@@ -223,7 +303,7 @@ async fn get_category_returns_single_category() {
     let (_, created) = app
         .post_json(
             "/api/cash-flow/categories",
-            json!({ "name": "Food", "color": "#ff0000" }),
+            json!({ "name": "Food", "color": "#ff0000", "role": "spending" }),
         )
         .await;
     let category_id = created["id"].as_str().expect("category id");
@@ -243,7 +323,7 @@ async fn update_category_returns_updated_category() {
     let (_, created) = app
         .post_json(
             "/api/cash-flow/categories",
-            json!({ "name": "Food", "color": "#ff0000" }),
+            json!({ "name": "Food", "color": "#ff0000", "role": "spending" }),
         )
         .await;
     let category_id = created["id"].as_str().expect("category id");
@@ -254,7 +334,8 @@ async fn update_category_returns_updated_category() {
             json!({
                 "name": "Dining",
                 "description": "Restaurants",
-                "color": "#123456"
+                "color": "#123456",
+                "role": "spending"
             }),
         )
         .await;
@@ -272,7 +353,7 @@ async fn bulk_delete_returns_deleted_categories() {
     let (_, created) = app
         .post_json(
             "/api/cash-flow/categories",
-            json!({ "name": "Food", "color": "#ff0000" }),
+            json!({ "name": "Food", "color": "#ff0000", "role": "spending" }),
         )
         .await;
     let category_id = created["id"].as_str().expect("category id");
@@ -333,7 +414,7 @@ async fn create_category_with_invalid_color_returns_bad_request() {
     let (status, body) = app
         .post_json(
             "/api/cash-flow/categories",
-            json!({ "name": "Food", "color": "red" }),
+            json!({ "name": "Food", "color": "red", "role": "spending" }),
         )
         .await;
 
@@ -353,7 +434,7 @@ async fn create_category_with_empty_name_returns_bad_request() {
     let (status, body) = app
         .post_json(
             "/api/cash-flow/categories",
-            json!({ "name": "   ", "color": "#ff0000" }),
+            json!({ "name": "   ", "color": "#ff0000", "role": "spending" }),
         )
         .await;
 
@@ -374,12 +455,14 @@ async fn create_duplicate_category_id_returns_conflict() {
     let first_payload = json!({
         "id": fixed_id,
         "name": "Food",
-        "color": "#ff0000"
+        "color": "#ff0000",
+        "role": "spending"
     });
     let duplicate_payload = json!({
         "id": fixed_id,
         "name": "Travel",
-        "color": "#0000ff"
+        "color": "#0000ff",
+        "role": "spending"
     });
 
     let (first_status, _) = app
@@ -407,7 +490,7 @@ async fn delete_category_with_children_using_block_strategy_returns_conflict() {
     let (_, root) = app
         .post_json(
             "/api/cash-flow/categories",
-            json!({ "name": "Food", "color": "#ff0000" }),
+            json!({ "name": "Food", "color": "#ff0000", "role": "spending" }),
         )
         .await;
     let root_id = root["id"].as_str().expect("root id");
@@ -447,7 +530,7 @@ async fn delete_category_with_children_using_promote_strategy_succeeds() {
     let (_, root) = app
         .post_json(
             "/api/cash-flow/categories",
-            json!({ "name": "Food", "color": "#ff0000" }),
+            json!({ "name": "Food", "color": "#ff0000", "role": "spending" }),
         )
         .await;
     let root_id = root["id"].as_str().expect("root id");

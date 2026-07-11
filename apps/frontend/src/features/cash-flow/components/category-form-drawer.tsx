@@ -22,10 +22,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-import { getCategoryDisplayColor, isCategoryColor } from "../lib/category";
+import { getCategoryDisplayColor, getCategoryRoleLabel, isCategoryColor } from "../lib/category";
 import type { CategoryFormMode } from "../types/category-types";
 import {
   DEFAULT_CATEGORY_COLOR,
+  CATEGORY_ROLES,
   categoryFormSchema,
   type CategoryFormValues,
   type TransactionCategory,
@@ -40,6 +41,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       parentId: "",
       description: "",
       color: DEFAULT_CATEGORY_COLOR,
+      role: "spending",
     };
   }
 
@@ -49,6 +51,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       parentId: mode.parentId,
       description: "",
       color: undefined,
+      role: undefined,
     };
   }
 
@@ -60,6 +63,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       mode.category.color && isCategoryColor(mode.category.color)
         ? mode.category.color
         : DEFAULT_CATEGORY_COLOR,
+    role: mode.category.parentId ? undefined : mode.category.role,
   };
 };
 
@@ -67,7 +71,8 @@ const getFormCopy = (mode: CategoryFormMode) => {
   if (mode.type === "edit") {
     return {
       title: "Edit category",
-      description: "Update the name, parent, or color. Names must stay unique at the same level.",
+      description:
+        "Update the name, role, parent, or color. Names must stay unique at the same level.",
     };
   }
 
@@ -82,7 +87,7 @@ const getFormCopy = (mode: CategoryFormMode) => {
   return {
     title: "New category",
     description:
-      "Root categories get a colored badge in lists and transactions. Names must be unique among other root categories.",
+      "Choose whether this category tracks spending or income. Names must be unique among other root categories.",
   };
 };
 
@@ -164,6 +169,7 @@ function CategoryFormDrawer({
         parentId: parentId || null,
         name: watchedName,
         color: null,
+        role: parentCategory?.role ?? "spending",
         parent: parentCategory ?? null,
       })
     : selectedColor;
@@ -225,6 +231,10 @@ function CategoryFormDrawer({
                       field.onChange(nextParentId);
 
                       if (nextParentId) {
+                        form.setValue("role", undefined, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
                         form.setValue("color", undefined, {
                           shouldDirty: true,
                           shouldValidate: true,
@@ -233,6 +243,12 @@ function CategoryFormDrawer({
                       }
 
                       const currentColor = form.getValues("color");
+                      if (!form.getValues("role")) {
+                        form.setValue("role", "spending", {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }
                       if (!currentColor) {
                         form.setValue("color", DEFAULT_CATEGORY_COLOR, {
                           shouldDirty: true,
@@ -261,6 +277,55 @@ function CategoryFormDrawer({
               </FieldDescription>
             </Field>
           ) : null}
+
+          {isChildCategory ? (
+            <Field>
+              <FieldLabel>Role</FieldLabel>
+              <div className="flex h-8 items-center border border-input px-2.5 text-xs">
+                {getCategoryRoleLabel(
+                  parentCategory?.role ?? (mode.type === "edit" ? mode.category.role : "spending"),
+                )}
+              </div>
+              <FieldDescription>
+                Child categories inherit their root category role.
+              </FieldDescription>
+            </Field>
+          ) : (
+            <Field data-invalid={Boolean(errors.role)}>
+              <FieldLabel>Role</FieldLabel>
+              <Controller
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <Select
+                    items={CATEGORY_ROLES.map((value) => ({
+                      label: getCategoryRoleLabel(value),
+                      value,
+                    }))}
+                    value={field.value ?? null}
+                    onValueChange={(value) => field.onChange(value ?? undefined)}
+                  >
+                    <SelectTrigger className="w-full" aria-label="Category role">
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectGroup>
+                        {CATEGORY_ROLES.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {getCategoryRoleLabel(value)}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <FieldDescription>
+                Income categories identify genuine income; spending categories can include refunds.
+              </FieldDescription>
+              <FieldError>{errors.role?.message}</FieldError>
+            </Field>
+          )}
 
           <Field>
             <FieldLabel htmlFor="category-description">Description</FieldLabel>

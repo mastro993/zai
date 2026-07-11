@@ -108,6 +108,7 @@ pub async fn update_category(
         name: body.name,
         description: body.description,
         color: body.color,
+        role: body.role,
     };
     context
         .transaction_categories_service()
