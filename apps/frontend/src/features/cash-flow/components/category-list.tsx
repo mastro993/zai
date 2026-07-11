@@ -12,7 +12,7 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-import { getCategoryDisplayColor } from "../lib/category";
+import { getCategoryDisplayColor, getCategoryRoleLabel } from "../lib/category";
 import type { CategoryFormMode } from "../types/category-types";
 import type { TransactionCategory } from "../types/model";
 import { CategoryBadge } from "./category-badge";
@@ -85,6 +85,9 @@ function CategoryRowContent({
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <div className="flex min-w-0 items-center gap-2">
         <CategoryBadge color={getCategoryDisplayColor(category)}>{category.name}</CategoryBadge>
+        <span className="shrink-0 border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+          {getCategoryRoleLabel(category.role)}
+        </span>
         {childCount !== undefined && childCount > 0 ? (
           <span className="shrink-0 text-xs tabular-nums text-muted-foreground">+{childCount}</span>
         ) : null}

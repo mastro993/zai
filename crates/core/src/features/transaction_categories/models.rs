@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::str::FromStr;
 
 use crate::Error;
 
@@ -34,6 +36,41 @@ pub(crate) fn normalize_category_name(name: &str) -> String {
     name.trim().to_string()
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CategoryRole {
+    #[default]
+    Spending,
+    Income,
+}
+
+impl CategoryRole {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Spending => "spending",
+            Self::Income => "income",
+        }
+    }
+}
+
+impl fmt::Display for CategoryRole {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl FromStr for CategoryRole {
+    type Err = ();
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "spending" => Ok(Self::Spending),
+            "income" => Ok(Self::Income),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionCategory {
@@ -42,6 +79,7 @@ pub struct TransactionCategory {
     pub name: String,
     pub description: Option<String>,
     pub color: Option<String>,
+    pub role: CategoryRole,
     pub parent: Option<Box<Self>>,
 }
 
@@ -62,6 +100,7 @@ pub struct NewTransactionCategory {
     pub name: String,
     pub description: Option<String>,
     pub color: Option<String>,
+    pub role: Option<CategoryRole>,
 }
 
 impl NewTransactionCategory {
@@ -72,6 +111,7 @@ impl NewTransactionCategory {
             ));
         }
         validate_color(self.color.as_deref())?;
+        validate_category_role(self.parent_id.as_deref(), self.role)?;
         Ok(())
     }
 }
@@ -84,6 +124,7 @@ pub struct TransactionCategoryUpdate {
     pub name: String,
     pub description: Option<String>,
     pub color: Option<String>,
+    pub role: Option<CategoryRole>,
 }
 
 impl TransactionCategoryUpdate {
@@ -106,7 +147,25 @@ impl TransactionCategoryUpdate {
             ));
         }
         validate_color(self.color.as_deref())?;
+        validate_category_role(self.parent_id.as_deref(), self.role)?;
         Ok(())
+    }
+}
+
+fn validate_category_role(
+    parent_id: Option<&str>,
+    role: Option<CategoryRole>,
+) -> Result<(), Error> {
+    let is_child = parent_id.is_some_and(|id| !id.trim().is_empty());
+
+    match (is_child, role) {
+        (false, None) => Err(Error::InvalidData(
+            "Root categories require a role".to_string(),
+        )),
+        (true, Some(_)) => Err(Error::InvalidData(
+            "Child categories inherit their root category role".to_string(),
+        )),
+        _ => Ok(()),
     }
 }
 
@@ -121,6 +180,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
+            role: Some(CategoryRole::Spending),
             id: None,
         };
 
@@ -139,6 +199,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
+            role: Some(CategoryRole::Spending),
             id: None,
         };
 
@@ -154,6 +215,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("red".to_string()),
+            role: Some(CategoryRole::Spending),
             id: None,
         };
 
@@ -176,6 +238,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
+            role: Some(CategoryRole::Spending),
         };
 
         new_category.validate().expect("validate");
@@ -193,6 +256,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
+            role: Some(CategoryRole::Spending),
         };
 
         let result = new_category_invalid.validate();
@@ -206,6 +270,7 @@ mod tests {
             parent_id: Some("same-id".to_string()),
             description: None,
             color: None,
+            role: None,
         };
 
         let result = self_ref.validate();
@@ -223,6 +288,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: Some("#12345".to_string()),
+            role: Some(CategoryRole::Spending),
         };
 
         let result = invalid_color.validate();
@@ -247,5 +313,45 @@ mod tests {
         let normalized = normalize_optional_color(None).expect("normalize");
 
         assert!(normalized.is_none());
+    }
+
+    #[test]
+    fn root_categories_require_a_role() {
+        let category = NewTransactionCategory {
+            id: None,
+            parent_id: None,
+            name: "Salary".to_string(),
+            description: None,
+            color: None,
+            role: None,
+        };
+
+        assert!(category.validate().is_err());
+    }
+
+    #[test]
+    fn child_categories_reject_an_independent_role() {
+        let category = NewTransactionCategory {
+            id: None,
+            parent_id: Some("root".to_string()),
+            name: "Groceries".to_string(),
+            description: None,
+            color: None,
+            role: Some(CategoryRole::Income),
+        };
+
+        assert!(category.validate().is_err());
+    }
+
+    #[test]
+    fn category_roles_use_stable_wire_values() {
+        assert_eq!(
+            serde_json::to_string(&CategoryRole::Spending).unwrap(),
+            "\"spending\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CategoryRole::Income).unwrap(),
+            "\"income\""
+        );
     }
 }

@@ -1,6 +1,6 @@
 use super::models::TransactionCategoryRow;
 use crate::connection::{DbPool, get_connection};
-use crate::errors::{IntoCore, IntoStorage};
+use crate::errors::{IntoCore, IntoStorage, StorageError};
 use crate::schema::{transaction_categories, transactions};
 use crate::write_actor::WriteHandle;
 use async_trait::async_trait;
@@ -15,6 +15,23 @@ use zai_core::features::transaction_categories::models::{
     TransactionCategoryUpdate,
 };
 use zai_core::features::transaction_categories::traits::TransactionCategoriesRepositoryTrait;
+
+fn category_from_row(row: TransactionCategoryRow) -> crate::errors::Result<TransactionCategory> {
+    row.try_into().map_err(StorageError::CoreError)
+}
+
+fn category_from_rows(
+    row: TransactionCategoryRow,
+    parent_row: Option<TransactionCategoryRow>,
+) -> crate::errors::Result<TransactionCategory> {
+    let mut category = category_from_row(row)?;
+    if let Some(parent_row) = parent_row {
+        let parent = category_from_row(parent_row)?;
+        category.role = parent.role;
+        category.parent = Some(Box::new(parent));
+    }
+    Ok(category)
+}
 
 pub struct TransactionCategoriesRepository {
     pool: Arc<DbPool>,
@@ -57,14 +74,10 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
             .load::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)
             .into_core()?;
 
-        let categories: Vec<TransactionCategory> = results
+        let categories = results
             .into_iter()
-            .map(|(row, parent_row)| {
-                let mut category: TransactionCategory = row.into();
-                category.parent = parent_row.map(TransactionCategory::from).map(Box::new);
-                category
-            })
-            .collect();
+            .map(|(row, parent_row)| category_from_rows(row, parent_row))
+            .collect::<crate::errors::Result<Vec<_>>>()?;
 
         Ok(categories)
     }
@@ -89,10 +102,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
             .first::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)
             .into_core()?;
 
-        let mut category: TransactionCategory = category_row.into();
-        category.parent = parent_row.map(TransactionCategory::from).map(Box::new);
-
-        Ok(category)
+        category_from_rows(category_row, parent_row).map_err(StorageError::into)
     }
 
     fn category_has_children(&self, id: &str) -> Result<bool> {
@@ -170,10 +180,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .first::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)
                         .into_storage()?;
 
-                    let mut category: TransactionCategory = category_row.into();
-                    category.parent = parent_row.map(TransactionCategory::from).map(Box::new);
-
-                    Ok(category)
+                    category_from_rows(category_row, parent_row)
                 },
             )
             .await
@@ -201,6 +208,20 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .execute(conn)
                         .into_storage()?;
 
+                    if category.parent_id.is_none() {
+                        diesel::update(
+                            transaction_categories::table
+                                .filter(transaction_categories::parent_id.eq(&category.id))
+                                .filter(transaction_categories::deleted_at.is_null()),
+                        )
+                        .set((
+                            transaction_categories::role.eq(&category.role),
+                            transaction_categories::updated_at.eq(category.updated_at),
+                        ))
+                        .execute(conn)
+                        .into_storage()?;
+                    }
+
                     let parent_categories =
                         diesel::alias!(transaction_categories as parent_categories);
 
@@ -218,10 +239,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .first::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)
                         .into_storage()?;
 
-                    let mut category: TransactionCategory = category_row.into();
-                    category.parent = parent_row.map(TransactionCategory::from).map(Box::new);
-
-                    Ok(category)
+                    category_from_rows(category_row, parent_row)
                 },
             )
             .await
@@ -292,8 +310,10 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .load::<TransactionCategoryRow>(conn)
                         .into_storage()?;
 
-                    let categories: Vec<TransactionCategory> =
-                        deleted.into_iter().map(TransactionCategory::from).collect();
+                    let categories = deleted
+                        .into_iter()
+                        .map(category_from_row)
+                        .collect::<crate::errors::Result<Vec<_>>>()?;
                     Ok(categories)
                 },
             )
@@ -329,10 +349,10 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .load::<TransactionCategoryRow>(conn)
                         .into_storage()?;
 
-                    Ok(inserted
+                    inserted
                         .into_iter()
-                        .map(TransactionCategory::from)
-                        .collect())
+                        .map(category_from_row)
+                        .collect::<crate::errors::Result<Vec<_>>>()
                 },
             )
             .await
@@ -347,7 +367,7 @@ mod tests {
     use crate::write_actor::spawn_writer;
     use uuid::Uuid;
     use zai_core::features::transaction_categories::models::{
-        NewTransactionCategory, TransactionCategory,
+        CategoryRole, NewTransactionCategory, TransactionCategory,
     };
     use zai_core::features::transactions::models::NewTransaction;
 
@@ -400,6 +420,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let cat2 = NewTransactionCategory {
@@ -407,6 +428,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let cat3 = NewTransactionCategory {
@@ -414,6 +436,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
 
@@ -438,6 +461,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let parent = repo.create_category(parent).await.unwrap();
@@ -447,6 +471,7 @@ mod tests {
             parent_id: Some(parent.id.clone()),
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let child = repo.create_category(child).await.unwrap();
@@ -467,6 +492,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let parent = repo.create_category(parent).await.unwrap();
@@ -476,6 +502,7 @@ mod tests {
             parent_id: Some(parent.id.clone()),
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let cat2 = NewTransactionCategory {
@@ -483,6 +510,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let cat3 = NewTransactionCategory {
@@ -490,6 +518,7 @@ mod tests {
             parent_id: Some(parent.id.clone()),
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
 
@@ -515,6 +544,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
 
@@ -536,6 +566,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: Some("#D31212".to_string()),
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let created = repo.create_category(new_category).await.unwrap();
@@ -546,6 +577,7 @@ mod tests {
             parent_id: None,
             description: Some("Updated description".to_string()),
             color: Some("#3C99F6".to_string()),
+            role: None,
         };
 
         let updated_category = repo.update_category(updated).await.unwrap();
@@ -559,6 +591,51 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn updating_a_root_role_updates_child_effective_roles() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let parent = repo
+            .create_category(NewTransactionCategory {
+                name: "Salary".to_string(),
+                parent_id: None,
+                description: None,
+                color: None,
+                role: Some(CategoryRole::Income),
+                id: Some(Uuid::new_v4().to_string()),
+            })
+            .await
+            .unwrap();
+        let child = repo
+            .create_category(NewTransactionCategory {
+                name: "Bonus".to_string(),
+                parent_id: Some(parent.id.clone()),
+                description: None,
+                color: None,
+                role: Some(CategoryRole::Income),
+                id: Some(Uuid::new_v4().to_string()),
+            })
+            .await
+            .unwrap();
+
+        repo.update_category(TransactionCategoryUpdate {
+            id: parent.id,
+            name: "Salary".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            role: Some(CategoryRole::Spending),
+        })
+        .await
+        .unwrap();
+
+        assert_eq!(
+            repo.get_category(&child.id).unwrap().role,
+            CategoryRole::Spending
+        );
+    }
+
+    #[tokio::test]
     async fn test_update_category_clears_description() {
         let temp_db = TempDb::new();
         let repo = setup_test_repo(temp_db.path());
@@ -569,6 +646,7 @@ mod tests {
                 parent_id: None,
                 description: Some("Original description".to_string()),
                 color: Some("#D31212".to_string()),
+                role: None,
                 id: Some(Uuid::new_v4().to_string()),
             })
             .await
@@ -581,6 +659,7 @@ mod tests {
                 parent_id: None,
                 description: None,
                 color: Some("#D31212".to_string()),
+                role: None,
             })
             .await
             .unwrap();
@@ -598,6 +677,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let created_1 = repo.create_category(new_category_1).await.unwrap();
@@ -607,6 +687,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let created_2 = repo.create_category(new_category_2).await.unwrap();
@@ -633,6 +714,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
+            role: None,
         };
 
         let new_category_2 = NewTransactionCategory {
@@ -641,6 +723,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
+            role: None,
         };
 
         let new_category_3 = NewTransactionCategory {
@@ -649,6 +732,7 @@ mod tests {
             parent_id: Some(new_category_1.id.as_deref().unwrap().to_string()),
             description: Some("Descrizione test".to_string()),
             color: Some("#DB1313".to_string()),
+            role: None,
         };
 
         let created: Vec<TransactionCategory> = repo
@@ -674,6 +758,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: Some("#D31212".to_string()),
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let created_parent = repo.create_category(parent).await.unwrap();
@@ -683,6 +768,7 @@ mod tests {
             parent_id: Some(created_parent.id.clone()),
             description: None,
             color: Some("#3C99F6".to_string()),
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let created_child = repo.create_category(child).await.unwrap();
@@ -700,6 +786,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: Some("#D31212".to_string()),
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let created_parent = repo.create_category(parent).await.unwrap();
@@ -709,6 +796,7 @@ mod tests {
             parent_id: Some(created_parent.id),
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let created_child = repo.create_category(child).await.unwrap();
@@ -726,6 +814,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: Some("#D31212".to_string()),
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let created_parent = repo.create_category(parent).await.unwrap();
@@ -735,6 +824,7 @@ mod tests {
             parent_id: Some(created_parent.id.clone()),
             description: None,
             color: Some("#DB1313".to_string()),
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let created_child = repo.create_category(child).await.unwrap();
@@ -745,6 +835,7 @@ mod tests {
             parent_id: Some(created_parent.id),
             description: None,
             color: Some("#AB63F2".to_string()),
+            role: None,
         };
 
         let updated_child = repo.update_category(updated_child).await.unwrap();
@@ -762,6 +853,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: Some("#D31212".to_string()),
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let created_parent = repo.create_category(parent).await.unwrap();
@@ -771,6 +863,7 @@ mod tests {
             parent_id: Some(created_parent.id.clone()),
             description: None,
             color: Some("#DB1313".to_string()),
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         };
         let created_child = repo.create_category(child).await.unwrap();
@@ -781,6 +874,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: Some("#AB63F2".to_string()),
+            role: None,
         };
 
         let updated_child = repo.update_category(updated_child).await.unwrap();
@@ -798,6 +892,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: None,
+            role: None,
             id: Some(Uuid::new_v4().to_string()),
         })
         .await
@@ -821,6 +916,7 @@ mod tests {
                 parent_id: None,
                 description: None,
                 color: None,
+                role: None,
                 id: Some(Uuid::new_v4().to_string()),
             })
             .await
@@ -831,6 +927,7 @@ mod tests {
                 parent_id: Some(parent.id.clone()),
                 description: None,
                 color: None,
+                role: None,
                 id: Some(Uuid::new_v4().to_string()),
             })
             .await
@@ -855,6 +952,7 @@ mod tests {
                 parent_id: None,
                 description: None,
                 color: None,
+                role: None,
                 id: Some(Uuid::new_v4().to_string()),
             })
             .await
@@ -865,6 +963,7 @@ mod tests {
                 parent_id: Some(parent.id.clone()),
                 description: None,
                 color: None,
+                role: None,
                 id: Some(Uuid::new_v4().to_string()),
             })
             .await
@@ -889,6 +988,7 @@ mod tests {
                 parent_id: None,
                 description: None,
                 color: None,
+                role: None,
                 id: Some(Uuid::new_v4().to_string()),
             })
             .await

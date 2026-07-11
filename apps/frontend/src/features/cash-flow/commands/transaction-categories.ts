@@ -4,6 +4,7 @@ import type { CategoryImportPayload } from "../lib/category-import";
 import type {
   CategoryChildrenDeleteStrategy,
   CategoryFormValues,
+  CategoryRole,
   TransactionCategory,
 } from "../types/model";
 
@@ -13,6 +14,7 @@ type CategoryPayload = {
   name: string;
   description?: string | null;
   color?: string | null;
+  role?: CategoryRole | null;
 };
 
 const toCategoryPayload = (values: CategoryFormValues): CategoryPayload => ({
@@ -20,6 +22,7 @@ const toCategoryPayload = (values: CategoryFormValues): CategoryPayload => ({
   parentId: values.parentId || null,
   description: values.description || null,
   color: values.color ?? null,
+  role: values.parentId ? null : (values.role ?? null),
 });
 
 export const getTransactionCategories = (

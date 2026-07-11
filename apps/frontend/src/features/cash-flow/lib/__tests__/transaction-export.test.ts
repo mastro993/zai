@@ -49,6 +49,7 @@ describe("transaction export", () => {
       name: "Food",
       description: null,
       color: "#C92A2A",
+      role: "spending",
       parent: null,
     };
     const child: TransactionCategory = {
@@ -57,6 +58,7 @@ describe("transaction export", () => {
       name: "Groceries",
       description: null,
       color: null,
+      role: "spending",
       parent: root,
     };
     const transactions: Array<Transaction> = [
@@ -98,6 +100,7 @@ describe("transaction export", () => {
       name: "Food",
       description: null,
       color: "#C92A2A",
+      role: "spending",
       parent: null,
     };
     const child: TransactionCategory = {
@@ -106,6 +109,7 @@ describe("transaction export", () => {
       name: "Groceries",
       description: null,
       color: null,
+      role: "spending",
       parent: root,
     };
     const transactions: Array<Transaction> = [

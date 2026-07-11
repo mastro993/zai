@@ -7,6 +7,7 @@ diesel::table! {
         name -> Text,
         description -> Nullable<Text>,
         color -> Nullable<Text>,
+        role -> Text,
         created_at -> Timestamp,
         updated_at -> Timestamp,
         deleted_at -> Nullable<Timestamp>,

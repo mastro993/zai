@@ -23,6 +23,7 @@ export const CATEGORY_COLORS = [...CATEGORY_DARK_COLORS, ...CATEGORY_LIGHT_COLOR
 
 export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLORS[0];
 export const TRANSACTION_TYPES = ["expense", "income"] as const;
+export const CATEGORY_ROLES = ["spending", "income"] as const;
 
 const nullableStringSchema = z.string().nullable().optional();
 const categoryColorSchema = z
@@ -30,15 +31,34 @@ const categoryColorSchema = z
   .regex(/^#[0-9A-Fa-f]{6}$/, "Select a valid category color")
   .transform((value) => value.toUpperCase());
 
-export const categoryFormSchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
-  parentId: z.string().optional(),
-  description: z.string().trim().optional(),
-  color: z
-    .string()
-    .regex(/^#?[0-9a-f]{6}$/i)
-    .optional(),
-});
+export const categoryRoleSchema = z.enum(CATEGORY_ROLES);
+
+export const categoryFormSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required"),
+    parentId: z.string().optional(),
+    description: z.string().trim().optional(),
+    color: z
+      .string()
+      .regex(/^#?[0-9a-f]{6}$/i)
+      .optional(),
+    role: categoryRoleSchema.optional(),
+  })
+  .superRefine((values, context) => {
+    if (values.parentId && values.role) {
+      context.addIssue({
+        code: "custom",
+        path: ["role"],
+        message: "Child categories inherit their root category role",
+      });
+    } else if (!values.parentId && !values.role) {
+      context.addIssue({
+        code: "custom",
+        path: ["role"],
+        message: "Role is required for root categories",
+      });
+    }
+  });
 
 const categoryBaseSchema = z.object({
   id: z.string().min(1),
@@ -46,6 +66,7 @@ const categoryBaseSchema = z.object({
   name: z.string().min(1),
   description: nullableStringSchema,
   color: categoryColorSchema.nullable().optional(),
+  role: categoryRoleSchema,
 });
 
 export const categorySchema = categoryBaseSchema.extend({
@@ -99,6 +120,7 @@ export const paginatedTransactionsSchema = z.object({
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 export type CategoryColor = (typeof CATEGORY_COLORS)[number];
+export type CategoryRole = z.infer<typeof categoryRoleSchema>;
 export type TransactionCategory = z.infer<typeof categorySchema>;
 export type TransactionFormInput = z.input<typeof transactionFormSchema>;
 export type TransactionFormValues = z.infer<typeof transactionFormSchema>;

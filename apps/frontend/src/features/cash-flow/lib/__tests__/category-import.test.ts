@@ -37,6 +37,7 @@ describe("category import", () => {
       name: 'Food, "Home"',
       description: "Monthly\nneeds",
       color: "#C92A2A",
+      role: "spending",
       parent: null,
     };
     const child: TransactionCategory = {
@@ -45,6 +46,7 @@ describe("category import", () => {
       name: "Groceries",
       description: null,
       color: null,
+      role: "spending",
       parent: root,
     };
 
@@ -101,6 +103,7 @@ describe("category import", () => {
       name: "Food",
       description: "Existing wins",
       color: "#C92A2A",
+      role: "spending",
       parent: null,
     };
     const content = [
