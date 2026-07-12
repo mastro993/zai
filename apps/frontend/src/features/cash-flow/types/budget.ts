@@ -18,12 +18,27 @@ const allowanceInputSchema = z
       .transform((value) => Math.round(Number(value) * 100)),
   );
 
+const warningPercentageSchema = z
+  .union([
+    z.literal("disabled").transform(() => null),
+    z
+      .string()
+      .trim()
+      .min(1, "Warning percentage is required")
+      .refine((value) => /^\d+$/.test(value), "Enter a whole percentage")
+      .transform(Number)
+      .refine((value) => value >= 1 && value <= 100, "Enter a percentage from 1 to 100"),
+  ])
+  .optional()
+  .transform((value) => (value === undefined ? 80 : value));
+
 export const budgetFormSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   baseAllowance: allowanceInputSchema,
   cadence: z.enum(BUDGET_CADENCES).default("month"),
   categoryIds: z.array(z.string()).default([]),
   measurementMode: z.enum(BUDGET_MEASUREMENT_MODES).default("spending"),
+  warningPercentage: warningPercentageSchema,
 });
 
 const budgetPeriodSchema = z.object({
