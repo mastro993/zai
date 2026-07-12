@@ -19,7 +19,7 @@ fn status_for_error(error: &Error) -> StatusCode {
     match error {
         Error::InvalidData(_) => StatusCode::BAD_REQUEST,
         Error::NotFound(_) => StatusCode::NOT_FOUND,
-        Error::Conflict(_) => StatusCode::CONFLICT,
+        Error::Conflict(_) | Error::NameConflict(_) => StatusCode::CONFLICT,
         Error::Database(db_error) => match db_error {
             DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
             DatabaseError::UniqueViolation(_) | DatabaseError::ForeignKeyViolation(_) => {

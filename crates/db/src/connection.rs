@@ -1,3 +1,4 @@
+use crate::budgets::BudgetsRepository;
 use crate::errors::{IntoCore, StorageError};
 use crate::transaction_categories::TransactionCategoriesRepository;
 use crate::transactions::TransactionsRepository;
@@ -41,6 +42,13 @@ impl Database {
 
     pub fn transactions_repository(&self) -> Arc<TransactionsRepository> {
         Arc::new(TransactionsRepository::new(
+            Arc::clone(&self.pool),
+            self.writer.clone(),
+        ))
+    }
+
+    pub fn budgets_repository(&self) -> Arc<BudgetsRepository> {
+        Arc::new(BudgetsRepository::new(
             Arc::clone(&self.pool),
             self.writer.clone(),
         ))

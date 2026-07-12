@@ -1,0 +1,50 @@
+import { z } from "zod";
+
+import { prepareAmountForValidation } from "../lib/transaction";
+
+export const BUDGET_MEASUREMENT_MODES = ["spending", "netCashFlow"] as const;
+export const BUDGET_STATUSES = ["onTrack", "warning", "overspent"] as const;
+
+const allowanceInputSchema = z
+  .string()
+  .trim()
+  .transform(prepareAmountForValidation)
+  .pipe(
+    z
+      .string()
+      .min(1, "Allowance is required")
+      .refine((value) => /^\d+(\.\d{1,2})?$/.test(value), "Enter a valid allowance")
+      .transform((value) => Math.round(Number(value) * 100)),
+  );
+
+export const budgetFormSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  baseAllowance: allowanceInputSchema,
+});
+
+const budgetPeriodSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+  baseAllowance: z.number().int(),
+  effectiveAllowance: z.number().int(),
+  netBudgetSpending: z.number().int(),
+  remainingAllowance: z.number().int(),
+  status: z.enum(BUDGET_STATUSES),
+});
+
+export const budgetSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  categoryIds: z.array(z.string()),
+  cadence: z.literal("month"),
+  measurementMode: z.enum(BUDGET_MEASUREMENT_MODES),
+  baseAllowance: z.number().int(),
+  rolloverMode: z.literal("off"),
+  warningPercentage: z.number().int().nullable(),
+  currentPeriod: budgetPeriodSchema,
+});
+
+export type BudgetFormInput = z.input<typeof budgetFormSchema>;
+export type BudgetFormValues = z.infer<typeof budgetFormSchema>;
+export type Budget = z.infer<typeof budgetSchema>;
+export type BudgetStatus = (typeof BUDGET_STATUSES)[number];

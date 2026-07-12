@@ -17,6 +17,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CashFlowIndexRouteImport } from './routes/cash-flow.index'
 import { Route as CashFlowTransactionsRouteImport } from './routes/cash-flow.transactions'
 import { Route as CashFlowCategoriesRouteImport } from './routes/cash-flow.categories'
+import { Route as CashFlowBudgetsRouteImport } from './routes/cash-flow.budgets'
+import { Route as CashFlowBudgetsBudgetIdRouteImport } from './routes/cash-flow.budgets.$budgetId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -58,6 +60,16 @@ const CashFlowCategoriesRoute = CashFlowCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => CashFlowRoute,
 } as any)
+const CashFlowBudgetsRoute = CashFlowBudgetsRouteImport.update({
+  id: '/budgets',
+  path: '/budgets',
+  getParentRoute: () => CashFlowRoute,
+} as any)
+const CashFlowBudgetsBudgetIdRoute = CashFlowBudgetsBudgetIdRouteImport.update({
+  id: '/$budgetId',
+  path: '/$budgetId',
+  getParentRoute: () => CashFlowBudgetsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -65,18 +77,22 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/net-worth': typeof NetWorthRoute
   '/settings': typeof SettingsRoute
+  '/cash-flow/budgets': typeof CashFlowBudgetsRouteWithChildren
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
   '/cash-flow/transactions': typeof CashFlowTransactionsRoute
   '/cash-flow/': typeof CashFlowIndexRoute
+  '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/net-worth': typeof NetWorthRoute
   '/settings': typeof SettingsRoute
+  '/cash-flow/budgets': typeof CashFlowBudgetsRouteWithChildren
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
   '/cash-flow/transactions': typeof CashFlowTransactionsRoute
   '/cash-flow': typeof CashFlowIndexRoute
+  '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -85,9 +101,11 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/net-worth': typeof NetWorthRoute
   '/settings': typeof SettingsRoute
+  '/cash-flow/budgets': typeof CashFlowBudgetsRouteWithChildren
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
   '/cash-flow/transactions': typeof CashFlowTransactionsRoute
   '/cash-flow/': typeof CashFlowIndexRoute
+  '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,18 +115,22 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/net-worth'
     | '/settings'
+    | '/cash-flow/budgets'
     | '/cash-flow/categories'
     | '/cash-flow/transactions'
     | '/cash-flow/'
+    | '/cash-flow/budgets/$budgetId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard'
     | '/net-worth'
     | '/settings'
+    | '/cash-flow/budgets'
     | '/cash-flow/categories'
     | '/cash-flow/transactions'
     | '/cash-flow'
+    | '/cash-flow/budgets/$budgetId'
   id:
     | '__root__'
     | '/'
@@ -116,9 +138,11 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/net-worth'
     | '/settings'
+    | '/cash-flow/budgets'
     | '/cash-flow/categories'
     | '/cash-flow/transactions'
     | '/cash-flow/'
+    | '/cash-flow/budgets/$budgetId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -187,16 +211,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CashFlowCategoriesRouteImport
       parentRoute: typeof CashFlowRoute
     }
+    '/cash-flow/budgets': {
+      id: '/cash-flow/budgets'
+      path: '/budgets'
+      fullPath: '/cash-flow/budgets'
+      preLoaderRoute: typeof CashFlowBudgetsRouteImport
+      parentRoute: typeof CashFlowRoute
+    }
+    '/cash-flow/budgets/$budgetId': {
+      id: '/cash-flow/budgets/$budgetId'
+      path: '/$budgetId'
+      fullPath: '/cash-flow/budgets/$budgetId'
+      preLoaderRoute: typeof CashFlowBudgetsBudgetIdRouteImport
+      parentRoute: typeof CashFlowBudgetsRoute
+    }
   }
 }
 
+interface CashFlowBudgetsRouteChildren {
+  CashFlowBudgetsBudgetIdRoute: typeof CashFlowBudgetsBudgetIdRoute
+}
+
+const CashFlowBudgetsRouteChildren: CashFlowBudgetsRouteChildren = {
+  CashFlowBudgetsBudgetIdRoute: CashFlowBudgetsBudgetIdRoute,
+}
+
+const CashFlowBudgetsRouteWithChildren = CashFlowBudgetsRoute._addFileChildren(
+  CashFlowBudgetsRouteChildren,
+)
+
 interface CashFlowRouteChildren {
+  CashFlowBudgetsRoute: typeof CashFlowBudgetsRouteWithChildren
   CashFlowCategoriesRoute: typeof CashFlowCategoriesRoute
   CashFlowTransactionsRoute: typeof CashFlowTransactionsRoute
   CashFlowIndexRoute: typeof CashFlowIndexRoute
 }
 
 const CashFlowRouteChildren: CashFlowRouteChildren = {
+  CashFlowBudgetsRoute: CashFlowBudgetsRouteWithChildren,
   CashFlowCategoriesRoute: CashFlowCategoriesRoute,
   CashFlowTransactionsRoute: CashFlowTransactionsRoute,
   CashFlowIndexRoute: CashFlowIndexRoute,
