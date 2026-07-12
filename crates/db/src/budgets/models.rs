@@ -55,6 +55,15 @@ pub fn build_budget(
     configuration: BudgetConfigurationRow,
     result: BudgetPeriodResultRow,
 ) -> zai_core::Result<Budget> {
+    if configuration.period_start >= configuration.period_end
+        || result.period_start >= result.period_end
+        || configuration.period_start != result.period_start
+        || configuration.period_end != result.period_end
+    {
+        return Err(zai_core::Error::Repository(
+            "Invalid budget period boundaries".to_string(),
+        ));
+    }
     let cadence = budget
         .cadence
         .parse::<BudgetCadence>()

@@ -1,6 +1,6 @@
 import { type CommandResult, invokeCommand } from "@/commands/shared";
 
-import type { Budget, BudgetFormValues } from "../types/budget";
+import type { Budget, BudgetFormValues, BudgetHistory } from "../types/budget";
 
 export const getBudgets = (): CommandResult<Array<Budget>> => {
   return invokeCommand<Array<Budget>>("get_budgets");
@@ -18,7 +18,16 @@ export const createBudget = (values: BudgetFormValues): CommandResult<Budget> =>
       cadence: values.cadence,
       categoryIds: values.categoryIds,
       measurementMode: values.measurementMode,
+      rolloverMode: values.rolloverMode,
       warningPercentage: values.warningPercentage,
     },
   });
+};
+
+export const getBudgetHistory = (
+  budgetId: string,
+  page = 1,
+  perPage = 50,
+): CommandResult<BudgetHistory> => {
+  return invokeCommand<BudgetHistory>("get_budget_history", { budgetId, page, perPage });
 };

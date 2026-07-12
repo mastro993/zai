@@ -1,4 +1,5 @@
 use super::models::TransactionRow;
+use crate::budgets::projection::refresh_active_budget_projections;
 use crate::connection::{DbPool, get_connection};
 use crate::errors::{IntoCore, IntoStorage, StorageError};
 use crate::pagination::{Paginate, total_pages};
@@ -13,6 +14,7 @@ use diesel::r2d2::{self, Pool};
 use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
 use zai_core::Result;
+use zai_core::features::budgets::traits::CalendarClock;
 use zai_core::features::transaction_categories::models::{
     NewTransactionCategory, TransactionCategory,
 };
@@ -152,14 +154,32 @@ fn count_transactions(
 pub struct TransactionsRepository {
     pool: Arc<DbPool>,
     writer: WriteHandle,
+    clock: Arc<dyn CalendarClock>,
 }
 
 impl TransactionsRepository {
+    #[cfg(test)]
     pub(crate) fn new(
         pool: Arc<Pool<r2d2::ConnectionManager<SqliteConnection>>>,
         writer: WriteHandle,
     ) -> Self {
-        Self { pool, writer }
+        Self::new_with_clock(
+            pool,
+            writer,
+            Arc::new(zai_core::features::budgets::traits::LocalCalendarClock),
+        )
+    }
+
+    pub(crate) fn new_with_clock(
+        pool: Arc<Pool<r2d2::ConnectionManager<SqliteConnection>>>,
+        writer: WriteHandle,
+        clock: Arc<dyn CalendarClock>,
+    ) -> Self {
+        Self {
+            pool,
+            writer,
+            clock,
+        }
     }
 }
 
@@ -212,6 +232,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
     }
 
     async fn create_transaction(&self, new_transaction: NewTransaction) -> Result<Transaction> {
+        let clock = Arc::clone(&self.clock);
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<Transaction> {
@@ -228,6 +249,8 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         .first::<TransactionRow>(conn)
                         .into_storage()?;
 
+                    refresh_active_budget_projections(conn, clock.sample())?;
+
                     Ok(inserted.into())
                 },
             )
@@ -238,6 +261,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         &self,
         updated_transaction: TransactionUpdate,
     ) -> Result<Transaction> {
+        let clock = Arc::clone(&self.clock);
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<Transaction> {
@@ -256,6 +280,8 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         .execute(conn)
                         .into_storage()?;
 
+                    refresh_active_budget_projections(conn, clock.sample())?;
+
                     Ok(transaction.into())
                 },
             )
@@ -264,6 +290,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 
     async fn delete_transaction(&self, id: &str) -> Result<Transaction> {
         let transaction_id = id.to_owned();
+        let clock = Arc::clone(&self.clock);
 
         self.writer
             .exec(
@@ -281,6 +308,8 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         .first::<TransactionRow>(conn)
                         .into_storage()?;
 
+                    refresh_active_budget_projections(conn, clock.sample())?;
+
                     Ok(deleted.into())
                 },
             )
@@ -289,6 +318,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 
     async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<Transaction>> {
         let owned_ids = ids.iter().map(|&s| s.to_string()).collect::<Vec<String>>();
+        let clock = Arc::clone(&self.clock);
 
         self.writer
             .exec(
@@ -308,6 +338,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 
                     let deleted_transactions: Vec<Transaction> =
                         deleted.into_iter().map(Transaction::from).collect();
+                    refresh_active_budget_projections(conn, clock.sample())?;
                     Ok(deleted_transactions)
                 },
             )
@@ -338,6 +369,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
             return Ok(Vec::new());
         }
 
+        let clock = Arc::clone(&self.clock);
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<Vec<Transaction>> {
@@ -359,6 +391,8 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         .load::<TransactionRow>(conn)
                         .into_storage()?;
 
+                    refresh_active_budget_projections(conn, clock.sample())?;
+
                     Ok(inserted.into_iter().map(Transaction::from).collect())
                 },
             )
@@ -370,6 +404,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         new_categories: Vec<NewTransactionCategory>,
         new_transactions: Vec<NewTransaction>,
     ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)> {
+        let clock = Arc::clone(&self.clock);
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<_> {
@@ -425,6 +460,8 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                             .map(Transaction::from)
                             .collect()
                     };
+
+                    refresh_active_budget_projections(conn, clock.sample())?;
 
                     Ok((inserted_categories, inserted_transactions))
                 },

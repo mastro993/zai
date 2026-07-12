@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prepareAmountForValidation } from "../lib/transaction";
 
 export const BUDGET_MEASUREMENT_MODES = ["spending", "netCashFlow"] as const;
+export const BUDGET_ROLLOVER_MODES = ["off", "previousPeriodOnly", "cumulative"] as const;
 export const BUDGET_CADENCES = ["day", "week", "month", "year"] as const;
 export const BUDGET_STATUSES = ["onTrack", "warning", "overspent"] as const;
 
@@ -38,6 +39,7 @@ export const budgetFormSchema = z.object({
   cadence: z.enum(BUDGET_CADENCES).default("month"),
   categoryIds: z.array(z.string()).default([]),
   measurementMode: z.enum(BUDGET_MEASUREMENT_MODES).default("spending"),
+  rolloverMode: z.enum(BUDGET_ROLLOVER_MODES).default("off"),
   warningPercentage: warningPercentageSchema,
 });
 
@@ -58,12 +60,20 @@ export const budgetSchema = z.object({
   cadence: z.enum(BUDGET_CADENCES),
   measurementMode: z.enum(BUDGET_MEASUREMENT_MODES),
   baseAllowance: z.number().int(),
-  rolloverMode: z.literal("off"),
+  rolloverMode: z.enum(BUDGET_ROLLOVER_MODES),
   warningPercentage: z.number().int().nullable(),
   currentPeriod: budgetPeriodSchema,
+});
+
+export const budgetHistorySchema = z.object({
+  data: z.array(budgetPeriodSchema),
+  page: z.number().int(),
+  perPage: z.number().int(),
+  totalPages: z.number().int(),
 });
 
 export type BudgetFormInput = z.input<typeof budgetFormSchema>;
 export type BudgetFormValues = z.infer<typeof budgetFormSchema>;
 export type Budget = z.infer<typeof budgetSchema>;
 export type BudgetStatus = (typeof BUDGET_STATUSES)[number];
+export type BudgetHistory = z.infer<typeof budgetHistorySchema>;

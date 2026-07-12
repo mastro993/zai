@@ -28,4 +28,11 @@ describe("budget web command map", () => {
       body: newBudget,
     });
   });
+
+  it("maps budget history with default pagination", () => {
+    expect(buildWebRequestSpec("get_budget_history", { budgetId: "budget-1" })).toEqual({
+      method: "GET",
+      path: "/budgets/budget-1/history?page=1&perPage=50",
+    });
+  });
 });

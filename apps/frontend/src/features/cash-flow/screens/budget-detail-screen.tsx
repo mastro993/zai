@@ -1,21 +1,57 @@
+import { Result } from "@praha/byethrow";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ScreenBase } from "@/components/screen-base";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 
+import { getBudgetHistory } from "../commands/budgets";
 import {
   budgetCadenceLabel,
   budgetMeasurementLabel,
+  budgetRolloverLabel,
   budgetStatusLabel,
   budgetStatusVariant,
   formatBudgetPeriod,
 } from "../lib/budget";
-import type { Budget } from "../types/budget";
+import type { Budget, BudgetHistory } from "../types/budget";
 
-export function BudgetDetailScreen({ budget }: { budget: Budget }) {
+export function BudgetDetailScreen({
+  budget,
+  history: initialHistory,
+}: {
+  budget: Budget;
+  history: BudgetHistory;
+}) {
   const period = budget.currentPeriod;
+  const [history, setHistory] = useState(initialHistory);
+  const [historyError, setHistoryError] = useState<string>();
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
+  const changeHistoryPage = async (page: number) => {
+    if (page < 1 || page > history.totalPages || isHistoryLoading) {
+      return;
+    }
+    setIsHistoryLoading(true);
+    setHistoryError(undefined);
+    const result = await getBudgetHistory(budget.id, page, history.perPage);
+    if (Result.isFailure(result)) {
+      setHistoryError(result.error.message);
+    } else {
+      setHistory(result.value);
+    }
+    setIsHistoryLoading(false);
+  };
 
   return (
     <ScreenBase
@@ -64,13 +100,74 @@ export function BudgetDetailScreen({ budget }: { budget: Budget }) {
             }
           />
           <Detail label="Measurement" value={budgetMeasurementLabel[budget.measurementMode]} />
-          <Detail label="Rollover" value="Disabled" />
+          <Detail label="Rollover" value={budgetRolloverLabel[budget.rolloverMode]} />
           <Detail
             label="Warning"
             value={budget.warningPercentage ? `${budget.warningPercentage}%` : "Disabled"}
           />
           <Detail label="Cadence" value={budgetCadenceLabel[budget.cadence]} />
         </dl>
+      </div>
+      <div className="border">
+        <div className="border-b bg-muted/40 px-3 py-2 text-xs font-medium">Period history</div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Period</TableHead>
+              <TableHead className="text-right">Allowance</TableHead>
+              <TableHead className="text-right">Spending</TableHead>
+              <TableHead className="text-right">Remaining</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {history.data.map((historyPeriod) => (
+              <TableRow key={historyPeriod.start}>
+                <TableCell>{formatBudgetPeriod(historyPeriod.start, historyPeriod.end)}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatCurrencyFromMinor(historyPeriod.effectiveAllowance, "EUR")}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatCurrencyFromMinor(historyPeriod.netBudgetSpending, "EUR")}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatCurrencyFromMinor(historyPeriod.remainingAllowance, "EUR")}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={budgetStatusVariant(historyPeriod.status)}>
+                    {budgetStatusLabel[historyPeriod.status]}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <div className="flex items-center justify-between border-t px-3 py-2 text-sm">
+          <span className="text-muted-foreground">
+            Page {history.page} of {Math.max(history.totalPages, 1)}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              disabled={history.page <= 1 || isHistoryLoading}
+              onClick={() => void changeHistoryPage(history.page - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              disabled={history.page >= history.totalPages || isHistoryLoading}
+              onClick={() => void changeHistoryPage(history.page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+        {historyError ? (
+          <p role="alert" className="border-t px-3 py-2 text-sm text-destructive">
+            {historyError}
+          </p>
+        ) : null}
       </div>
     </ScreenBase>
   );
