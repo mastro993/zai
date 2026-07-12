@@ -30,6 +30,7 @@ export const navigationItems = [
     to: "/cash-flow",
     icon: TransactionHistoryIcon,
     subItems: [
+      { title: "Budgets", to: "/cash-flow/budgets" },
       { title: "Transactions", to: "/cash-flow/transactions" },
       { title: "Categories", to: "/cash-flow/categories" },
     ],

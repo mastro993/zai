@@ -9,3 +9,4 @@ pub mod transactions;
 mod write_actor;
 
 pub use connection::{Database, connect};
+pub mod budgets;

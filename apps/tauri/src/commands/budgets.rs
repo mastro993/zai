@@ -1,0 +1,44 @@
+use std::sync::Arc;
+
+use log::debug;
+use tauri::State;
+use zai_app::ServiceContext;
+use zai_core::features::budgets::models::{Budget, NewBudget};
+
+use super::{CommandResult, command_error};
+
+#[tauri::command]
+pub async fn get_budgets(state: State<'_, Arc<ServiceContext>>) -> CommandResult<Vec<Budget>> {
+    debug!("Getting budgets...");
+    state
+        .budgets_service()
+        .list_budgets()
+        .await
+        .map_err(|error| command_error("Failed to load budgets", error))
+}
+
+#[tauri::command]
+pub async fn get_budget(
+    budget_id: String,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<Budget> {
+    debug!("Getting budget {}...", budget_id);
+    state
+        .budgets_service()
+        .get_budget(&budget_id)
+        .await
+        .map_err(|error| command_error("Failed to load budget", error))
+}
+
+#[tauri::command]
+pub async fn create_budget(
+    new_budget: NewBudget,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<Budget> {
+    debug!("Creating budget...");
+    state
+        .budgets_service()
+        .create_budget(new_budget)
+        .await
+        .map_err(|error| command_error("Failed to create budget", error))
+}

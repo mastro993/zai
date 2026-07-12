@@ -8,6 +8,7 @@ pub enum ErrorCode {
     Validation,
     NotFound,
     Conflict,
+    NameConflict,
     Internal,
 }
 
@@ -43,6 +44,9 @@ pub enum Error {
 
     #[error("Invalid data: {0}")]
     Conflict(String),
+
+    #[error("Name conflict: {0}")]
+    NameConflict(String),
 
     #[error("Invalid data: {0}")]
     InvalidData(String),
@@ -90,6 +94,7 @@ impl Error {
             Self::InvalidData(_) => ErrorCode::Validation,
             Self::NotFound(_) => ErrorCode::NotFound,
             Self::Conflict(_) => ErrorCode::Conflict,
+            Self::NameConflict(_) => ErrorCode::NameConflict,
             Self::Database(DatabaseError::NotFound(_)) => ErrorCode::NotFound,
             Self::Database(DatabaseError::UniqueViolation(_))
             | Self::Database(DatabaseError::ForeignKeyViolation(_)) => ErrorCode::Conflict,

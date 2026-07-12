@@ -9,6 +9,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 const DESKTOP_ONLY_COMMANDS = new Set(["get_stronghold_vault_password"]);
 
 const FRONTEND_WRAPPER_FILES = [
+  "apps/frontend/src/features/cash-flow/commands/budgets.ts",
   "apps/frontend/src/features/cash-flow/commands/transaction-categories.ts",
   "apps/frontend/src/features/cash-flow/commands/transactions.ts",
 ] as const;

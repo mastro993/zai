@@ -238,6 +238,39 @@ export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): We
         body: { categories, transactions },
       };
     }
+    case "get_budgets":
+      return {
+        method: "GET",
+        path: "/budgets",
+      };
+    case "get_budget": {
+      const budgetId = readString(args.budgetId);
+      if (!budgetId) {
+        return {
+          method: "GET",
+          path: "/budgets/__missing_budget_id__",
+        };
+      }
+      return {
+        method: "GET",
+        path: `/budgets/${budgetId}`,
+      };
+    }
+    case "create_budget": {
+      const newBudget = readRecord(args.newBudget);
+      if (!newBudget) {
+        return {
+          method: "POST",
+          path: "/budgets",
+          body: {},
+        };
+      }
+      return {
+        method: "POST",
+        path: "/budgets",
+        body: newBudget,
+      };
+    }
     default:
       throw new CommandError(`Unknown web command: ${command}`);
   }

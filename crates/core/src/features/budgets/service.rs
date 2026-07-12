@@ -1,0 +1,36 @@
+use super::models::{Budget, NewBudget, normalize_budget_name};
+use super::traits::{BudgetsRepositoryTrait, BudgetsServiceTrait};
+use crate::Result;
+use std::sync::Arc;
+use uuid::Uuid;
+
+pub struct BudgetsService {
+    repository: Arc<dyn BudgetsRepositoryTrait>,
+}
+
+impl BudgetsService {
+    pub fn new(repository: Arc<dyn BudgetsRepositoryTrait>) -> Self {
+        Self { repository }
+    }
+}
+
+#[async_trait::async_trait]
+impl BudgetsServiceTrait for BudgetsService {
+    async fn list_budgets(&self) -> Result<Vec<Budget>> {
+        self.repository.list_budgets().await
+    }
+
+    async fn get_budget(&self, id: &str) -> Result<Budget> {
+        self.repository.get_budget(id).await
+    }
+
+    async fn create_budget(&self, mut budget: NewBudget) -> Result<Budget> {
+        budget.name = normalize_budget_name(&budget.name);
+        budget.validate()?;
+        budget.measurement_mode.get_or_insert_default();
+        budget.warning_percentage.get_or_insert(80);
+
+        budget.id = Some(Uuid::new_v4().to_string());
+        self.repository.create_budget(budget).await
+    }
+}

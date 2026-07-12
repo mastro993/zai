@@ -1,6 +1,7 @@
 use std::{path::Path, sync::Arc};
 
 use zai_core::features::{
+    budgets::{service::BudgetsService, traits::BudgetsServiceTrait},
     transaction_categories::{
         service::TransactionCategoriesService, traits::TransactionCategoriesServiceTrait,
     },
@@ -8,11 +9,16 @@ use zai_core::features::{
 };
 
 pub struct ServiceContext {
+    pub budgets_service: Arc<dyn BudgetsServiceTrait>,
     pub transaction_categories_service: Arc<dyn TransactionCategoriesServiceTrait>,
     pub transactions_service: Arc<dyn TransactionsServiceTrait>,
 }
 
 impl ServiceContext {
+    pub fn budgets_service(&self) -> Arc<dyn BudgetsServiceTrait> {
+        Arc::clone(&self.budgets_service)
+    }
+
     pub fn transaction_categories_service(&self) -> Arc<dyn TransactionCategoriesServiceTrait> {
         Arc::clone(&self.transaction_categories_service)
     }
@@ -28,8 +34,10 @@ pub fn initialize_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<Se
 
     let transaction_categories_repository = database.transaction_categories_repository();
     let transactions_repository = database.transactions_repository();
+    let budgets_repository = database.budgets_repository();
 
     Ok(ServiceContext {
+        budgets_service: Arc::new(BudgetsService::new(budgets_repository)),
         transaction_categories_service: Arc::new(TransactionCategoriesService::new(
             transaction_categories_repository,
         )),
@@ -86,8 +94,14 @@ mod tests {
             .transactions_service()
             .get_transactions(1, 20, None, None)
             .expect("transactions service should query migrated database");
+        let budgets = context
+            .budgets_service()
+            .list_budgets()
+            .await
+            .expect("budgets service should query migrated database");
 
         assert!(categories.is_empty());
         assert!(transactions.data.is_empty());
+        assert!(budgets.is_empty());
     }
 }

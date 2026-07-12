@@ -1,0 +1,91 @@
+mod common;
+
+use axum::http::StatusCode;
+use chrono::Local;
+use common::{request_json, setup_app};
+use serde_json::{Value, json};
+
+fn budget_payload(name: &str) -> Value {
+    json!({
+        "name": name,
+        "baseAllowance": 10000
+    })
+}
+
+#[tokio::test]
+async fn create_list_and_inspect_budget_round_trip() {
+    let (app, _dir) = setup_app("zai-budgets").await;
+    let transaction_date = Local::now().format("%Y-%m-%dT12:00:00").to_string();
+
+    let (transaction_status, _) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/transactions",
+        Some(json!({
+            "description": "Before budget",
+            "amount": 1250,
+            "transactionDate": transaction_date,
+            "transactionType": "expense"
+        })),
+    )
+    .await;
+    assert_eq!(transaction_status, StatusCode::CREATED);
+
+    let (create_status, created) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/budgets",
+        Some(budget_payload("  Monthly spending  ")),
+    )
+    .await;
+
+    assert_eq!(create_status, StatusCode::CREATED);
+    assert_eq!(created["name"], "Monthly spending");
+    assert!(created["id"].as_str().is_some_and(|id| !id.is_empty()));
+    assert_eq!(created["cadence"], "month");
+    assert_eq!(created["measurementMode"], "spending");
+    assert_eq!(created["warningPercentage"], 80);
+    assert_eq!(created["categoryIds"], json!([]));
+    assert_eq!(created["currentPeriod"]["netBudgetSpending"], 1250);
+    assert_eq!(created["currentPeriod"]["remainingAllowance"], 8750);
+
+    let budget_id = created["id"].as_str().expect("budget id");
+    let (list_status, listed) = request_json(&app, "GET", "/api/cash-flow/budgets", None).await;
+    assert_eq!(list_status, StatusCode::OK);
+    assert_eq!(listed.as_array().expect("budget list").len(), 1);
+    assert_eq!(listed[0]["id"], budget_id);
+
+    let (detail_status, detail) = request_json(
+        &app,
+        "GET",
+        &format!("/api/cash-flow/budgets/{budget_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(detail_status, StatusCode::OK);
+    assert_eq!(detail, created);
+}
+
+#[tokio::test]
+async fn duplicate_active_budget_name_returns_name_conflict() {
+    let (app, _dir) = setup_app("zai-budget-conflict").await;
+    let (first_status, _) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/budgets",
+        Some(budget_payload("Monthly")),
+    )
+    .await;
+    assert_eq!(first_status, StatusCode::CREATED);
+
+    let (status, body) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/budgets",
+        Some(budget_payload(" monthly ")),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::CONFLICT, "body: {body}");
+    assert_eq!(body["code"], "nameConflict");
+}
