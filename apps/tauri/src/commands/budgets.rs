@@ -3,7 +3,7 @@ use std::sync::Arc;
 use log::debug;
 use tauri::State;
 use zai_app::ServiceContext;
-use zai_core::features::budgets::models::{Budget, NewBudget};
+use zai_core::features::budgets::models::{Budget, BudgetPeriodHistory, NewBudget};
 
 use super::{CommandResult, command_error};
 
@@ -28,6 +28,21 @@ pub async fn get_budget(
         .get_budget(&budget_id)
         .await
         .map_err(|error| command_error("Failed to load budget", error))
+}
+
+#[tauri::command]
+pub async fn get_budget_history(
+    budget_id: String,
+    page: Option<i64>,
+    per_page: Option<i64>,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<BudgetPeriodHistory> {
+    debug!("Getting budget history {}...", budget_id);
+    state
+        .budgets_service()
+        .get_budget_history(&budget_id, page.unwrap_or(1), per_page.unwrap_or(50))
+        .await
+        .map_err(|error| command_error("Failed to load budget history", error))
 }
 
 #[tauri::command]

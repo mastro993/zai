@@ -17,6 +17,18 @@ export const budgetMeasurementOptionLabel = {
   netCashFlow: "Track net cash flow",
 } as const;
 
+export const budgetRolloverLabel = {
+  off: "Disabled",
+  previousPeriodOnly: "Previous period only",
+  cumulative: "Cumulative",
+} as const;
+
+export const budgetRolloverOptionLabel = {
+  off: "No rollover",
+  previousPeriodOnly: "Previous period only",
+  cumulative: "Cumulative",
+} as const;
+
 export const budgetStatusLabel: Record<BudgetStatus, string> = {
   onTrack: "On track",
   warning: "Warning",

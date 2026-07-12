@@ -17,6 +17,7 @@ describe("budgetFormSchema", () => {
         cadence: "month",
         categoryIds: [],
         measurementMode: "spending",
+        rolloverMode: "off",
         warningPercentage: 80,
       });
     }
@@ -39,6 +40,7 @@ describe("budgetFormSchema", () => {
         cadence: "week",
         categoryIds: ["groceries"],
         measurementMode: "netCashFlow",
+        rolloverMode: "off",
         warningPercentage: 80,
       });
     }

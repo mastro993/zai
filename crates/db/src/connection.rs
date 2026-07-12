@@ -13,6 +13,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use zai_core::Result;
+use zai_core::features::budgets::traits::{CalendarClock, LocalCalendarClock};
 
 pub(crate) type DbPool = Pool<ConnectionManager<SqliteConnection>>;
 pub(crate) type DbConnection = PooledConnection<ConnectionManager<SqliteConnection>>;
@@ -26,6 +27,7 @@ pub struct Database {
     db_path: PathBuf,
     pool: Arc<DbPool>,
     writer: WriteHandle,
+    clock: Arc<dyn CalendarClock>,
 }
 
 impl Database {
@@ -34,23 +36,26 @@ impl Database {
     }
 
     pub fn transaction_categories_repository(&self) -> Arc<TransactionCategoriesRepository> {
-        Arc::new(TransactionCategoriesRepository::new(
+        Arc::new(TransactionCategoriesRepository::new_with_clock(
             Arc::clone(&self.pool),
             self.writer.clone(),
+            Arc::clone(&self.clock),
         ))
     }
 
     pub fn transactions_repository(&self) -> Arc<TransactionsRepository> {
-        Arc::new(TransactionsRepository::new(
+        Arc::new(TransactionsRepository::new_with_clock(
             Arc::clone(&self.pool),
             self.writer.clone(),
+            Arc::clone(&self.clock),
         ))
     }
 
     pub fn budgets_repository(&self) -> Arc<BudgetsRepository> {
-        Arc::new(BudgetsRepository::new(
+        Arc::new(BudgetsRepository::new_with_clock(
             Arc::clone(&self.pool),
             self.writer.clone(),
+            Arc::clone(&self.clock),
         ))
     }
 }
@@ -61,11 +66,13 @@ pub fn connect(app_data_dir: impl AsRef<Path>) -> Result<Database> {
     let pool = create_pool(&db_path)?;
     run_migrations(&pool)?;
     let writer = spawn_writer(pool.as_ref().clone())?;
+    let clock: Arc<dyn CalendarClock> = Arc::new(LocalCalendarClock);
 
     Ok(Database {
         db_path,
         pool,
         writer,
+        clock,
     })
 }
 

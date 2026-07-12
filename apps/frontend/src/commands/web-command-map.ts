@@ -256,6 +256,21 @@ export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): We
         path: `/budgets/${budgetId}`,
       };
     }
+    case "get_budget_history": {
+      const budgetId = readString(args.budgetId);
+      if (!budgetId) {
+        return {
+          method: "GET",
+          path: "/budgets/__missing_budget_id__/history",
+        };
+      }
+      const page = readNumber(args.page, 1);
+      const perPage = readNumber(args.perPage, 50);
+      return {
+        method: "GET",
+        path: `/budgets/${budgetId}/history?page=${page}&perPage=${perPage}`,
+      };
+    }
     case "create_budget": {
       const newBudget = readRecord(args.newBudget);
       if (!newBudget) {

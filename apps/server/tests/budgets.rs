@@ -64,6 +64,19 @@ async fn create_list_and_inspect_budget_round_trip() {
     .await;
     assert_eq!(detail_status, StatusCode::OK);
     assert_eq!(detail, created);
+
+    let (history_status, history) = request_json(
+        &app,
+        "GET",
+        &format!("/api/cash-flow/budgets/{budget_id}/history"),
+        None,
+    )
+    .await;
+    assert_eq!(history_status, StatusCode::OK);
+    assert_eq!(history["page"], 1);
+    assert_eq!(history["perPage"], 50);
+    assert_eq!(history["totalPages"], 1);
+    assert_eq!(history["data"].as_array().expect("history rows").len(), 1);
 }
 
 #[tokio::test]
@@ -124,4 +137,38 @@ async fn create_budget_accepts_cadence_scope_and_measurement_mode() {
     assert_eq!(budget["cadence"], "week");
     assert_eq!(budget["categoryIds"], json!([category_id]));
     assert_eq!(budget["measurementMode"], "netCashFlow");
+}
+
+#[tokio::test]
+async fn budget_history_rejects_invalid_page_size() {
+    let (app, _dir) = setup_app("zai-budget-history-validation").await;
+    let (_, budget) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/budgets",
+        Some(budget_payload("History")),
+    )
+    .await;
+    let budget_id = budget["id"].as_str().expect("budget id");
+
+    let (status, body) = request_json(
+        &app,
+        "GET",
+        &format!("/api/cash-flow/budgets/{budget_id}/history?perPage=101"),
+        None,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["code"], "validation");
+
+    let (status, body) = request_json(
+        &app,
+        "GET",
+        &format!("/api/cash-flow/budgets/{budget_id}/history?page=not-a-number"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["code"], "validation");
 }

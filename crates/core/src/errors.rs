@@ -9,6 +9,8 @@ pub enum ErrorCode {
     NotFound,
     Conflict,
     NameConflict,
+    PeriodAdvanceLimitExceeded,
+    ClockRegression,
     Internal,
 }
 
@@ -47,6 +49,12 @@ pub enum Error {
 
     #[error("Name conflict: {0}")]
     NameConflict(String),
+
+    #[error("Budget period advance limit exceeded: {0}")]
+    PeriodAdvanceLimitExceeded(String),
+
+    #[error("Budget calendar clock regression: {0}")]
+    ClockRegression(String),
 
     #[error("Invalid data: {0}")]
     InvalidData(String),
@@ -95,6 +103,8 @@ impl Error {
             Self::NotFound(_) => ErrorCode::NotFound,
             Self::Conflict(_) => ErrorCode::Conflict,
             Self::NameConflict(_) => ErrorCode::NameConflict,
+            Self::PeriodAdvanceLimitExceeded(_) => ErrorCode::PeriodAdvanceLimitExceeded,
+            Self::ClockRegression(_) => ErrorCode::ClockRegression,
             Self::Database(DatabaseError::NotFound(_)) => ErrorCode::NotFound,
             Self::Database(DatabaseError::UniqueViolation(_))
             | Self::Database(DatabaseError::ForeignKeyViolation(_)) => ErrorCode::Conflict,

@@ -28,13 +28,18 @@ import {
 import {
   BUDGET_CADENCES,
   BUDGET_MEASUREMENT_MODES,
+  BUDGET_ROLLOVER_MODES,
   budgetFormSchema,
   type Budget,
   type BudgetFormInput,
   type BudgetFormValues,
 } from "../types/budget";
 import type { TransactionCategory } from "../types/model";
-import { budgetCadenceLabel, budgetMeasurementOptionLabel } from "../lib/budget";
+import {
+  budgetCadenceLabel,
+  budgetMeasurementOptionLabel,
+  budgetRolloverOptionLabel,
+} from "../lib/budget";
 
 interface BudgetFormDialogProps {
   open: boolean;
@@ -57,6 +62,7 @@ export function BudgetFormDialog({
       cadence: "month",
       categoryIds: [],
       measurementMode: "spending",
+      rolloverMode: "off",
       warningPercentage: "80",
     },
   });
@@ -204,6 +210,32 @@ export function BudgetFormDialog({
               />
               <FieldDescription>
                 Income reduces spending only when it matches the rules.
+              </FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel>Rollover</FieldLabel>
+              <Controller
+                control={form.control}
+                name="rolloverMode"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={(value) => field.onChange(value)}>
+                    <SelectTrigger className="w-full" aria-label="Budget rollover">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectGroup>
+                        {BUDGET_ROLLOVER_MODES.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {budgetRolloverOptionLabel[value]}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <FieldDescription>
+                Carry unused allowance or overspending into later periods.
               </FieldDescription>
             </Field>
             <Field>

@@ -1,3 +1,4 @@
+use crate::query::PaginatedData;
 use crate::{Error, Result};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -82,15 +83,22 @@ impl FromStr for BudgetCadence {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum BudgetRolloverMode {
+    #[default]
     Off,
+    PreviousPeriodOnly,
+    Cumulative,
 }
 
 impl BudgetRolloverMode {
     pub const fn as_str(self) -> &'static str {
-        "off"
+        match self {
+            Self::Off => "off",
+            Self::PreviousPeriodOnly => "previousPeriodOnly",
+            Self::Cumulative => "cumulative",
+        }
     }
 }
 
@@ -106,6 +114,8 @@ impl FromStr for BudgetRolloverMode {
     fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
         match value {
             "off" => Ok(Self::Off),
+            "previousPeriodOnly" => Ok(Self::PreviousPeriodOnly),
+            "cumulative" => Ok(Self::Cumulative),
             _ => Err(()),
         }
     }
@@ -129,6 +139,21 @@ pub struct BudgetPeriod {
     pub net_budget_spending: i64,
     pub remaining_allowance: i64,
     pub status: BudgetStatus,
+}
+
+pub type BudgetPeriodHistory = PaginatedData<BudgetPeriod>;
+
+pub fn validate_history_paging(page: i64, per_page: i64) -> Result<()> {
+    if page < 1 || !(1..=100).contains(&per_page) {
+        return Err(Error::InvalidData(
+            "Budget history page must be at least 1 and page size must be between 1 and 100"
+                .to_string(),
+        ));
+    }
+    page.checked_sub(1)
+        .and_then(|value| value.checked_mul(per_page))
+        .ok_or_else(|| Error::InvalidData("Budget history page is too large".to_string()))?;
+    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -158,6 +183,8 @@ pub struct NewBudget {
     pub category_ids: Vec<String>,
     #[serde(default)]
     pub measurement_mode: Option<BudgetMeasurementMode>,
+    #[serde(default)]
+    pub rollover_mode: Option<BudgetRolloverMode>,
     #[serde(default)]
     pub warning_percentage: Option<i32>,
 }
@@ -196,18 +223,51 @@ pub fn calculate_period(
     net_budget_spending: i64,
     warning_percentage: Option<i32>,
 ) -> Result<BudgetPeriod> {
-    let remaining_allowance = base_allowance
+    calculate_period_with_rollover(
+        start,
+        end,
+        base_allowance,
+        net_budget_spending,
+        BudgetRolloverMode::Off,
+        None,
+        warning_percentage,
+    )
+}
+
+pub fn calculate_period_with_rollover(
+    start: NaiveDateTime,
+    end: NaiveDateTime,
+    base_allowance: i64,
+    net_budget_spending: i64,
+    rollover_mode: BudgetRolloverMode,
+    previous_period: Option<&BudgetPeriod>,
+    warning_percentage: Option<i32>,
+) -> Result<BudgetPeriod> {
+    let carry = match (rollover_mode, previous_period) {
+        (_, None) | (BudgetRolloverMode::Off, _) => 0,
+        (BudgetRolloverMode::PreviousPeriodOnly, Some(previous)) => previous
+            .base_allowance
+            .checked_sub(previous.net_budget_spending)
+            .ok_or_else(|| Error::InvalidData("Budget calculation overflow".to_string()))?,
+        (BudgetRolloverMode::Cumulative, Some(previous)) => previous.remaining_allowance,
+    };
+    let effective_allowance = base_allowance
+        .checked_add(carry)
+        .ok_or_else(|| Error::InvalidData("Budget calculation overflow".to_string()))?;
+    let remaining_allowance = effective_allowance
         .checked_sub(net_budget_spending)
         .ok_or_else(|| Error::InvalidData("Budget calculation overflow".to_string()))?;
-    let status = if net_budget_spending > base_allowance {
+    let status = if net_budget_spending > effective_allowance {
         BudgetStatus::Overspent
-    } else if let Some(percentage) = warning_percentage {
-        let threshold = base_allowance
+    } else if let Some(percentage) = warning_percentage
+        && effective_allowance > 0
+    {
+        let threshold = effective_allowance
             .checked_mul(i64::from(percentage))
             .and_then(|value| value.checked_add(99))
             .map(|value| value / 100)
             .ok_or_else(|| Error::InvalidData("Budget calculation overflow".to_string()))?;
-        if base_allowance > 0 && net_budget_spending >= threshold {
+        if net_budget_spending >= threshold {
             BudgetStatus::Warning
         } else {
             BudgetStatus::OnTrack
@@ -220,7 +280,7 @@ pub fn calculate_period(
         start,
         end,
         base_allowance,
-        effective_allowance: base_allowance,
+        effective_allowance,
         net_budget_spending,
         remaining_allowance,
         status,
@@ -228,148 +288,5 @@ pub fn calculate_period(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use chrono::NaiveDate;
-
-    fn sample_period() -> (NaiveDateTime, NaiveDateTime) {
-        let start = NaiveDate::from_ymd_opt(2026, 7, 1)
-            .unwrap()
-            .and_hms_opt(0, 0, 0)
-            .unwrap();
-        let end = NaiveDate::from_ymd_opt(2026, 8, 1)
-            .unwrap()
-            .and_hms_opt(0, 0, 0)
-            .unwrap();
-        (start, end)
-    }
-
-    #[test]
-    fn budget_name_validation_trims_required_name_at_service_boundary() {
-        let budget = NewBudget {
-            id: None,
-            name: "  July spending  ".to_string(),
-            base_allowance: 10_000,
-            cadence: None,
-            category_ids: Vec::new(),
-            measurement_mode: None,
-            warning_percentage: None,
-        };
-
-        budget.validate().expect("budget should validate");
-        assert_eq!(normalize_budget_name(&budget.name), "July spending");
-    }
-
-    #[test]
-    fn warning_threshold_rounds_up_to_minor_unit() {
-        let (start, end) = sample_period();
-        let period = calculate_period(start, end, 1_001, 801, Some(80)).unwrap();
-
-        assert_eq!(period.status, BudgetStatus::Warning);
-    }
-
-    #[test]
-    fn overspent_has_priority_over_warning() {
-        let (start, end) = sample_period();
-        let period = calculate_period(start, end, 1_000, 1_001, Some(80)).unwrap();
-
-        assert_eq!(period.status, BudgetStatus::Overspent);
-    }
-
-    #[test]
-    fn current_period_uses_half_open_local_calendar_boundaries() {
-        let now = NaiveDate::from_ymd_opt(2024, 2, 29)
-            .unwrap()
-            .and_hms_opt(12, 30, 0)
-            .unwrap();
-
-        assert_eq!(
-            current_period(now, BudgetCadence::Day).unwrap(),
-            (
-                NaiveDate::from_ymd_opt(2024, 2, 29)
-                    .unwrap()
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap(),
-                NaiveDate::from_ymd_opt(2024, 3, 1)
-                    .unwrap()
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap(),
-            )
-        );
-        assert_eq!(
-            current_period(now, BudgetCadence::Week).unwrap(),
-            (
-                NaiveDate::from_ymd_opt(2024, 2, 26)
-                    .unwrap()
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap(),
-                NaiveDate::from_ymd_opt(2024, 3, 4)
-                    .unwrap()
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap(),
-            )
-        );
-        assert_eq!(
-            current_period(now, BudgetCadence::Month).unwrap(),
-            (
-                NaiveDate::from_ymd_opt(2024, 2, 1)
-                    .unwrap()
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap(),
-                NaiveDate::from_ymd_opt(2024, 3, 1)
-                    .unwrap()
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap(),
-            )
-        );
-        assert_eq!(
-            current_period(now, BudgetCadence::Year).unwrap(),
-            (
-                NaiveDate::from_ymd_opt(2024, 1, 1)
-                    .unwrap()
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap(),
-                NaiveDate::from_ymd_opt(2025, 1, 1)
-                    .unwrap()
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap(),
-            )
-        );
-    }
-
-    #[test]
-    fn category_scope_canonicalizes_redundant_ancestors_and_expands_descendants() {
-        let categories = vec![
-            CategoryHierarchy {
-                id: "root".to_string(),
-                parent_id: None,
-            },
-            CategoryHierarchy {
-                id: "child".to_string(),
-                parent_id: Some("root".to_string()),
-            },
-            CategoryHierarchy {
-                id: "grandchild".to_string(),
-                parent_id: Some("child".to_string()),
-            },
-        ];
-        let selected = vec![
-            "grandchild".to_string(),
-            "root".to_string(),
-            "child".to_string(),
-        ];
-
-        assert_eq!(
-            canonicalize_category_ids(&selected, &categories),
-            vec!["root".to_string()]
-        );
-        assert_eq!(
-            expand_category_scope(&["root".to_string()], &categories),
-            vec![
-                "child".to_string(),
-                "grandchild".to_string(),
-                "root".to_string()
-            ]
-        );
-    }
-}
+#[path = "models_tests.rs"]
+mod tests;

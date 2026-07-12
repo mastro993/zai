@@ -45,6 +45,7 @@ fn new_budget(id: &str, name: &str, allowance: i64) -> NewBudget {
         cadence: Some(BudgetCadence::Month),
         category_ids: Vec::new(),
         measurement_mode: None,
+        rollover_mode: None,
         warning_percentage: Some(80),
     }
 }
@@ -64,6 +65,7 @@ fn configured_budget(
         cadence: Some(cadence),
         category_ids,
         measurement_mode: Some(measurement_mode),
+        rollover_mode: None,
         warning_percentage: Some(80),
     }
 }
@@ -364,3 +366,6 @@ mod repository_cadence_tests;
 
 #[path = "repository_recovery_tests.rs"]
 mod repository_recovery_tests;
+
+#[path = "repository_history_tests.rs"]
+mod repository_history_tests;

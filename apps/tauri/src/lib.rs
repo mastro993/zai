@@ -53,6 +53,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::budgets::get_budgets,
             commands::budgets::get_budget,
+            commands::budgets::get_budget_history,
             commands::budgets::create_budget,
             commands::stronghold::get_stronghold_vault_password,
             commands::transaction_categories::get_transaction_category,
