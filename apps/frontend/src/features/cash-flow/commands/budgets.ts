@@ -24,6 +24,26 @@ export const createBudget = (values: BudgetFormValues): CommandResult<Budget> =>
   });
 };
 
+export const updateBudget = (
+  budgetId: string,
+  expectedRevision: number,
+  values: BudgetFormValues,
+): CommandResult<Budget> => {
+  return invokeCommand<Budget>("update_budget", {
+    budgetId,
+    updatedBudget: {
+      expectedRevision,
+      name: values.name,
+      baseAllowance: values.baseAllowance,
+      cadence: values.cadence,
+      categoryIds: values.categoryIds,
+      measurementMode: values.measurementMode,
+      rolloverMode: values.rolloverMode,
+      warningPercentage: values.warningPercentage,
+    },
+  });
+};
+
 export const getBudgetHistory = (
   budgetId: string,
   page = 1,

@@ -9,6 +9,7 @@ pub enum ErrorCode {
     NotFound,
     Conflict,
     NameConflict,
+    RevisionConflict,
     PeriodAdvanceLimitExceeded,
     ClockRegression,
     Internal,
@@ -49,6 +50,9 @@ pub enum Error {
 
     #[error("Name conflict: {0}")]
     NameConflict(String),
+
+    #[error("Budget revision conflict; current revision is {current_revision}")]
+    RevisionConflict { current_revision: i64 },
 
     #[error("Budget period advance limit exceeded: {0}")]
     PeriodAdvanceLimitExceeded(String),
@@ -103,6 +107,7 @@ impl Error {
             Self::NotFound(_) => ErrorCode::NotFound,
             Self::Conflict(_) => ErrorCode::Conflict,
             Self::NameConflict(_) => ErrorCode::NameConflict,
+            Self::RevisionConflict { .. } => ErrorCode::RevisionConflict,
             Self::PeriodAdvanceLimitExceeded(_) => ErrorCode::PeriodAdvanceLimitExceeded,
             Self::ClockRegression(_) => ErrorCode::ClockRegression,
             Self::Database(DatabaseError::NotFound(_)) => ErrorCode::NotFound,
@@ -114,7 +119,17 @@ impl Error {
 
     pub fn to_envelope(self, context: impl Into<String>) -> ErrorEnvelope {
         let code = self.code();
+        let details = match &self {
+            Self::RevisionConflict { current_revision } => {
+                Some(serde_json::json!({ "currentRevision": current_revision }))
+            }
+            _ => None,
+        };
         let message = format!("{}: {self}", context.into());
-        ErrorEnvelope::new(code, message)
+        ErrorEnvelope {
+            code,
+            message,
+            details,
+        }
     }
 }

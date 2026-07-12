@@ -1,4 +1,5 @@
 mod calculation;
+mod edit;
 mod history;
 mod models;
 pub(crate) mod projection;

@@ -89,4 +89,44 @@ describe("BudgetFormDialog", () => {
     expect(screen.getByLabelText("Name").getAttribute("aria-invalid")).toBe("true");
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
+
+  it("loads edit values and keeps cadence read-only", () => {
+    const budget = {
+      id: "budget-1",
+      name: "Weekly groceries",
+      revision: 3,
+      categoryIds: ["groceries"],
+      cadence: "week",
+      measurementMode: "spending",
+      baseAllowance: 12500,
+      rolloverMode: "off",
+      warningPercentage: 65,
+      currentPeriod: {
+        start: "2026-07-06T00:00:00",
+        end: "2026-07-13T00:00:00",
+        baseAllowance: 12500,
+        effectiveAllowance: 12500,
+        netBudgetSpending: 2500,
+        remainingAllowance: 10000,
+        status: "onTrack",
+      },
+    } as Budget;
+
+    render(
+      <BudgetFormDialog
+        open
+        mode="edit"
+        budget={budget}
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn().mockResolvedValue(Result.succeed(budget))}
+        categories={[]}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Edit budget" })).toBeTruthy();
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("Weekly groceries");
+    expect((screen.getByLabelText("Monthly allowance") as HTMLInputElement).value).toBe("125.00");
+    expect(screen.getByLabelText("Budget cadence").hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "Save budget" })).toBeTruthy();
+  });
 });

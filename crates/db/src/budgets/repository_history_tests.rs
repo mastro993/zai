@@ -10,7 +10,7 @@ use diesel::r2d2::{self, Pool};
 use diesel::{Connection, RunQueryDsl, SqliteConnection, sql_query};
 use std::sync::Arc;
 use zai_core::Error;
-use zai_core::features::budgets::models::BudgetRolloverMode;
+use zai_core::features::budgets::models::{BudgetRolloverMode, BudgetUpdate};
 use zai_core::features::budgets::traits::{BudgetsRepositoryTrait, CalendarClock};
 use zai_core::features::transactions::models::NewTransaction;
 use zai_core::features::transactions::traits::TransactionsRepositoryTrait;
@@ -114,4 +114,54 @@ async fn history_rejects_page_sizes_outside_one_to_one_hundred() {
         .expect_err("invalid page size");
 
     assert!(matches!(error, Error::InvalidData(_)));
+}
+
+#[tokio::test]
+async fn updating_current_period_leaves_closed_configurations_immutable() {
+    let temp_db = TempDb::new();
+    let january = NaiveDate::from_ymd_opt(2026, 1, 15)
+        .unwrap()
+        .and_hms_opt(12, 0, 0)
+        .unwrap();
+    let clock = Arc::new(ManualClock {
+        now: std::sync::Mutex::new(january),
+    });
+    let (budgets, _, _) = setup_with_clock(&temp_db, clock.clone());
+    let created = budgets
+        .create_budget(new_budget("immutable", "Immutable", 100))
+        .await
+        .expect("budget");
+
+    *clock.now.lock().expect("clock lock") = NaiveDate::from_ymd_opt(2026, 3, 15)
+        .unwrap()
+        .and_hms_opt(12, 0, 0)
+        .unwrap();
+    budgets.get_budget("immutable").await.expect("catch up");
+
+    let updated = budgets
+        .update_budget(
+            "immutable",
+            BudgetUpdate {
+                expected_revision: created.revision,
+                name: "Immutable".to_string(),
+                base_allowance: 200,
+                cadence: created.cadence,
+                category_ids: created.category_ids,
+                measurement_mode: created.measurement_mode,
+                rollover_mode: created.rollover_mode,
+                warning_percentage: created.warning_percentage,
+            },
+        )
+        .await
+        .expect("current update");
+    let history = budgets
+        .get_budget_history("immutable", 1, 50)
+        .await
+        .expect("history");
+
+    assert_eq!(updated.current_period.base_allowance, 200);
+    assert_eq!(history.data.len(), 3);
+    assert_eq!(history.data[0].base_allowance, 200);
+    assert_eq!(history.data[1].base_allowance, 100);
+    assert_eq!(history.data[2].base_allowance, 100);
 }

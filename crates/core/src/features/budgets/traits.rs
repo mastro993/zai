@@ -1,4 +1,4 @@
-use super::models::{Budget, BudgetPeriodHistory, NewBudget};
+use super::models::{Budget, BudgetPeriodHistory, BudgetUpdate, NewBudget};
 use crate::Result;
 use async_trait::async_trait;
 
@@ -13,6 +13,7 @@ pub trait BudgetsRepositoryTrait: Send + Sync {
         per_page: i64,
     ) -> Result<BudgetPeriodHistory>;
     async fn create_budget(&self, budget: NewBudget) -> Result<Budget>;
+    async fn update_budget(&self, id: &str, budget: BudgetUpdate) -> Result<Budget>;
 }
 
 #[async_trait]
@@ -26,6 +27,7 @@ pub trait BudgetsServiceTrait: Send + Sync {
         per_page: i64,
     ) -> Result<BudgetPeriodHistory>;
     async fn create_budget(&self, budget: NewBudget) -> Result<Budget>;
+    async fn update_budget(&self, id: &str, budget: BudgetUpdate) -> Result<Budget>;
 }
 
 pub trait CalendarClock: Send + Sync {

@@ -56,6 +56,7 @@ const budgetPeriodSchema = z.object({
 export const budgetSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  revision: z.number().int().nonnegative(),
   categoryIds: z.array(z.string()),
   cadence: z.enum(BUDGET_CADENCES),
   measurementMode: z.enum(BUDGET_MEASUREMENT_MODES),

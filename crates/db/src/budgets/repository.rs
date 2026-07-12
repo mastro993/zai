@@ -1,6 +1,7 @@
 use super::calculation::{
     calculate_spending, load_category_hierarchy, map_budget_insert_error, status_string,
 };
+use super::edit::update_budget as update_budget_in_storage;
 use super::history::load_history;
 use super::models::{BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget};
 use super::projection::materialize_budget;
@@ -12,10 +13,12 @@ use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use diesel::OptionalExtension;
 use diesel::prelude::*;
+use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
 use zai_core::features::budgets::models::{
-    Budget, BudgetCadence, BudgetPeriodHistory, NewBudget, calculate_period_with_rollover,
-    canonicalize_category_ids, current_period, expand_category_scope,
+    Budget, BudgetCadence, BudgetPeriodHistory, BudgetUpdate, NewBudget,
+    calculate_period_with_rollover, canonicalize_category_ids, current_period,
+    expand_category_scope,
 };
 use zai_core::features::budgets::traits::{BudgetsRepositoryTrait, CalendarClock};
 use zai_core::{Error, Result};
@@ -58,54 +61,8 @@ impl BudgetsRepository {
     }
 
     fn projected_budget(&self, id: &str, now: NaiveDateTime) -> Result<ProjectionState> {
-        let conn = &mut get_connection(&self.pool)?;
-        let budget = budgets::table
-            .filter(budgets::id.eq(id))
-            .filter(budgets::deleted_at.is_null())
-            .first::<BudgetRow>(conn)
-            .into_core()?;
-        let cadence = parse_cadence(&budget)?;
-        let (current_start, _) = current_period(now, cadence)?;
-        let configuration = budget_configurations::table
-            .filter(budget_configurations::budget_id.eq(id))
-            .order(budget_configurations::period_start.desc())
-            .first::<BudgetConfigurationRow>(conn)
-            .optional()
-            .into_core()?;
-        let Some(configuration) = configuration else {
-            return Ok(ProjectionState::NeedsMaterialization);
-        };
-        let configuration_count = budget_configurations::table
-            .filter(budget_configurations::budget_id.eq(id))
-            .count()
-            .get_result::<i64>(conn)
-            .into_core()?;
-        let result_count = budget_period_results::table
-            .filter(budget_period_results::budget_id.eq(id))
-            .count()
-            .get_result::<i64>(conn)
-            .into_core()?;
-        if configuration_count != result_count {
-            return Ok(ProjectionState::NeedsMaterialization);
-        }
-        if configuration.period_start > current_start {
-            return Err(Error::ClockRegression(
-                "Budget period is ahead of the local calendar clock".to_string(),
-            ));
-        }
-        let Some(result) = budget_period_results::table
-            .filter(budget_period_results::budget_id.eq(id))
-            .filter(budget_period_results::period_start.eq(configuration.period_start))
-            .first::<BudgetPeriodResultRow>(conn)
-            .optional()
-            .into_core()?
-        else {
-            return Ok(ProjectionState::NeedsMaterialization);
-        };
-        if configuration.period_start != current_start {
-            return Ok(ProjectionState::NeedsMaterialization);
-        }
-        build_budget(budget, configuration, result).map(ProjectionState::Current)
+        let mut conn = get_connection(&self.pool)?;
+        projected_budget_from_connection(&mut conn, id, now).into_core()
     }
 
     async fn get_or_materialize(&self, id: &str, now: NaiveDateTime) -> Result<Budget> {
@@ -121,7 +78,63 @@ impl BudgetsRepository {
     }
 }
 
-enum ProjectionState {
+pub(super) fn projected_budget_from_connection(
+    conn: &mut SqliteConnection,
+    id: &str,
+    now: NaiveDateTime,
+) -> crate::errors::Result<ProjectionState> {
+    let budget = budgets::table
+        .filter(budgets::id.eq(id))
+        .filter(budgets::deleted_at.is_null())
+        .first::<BudgetRow>(conn)
+        .into_storage()?;
+    let cadence = parse_cadence(&budget).map_err(StorageError::CoreError)?;
+    let (current_start, _) = current_period(now, cadence).map_err(StorageError::CoreError)?;
+    let configuration = budget_configurations::table
+        .filter(budget_configurations::budget_id.eq(id))
+        .order(budget_configurations::period_start.desc())
+        .first::<BudgetConfigurationRow>(conn)
+        .optional()
+        .into_storage()?;
+    let Some(configuration) = configuration else {
+        return Ok(ProjectionState::NeedsMaterialization);
+    };
+    let configuration_count = budget_configurations::table
+        .filter(budget_configurations::budget_id.eq(id))
+        .count()
+        .get_result::<i64>(conn)
+        .into_storage()?;
+    let result_count = budget_period_results::table
+        .filter(budget_period_results::budget_id.eq(id))
+        .count()
+        .get_result::<i64>(conn)
+        .into_storage()?;
+    if configuration_count != result_count {
+        return Ok(ProjectionState::NeedsMaterialization);
+    }
+    if configuration.period_start > current_start {
+        return Err(StorageError::CoreError(Error::ClockRegression(
+            "Budget period is ahead of the local calendar clock".to_string(),
+        )));
+    }
+    let Some(result) = budget_period_results::table
+        .filter(budget_period_results::budget_id.eq(id))
+        .filter(budget_period_results::period_start.eq(configuration.period_start))
+        .first::<BudgetPeriodResultRow>(conn)
+        .optional()
+        .into_storage()?
+    else {
+        return Ok(ProjectionState::NeedsMaterialization);
+    };
+    if configuration.period_start != current_start {
+        return Ok(ProjectionState::NeedsMaterialization);
+    }
+    build_budget(budget, configuration, result)
+        .map(ProjectionState::Current)
+        .map_err(StorageError::CoreError)
+}
+
+pub(super) enum ProjectionState {
     Current(Budget),
     NeedsMaterialization,
 }
@@ -203,6 +216,7 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
                     created_at: timestamp,
                     updated_at: timestamp,
                     deleted_at: None,
+                    revision: 0,
                 };
                 diesel::insert_into(budgets::table)
                     .values(&budget_row)
@@ -243,9 +257,17 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
             })
             .await
     }
+
+    async fn update_budget(&self, id: &str, update: BudgetUpdate) -> Result<Budget> {
+        let now = self.clock.sample();
+        let id = id.to_string();
+        self.writer
+            .exec(move |conn| update_budget_in_storage(conn, &id, update, now))
+            .await
+    }
 }
 
-fn parse_cadence(budget: &BudgetRow) -> Result<BudgetCadence> {
+pub(super) fn parse_cadence(budget: &BudgetRow) -> Result<BudgetCadence> {
     budget
         .cadence
         .parse()

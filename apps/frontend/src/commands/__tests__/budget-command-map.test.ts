@@ -29,6 +29,30 @@ describe("budget web command map", () => {
     });
   });
 
+  it("maps budget updates to the budget detail route", () => {
+    const updatedBudget = {
+      expectedRevision: 0,
+      name: "Updated monthly",
+      baseAllowance: 20000,
+      cadence: "month",
+      categoryIds: [],
+      measurementMode: "spending",
+      rolloverMode: "off",
+      warningPercentage: 80,
+    };
+
+    expect(
+      buildWebRequestSpec("update_budget", {
+        budgetId: "budget-1",
+        updatedBudget,
+      }),
+    ).toEqual({
+      method: "PUT",
+      path: "/budgets/budget-1",
+      body: updatedBudget,
+    });
+  });
+
   it("maps budget history with default pagination", () => {
     expect(buildWebRequestSpec("get_budget_history", { budgetId: "budget-1" })).toEqual({
       method: "GET",

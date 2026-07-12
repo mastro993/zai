@@ -53,7 +53,7 @@ fn fresh_database_applies_squashed_budget_migration_with_current_schema() {
     .get_result::<SqlRow>(&mut connection)
     .expect("budget table");
 
-    assert_eq!(migration_count.count, 6);
+    assert_eq!(migration_count.count, 7);
     assert_eq!(table_count.count, 5);
     assert_eq!(role_column_count.count, 1);
     assert_eq!(index_count.count, 8);
@@ -77,6 +77,9 @@ fn baseline_migration_can_be_reverted() {
     connection
         .revert_last_migration(TEST_MIGRATIONS)
         .expect("revert budget migration");
+    connection
+        .revert_last_migration(TEST_MIGRATIONS)
+        .expect("revert budget schema migration");
 
     let budget_table_count = diesel::sql_query(
         "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name IN ('budgets', 'budget_configurations', 'budget_period_results')",

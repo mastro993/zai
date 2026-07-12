@@ -286,6 +286,22 @@ export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): We
         body: newBudget,
       };
     }
+    case "update_budget": {
+      const budgetId = readString(args.budgetId);
+      const updatedBudget = readRecord(args.updatedBudget);
+      if (!budgetId || !updatedBudget) {
+        return {
+          method: "PUT",
+          path: "/budgets/__missing_budget_id__",
+          body: updatedBudget ?? {},
+        };
+      }
+      return {
+        method: "PUT",
+        path: `/budgets/${budgetId}`,
+        body: updatedBudget,
+      };
+    }
     default:
       throw new CommandError(`Unknown web command: ${command}`);
   }
