@@ -17,7 +17,12 @@ import { ScreenBase } from "@/components/screen-base";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 
 import { createBudget } from "../commands/budgets";
-import { budgetStatusLabel, budgetStatusVariant } from "../lib/budget";
+import {
+  budgetCadenceLabel,
+  budgetStatusLabel,
+  budgetStatusVariant,
+  formatBudgetPeriod,
+} from "../lib/budget";
 import { type Budget, type BudgetFormValues } from "../types/budget";
 import type { TransactionCategory } from "../types/model";
 import { BudgetFormDialog } from "../components/budget-form-dialog";
@@ -26,10 +31,6 @@ interface BudgetScreenProps {
   initialBudgets: Array<Budget>;
   categories: Array<TransactionCategory>;
 }
-
-const formatPeriod = (value: string) => {
-  return value.slice(0, 10);
-};
 
 const formatScope = (categoryIds: Array<string>) =>
   categoryIds.length === 0 ? "All transactions" : `${categoryIds.length} categories`;
@@ -40,7 +41,7 @@ function BudgetRows({ budgets }: { budgets: Array<Budget> }) {
       <TableHeader>
         <TableRow>
           <TableHead>Budget</TableHead>
-          <TableHead>Period</TableHead>
+          <TableHead>Cadence / period</TableHead>
           <TableHead>Scope</TableHead>
           <TableHead className="text-right">Allowance</TableHead>
           <TableHead className="text-right">Spending</TableHead>
@@ -60,7 +61,14 @@ function BudgetRows({ budgets }: { budgets: Array<Budget> }) {
                 {budget.name}
               </Link>
             </TableCell>
-            <TableCell>{formatPeriod(budget.currentPeriod.start)}</TableCell>
+            <TableCell>
+              <div className="flex flex-col gap-1">
+                <span>{budgetCadenceLabel[budget.cadence]}</span>
+                <span className="text-xs text-muted-foreground">
+                  {formatBudgetPeriod(budget.currentPeriod.start, budget.currentPeriod.end)}
+                </span>
+              </div>
+            </TableCell>
             <TableCell>{formatScope(budget.categoryIds)}</TableCell>
             <TableCell className="text-right tabular-nums">
               {formatCurrencyFromMinor(budget.currentPeriod.effectiveAllowance, "EUR")}

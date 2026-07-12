@@ -28,3 +28,6 @@ export const budgetStatusVariant = (status: BudgetStatus) => {
   if (status === "warning") return "secondary" as const;
   return "outline" as const;
 };
+
+export const formatBudgetPeriod = (start: string, end: string) =>
+  `${start.slice(0, 10)} to ${end.slice(0, 10)}`;
