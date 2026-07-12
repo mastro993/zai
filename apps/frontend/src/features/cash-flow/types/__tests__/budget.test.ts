@@ -11,7 +11,34 @@ describe("budgetFormSchema", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data).toEqual({ name: "Monthly spending", baseAllowance: 10001 });
+      expect(result.data).toEqual({
+        name: "Monthly spending",
+        baseAllowance: 10001,
+        cadence: "month",
+        categoryIds: [],
+        measurementMode: "spending",
+      });
+    }
+  });
+
+  it("preserves selected cadence, scope, and measurement mode", () => {
+    const result = budgetFormSchema.safeParse({
+      name: "Weekly groceries",
+      baseAllowance: "100.01",
+      cadence: "week",
+      categoryIds: ["groceries"],
+      measurementMode: "netCashFlow",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual({
+        name: "Weekly groceries",
+        baseAllowance: 10001,
+        cadence: "week",
+        categoryIds: ["groceries"],
+        measurementMode: "netCashFlow",
+      });
     }
   });
 

@@ -1,16 +1,20 @@
 use super::models::{BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget};
 use crate::connection::{DbPool, get_connection};
 use crate::errors::{IntoCore, IntoStorage, StorageError};
-use crate::schema::{self, budget_configurations, budget_period_results, budgets};
+use crate::schema::{
+    self, budget_configurations, budget_period_results, budgets, transaction_categories,
+};
 use crate::write_actor::WriteHandle;
 use async_trait::async_trait;
-use chrono::{Local, Months, NaiveDateTime};
+use chrono::{Local, NaiveDateTime};
+use diesel::OptionalExtension;
 use diesel::prelude::*;
 use diesel::result::{DatabaseErrorKind, Error as DieselError};
 use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
 use zai_core::features::budgets::models::{
-    Budget, BudgetMeasurementMode, NewBudget, calculate_period, current_month_period,
+    Budget, BudgetCadence, BudgetMeasurementMode, CategoryHierarchy, NewBudget, calculate_period,
+    canonicalize_category_ids, current_period, expand_category_scope,
 };
 use zai_core::features::budgets::traits::BudgetsRepositoryTrait;
 use zai_core::{Error, Result};
@@ -37,7 +41,6 @@ impl BudgetsRepository {
 
     async fn rebuild_budget(&self, id: &str, now: NaiveDateTime) -> Result<Budget> {
         let id = id.to_string();
-        let (current_start, _) = current_month_period(now)?;
 
         self.writer
             .exec(
@@ -47,11 +50,40 @@ impl BudgetsRepository {
                         .filter(budgets::deleted_at.is_null())
                         .first::<BudgetRow>(conn)
                         .into_storage()?;
-                    let mut configuration = budget_configurations::table
+                    let cadence = budget_cadence(&budget).map_err(StorageError::CoreError)?;
+                    let (current_start, _) =
+                        current_period(now, cadence).map_err(StorageError::CoreError)?;
+                    let configuration = budget_configurations::table
                         .filter(budget_configurations::budget_id.eq(&id))
                         .order(budget_configurations::period_start.desc())
                         .first::<BudgetConfigurationRow>(conn)
+                        .optional()
                         .into_storage()?;
+                    let mut configuration = match configuration {
+                        Some(configuration) => configuration,
+                        None => {
+                            let (_, period_end) =
+                                current_period(now, cadence).map_err(StorageError::CoreError)?;
+                            let configuration = BudgetConfigurationRow {
+                                budget_id: id.clone(),
+                                period_start: current_start,
+                                period_end,
+                                category_ids: "[]".to_string(),
+                                base_allowance: budget.base_allowance,
+                                measurement_mode: budget.measurement_mode.clone(),
+                                rollover_mode: budget.rollover_mode.clone(),
+                                warning_percentage: budget.warning_percentage,
+                            };
+                            diesel::insert_into(budget_configurations::table)
+                                .values(&configuration)
+                                .execute(conn)
+                                .into_storage()?;
+                            configuration
+                        }
+                    };
+                    let category_ids = parse_category_ids(&configuration.category_ids)?;
+                    let categories = load_category_hierarchy(conn)?;
+                    let scope_ids = expand_category_scope(&category_ids, &categories);
 
                     if configuration.period_start > current_start {
                         return Err(StorageError::CoreError(Error::Conflict(
@@ -69,6 +101,7 @@ impl BudgetsRepository {
                                     "Invalid budget measurement mode".to_string(),
                                 ))
                             })?,
+                            &scope_ids,
                         )?;
                         let period = calculate_period(
                             configuration.period_start,
@@ -94,7 +127,7 @@ impl BudgetsRepository {
                         }
 
                         let next_start = configuration.period_end;
-                        let next_end = next_month_start(next_start)?;
+                        let next_end = next_period_end(next_start, cadence)?;
                         configuration = BudgetConfigurationRow {
                             budget_id: id.clone(),
                             period_start: next_start,
@@ -141,17 +174,28 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
             .clone()
             .ok_or_else(|| Error::InvalidData("Budget id is required".to_string()))?;
         let now = Local::now().naive_local();
-        let (period_start, period_end) = current_month_period(now)?;
+        let cadence = budget.cadence.unwrap_or_default();
+        let (period_start, period_end) = current_period(now, cadence)?;
         let measurement_mode = budget.measurement_mode.unwrap_or_default();
         let warning_percentage = budget.warning_percentage;
         let base_allowance = budget.base_allowance;
         let name = budget.name;
+        let selected_category_ids = budget.category_ids;
 
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<Budget> {
-                    let net_budget_spending =
-                        calculate_spending(conn, period_start, period_end, measurement_mode)?;
+                    let categories = load_category_hierarchy(conn)?;
+                    let category_ids =
+                        canonicalize_category_ids(&selected_category_ids, &categories);
+                    let scope_ids = expand_category_scope(&category_ids, &categories);
+                    let net_budget_spending = calculate_spending(
+                        conn,
+                        period_start,
+                        period_end,
+                        measurement_mode,
+                        &scope_ids,
+                    )?;
                     let period = calculate_period(
                         period_start,
                         period_end,
@@ -164,7 +208,7 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
                     let budget_row = BudgetRow {
                         id: id.clone(),
                         name: name.clone(),
-                        cadence: "month".to_string(),
+                        cadence: cadence.to_string(),
                         measurement_mode: measurement_mode.to_string(),
                         base_allowance,
                         rollover_mode: "off".to_string(),
@@ -182,7 +226,11 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
                         budget_id: id.clone(),
                         period_start,
                         period_end,
-                        category_ids: "[]".to_string(),
+                        category_ids: serde_json::to_string(&category_ids).map_err(|error| {
+                            StorageError::CoreError(Error::InvalidData(format!(
+                                "Invalid budget category scope: {error}"
+                            )))
+                        })?,
                         base_allowance,
                         measurement_mode: measurement_mode.to_string(),
                         rollover_mode: "off".to_string(),
@@ -223,16 +271,13 @@ fn status_string(status: zai_core::features::budgets::models::BudgetStatus) -> S
     .to_string()
 }
 
-fn next_month_start(period_end: NaiveDateTime) -> crate::errors::Result<NaiveDateTime> {
-    period_end
-        .date()
-        .checked_add_months(Months::new(1))
-        .and_then(|date| date.and_hms_opt(0, 0, 0))
-        .ok_or_else(|| {
-            StorageError::CoreError(Error::InvalidData(
-                "Calendar month is out of range".to_string(),
-            ))
-        })
+fn next_period_end(
+    period_start: NaiveDateTime,
+    cadence: BudgetCadence,
+) -> crate::errors::Result<NaiveDateTime> {
+    current_period(period_start, cadence)
+        .map(|(_, end)| end)
+        .map_err(StorageError::CoreError)
 }
 
 fn upsert_period_result(
@@ -280,8 +325,9 @@ fn calculate_spending(
     start: NaiveDateTime,
     end: NaiveDateTime,
     measurement_mode: BudgetMeasurementMode,
+    scope_ids: &[String],
 ) -> crate::errors::Result<i64> {
-    let transactions = schema::transactions::table
+    let mut query = schema::transactions::table
         .left_join(schema::transaction_categories::table)
         .filter(schema::transactions::deleted_at.is_null())
         .filter(schema::transactions::transaction_date.ge(start))
@@ -289,14 +335,22 @@ fn calculate_spending(
         .select((
             schema::transactions::amount,
             schema::transactions::transaction_type,
+            schema::transactions::transaction_category_id,
             schema::transaction_categories::role.nullable(),
         ))
-        .load::<(i32, String, Option<String>)>(conn)
+        .into_boxed();
+
+    if !scope_ids.is_empty() {
+        query = query.filter(schema::transactions::transaction_category_id.eq_any(scope_ids));
+    }
+
+    let transactions = query
+        .load::<(i32, String, Option<String>, Option<String>)>(conn)
         .into_storage()?;
 
     transactions
         .into_iter()
-        .try_fold(0_i64, |total, (amount, kind, role)| {
+        .try_fold(0_i64, |total, (amount, kind, _category_id, role)| {
             let contribution = match (kind.as_str(), measurement_mode) {
                 ("expense", _) => i64::from(amount),
                 ("income", BudgetMeasurementMode::NetCashFlow) => -i64::from(amount),
@@ -313,4 +367,37 @@ fn calculate_spending(
                 ))
             })
         })
+}
+
+fn load_category_hierarchy(
+    conn: &mut SqliteConnection,
+) -> crate::errors::Result<Vec<CategoryHierarchy>> {
+    transaction_categories::table
+        .filter(transaction_categories::deleted_at.is_null())
+        .select((
+            transaction_categories::id,
+            transaction_categories::parent_id,
+        ))
+        .load::<(String, Option<String>)>(conn)
+        .into_storage()
+        .map(|rows| {
+            rows.into_iter()
+                .map(|(id, parent_id)| CategoryHierarchy { id, parent_id })
+                .collect()
+        })
+}
+
+fn parse_category_ids(value: &str) -> crate::errors::Result<Vec<String>> {
+    serde_json::from_str(value).map_err(|_| {
+        StorageError::CoreError(Error::Repository(
+            "Invalid budget category scope".to_string(),
+        ))
+    })
+}
+
+fn budget_cadence(budget: &BudgetRow) -> Result<BudgetCadence> {
+    budget
+        .cadence
+        .parse()
+        .map_err(|_| Error::Repository("Invalid budget cadence".to_string()))
 }

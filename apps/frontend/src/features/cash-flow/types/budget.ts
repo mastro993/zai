@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prepareAmountForValidation } from "../lib/transaction";
 
 export const BUDGET_MEASUREMENT_MODES = ["spending", "netCashFlow"] as const;
+export const BUDGET_CADENCES = ["day", "week", "month", "year"] as const;
 export const BUDGET_STATUSES = ["onTrack", "warning", "overspent"] as const;
 
 const allowanceInputSchema = z
@@ -20,6 +21,9 @@ const allowanceInputSchema = z
 export const budgetFormSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   baseAllowance: allowanceInputSchema,
+  cadence: z.enum(BUDGET_CADENCES).default("month"),
+  categoryIds: z.array(z.string()).default([]),
+  measurementMode: z.enum(BUDGET_MEASUREMENT_MODES).default("spending"),
 });
 
 const budgetPeriodSchema = z.object({
@@ -36,7 +40,7 @@ export const budgetSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   categoryIds: z.array(z.string()),
-  cadence: z.literal("month"),
+  cadence: z.enum(BUDGET_CADENCES),
   measurementMode: z.enum(BUDGET_MEASUREMENT_MODES),
   baseAllowance: z.number().int(),
   rolloverMode: z.literal("off"),
