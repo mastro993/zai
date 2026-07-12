@@ -1,8 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Result } from "@praha/byethrow";
 import { Controller, useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { CommandError } from "@/commands/errors";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +28,7 @@ import {
   BUDGET_CADENCES,
   BUDGET_MEASUREMENT_MODES,
   budgetFormSchema,
+  type Budget,
   type BudgetFormInput,
   type BudgetFormValues,
 } from "../types/budget";
@@ -35,7 +38,7 @@ import { budgetCadenceLabel, budgetMeasurementOptionLabel } from "../lib/budget"
 interface BudgetFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (values: BudgetFormValues) => Promise<boolean>;
+  onSubmit: (values: BudgetFormValues) => Promise<Result.Result<Budget, CommandError>>;
   categories: Array<TransactionCategory>;
 }
 
@@ -58,11 +61,18 @@ export function BudgetFormDialog({
   const { errors, isSubmitting } = form.formState;
 
   const submit = async (values: BudgetFormValues) => {
-    const saved = await onSubmit(values);
-    if (saved) {
-      form.reset();
-      onOpenChange(false);
+    const result = await onSubmit(values);
+    if (Result.isFailure(result)) {
+      if (result.error.code === "nameConflict") {
+        form.setError("name", { type: "server", message: result.error.message });
+      } else {
+        form.setError("root.server", { type: "server", message: result.error.message });
+      }
+      return;
     }
+
+    form.reset();
+    onOpenChange(false);
   };
 
   return (
@@ -88,7 +98,7 @@ export function BudgetFormDialog({
               <FieldDescription>
                 Required. Names are unique without regard to casing.
               </FieldDescription>
-              <FieldError>{errors.name?.message}</FieldError>
+              <FieldError errors={[errors.name]} />
             </Field>
             <Field data-invalid={Boolean(errors.baseAllowance)}>
               <FieldLabel htmlFor="budget-allowance">Monthly allowance</FieldLabel>
@@ -193,6 +203,7 @@ export function BudgetFormDialog({
               <FieldDescription>Selecting a root includes its subcategories.</FieldDescription>
             </Field>
           </FieldGroup>
+          <FieldError className="mt-3" errors={[errors.root?.server]} />
           <DialogFooter className="mt-5">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

@@ -86,33 +86,20 @@ function BudgetRows({ budgets }: { budgets: Array<Budget> }) {
 export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) {
   const [budgets, setBudgets] = useState(initialBudgets);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const submitBudget = async (values: BudgetFormValues) => {
     const result = await createBudget(values);
-    if (Result.isFailure(result)) {
-      setErrorMessage(result.error.message);
-      return false;
+    if (Result.isSuccess(result)) {
+      setBudgets((current) =>
+        [...current, result.value].toSorted((left, right) => left.name.localeCompare(right.name)),
+      );
     }
-
-    setBudgets((current) =>
-      [...current, result.value].toSorted((left, right) => left.name.localeCompare(right.name)),
-    );
-    setErrorMessage(null);
-    return true;
+    return result;
   };
 
   return (
     <ScreenBase actions={<Button onClick={() => setIsFormOpen(true)}>New budget</Button>}>
       <h1 className="text-2xl font-medium">Budgets</h1>
-      {errorMessage ? (
-        <div
-          role="alert"
-          className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-        >
-          {errorMessage}
-        </div>
-      ) : null}
       {budgets.length === 0 ? (
         <div className="flex flex-col items-start gap-3 border p-6">
           <div className="flex flex-col gap-1">
