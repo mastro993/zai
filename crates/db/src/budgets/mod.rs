@@ -1,6 +1,7 @@
 mod calculation;
 mod edit;
 mod history;
+mod lifecycle;
 mod models;
 pub(crate) mod projection;
 mod repository;

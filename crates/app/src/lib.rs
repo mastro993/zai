@@ -55,6 +55,7 @@ mod tests {
     use uuid::Uuid;
 
     use super::initialize_context;
+    use zai_core::features::budgets::models::BudgetListFilter;
 
     struct TempAppDataDir {
         path: PathBuf,
@@ -96,7 +97,7 @@ mod tests {
             .expect("transactions service should query migrated database");
         let budgets = context
             .budgets_service()
-            .list_budgets()
+            .list_budgets(BudgetListFilter::Active)
             .await
             .expect("budgets service should query migrated database");
 

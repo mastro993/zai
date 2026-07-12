@@ -3,6 +3,7 @@ use super::calculation::{
 };
 use super::edit::update_budget as update_budget_in_storage;
 use super::history::load_history;
+use super::lifecycle::set_budget_paused;
 use super::models::{BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget};
 use super::projection::materialize_budget;
 use crate::connection::{DbPool, get_connection};
@@ -16,9 +17,9 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
 use zai_core::features::budgets::models::{
-    Budget, BudgetCadence, BudgetPeriodHistory, BudgetUpdate, NewBudget,
-    calculate_period_with_rollover, canonicalize_category_ids, current_period,
-    expand_category_scope,
+    Budget, BudgetCadence, BudgetLifecycleUpdate, BudgetListFilter, BudgetPeriodHistory,
+    BudgetUpdate, NewBudget, calculate_period_with_rollover, canonicalize_category_ids,
+    current_period, expand_category_scope,
 };
 use zai_core::features::budgets::traits::{BudgetsRepositoryTrait, CalendarClock};
 use zai_core::{Error, Result};
@@ -51,10 +52,17 @@ impl BudgetsRepository {
         }
     }
 
-    fn active_budget_ids(&self) -> Result<Vec<String>> {
-        budgets::table
+    fn budget_ids(&self, filter: BudgetListFilter) -> Result<Vec<String>> {
+        let query = budgets::table
             .filter(budgets::deleted_at.is_null())
-            .order(budgets::name.asc())
+            .into_boxed();
+        let query = match filter {
+            BudgetListFilter::Active => query.filter(budgets::paused.eq(false)),
+            BudgetListFilter::Paused => query.filter(budgets::paused.eq(true)),
+            BudgetListFilter::All => query,
+        };
+        query
+            .order((budgets::name.asc(), budgets::id.asc()))
             .select(budgets::id)
             .load::<String>(&mut get_connection(&self.pool)?)
             .into_core()
@@ -141,9 +149,9 @@ pub(super) enum ProjectionState {
 
 #[async_trait]
 impl BudgetsRepositoryTrait for BudgetsRepository {
-    async fn list_budgets(&self) -> Result<Vec<Budget>> {
+    async fn list_budgets(&self, filter: BudgetListFilter) -> Result<Vec<Budget>> {
         let now = self.clock.sample();
-        let ids = self.active_budget_ids()?;
+        let ids = self.budget_ids(filter)?;
         let mut result = Vec::with_capacity(ids.len());
         for id in ids {
             result.push(self.get_or_materialize(&id, now).await?);
@@ -217,6 +225,7 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
                     updated_at: timestamp,
                     deleted_at: None,
                     revision: 0,
+                    paused: false,
                 };
                 diesel::insert_into(budgets::table)
                     .values(&budget_row)
@@ -263,6 +272,22 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
         let id = id.to_string();
         self.writer
             .exec(move |conn| update_budget_in_storage(conn, &id, update, now))
+            .await
+    }
+
+    async fn pause_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<Budget> {
+        let now = self.clock.sample();
+        let id = id.to_string();
+        self.writer
+            .exec(move |conn| set_budget_paused(conn, &id, update, true, now))
+            .await
+    }
+
+    async fn resume_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<Budget> {
+        let now = self.clock.sample();
+        let id = id.to_string();
+        self.writer
+            .exec(move |conn| set_budget_paused(conn, &id, update, false, now))
             .await
     }
 }

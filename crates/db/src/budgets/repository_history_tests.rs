@@ -10,7 +10,9 @@ use diesel::r2d2::{self, Pool};
 use diesel::{Connection, RunQueryDsl, SqliteConnection, sql_query};
 use std::sync::Arc;
 use zai_core::Error;
-use zai_core::features::budgets::models::{BudgetRolloverMode, BudgetUpdate};
+use zai_core::features::budgets::models::{
+    BudgetLifecycleUpdate, BudgetRolloverMode, BudgetUpdate,
+};
 use zai_core::features::budgets::traits::{BudgetsRepositoryTrait, CalendarClock};
 use zai_core::features::transactions::models::NewTransaction;
 use zai_core::features::transactions::traits::TransactionsRepositoryTrait;
@@ -164,4 +166,61 @@ async fn updating_current_period_leaves_closed_configurations_immutable() {
     assert_eq!(history.data[0].base_allowance, 200);
     assert_eq!(history.data[1].base_allowance, 100);
     assert_eq!(history.data[2].base_allowance, 100);
+}
+
+#[tokio::test]
+async fn paused_budget_still_advances_periods_and_rollover() {
+    let temp_db = TempDb::new();
+    let january = NaiveDate::from_ymd_opt(2026, 1, 15)
+        .unwrap()
+        .and_hms_opt(12, 0, 0)
+        .unwrap();
+    let clock = Arc::new(ManualClock {
+        now: std::sync::Mutex::new(january),
+    });
+    let (budgets, transactions, _) = setup_with_clock(&temp_db, clock.clone());
+
+    let mut new_budget = new_budget("paused-rollover", "Paused rollover", 100);
+    new_budget.rollover_mode = Some(BudgetRolloverMode::PreviousPeriodOnly);
+    let created = budgets.create_budget(new_budget).await.expect("budget");
+    budgets
+        .pause_budget(
+            "paused-rollover",
+            BudgetLifecycleUpdate {
+                expected_revision: created.revision,
+            },
+        )
+        .await
+        .expect("pause");
+    transactions
+        .create_transaction(NewTransaction {
+            id: Some("paused-january-spending".to_string()),
+            description: None,
+            amount: 30,
+            transaction_date: january,
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+        })
+        .await
+        .expect("transaction");
+
+    *clock.now.lock().expect("clock lock") = NaiveDate::from_ymd_opt(2026, 3, 15)
+        .unwrap()
+        .and_hms_opt(12, 0, 0)
+        .unwrap();
+    let paused = budgets
+        .get_budget("paused-rollover")
+        .await
+        .expect("paused budget");
+    let history = budgets
+        .get_budget_history("paused-rollover", 1, 10)
+        .await
+        .expect("history");
+
+    assert!(paused.paused);
+    assert_eq!(history.data.len(), 3);
+    assert_eq!(history.data[0].start.month(), 3);
+    assert_eq!(history.data[1].effective_allowance, 170);
+    assert_eq!(history.data[2].remaining_allowance, 70);
 }

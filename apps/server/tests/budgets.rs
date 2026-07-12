@@ -193,6 +193,55 @@ async fn update_budget_rejects_cadence_changes() {
 }
 
 #[tokio::test]
+async fn pause_and_resume_keep_budget_history_without_active_list_gaps() {
+    let (app, _dir) = setup_app("zai-budget-lifecycle").await;
+    let (_, created) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/budgets",
+        Some(budget_payload("Lifecycle")),
+    )
+    .await;
+    let budget_id = created["id"].as_str().expect("budget id");
+
+    let (pause_status, paused) = request_json(
+        &app,
+        "POST",
+        &format!("/api/cash-flow/budgets/{budget_id}/pause"),
+        Some(json!({ "expectedRevision": created["revision"] })),
+    )
+    .await;
+    assert_eq!(pause_status, StatusCode::OK);
+    assert_eq!(paused["paused"], true);
+    assert_eq!(paused["revision"], 1);
+
+    let (active_status, active) = request_json(&app, "GET", "/api/cash-flow/budgets", None).await;
+    assert_eq!(active_status, StatusCode::OK);
+    assert_eq!(active.as_array().expect("active list").len(), 0);
+
+    let (paused_status, paused_list) =
+        request_json(&app, "GET", "/api/cash-flow/budgets?filter=paused", None).await;
+    assert_eq!(paused_status, StatusCode::OK);
+    assert_eq!(paused_list.as_array().expect("paused list").len(), 1);
+
+    let (all_status, all) =
+        request_json(&app, "GET", "/api/cash-flow/budgets?filter=all", None).await;
+    assert_eq!(all_status, StatusCode::OK);
+    assert_eq!(all.as_array().expect("all list").len(), 1);
+
+    let (resume_status, resumed) = request_json(
+        &app,
+        "POST",
+        &format!("/api/cash-flow/budgets/{budget_id}/resume"),
+        Some(json!({ "expectedRevision": paused["revision"] })),
+    )
+    .await;
+    assert_eq!(resume_status, StatusCode::OK);
+    assert_eq!(resumed["paused"], false);
+    assert_eq!(resumed["revision"], 2);
+}
+
+#[tokio::test]
 async fn create_budget_accepts_cadence_scope_and_measurement_mode() {
     let (app, _dir) = setup_app("zai-budget-options").await;
     let (category_status, category) = request_json(

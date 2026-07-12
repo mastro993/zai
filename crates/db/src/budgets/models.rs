@@ -20,6 +20,7 @@ pub struct BudgetRow {
     pub updated_at: NaiveDateTime,
     pub deleted_at: Option<NaiveDateTime>,
     pub revision: i64,
+    pub paused: bool,
 }
 
 #[derive(Queryable, Insertable, Debug, Clone)]
@@ -94,6 +95,7 @@ pub fn build_budget(
         id: budget.id,
         name: budget.name,
         revision: budget.revision,
+        paused: budget.paused,
         category_ids,
         cadence,
         measurement_mode,

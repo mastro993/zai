@@ -129,6 +129,44 @@ pub enum BudgetStatus {
     Overspent,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum BudgetListFilter {
+    #[default]
+    Active,
+    Paused,
+    All,
+}
+
+impl BudgetListFilter {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Active => "active",
+            Self::Paused => "paused",
+            Self::All => "all",
+        }
+    }
+}
+
+impl fmt::Display for BudgetListFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl FromStr for BudgetListFilter {
+    type Err = ();
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        match value {
+            "active" => Ok(Self::Active),
+            "paused" => Ok(Self::Paused),
+            "all" => Ok(Self::All),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BudgetPeriod {
@@ -162,6 +200,7 @@ pub struct Budget {
     pub id: String,
     pub name: String,
     pub revision: i64,
+    pub paused: bool,
     pub category_ids: Vec<String>,
     pub cadence: BudgetCadence,
     pub measurement_mode: BudgetMeasurementMode,
@@ -201,6 +240,23 @@ pub struct BudgetUpdate {
     pub measurement_mode: BudgetMeasurementMode,
     pub rollover_mode: BudgetRolloverMode,
     pub warning_percentage: Option<i32>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BudgetLifecycleUpdate {
+    pub expected_revision: i64,
+}
+
+impl BudgetLifecycleUpdate {
+    pub fn validate(&self) -> Result<()> {
+        if self.expected_revision < 0 {
+            return Err(Error::InvalidData(
+                "Budget expected revision cannot be negative".to_string(),
+            ));
+        }
+        Ok(())
+    }
 }
 
 impl NewBudget {

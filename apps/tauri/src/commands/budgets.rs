@@ -3,16 +3,21 @@ use std::sync::Arc;
 use log::debug;
 use tauri::State;
 use zai_app::ServiceContext;
-use zai_core::features::budgets::models::{Budget, BudgetPeriodHistory, BudgetUpdate, NewBudget};
+use zai_core::features::budgets::models::{
+    Budget, BudgetLifecycleUpdate, BudgetListFilter, BudgetPeriodHistory, BudgetUpdate, NewBudget,
+};
 
 use super::{CommandResult, command_error};
 
 #[tauri::command]
-pub async fn get_budgets(state: State<'_, Arc<ServiceContext>>) -> CommandResult<Vec<Budget>> {
+pub async fn get_budgets(
+    filter: Option<BudgetListFilter>,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<Vec<Budget>> {
     debug!("Getting budgets...");
     state
         .budgets_service()
-        .list_budgets()
+        .list_budgets(filter.unwrap_or_default())
         .await
         .map_err(|error| command_error("Failed to load budgets", error))
 }
@@ -70,4 +75,32 @@ pub async fn update_budget(
         .update_budget(&budget_id, updated_budget)
         .await
         .map_err(|error| command_error("Failed to update budget", error))
+}
+
+#[tauri::command]
+pub async fn pause_budget(
+    budget_id: String,
+    expected_revision: i64,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<Budget> {
+    debug!("Pausing budget {}...", budget_id);
+    state
+        .budgets_service()
+        .pause_budget(&budget_id, BudgetLifecycleUpdate { expected_revision })
+        .await
+        .map_err(|error| command_error("Failed to pause budget", error))
+}
+
+#[tauri::command]
+pub async fn resume_budget(
+    budget_id: String,
+    expected_revision: i64,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<Budget> {
+    debug!("Resuming budget {}...", budget_id);
+    state
+        .budgets_service()
+        .resume_budget(&budget_id, BudgetLifecycleUpdate { expected_revision })
+        .await
+        .map_err(|error| command_error("Failed to resume budget", error))
 }
