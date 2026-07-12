@@ -48,3 +48,6 @@ target
 # Playwright
 test-results/
 playwright-report/
+
+# Worktrees
+.worktrees
