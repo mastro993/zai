@@ -1,5 +1,7 @@
 mod connection;
 mod errors;
+#[cfg(test)]
+mod migration_tests;
 mod pagination;
 mod schema;
 #[cfg(test)]
