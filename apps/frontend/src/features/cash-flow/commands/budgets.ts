@@ -15,7 +15,9 @@ export const createBudget = (values: BudgetFormValues): CommandResult<Budget> =>
     newBudget: {
       name: values.name,
       baseAllowance: values.baseAllowance,
-      measurementMode: "spending",
+      cadence: values.cadence,
+      categoryIds: values.categoryIds,
+      measurementMode: values.measurementMode,
       warningPercentage: 80,
     },
   });

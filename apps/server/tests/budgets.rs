@@ -89,3 +89,39 @@ async fn duplicate_active_budget_name_returns_name_conflict() {
     assert_eq!(status, StatusCode::CONFLICT, "body: {body}");
     assert_eq!(body["code"], "nameConflict");
 }
+
+#[tokio::test]
+async fn create_budget_accepts_cadence_scope_and_measurement_mode() {
+    let (app, _dir) = setup_app("zai-budget-options").await;
+    let (category_status, category) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/categories",
+        Some(json!({
+            "name": "Groceries",
+            "role": "spending"
+        })),
+    )
+    .await;
+    assert_eq!(category_status, StatusCode::CREATED);
+    let category_id = category["id"].as_str().expect("category id");
+
+    let (status, budget) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/budgets",
+        Some(json!({
+            "name": "Weekly cash flow",
+            "baseAllowance": 10000,
+            "cadence": "week",
+            "categoryIds": [category_id],
+            "measurementMode": "netCashFlow"
+        })),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(budget["cadence"], "week");
+    assert_eq!(budget["categoryIds"], json!([category_id]));
+    assert_eq!(budget["measurementMode"], "netCashFlow");
+}

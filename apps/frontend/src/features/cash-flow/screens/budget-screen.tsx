@@ -19,16 +19,20 @@ import { formatCurrencyFromMinor } from "@/lib/currency";
 import { createBudget } from "../commands/budgets";
 import { budgetStatusLabel, budgetStatusVariant } from "../lib/budget";
 import { type Budget, type BudgetFormValues } from "../types/budget";
+import type { TransactionCategory } from "../types/model";
 import { BudgetFormDialog } from "../components/budget-form-dialog";
 
 interface BudgetScreenProps {
   initialBudgets: Array<Budget>;
+  categories: Array<TransactionCategory>;
 }
 
 const formatPeriod = (value: string) => {
-  const [year, month] = value.slice(0, 7).split("-");
-  return `${year}-${month}`;
+  return value.slice(0, 10);
 };
+
+const formatScope = (categoryIds: Array<string>) =>
+  categoryIds.length === 0 ? "All transactions" : `${categoryIds.length} categories`;
 
 function BudgetRows({ budgets }: { budgets: Array<Budget> }) {
   return (
@@ -57,7 +61,7 @@ function BudgetRows({ budgets }: { budgets: Array<Budget> }) {
               </Link>
             </TableCell>
             <TableCell>{formatPeriod(budget.currentPeriod.start)}</TableCell>
-            <TableCell>All transactions</TableCell>
+            <TableCell>{formatScope(budget.categoryIds)}</TableCell>
             <TableCell className="text-right tabular-nums">
               {formatCurrencyFromMinor(budget.currentPeriod.effectiveAllowance, "EUR")}
             </TableCell>
@@ -79,7 +83,7 @@ function BudgetRows({ budgets }: { budgets: Array<Budget> }) {
   );
 }
 
-export function BudgetScreen({ initialBudgets }: BudgetScreenProps) {
+export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) {
   const [budgets, setBudgets] = useState(initialBudgets);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -114,7 +118,7 @@ export function BudgetScreen({ initialBudgets }: BudgetScreenProps) {
           <div className="flex flex-col gap-1">
             <p className="text-sm font-medium">No budgets yet</p>
             <p className="text-sm text-muted-foreground">
-              Create a monthly spending target to track current cash flow.
+              Create a budget for any cadence, category scope, or measurement mode.
             </p>
           </div>
           <Button onClick={() => setIsFormOpen(true)}>New budget</Button>
@@ -125,7 +129,12 @@ export function BudgetScreen({ initialBudgets }: BudgetScreenProps) {
           <BudgetRows budgets={budgets} />
         </div>
       )}
-      <BudgetFormDialog open={isFormOpen} onOpenChange={setIsFormOpen} onSubmit={submitBudget} />
+      <BudgetFormDialog
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        onSubmit={submitBudget}
+        categories={categories}
+      />
     </ScreenBase>
   );
 }

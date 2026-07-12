@@ -5,7 +5,12 @@ import { Button } from "@/components/ui/button";
 import { ScreenBase } from "@/components/screen-base";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 
-import { budgetStatusLabel, budgetStatusVariant } from "../lib/budget";
+import {
+  budgetCadenceLabel,
+  budgetMeasurementLabel,
+  budgetStatusLabel,
+  budgetStatusVariant,
+} from "../lib/budget";
 import type { Budget } from "../types/budget";
 
 export function BudgetDetailScreen({ budget }: { budget: Budget }) {
@@ -22,7 +27,7 @@ export function BudgetDetailScreen({ budget }: { budget: Budget }) {
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-medium">{budget.name}</h1>
         <p className="text-sm text-muted-foreground">
-          Monthly spending budget for all transactions.
+          {budgetMeasurementLabel[budget.measurementMode]} budget.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -48,15 +53,25 @@ export function BudgetDetailScreen({ budget }: { budget: Budget }) {
       <div className="border">
         <div className="border-b bg-muted/40 px-3 py-2 text-xs font-medium">Configuration</div>
         <dl className="grid gap-3 p-3 text-sm sm:grid-cols-2">
-          <Detail label="Period" value={`${period.start.slice(0, 7)} (full month)`} />
-          <Detail label="Scope" value="All transactions" />
-          <Detail label="Measurement" value="Spending" />
+          <Detail
+            label="Period"
+            value={`${period.start.slice(0, 10)} to ${period.end.slice(0, 10)}`}
+          />
+          <Detail
+            label="Scope"
+            value={
+              budget.categoryIds.length === 0
+                ? "All transactions"
+                : `${budget.categoryIds.length} categories`
+            }
+          />
+          <Detail label="Measurement" value={budgetMeasurementLabel[budget.measurementMode]} />
           <Detail label="Rollover" value="Disabled" />
           <Detail
             label="Warning"
             value={budget.warningPercentage ? `${budget.warningPercentage}%` : "Disabled"}
           />
-          <Detail label="Cadence" value="Monthly" />
+          <Detail label="Cadence" value={budgetCadenceLabel[budget.cadence]} />
         </dl>
       </div>
     </ScreenBase>
