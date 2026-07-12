@@ -17,6 +17,7 @@ describe("budgetFormSchema", () => {
         cadence: "month",
         categoryIds: [],
         measurementMode: "spending",
+        warningPercentage: 80,
       });
     }
   });
@@ -38,12 +39,43 @@ describe("budgetFormSchema", () => {
         cadence: "week",
         categoryIds: ["groceries"],
         measurementMode: "netCashFlow",
+        warningPercentage: 80,
       });
     }
   });
 
-  it("rejects empty names and malformed allowances", () => {
-    const result = budgetFormSchema.safeParse({ name: " ", baseAllowance: "10.999" });
+  it("accepts a custom whole warning percentage", () => {
+    const result = budgetFormSchema.safeParse({
+      name: "Custom warning",
+      baseAllowance: "100",
+      warningPercentage: "65",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.warningPercentage).toBe(65);
+    }
+  });
+
+  it("accepts disabled warnings", () => {
+    const result = budgetFormSchema.safeParse({
+      name: "Disabled warning",
+      baseAllowance: "100",
+      warningPercentage: "disabled",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.warningPercentage).toBeNull();
+    }
+  });
+
+  it("rejects empty names, malformed allowances, and invalid warning percentages", () => {
+    const result = budgetFormSchema.safeParse({
+      name: " ",
+      baseAllowance: "10.999",
+      warningPercentage: "101",
+    });
 
     expect(result.success).toBe(false);
   });

@@ -18,7 +18,7 @@ export const createBudget = (values: BudgetFormValues): CommandResult<Budget> =>
       cadence: values.cadence,
       categoryIds: values.categoryIds,
       measurementMode: values.measurementMode,
-      warningPercentage: 80,
+      warningPercentage: values.warningPercentage,
     },
   });
 };

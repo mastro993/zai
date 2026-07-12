@@ -10,6 +10,7 @@ import {
   budgetMeasurementLabel,
   budgetStatusLabel,
   budgetStatusVariant,
+  formatBudgetPeriod,
 } from "../lib/budget";
 import type { Budget } from "../types/budget";
 
@@ -53,10 +54,7 @@ export function BudgetDetailScreen({ budget }: { budget: Budget }) {
       <div className="border">
         <div className="border-b bg-muted/40 px-3 py-2 text-xs font-medium">Configuration</div>
         <dl className="grid gap-3 p-3 text-sm sm:grid-cols-2">
-          <Detail
-            label="Period"
-            value={`${period.start.slice(0, 10)} to ${period.end.slice(0, 10)}`}
-          />
+          <Detail label="Current period" value={formatBudgetPeriod(period.start, period.end)} />
           <Detail
             label="Scope"
             value={

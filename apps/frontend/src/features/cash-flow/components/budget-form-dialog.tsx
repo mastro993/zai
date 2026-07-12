@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -56,6 +57,7 @@ export function BudgetFormDialog({
       cadence: "month",
       categoryIds: [],
       measurementMode: "spending",
+      warningPercentage: "80",
     },
   });
   const { errors, isSubmitting } = form.formState;
@@ -111,9 +113,48 @@ export function BudgetFormDialog({
                 {...form.register("baseAllowance")}
               />
               <FieldDescription>
-                Amount in EUR. Spending mode and 80% warning are enabled by default.
+                Amount in EUR. Spending mode and an 80% warning are enabled by default.
               </FieldDescription>
               <FieldError>{errors.baseAllowance?.message}</FieldError>
+            </Field>
+            <Field data-invalid={Boolean(errors.warningPercentage)}>
+              <FieldLabel htmlFor="budget-warning">Warning threshold (%)</FieldLabel>
+              <Controller
+                control={form.control}
+                name="warningPercentage"
+                render={({ field }) => {
+                  const isDisabled = field.value === "disabled";
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="budget-warning"
+                        type="number"
+                        min={1}
+                        max={100}
+                        step={1}
+                        disabled={isDisabled}
+                        value={isDisabled ? "" : field.value}
+                        onChange={(event) => field.onChange(event.target.value)}
+                        aria-invalid={Boolean(errors.warningPercentage)}
+                      />
+                      <Label className="text-sm">
+                        <Checkbox
+                          aria-label="Disable budget warning"
+                          checked={isDisabled}
+                          onCheckedChange={(checked) =>
+                            field.onChange(checked === true ? "disabled" : "80")
+                          }
+                        />
+                        Disable
+                      </Label>
+                    </div>
+                  );
+                }}
+              />
+              <FieldDescription>
+                Warn when spending reaches this percentage of allowance.
+              </FieldDescription>
+              <FieldError errors={[errors.warningPercentage]} />
             </Field>
             <Field>
               <FieldLabel>Cadence</FieldLabel>
