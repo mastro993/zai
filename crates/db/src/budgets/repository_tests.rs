@@ -361,3 +361,6 @@ async fn measurement_mode_applies_signed_income_rules_to_empty_scope() {
 
 #[path = "repository_cadence_tests.rs"]
 mod repository_cadence_tests;
+
+#[path = "repository_recovery_tests.rs"]
+mod repository_recovery_tests;

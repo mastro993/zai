@@ -7,6 +7,7 @@ use crate::schema::{
 use crate::write_actor::WriteHandle;
 use async_trait::async_trait;
 use chrono::{Local, NaiveDateTime};
+use diesel::OptionalExtension;
 use diesel::prelude::*;
 use diesel::result::{DatabaseErrorKind, Error as DieselError};
 use diesel::sqlite::SqliteConnection;
@@ -52,11 +53,34 @@ impl BudgetsRepository {
                     let cadence = budget_cadence(&budget).map_err(StorageError::CoreError)?;
                     let (current_start, _) =
                         current_period(now, cadence).map_err(StorageError::CoreError)?;
-                    let mut configuration = budget_configurations::table
+                    let configuration = budget_configurations::table
                         .filter(budget_configurations::budget_id.eq(&id))
                         .order(budget_configurations::period_start.desc())
                         .first::<BudgetConfigurationRow>(conn)
+                        .optional()
                         .into_storage()?;
+                    let mut configuration = match configuration {
+                        Some(configuration) => configuration,
+                        None => {
+                            let (_, period_end) =
+                                current_period(now, cadence).map_err(StorageError::CoreError)?;
+                            let configuration = BudgetConfigurationRow {
+                                budget_id: id.clone(),
+                                period_start: current_start,
+                                period_end,
+                                category_ids: "[]".to_string(),
+                                base_allowance: budget.base_allowance,
+                                measurement_mode: budget.measurement_mode.clone(),
+                                rollover_mode: budget.rollover_mode.clone(),
+                                warning_percentage: budget.warning_percentage,
+                            };
+                            diesel::insert_into(budget_configurations::table)
+                                .values(&configuration)
+                                .execute(conn)
+                                .into_storage()?;
+                            configuration
+                        }
+                    };
                     let category_ids = parse_category_ids(&configuration.category_ids)?;
                     let categories = load_category_hierarchy(conn)?;
                     let scope_ids = expand_category_scope(&category_ids, &categories);
