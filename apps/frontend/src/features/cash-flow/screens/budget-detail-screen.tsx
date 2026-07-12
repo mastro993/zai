@@ -15,7 +15,8 @@ import {
 import { ScreenBase } from "@/components/screen-base";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 
-import { getBudgetHistory } from "../commands/budgets";
+import { getBudgetHistory, updateBudget } from "../commands/budgets";
+import { BudgetFormDialog } from "../components/budget-form-dialog";
 import {
   budgetCadenceLabel,
   budgetMeasurementLabel,
@@ -24,19 +25,24 @@ import {
   budgetStatusVariant,
   formatBudgetPeriod,
 } from "../lib/budget";
-import type { Budget, BudgetHistory } from "../types/budget";
+import type { Budget, BudgetFormValues, BudgetHistory } from "../types/budget";
+import type { TransactionCategory } from "../types/model";
 
 export function BudgetDetailScreen({
   budget,
   history: initialHistory,
+  categories,
 }: {
   budget: Budget;
   history: BudgetHistory;
+  categories: Array<TransactionCategory>;
 }) {
-  const period = budget.currentPeriod;
+  const [currentBudget, setCurrentBudget] = useState(budget);
   const [history, setHistory] = useState(initialHistory);
   const [historyError, setHistoryError] = useState<string>();
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const period = currentBudget.currentPeriod;
 
   const changeHistoryPage = async (page: number) => {
     if (page < 1 || page > history.totalPages || isHistoryLoading) {
@@ -44,7 +50,7 @@ export function BudgetDetailScreen({
     }
     setIsHistoryLoading(true);
     setHistoryError(undefined);
-    const result = await getBudgetHistory(budget.id, page, history.perPage);
+    const result = await getBudgetHistory(currentBudget.id, page, history.perPage);
     if (Result.isFailure(result)) {
       setHistoryError(result.error.message);
     } else {
@@ -53,18 +59,40 @@ export function BudgetDetailScreen({
     setIsHistoryLoading(false);
   };
 
+  const submitBudget = async (values: BudgetFormValues) => {
+    const result = await updateBudget(currentBudget.id, currentBudget.revision, values);
+    if (Result.isFailure(result)) {
+      return result;
+    }
+
+    setCurrentBudget(result.value);
+    setHistoryError(undefined);
+    const historyResult = await getBudgetHistory(currentBudget.id);
+    if (Result.isFailure(historyResult)) {
+      setHistoryError(historyResult.error.message);
+    } else {
+      setHistory(historyResult.value);
+    }
+    return result;
+  };
+
   return (
     <ScreenBase
       actions={
-        <Button variant="outline" render={<Link to="/cash-flow/budgets" />}>
-          Back to budgets
-        </Button>
+        <>
+          <Button variant="outline" onClick={() => setIsFormOpen(true)}>
+            Edit budget
+          </Button>
+          <Button variant="outline" render={<Link to="/cash-flow/budgets" />}>
+            Back to budgets
+          </Button>
+        </>
       }
     >
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-medium">{budget.name}</h1>
+        <h1 className="text-2xl font-medium">{currentBudget.name}</h1>
         <p className="text-sm text-muted-foreground">
-          {budgetMeasurementLabel[budget.measurementMode]} budget.
+          {budgetMeasurementLabel[currentBudget.measurementMode]} budget.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -94,18 +122,23 @@ export function BudgetDetailScreen({
           <Detail
             label="Scope"
             value={
-              budget.categoryIds.length === 0
+              currentBudget.categoryIds.length === 0
                 ? "All transactions"
-                : `${budget.categoryIds.length} categories`
+                : `${currentBudget.categoryIds.length} categories`
             }
           />
-          <Detail label="Measurement" value={budgetMeasurementLabel[budget.measurementMode]} />
-          <Detail label="Rollover" value={budgetRolloverLabel[budget.rolloverMode]} />
+          <Detail
+            label="Measurement"
+            value={budgetMeasurementLabel[currentBudget.measurementMode]}
+          />
+          <Detail label="Rollover" value={budgetRolloverLabel[currentBudget.rolloverMode]} />
           <Detail
             label="Warning"
-            value={budget.warningPercentage ? `${budget.warningPercentage}%` : "Disabled"}
+            value={
+              currentBudget.warningPercentage ? `${currentBudget.warningPercentage}%` : "Disabled"
+            }
           />
-          <Detail label="Cadence" value={budgetCadenceLabel[budget.cadence]} />
+          <Detail label="Cadence" value={budgetCadenceLabel[currentBudget.cadence]} />
         </dl>
       </div>
       <div className="border">
@@ -169,6 +202,14 @@ export function BudgetDetailScreen({
           </p>
         ) : null}
       </div>
+      <BudgetFormDialog
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        onSubmit={submitBudget}
+        categories={categories}
+        budget={currentBudget}
+        mode="edit"
+      />
     </ScreenBase>
   );
 }

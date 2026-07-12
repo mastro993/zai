@@ -161,6 +161,7 @@ pub fn validate_history_paging(page: i64, per_page: i64) -> Result<()> {
 pub struct Budget {
     pub id: String,
     pub name: String,
+    pub revision: i64,
     pub category_ids: Vec<String>,
     pub cadence: BudgetCadence,
     pub measurement_mode: BudgetMeasurementMode,
@@ -189,8 +190,49 @@ pub struct NewBudget {
     pub warning_percentage: Option<i32>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BudgetUpdate {
+    pub expected_revision: i64,
+    pub name: String,
+    pub base_allowance: i64,
+    pub cadence: BudgetCadence,
+    pub category_ids: Vec<String>,
+    pub measurement_mode: BudgetMeasurementMode,
+    pub rollover_mode: BudgetRolloverMode,
+    pub warning_percentage: Option<i32>,
+}
+
 impl NewBudget {
     pub fn validate(&self) -> Result<()> {
+        if self.name.trim().is_empty() {
+            return Err(Error::InvalidData(
+                "Budget name cannot be empty".to_string(),
+            ));
+        }
+        if self.base_allowance < 0 {
+            return Err(Error::InvalidData(
+                "Budget allowance cannot be negative".to_string(),
+            ));
+        }
+        if let Some(percentage) = self.warning_percentage
+            && !(1..=100).contains(&percentage)
+        {
+            return Err(Error::InvalidData(
+                "Budget warning percentage must be between 1 and 100".to_string(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl BudgetUpdate {
+    pub fn validate(&self) -> Result<()> {
+        if self.expected_revision < 0 {
+            return Err(Error::InvalidData(
+                "Budget expected revision cannot be negative".to_string(),
+            ));
+        }
         if self.name.trim().is_empty() {
             return Err(Error::InvalidData(
                 "Budget name cannot be empty".to_string(),

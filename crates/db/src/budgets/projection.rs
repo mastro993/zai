@@ -149,7 +149,7 @@ fn all_configurations(
         .into_storage()
 }
 
-fn load_previous_period(
+pub(super) fn load_previous_period(
     conn: &mut SqliteConnection,
     id: &str,
     period_start: NaiveDateTime,
@@ -204,7 +204,7 @@ pub(super) fn period_from_rows(
     })
 }
 
-fn result_row(id: &str, period: &BudgetPeriod) -> BudgetPeriodResultRow {
+pub(super) fn result_row(id: &str, period: &BudgetPeriod) -> BudgetPeriodResultRow {
     BudgetPeriodResultRow {
         budget_id: id.to_string(),
         period_start: period.start,
@@ -216,7 +216,7 @@ fn result_row(id: &str, period: &BudgetPeriod) -> BudgetPeriodResultRow {
     }
 }
 
-fn upsert_period_result(
+pub(super) fn upsert_period_result(
     conn: &mut SqliteConnection,
     result: &BudgetPeriodResultRow,
 ) -> crate::errors::Result<()> {

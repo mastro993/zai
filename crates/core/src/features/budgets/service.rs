@@ -1,4 +1,6 @@
-use super::models::{Budget, NewBudget, normalize_budget_name, validate_history_paging};
+use super::models::{
+    Budget, BudgetUpdate, NewBudget, normalize_budget_name, validate_history_paging,
+};
 use super::traits::{BudgetsRepositoryTrait, BudgetsServiceTrait};
 use crate::Result;
 use std::sync::Arc;
@@ -43,5 +45,11 @@ impl BudgetsServiceTrait for BudgetsService {
 
         budget.id = Some(Uuid::new_v4().to_string());
         self.repository.create_budget(budget).await
+    }
+
+    async fn update_budget(&self, id: &str, mut budget: BudgetUpdate) -> Result<Budget> {
+        budget.name = normalize_budget_name(&budget.name);
+        budget.validate()?;
+        self.repository.update_budget(id, budget).await
     }
 }

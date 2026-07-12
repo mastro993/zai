@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Result } from "@praha/byethrow";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import {
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatAmountFromMinor } from "../lib/transaction";
 import {
   Select,
   SelectContent,
@@ -46,27 +48,42 @@ interface BudgetFormDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: BudgetFormValues) => Promise<Result.Result<Budget, CommandError>>;
   categories: Array<TransactionCategory>;
+  budget?: Budget;
+  mode?: "create" | "edit";
 }
+
+const getDefaultValues = (budget?: Budget): BudgetFormInput => ({
+  name: budget?.name ?? "",
+  baseAllowance: budget ? formatAmountFromMinor(budget.baseAllowance) : "",
+  cadence: budget?.cadence ?? "month",
+  categoryIds: budget?.categoryIds ?? [],
+  measurementMode: budget?.measurementMode ?? "spending",
+  rolloverMode: budget?.rolloverMode ?? "off",
+  warningPercentage:
+    budget?.warningPercentage === null ? "disabled" : String(budget?.warningPercentage ?? 80),
+});
 
 export function BudgetFormDialog({
   open,
   onOpenChange,
   onSubmit,
   categories,
+  budget,
+  mode = "create",
 }: BudgetFormDialogProps) {
+  const isEdit = mode === "edit";
   const form = useForm<BudgetFormInput, unknown, BudgetFormValues>({
     resolver: zodResolver(budgetFormSchema),
-    defaultValues: {
-      name: "",
-      baseAllowance: "",
-      cadence: "month",
-      categoryIds: [],
-      measurementMode: "spending",
-      rolloverMode: "off",
-      warningPercentage: "80",
-    },
+    defaultValues: getDefaultValues(isEdit ? budget : undefined),
   });
+  const { reset } = form;
   const { errors, isSubmitting } = form.formState;
+
+  useEffect(() => {
+    if (open) {
+      reset(getDefaultValues(isEdit ? budget : undefined));
+    }
+  }, [budget, isEdit, open, reset]);
 
   const submit = async (values: BudgetFormValues) => {
     const result = await onSubmit(values);
@@ -74,7 +91,13 @@ export function BudgetFormDialog({
       if (result.error.code === "nameConflict") {
         form.setError("name", { type: "server", message: result.error.message });
       } else {
-        form.setError("root.server", { type: "server", message: result.error.message });
+        form.setError("root.server", {
+          type: "server",
+          message:
+            result.error.code === "revisionConflict"
+              ? "Budget changed elsewhere. Reload it before saving."
+              : result.error.message,
+        });
       }
       return;
     }
@@ -87,9 +110,11 @@ export function BudgetFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New budget</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit budget" : "New budget"}</DialogTitle>
           <DialogDescription>
-            Choose period, scope, and measurement. Empty scope tracks all transactions.
+            {isEdit
+              ? "Update the current period configuration. Closed periods remain unchanged."
+              : "Choose period, scope, and measurement. Empty scope tracks all transactions."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit((values) => void submit(values))}>
@@ -169,7 +194,7 @@ export function BudgetFormDialog({
                 name="cadence"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={(value) => field.onChange(value)}>
-                    <SelectTrigger className="w-full" aria-label="Budget cadence">
+                    <SelectTrigger className="w-full" aria-label="Budget cadence" disabled={isEdit}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent alignItemWithTrigger={false}>
@@ -184,7 +209,11 @@ export function BudgetFormDialog({
                   </Select>
                 )}
               />
-              <FieldDescription>Periods use local calendar boundaries.</FieldDescription>
+              <FieldDescription>
+                {isEdit
+                  ? "Cadence is fixed after creation."
+                  : "Periods use local calendar boundaries."}
+              </FieldDescription>
             </Field>
             <Field>
               <FieldLabel>Measurement</FieldLabel>
@@ -282,7 +311,13 @@ export function BudgetFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create budget"}
+              {isSubmitting
+                ? isEdit
+                  ? "Saving..."
+                  : "Creating..."
+                : isEdit
+                  ? "Save budget"
+                  : "Create budget"}
             </Button>
           </DialogFooter>
         </form>

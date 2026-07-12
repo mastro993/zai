@@ -369,3 +369,6 @@ mod repository_recovery_tests;
 
 #[path = "repository_history_tests.rs"]
 mod repository_history_tests;
+
+#[path = "repository_update_tests.rs"]
+mod repository_update_tests;

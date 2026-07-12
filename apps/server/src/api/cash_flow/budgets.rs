@@ -9,7 +9,7 @@ use axum::{
 };
 use serde::Deserialize;
 use zai_app::ServiceContext;
-use zai_core::features::budgets::models::{Budget, BudgetPeriodHistory, NewBudget};
+use zai_core::features::budgets::models::{Budget, BudgetPeriodHistory, BudgetUpdate, NewBudget};
 
 use crate::api::error::{bad_request, command_error};
 
@@ -35,7 +35,7 @@ struct HistoryQuery {
 pub fn router() -> Router<Arc<ServiceContext>> {
     Router::new()
         .route("/budgets", get(list_budgets).post(create_budget))
-        .route("/budgets/{budget_id}", get(get_budget))
+        .route("/budgets/{budget_id}", get(get_budget).put(update_budget))
         .route("/budgets/{budget_id}/history", get(get_budget_history))
 }
 
@@ -87,4 +87,18 @@ async fn create_budget(
         .await
         .map(|budget| (StatusCode::CREATED, Json(budget)))
         .map_err(|error| command_error("Failed to create budget", error))
+}
+
+async fn update_budget(
+    State(context): State<Arc<ServiceContext>>,
+    Path(budget_id): Path<String>,
+    payload: Result<Json<BudgetUpdate>, JsonRejection>,
+) -> BudgetResult<Json<Budget>> {
+    let Json(updated_budget) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    context
+        .budgets_service()
+        .update_budget(&budget_id, updated_budget)
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to update budget", error))
 }

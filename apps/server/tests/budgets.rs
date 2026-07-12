@@ -104,6 +104,95 @@ async fn duplicate_active_budget_name_returns_name_conflict() {
 }
 
 #[tokio::test]
+async fn update_budget_replaces_open_configuration_and_rejects_stale_revision() {
+    let (app, _dir) = setup_app("zai-budget-update").await;
+    let (_, created) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/budgets",
+        Some(budget_payload("Monthly")),
+    )
+    .await;
+    let budget_id = created["id"].as_str().expect("budget id");
+
+    let (status, updated) = request_json(
+        &app,
+        "PUT",
+        &format!("/api/cash-flow/budgets/{budget_id}"),
+        Some(json!({
+            "expectedRevision": created["revision"],
+            "name": "Updated monthly",
+            "baseAllowance": 20000,
+            "cadence": "month",
+            "categoryIds": [],
+            "measurementMode": "spending",
+            "rolloverMode": "off",
+            "warningPercentage": 80
+        })),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(updated["name"], "Updated monthly");
+    assert_eq!(updated["revision"], 1);
+    assert_eq!(updated["currentPeriod"]["baseAllowance"], 20000);
+
+    let (status, conflict) = request_json(
+        &app,
+        "PUT",
+        &format!("/api/cash-flow/budgets/{budget_id}"),
+        Some(json!({
+            "expectedRevision": 0,
+            "name": "Stale",
+            "baseAllowance": 30000,
+            "cadence": "month",
+            "categoryIds": [],
+            "measurementMode": "spending",
+            "rolloverMode": "off",
+            "warningPercentage": 80
+        })),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(conflict["code"], "revisionConflict");
+    assert_eq!(conflict["details"]["currentRevision"], 1);
+}
+
+#[tokio::test]
+async fn update_budget_rejects_cadence_changes() {
+    let (app, _dir) = setup_app("zai-budget-cadence-lock").await;
+    let (_, created) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/budgets",
+        Some(budget_payload("Monthly")),
+    )
+    .await;
+    let budget_id = created["id"].as_str().expect("budget id");
+
+    let (status, body) = request_json(
+        &app,
+        "PUT",
+        &format!("/api/cash-flow/budgets/{budget_id}"),
+        Some(json!({
+            "expectedRevision": 0,
+            "name": "Monthly",
+            "baseAllowance": 10000,
+            "cadence": "week",
+            "categoryIds": [],
+            "measurementMode": "spending",
+            "rolloverMode": "off",
+            "warningPercentage": 80
+        })),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["code"], "validation");
+}
+
+#[tokio::test]
 async fn create_budget_accepts_cadence_scope_and_measurement_mode() {
     let (app, _dir) = setup_app("zai-budget-options").await;
     let (category_status, category) = request_json(

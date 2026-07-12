@@ -3,7 +3,7 @@ use std::sync::Arc;
 use log::debug;
 use tauri::State;
 use zai_app::ServiceContext;
-use zai_core::features::budgets::models::{Budget, BudgetPeriodHistory, NewBudget};
+use zai_core::features::budgets::models::{Budget, BudgetPeriodHistory, BudgetUpdate, NewBudget};
 
 use super::{CommandResult, command_error};
 
@@ -56,4 +56,18 @@ pub async fn create_budget(
         .create_budget(new_budget)
         .await
         .map_err(|error| command_error("Failed to create budget", error))
+}
+
+#[tauri::command]
+pub async fn update_budget(
+    budget_id: String,
+    updated_budget: BudgetUpdate,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<Budget> {
+    debug!("Updating budget {}...", budget_id);
+    state
+        .budgets_service()
+        .update_budget(&budget_id, updated_budget)
+        .await
+        .map_err(|error| command_error("Failed to update budget", error))
 }
