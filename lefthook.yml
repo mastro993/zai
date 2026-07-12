@@ -5,7 +5,7 @@ pre-commit:
       glob:
         - "apps/frontend/src/*.{ts,tsx}"
         - "apps/frontend/src/**/*.{ts,tsx}"
-      run: pnpm --filter frontend format:check
+      run: pnpm frontend:format:check
     frontend-lint:
       root: apps/frontend/
       glob:
@@ -16,4 +16,4 @@ pre-commit:
       glob:
         - "apps/frontend/src/routes/*"
         - "apps/frontend/src/routes/**/*"
-      run: pnpm --filter frontend check:routes
+      run: pnpm frontend:check:routes
