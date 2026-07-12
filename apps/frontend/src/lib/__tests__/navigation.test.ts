@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveScreenBreadcrumbs } from "../navigation";
+import { navigationItems, resolveScreenBreadcrumbs } from "../navigation";
+
+const cashFlowNavigation = navigationItems.find((item) => item.to === "/cash-flow");
 
 describe("resolveScreenBreadcrumbs", () => {
   it("returns a single crumb for top-level routes", () => {
@@ -21,5 +23,15 @@ describe("resolveScreenBreadcrumbs", () => {
 
   it("falls back to title-cased path segments", () => {
     expect(resolveScreenBreadcrumbs("/unknown-route")).toEqual([{ label: "Unknown Route" }]);
+  });
+});
+
+describe("cash flow navigation", () => {
+  it("places budgets between transactions and categories", () => {
+    expect(cashFlowNavigation?.subItems?.map((item) => item.title)).toEqual([
+      "Transactions",
+      "Budgets",
+      "Categories",
+    ]);
   });
 });
