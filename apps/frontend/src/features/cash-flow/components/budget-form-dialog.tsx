@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -136,7 +137,7 @@ export function BudgetFormDialog({
                         onChange={(event) => field.onChange(event.target.value)}
                         aria-invalid={Boolean(errors.warningPercentage)}
                       />
-                      <label className="flex items-center gap-2 text-sm">
+                      <Label className="text-sm">
                         <Checkbox
                           aria-label="Disable budget warning"
                           checked={isDisabled}
@@ -145,7 +146,7 @@ export function BudgetFormDialog({
                           }
                         />
                         Disable
-                      </label>
+                      </Label>
                     </div>
                   );
                 }}
