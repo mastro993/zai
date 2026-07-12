@@ -11,7 +11,7 @@ use diesel::sqlite::SqliteConnection;
 use zai_core::features::budgets::models::{Budget, BudgetPeriod, current_period};
 use zai_core::{Error, Result};
 
-pub(super) fn materialize_budget(
+pub(crate) fn materialize_budget(
     conn: &mut SqliteConnection,
     id: &str,
     now: NaiveDateTime,
@@ -135,6 +135,100 @@ pub(crate) fn refresh_active_budget_projections(
     for id in ids {
         materialize_budget(conn, &id, now)?;
     }
+    Ok(())
+}
+
+pub(crate) fn repair_budget_results(
+    conn: &mut SqliteConnection,
+    id: &str,
+    earliest_period_start: NaiveDateTime,
+    now: NaiveDateTime,
+) -> crate::errors::Result<()> {
+    let budget = budgets::table
+        .filter(budgets::id.eq(id))
+        .filter(budgets::deleted_at.is_null())
+        .first::<BudgetRow>(conn)
+        .into_storage()?;
+    let cadence = parse_cadence(&budget)?;
+    let (current_start, _) = current_period(now, cadence).map_err(StorageError::CoreError)?;
+    let configurations = all_configurations(conn, id)?;
+    let first_configuration = configurations
+        .first()
+        .cloned()
+        .ok_or_else(|| invalid_budget("Invalid budget configuration projection"))?;
+    let latest_period_start = configurations
+        .last()
+        .expect("budget configurations cannot be empty")
+        .period_start;
+
+    if first_configuration.period_start > current_start || latest_period_start > current_start {
+        return Err(StorageError::CoreError(Error::ClockRegression(
+            "Budget period is ahead of the local calendar clock".to_string(),
+        )));
+    }
+
+    count_missing_periods(&first_configuration, current_start, cadence)?;
+
+    let result_count = budget_period_results::table
+        .filter(budget_period_results::budget_id.eq(id))
+        .count()
+        .get_result::<i64>(conn)
+        .into_storage()?;
+    if result_count != configurations.len() as i64 {
+        materialize_budget(conn, id, now)?;
+        return Ok(());
+    }
+
+    let mut configuration = configurations
+        .iter()
+        .find(|configuration| configuration.period_start == earliest_period_start)
+        .cloned()
+        .ok_or_else(|| invalid_budget("Invalid budget repair frontier"))?;
+    let mut previous_period = load_previous_period(conn, id, configuration.period_start)?;
+    if configuration.period_start != first_configuration.period_start && previous_period.is_none() {
+        materialize_budget(conn, id, now)?;
+        return Ok(());
+    }
+    let categories = load_category_hierarchy(conn)?;
+
+    loop {
+        validate_period_boundaries(&configuration, cadence)?;
+        let period =
+            calculate_configuration(conn, &configuration, &categories, previous_period.as_ref())?;
+        let result = result_row(id, &period);
+        upsert_period_result(conn, &result)?;
+        previous_period = Some(period);
+
+        if configuration.period_start == current_start {
+            break;
+        }
+
+        let (period_start, period_end) = next_period(&configuration, cadence)?;
+        configuration = if let Some(existing) = configurations
+            .iter()
+            .find(|candidate| candidate.period_start == period_start)
+            .cloned()
+        {
+            existing
+        } else {
+            let next = BudgetConfigurationRow {
+                budget_id: id.to_string(),
+                period_start,
+                period_end,
+                category_ids: configuration.category_ids.clone(),
+                base_allowance: configuration.base_allowance,
+                measurement_mode: configuration.measurement_mode.clone(),
+                rollover_mode: configuration.rollover_mode.clone(),
+                warning_percentage: configuration.warning_percentage,
+            };
+            diesel::insert_into(budget_configurations::table)
+                .values(&next)
+                .execute(conn)
+                .into_storage()?;
+            next
+        };
+    }
+
     Ok(())
 }
 

@@ -149,7 +149,7 @@ pub(super) fn validate_period_boundaries(
     Ok(())
 }
 
-pub(super) fn load_category_hierarchy(
+pub(crate) fn load_category_hierarchy(
     conn: &mut SqliteConnection,
 ) -> crate::errors::Result<Vec<CategoryHierarchy>> {
     transaction_categories::table
@@ -167,11 +167,11 @@ pub(super) fn load_category_hierarchy(
         })
 }
 
-pub(super) fn parse_category_ids(value: &str) -> crate::errors::Result<Vec<String>> {
+pub(crate) fn parse_category_ids(value: &str) -> crate::errors::Result<Vec<String>> {
     serde_json::from_str(value).map_err(|_| invalid_budget("Invalid budget category scope"))
 }
 
-pub(super) fn parse_cadence(budget: &BudgetRow) -> crate::errors::Result<BudgetCadence> {
+pub(crate) fn parse_cadence(budget: &BudgetRow) -> crate::errors::Result<BudgetCadence> {
     budget
         .cadence
         .parse()
