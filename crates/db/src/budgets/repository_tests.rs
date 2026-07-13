@@ -379,3 +379,6 @@ mod repository_history_tests;
 
 #[path = "repository_update_tests.rs"]
 mod repository_update_tests;
+
+#[path = "repository_repair_tests.rs"]
+mod repository_repair_tests;
