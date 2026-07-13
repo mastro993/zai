@@ -214,9 +214,8 @@ mod tests {
 
     #[test]
     fn calculation_overflow_uses_distinct_structured_error_code() {
-        let envelope =
-            Error::CalculationOverflow("Budget calculation overflow".to_string())
-                .to_envelope("Failed to materialize budget");
+        let envelope = Error::CalculationOverflow("Budget calculation overflow".to_string())
+            .to_envelope("Failed to materialize budget");
 
         assert_eq!(envelope.code, ErrorCode::CalculationOverflow);
     }

@@ -24,7 +24,9 @@ fn status_for_error(error: &Error) -> StatusCode {
         | Error::RevisionConflict { .. }
         | Error::BudgetImpactConfirmationRequired { .. }
         | Error::CategoryDeletionBlocked { .. } => StatusCode::CONFLICT,
-        Error::PeriodAdvanceLimitExceeded(_) | Error::ClockRegression(_) | Error::CalculationOverflow(_) => StatusCode::CONFLICT,
+        Error::PeriodAdvanceLimitExceeded(_)
+        | Error::ClockRegression(_)
+        | Error::CalculationOverflow(_) => StatusCode::CONFLICT,
         Error::Database(db_error) => match db_error {
             DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
             DatabaseError::UniqueViolation(_) | DatabaseError::ForeignKeyViolation(_) => {

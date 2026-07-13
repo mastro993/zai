@@ -170,8 +170,7 @@ async fn advancing_two_thousand_missing_periods_succeeds() {
 }
 
 #[tokio::test]
-async fn advancing_two_thousand_one_missing_periods_returns_limit_error_without_partial_chain(
-) {
+async fn advancing_two_thousand_one_missing_periods_returns_limit_error_without_partial_chain() {
     let temp_db = TempDb::new();
     let start = date(2020, 1, 1);
     let target = start + Duration::days(2_001);
@@ -212,7 +211,10 @@ async fn calculation_overflow_rejects_materialization_without_partial_commit() {
     let mut budget = new_budget("overflow", "Overflow", 100);
     budget.rollover_mode = Some(BudgetRolloverMode::PreviousPeriodOnly);
     budgets.create_budget(budget).await.expect("budget");
-    budgets.get_budget("overflow").await.expect("materialize january");
+    budgets
+        .get_budget("overflow")
+        .await
+        .expect("materialize january");
 
     let mut conn = SqliteConnection::establish(temp_db.path()).expect("database connection");
     sql_query(
@@ -255,10 +257,7 @@ async fn failed_overflow_during_transaction_repair_rolls_back_insert() {
     let (budgets, transactions, _) = setup_with_clock(&temp_db, clock.clone());
     let mut budget = new_budget("overflow-rollback", "Overflow rollback", 100);
     budget.rollover_mode = Some(BudgetRolloverMode::PreviousPeriodOnly);
-    budgets
-        .create_budget(budget)
-        .await
-        .expect("budget");
+    budgets.create_budget(budget).await.expect("budget");
     budgets
         .get_budget("overflow-rollback")
         .await

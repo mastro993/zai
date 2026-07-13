@@ -1,6 +1,6 @@
 use super::*;
-use chrono::NaiveDate;
 use crate::Error;
+use chrono::NaiveDate;
 
 fn sample_period() -> (NaiveDateTime, NaiveDateTime) {
     let start = NaiveDate::from_ymd_opt(2026, 7, 1)
