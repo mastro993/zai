@@ -53,7 +53,7 @@ fn fresh_database_applies_squashed_budget_migration_with_current_schema() {
     .get_result::<SqlRow>(&mut connection)
     .expect("budget table");
 
-    assert_eq!(migration_count.count, 7);
+    assert_eq!(migration_count.count, 8);
     assert_eq!(table_count.count, 5);
     assert_eq!(role_column_count.count, 1);
     assert_eq!(index_count.count, 8);
@@ -62,6 +62,12 @@ fn fresh_database_applies_squashed_budget_migration_with_current_schema() {
             .statement
             .contains("'day', 'week', 'month', 'year'")
     );
+    let paused_column_count = diesel::sql_query(
+        "SELECT COUNT(*) AS count FROM pragma_table_info('budgets') WHERE name = 'paused'",
+    )
+    .get_result::<CountRow>(&mut connection)
+    .expect("budget paused column");
+    assert_eq!(paused_column_count.count, 1);
 }
 
 #[test]
@@ -74,6 +80,9 @@ fn baseline_migration_can_be_reverted() {
     connection
         .revert_last_migration(TEST_MIGRATIONS)
         .expect("revert migration");
+    connection
+        .revert_last_migration(TEST_MIGRATIONS)
+        .expect("revert budget lifecycle migration");
     connection
         .revert_last_migration(TEST_MIGRATIONS)
         .expect("revert budget migration");

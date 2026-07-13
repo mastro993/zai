@@ -31,6 +31,23 @@ fn budget_name_validation_trims_required_name_at_service_boundary() {
 }
 
 #[test]
+fn budget_list_filter_defaults_to_active() {
+    assert_eq!(BudgetListFilter::default(), BudgetListFilter::Active);
+    assert_eq!(BudgetListFilter::Active.to_string(), "active");
+    assert_eq!(BudgetListFilter::Paused.to_string(), "paused");
+    assert_eq!(BudgetListFilter::All.to_string(), "all");
+}
+
+#[test]
+fn lifecycle_request_rejects_negative_expected_revision() {
+    let request = BudgetLifecycleUpdate {
+        expected_revision: -1,
+    };
+
+    assert!(request.validate().is_err());
+}
+
+#[test]
 fn warning_threshold_rounds_up_to_minor_unit() {
     let (start, end) = sample_period();
     let period = calculate_period(start, end, 1_001, 801, Some(80)).unwrap();

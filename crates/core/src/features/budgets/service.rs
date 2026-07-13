@@ -1,5 +1,6 @@
 use super::models::{
-    Budget, BudgetUpdate, NewBudget, normalize_budget_name, validate_history_paging,
+    Budget, BudgetLifecycleUpdate, BudgetListFilter, BudgetUpdate, NewBudget,
+    normalize_budget_name, validate_history_paging,
 };
 use super::traits::{BudgetsRepositoryTrait, BudgetsServiceTrait};
 use crate::Result;
@@ -18,8 +19,8 @@ impl BudgetsService {
 
 #[async_trait::async_trait]
 impl BudgetsServiceTrait for BudgetsService {
-    async fn list_budgets(&self) -> Result<Vec<Budget>> {
-        self.repository.list_budgets().await
+    async fn list_budgets(&self, filter: BudgetListFilter) -> Result<Vec<Budget>> {
+        self.repository.list_budgets(filter).await
     }
 
     async fn get_budget(&self, id: &str) -> Result<Budget> {
@@ -51,5 +52,15 @@ impl BudgetsServiceTrait for BudgetsService {
         budget.name = normalize_budget_name(&budget.name);
         budget.validate()?;
         self.repository.update_budget(id, budget).await
+    }
+
+    async fn pause_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<Budget> {
+        update.validate()?;
+        self.repository.pause_budget(id, update).await
+    }
+
+    async fn resume_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<Budget> {
+        update.validate()?;
+        self.repository.resume_budget(id, update).await
     }
 }

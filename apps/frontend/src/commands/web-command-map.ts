@@ -238,11 +238,14 @@ export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): We
         body: { categories, transactions },
       };
     }
-    case "get_budgets":
+    case "get_budgets": {
+      const filter = readString(args.filter);
       return {
         method: "GET",
         path: "/budgets",
+        query: filter ? { filter } : undefined,
       };
+    }
     case "get_budget": {
       const budgetId = readString(args.budgetId);
       if (!budgetId) {
@@ -300,6 +303,22 @@ export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): We
         method: "PUT",
         path: `/budgets/${budgetId}`,
         body: updatedBudget,
+      };
+    }
+    case "pause_budget": {
+      const budgetId = readString(args.budgetId);
+      return {
+        method: "POST",
+        path: budgetId ? `/budgets/${budgetId}/pause` : "/budgets/__missing_budget_id__/pause",
+        body: { expectedRevision: readNumber(args.expectedRevision, -1) },
+      };
+    }
+    case "resume_budget": {
+      const budgetId = readString(args.budgetId);
+      return {
+        method: "POST",
+        path: budgetId ? `/budgets/${budgetId}/resume` : "/budgets/__missing_budget_id__/resume",
+        body: { expectedRevision: readNumber(args.expectedRevision, -1) },
       };
     }
     default:

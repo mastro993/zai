@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Table,
   TableBody,
@@ -16,14 +17,20 @@ import {
 import { ScreenBase } from "@/components/screen-base";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 
-import { createBudget } from "../commands/budgets";
+import { createBudget, getBudgets } from "../commands/budgets";
 import {
   budgetCadenceLabel,
+  budgetListFilterLabel,
   budgetStatusLabel,
   budgetStatusVariant,
   formatBudgetPeriod,
 } from "../lib/budget";
-import { type Budget, type BudgetFormValues } from "../types/budget";
+import {
+  BUDGET_LIST_FILTERS,
+  type Budget,
+  type BudgetFormValues,
+  type BudgetListFilter,
+} from "../types/budget";
 import type { TransactionCategory } from "../types/model";
 import { BudgetFormDialog } from "../components/budget-form-dialog";
 
@@ -53,13 +60,16 @@ function BudgetRows({ budgets }: { budgets: Array<Budget> }) {
         {budgets.map((budget) => (
           <TableRow key={budget.id}>
             <TableCell className="font-medium">
-              <Link
-                className="underline-offset-3 hover:underline"
-                to="/cash-flow/budgets/$budgetId"
-                params={{ budgetId: budget.id }}
-              >
-                {budget.name}
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  className="underline-offset-3 hover:underline"
+                  to="/cash-flow/budgets/$budgetId"
+                  params={{ budgetId: budget.id }}
+                >
+                  {budget.name}
+                </Link>
+                {budget.paused ? <Badge variant="secondary">Paused</Badge> : null}
+              </div>
             </TableCell>
             <TableCell>
               <div className="flex flex-col gap-1">
@@ -93,33 +103,97 @@ function BudgetRows({ budgets }: { budgets: Array<Budget> }) {
 
 export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) {
   const [budgets, setBudgets] = useState(initialBudgets);
+  const [filter, setFilter] = useState<BudgetListFilter>("active");
+  const [isListLoading, setIsListLoading] = useState(false);
+  const [listError, setListError] = useState<string>();
   const [isFormOpen, setIsFormOpen] = useState(false);
+
+  const changeFilter = async (values: Array<string>) => {
+    const nextFilter = values.at(-1);
+    if (
+      !nextFilter ||
+      !BUDGET_LIST_FILTERS.includes(nextFilter as BudgetListFilter) ||
+      nextFilter === filter ||
+      isListLoading
+    ) {
+      return;
+    }
+
+    const typedFilter = nextFilter as BudgetListFilter;
+    setIsListLoading(true);
+    setListError(undefined);
+    const result = await getBudgets(typedFilter);
+    if (Result.isSuccess(result)) {
+      setFilter(typedFilter);
+      setBudgets(result.value);
+    } else {
+      setListError(result.error.message);
+    }
+    setIsListLoading(false);
+  };
 
   const submitBudget = async (values: BudgetFormValues) => {
     const result = await createBudget(values);
     if (Result.isSuccess(result)) {
-      setBudgets((current) =>
-        [...current, result.value].toSorted((left, right) => left.name.localeCompare(right.name)),
-      );
+      if (filter === "active") {
+        setBudgets((current) =>
+          [...current, result.value].toSorted((left, right) => left.name.localeCompare(right.name)),
+        );
+      }
     }
     return result;
   };
 
   return (
     <ScreenBase actions={<Button onClick={() => setIsFormOpen(true)}>New budget</Button>}>
-      <h1 className="text-2xl font-medium">Budgets</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-medium">Budgets</h1>
+        <ToggleGroup
+          aria-label="Budget filter"
+          disabled={isListLoading}
+          spacing={0}
+          value={[filter]}
+          variant="outline"
+          onValueChange={(values) => void changeFilter(values)}
+        >
+          {BUDGET_LIST_FILTERS.map((value) => (
+            <ToggleGroupItem key={value} value={value}>
+              {budgetListFilterLabel[value]}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+      {listError ? (
+        <p
+          role="alert"
+          className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+        >
+          {listError}
+        </p>
+      ) : null}
+      {isListLoading ? (
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          Loading budgets...
+        </p>
+      ) : null}
       {budgets.length === 0 ? (
         <div className="flex flex-col items-start gap-3 border p-6">
           <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium">No budgets yet</p>
+            <p className="text-sm font-medium">
+              {filter === "active" ? "No active budgets" : `No ${filter} budgets`}
+            </p>
             <p className="text-sm text-muted-foreground">
-              Create a budget for any cadence, category scope, or measurement mode.
+              {filter === "active"
+                ? "Create a budget for any cadence, category scope, or measurement mode."
+                : "Change filter or create a budget to see it here."}
             </p>
           </div>
-          <Button onClick={() => setIsFormOpen(true)}>New budget</Button>
+          {filter === "active" ? (
+            <Button onClick={() => setIsFormOpen(true)}>New budget</Button>
+          ) : null}
         </div>
       ) : (
-        <div className="border">
+        <div className="border" aria-busy={isListLoading}>
           <div className="border-b bg-muted/40 px-3 py-2 text-xs font-medium">Budgets</div>
           <BudgetRows budgets={budgets} />
         </div>

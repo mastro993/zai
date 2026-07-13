@@ -1,4 +1,4 @@
-import type { BudgetStatus } from "../types/budget";
+import type { BudgetListFilter, BudgetStatus } from "../types/budget";
 
 export const budgetCadenceLabel = {
   day: "Daily",
@@ -33,6 +33,12 @@ export const budgetStatusLabel: Record<BudgetStatus, string> = {
   onTrack: "On track",
   warning: "Warning",
   overspent: "Overspent",
+};
+
+export const budgetListFilterLabel: Record<BudgetListFilter, string> = {
+  active: "Active",
+  paused: "Paused",
+  all: "All",
 };
 
 export const budgetStatusVariant = (status: BudgetStatus) => {

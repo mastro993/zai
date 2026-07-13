@@ -7,10 +7,33 @@ describe("budget web command map", () => {
     expect(buildWebRequestSpec("get_budgets")).toEqual({
       method: "GET",
       path: "/budgets",
+      query: undefined,
     });
     expect(buildWebRequestSpec("get_budget", { budgetId: "budget-1" })).toEqual({
       method: "GET",
       path: "/budgets/budget-1",
+    });
+  });
+
+  it("maps budget list filters and lifecycle changes", () => {
+    expect(buildWebRequestSpec("get_budgets", { filter: "paused" })).toEqual({
+      method: "GET",
+      path: "/budgets",
+      query: { filter: "paused" },
+    });
+    expect(
+      buildWebRequestSpec("pause_budget", { budgetId: "budget-1", expectedRevision: 3 }),
+    ).toEqual({
+      method: "POST",
+      path: "/budgets/budget-1/pause",
+      body: { expectedRevision: 3 },
+    });
+    expect(
+      buildWebRequestSpec("resume_budget", { budgetId: "budget-1", expectedRevision: 4 }),
+    ).toEqual({
+      method: "POST",
+      path: "/budgets/budget-1/resume",
+      body: { expectedRevision: 4 },
     });
   });
 

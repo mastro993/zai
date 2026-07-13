@@ -1,0 +1,56 @@
+use super::models::BudgetRow;
+use super::projection::materialize_budget;
+use crate::errors::{IntoStorage, StorageError};
+use crate::schema::budgets;
+use chrono::NaiveDateTime;
+use diesel::prelude::*;
+use diesel::sqlite::SqliteConnection;
+use zai_core::Error;
+use zai_core::features::budgets::models::{Budget, BudgetLifecycleUpdate};
+
+pub(super) fn set_budget_paused(
+    conn: &mut SqliteConnection,
+    id: &str,
+    update: BudgetLifecycleUpdate,
+    paused: bool,
+    now: NaiveDateTime,
+) -> crate::errors::Result<Budget> {
+    update.validate().map_err(StorageError::CoreError)?;
+    let stored = budgets::table
+        .filter(budgets::id.eq(id))
+        .filter(budgets::deleted_at.is_null())
+        .first::<BudgetRow>(conn)
+        .into_storage()?;
+    if stored.revision != update.expected_revision {
+        return Err(StorageError::CoreError(Error::RevisionConflict {
+            current_revision: stored.revision,
+        }));
+    }
+
+    let mut budget = match super::repository::projected_budget_from_connection(conn, id, now)? {
+        super::repository::ProjectionState::Current(budget) => budget,
+        super::repository::ProjectionState::NeedsMaterialization => {
+            materialize_budget(conn, id, now)?
+        }
+    };
+    let revision = stored.revision.checked_add(1).ok_or_else(|| {
+        StorageError::CoreError(Error::InvalidData("Budget revision overflow".to_string()))
+    })?;
+    let timestamp = chrono::Utc::now().naive_utc();
+    diesel::update(
+        budgets::table
+            .filter(budgets::id.eq(id))
+            .filter(budgets::deleted_at.is_null()),
+    )
+    .set((
+        budgets::paused.eq(paused),
+        budgets::updated_at.eq(timestamp),
+        budgets::revision.eq(revision),
+    ))
+    .execute(conn)
+    .into_storage()?;
+
+    budget.paused = paused;
+    budget.revision = revision;
+    Ok(budget)
+}

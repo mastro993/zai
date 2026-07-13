@@ -69,6 +69,7 @@ diesel::table! {
         updated_at -> Timestamp,
         deleted_at -> Nullable<Timestamp>,
         revision -> BigInt,
+        paused -> Bool,
     }
 }
 

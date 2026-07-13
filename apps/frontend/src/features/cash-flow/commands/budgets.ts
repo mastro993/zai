@@ -1,9 +1,9 @@
 import { type CommandResult, invokeCommand } from "@/commands/shared";
 
-import type { Budget, BudgetFormValues, BudgetHistory } from "../types/budget";
+import type { Budget, BudgetFormValues, BudgetHistory, BudgetListFilter } from "../types/budget";
 
-export const getBudgets = (): CommandResult<Array<Budget>> => {
-  return invokeCommand<Array<Budget>>("get_budgets");
+export const getBudgets = (filter: BudgetListFilter = "active"): CommandResult<Array<Budget>> => {
+  return invokeCommand<Array<Budget>>("get_budgets", filter === "active" ? undefined : { filter });
 };
 
 export const getBudget = (budgetId: string): CommandResult<Budget> => {
@@ -50,4 +50,12 @@ export const getBudgetHistory = (
   perPage = 50,
 ): CommandResult<BudgetHistory> => {
   return invokeCommand<BudgetHistory>("get_budget_history", { budgetId, page, perPage });
+};
+
+export const pauseBudget = (budgetId: string, expectedRevision: number): CommandResult<Budget> => {
+  return invokeCommand<Budget>("pause_budget", { budgetId, expectedRevision });
+};
+
+export const resumeBudget = (budgetId: string, expectedRevision: number): CommandResult<Budget> => {
+  return invokeCommand<Budget>("resume_budget", { budgetId, expectedRevision });
 };

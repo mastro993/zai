@@ -1,7 +1,7 @@
 use super::{new_budget, setup};
 use crate::test_utils::TempDb;
 use zai_core::Error;
-use zai_core::features::budgets::models::BudgetUpdate;
+use zai_core::features::budgets::models::{BudgetLifecycleUpdate, BudgetListFilter, BudgetUpdate};
 use zai_core::features::budgets::traits::BudgetsRepositoryTrait;
 
 #[tokio::test]
@@ -113,4 +113,108 @@ async fn stale_budget_update_returns_current_revision_without_changing_budget() 
     assert_eq!(current.name, updated.name);
     assert_eq!(current.revision, 1);
     assert_eq!(current.current_period.base_allowance, 10_000);
+}
+
+#[tokio::test]
+async fn pausing_hides_budget_from_active_list_and_resume_restores_it() {
+    let temp_db = TempDb::new();
+    let (budgets, _, _) = setup(&temp_db);
+    let created = budgets
+        .create_budget(new_budget("lifecycle", "Lifecycle", 10_000))
+        .await
+        .expect("budget");
+
+    let paused = budgets
+        .pause_budget(
+            "lifecycle",
+            BudgetLifecycleUpdate {
+                expected_revision: created.revision,
+            },
+        )
+        .await
+        .expect("pause");
+
+    assert!(paused.paused);
+    assert_eq!(paused.revision, 1);
+    assert!(
+        budgets
+            .list_budgets(BudgetListFilter::Active)
+            .await
+            .expect("active budgets")
+            .is_empty()
+    );
+    assert_eq!(
+        budgets
+            .list_budgets(BudgetListFilter::Paused)
+            .await
+            .expect("paused budgets")
+            .len(),
+        1
+    );
+    assert_eq!(
+        budgets
+            .list_budgets(BudgetListFilter::All)
+            .await
+            .expect("all budgets")
+            .len(),
+        1
+    );
+
+    let resumed = budgets
+        .resume_budget(
+            "lifecycle",
+            BudgetLifecycleUpdate {
+                expected_revision: paused.revision,
+            },
+        )
+        .await
+        .expect("resume");
+
+    assert!(!resumed.paused);
+    assert_eq!(resumed.revision, 2);
+    assert_eq!(
+        budgets
+            .list_budgets(BudgetListFilter::Active)
+            .await
+            .expect("active budgets")
+            .len(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn stale_lifecycle_write_returns_current_revision() {
+    let temp_db = TempDb::new();
+    let (budgets, _, _) = setup(&temp_db);
+    let created = budgets
+        .create_budget(new_budget("stale-lifecycle", "Stale lifecycle", 10_000))
+        .await
+        .expect("budget");
+
+    budgets
+        .pause_budget(
+            "stale-lifecycle",
+            BudgetLifecycleUpdate {
+                expected_revision: created.revision,
+            },
+        )
+        .await
+        .expect("pause");
+
+    let error = budgets
+        .resume_budget(
+            "stale-lifecycle",
+            BudgetLifecycleUpdate {
+                expected_revision: created.revision,
+            },
+        )
+        .await
+        .expect_err("stale lifecycle write");
+
+    assert!(matches!(
+        error,
+        Error::RevisionConflict {
+            current_revision: 1
+        }
+    ));
 }
