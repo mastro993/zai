@@ -1,5 +1,5 @@
 import { Result } from "@praha/byethrow";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,7 @@ export function BudgetDetailScreen({
   categories: Array<TransactionCategory>;
 }) {
   const navigate = useNavigate();
+  const router = useRouter();
   const [currentBudget, setCurrentBudget] = useState(budget);
   const [history, setHistory] = useState(initialHistory);
   const [historyError, setHistoryError] = useState<string>();
@@ -136,6 +137,7 @@ export function BudgetDetailScreen({
       return;
     }
 
+    router.clearCache({ filter: (match) => match.routeId === "/cash-flow/budgets/" });
     await navigate({ to: "/cash-flow/budgets" });
   };
 

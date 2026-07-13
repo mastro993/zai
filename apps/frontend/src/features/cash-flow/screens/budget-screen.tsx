@@ -135,7 +135,7 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
   const submitBudget = async (values: BudgetFormValues) => {
     const result = await createBudget(values);
     if (Result.isSuccess(result)) {
-      if (filter === "active") {
+      if (filter !== "paused") {
         setBudgets((current) =>
           [...current, result.value].toSorted((left, right) => left.name.localeCompare(right.name)),
         );
