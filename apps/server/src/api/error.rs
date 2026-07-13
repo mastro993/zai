@@ -24,7 +24,7 @@ fn status_for_error(error: &Error) -> StatusCode {
         | Error::RevisionConflict { .. }
         | Error::BudgetImpactConfirmationRequired { .. }
         | Error::CategoryDeletionBlocked { .. } => StatusCode::CONFLICT,
-        Error::PeriodAdvanceLimitExceeded(_) | Error::ClockRegression(_) => StatusCode::CONFLICT,
+        Error::PeriodAdvanceLimitExceeded(_) | Error::ClockRegression(_) | Error::CalculationOverflow(_) => StatusCode::CONFLICT,
         Error::Database(db_error) => match db_error {
             DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
             DatabaseError::UniqueViolation(_) | DatabaseError::ForeignKeyViolation(_) => {
@@ -71,6 +71,20 @@ mod tests {
         assert_eq!(
             serde_json::to_value(body).expect("error envelope should serialize")["code"],
             "conflict"
+        );
+    }
+
+    #[test]
+    fn calculation_overflow_maps_to_http_conflict() {
+        let (status, Json(body)) = command_error(
+            "Failed to materialize budget",
+            Error::CalculationOverflow("Budget calculation overflow".to_string()),
+        );
+
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(
+            serde_json::to_value(body).expect("error envelope should serialize")["code"],
+            "calculationOverflow"
         );
     }
 }

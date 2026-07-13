@@ -1,5 +1,6 @@
 use super::*;
 use chrono::NaiveDate;
+use crate::Error;
 
 fn sample_period() -> (NaiveDateTime, NaiveDateTime) {
     let start = NaiveDate::from_ymd_opt(2026, 7, 1)
@@ -188,6 +189,33 @@ fn current_period_uses_half_open_local_calendar_boundaries() {
                 .unwrap(),
         )
     );
+}
+
+#[test]
+fn checked_arithmetic_overflow_returns_structured_error() {
+    let (start, end) = sample_period();
+    let previous = BudgetPeriod {
+        start,
+        end,
+        base_allowance: i64::MAX,
+        effective_allowance: i64::MAX,
+        net_budget_spending: 1,
+        remaining_allowance: i64::MAX - 1,
+        status: BudgetStatus::Overspent,
+    };
+
+    let error = calculate_period_with_rollover(
+        start,
+        end,
+        2,
+        0,
+        BudgetRolloverMode::PreviousPeriodOnly,
+        Some(&previous),
+        None,
+    )
+    .expect_err("overflow");
+
+    assert!(matches!(error, Error::CalculationOverflow(_)));
 }
 
 #[test]

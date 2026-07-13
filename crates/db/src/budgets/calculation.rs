@@ -88,7 +88,7 @@ pub(super) fn calculate_spending(
                 _ => 0,
             };
             total.checked_add(contribution).ok_or_else(|| {
-                StorageError::CoreError(Error::InvalidData(
+                StorageError::CoreError(Error::CalculationOverflow(
                     "Budget calculation overflow".to_string(),
                 ))
             })

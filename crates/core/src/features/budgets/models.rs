@@ -346,15 +346,15 @@ pub fn calculate_period_with_rollover(
         (BudgetRolloverMode::PreviousPeriodOnly, Some(previous)) => previous
             .base_allowance
             .checked_sub(previous.net_budget_spending)
-            .ok_or_else(|| Error::InvalidData("Budget calculation overflow".to_string()))?,
+            .ok_or_else(|| Error::CalculationOverflow("Budget calculation overflow".to_string()))?,
         (BudgetRolloverMode::Cumulative, Some(previous)) => previous.remaining_allowance,
     };
     let effective_allowance = base_allowance
         .checked_add(carry)
-        .ok_or_else(|| Error::InvalidData("Budget calculation overflow".to_string()))?;
+        .ok_or_else(|| Error::CalculationOverflow("Budget calculation overflow".to_string()))?;
     let remaining_allowance = effective_allowance
         .checked_sub(net_budget_spending)
-        .ok_or_else(|| Error::InvalidData("Budget calculation overflow".to_string()))?;
+        .ok_or_else(|| Error::CalculationOverflow("Budget calculation overflow".to_string()))?;
     let status = if net_budget_spending > effective_allowance {
         BudgetStatus::Overspent
     } else if let Some(percentage) = warning_percentage
@@ -364,7 +364,7 @@ pub fn calculate_period_with_rollover(
             .checked_mul(i64::from(percentage))
             .and_then(|value| value.checked_add(99))
             .map(|value| value / 100)
-            .ok_or_else(|| Error::InvalidData("Budget calculation overflow".to_string()))?;
+            .ok_or_else(|| Error::CalculationOverflow("Budget calculation overflow".to_string()))?;
         if net_budget_spending >= threshold {
             BudgetStatus::Warning
         } else {
