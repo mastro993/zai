@@ -1,5 +1,5 @@
 use super::models::{BudgetConfigurationRow, BudgetPeriodResultRow};
-use super::projection::period_from_rows;
+use super::projection_persistence::period_from_rows;
 use crate::errors::IntoCore;
 use crate::pagination::total_pages;
 use crate::schema::{budget_configurations, budget_period_results, budgets};

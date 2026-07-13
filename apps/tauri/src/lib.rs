@@ -56,6 +56,7 @@ pub fn run() {
             commands::budgets::get_budget_history,
             commands::budgets::create_budget,
             commands::budgets::update_budget,
+            commands::budgets::delete_budget,
             commands::budgets::pause_budget,
             commands::budgets::resume_budget,
             commands::stronghold::get_stronghold_vault_password,

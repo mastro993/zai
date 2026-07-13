@@ -306,6 +306,14 @@ export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): We
         body: updatedBudget,
       };
     }
+    case "delete_budget": {
+      const budgetId = readString(args.budgetId);
+      return {
+        method: "DELETE",
+        path: budgetId ? `/budgets/${budgetId}` : "/budgets/__missing_budget_id__",
+        body: { expectedRevision: readNumber(args.expectedRevision, -1) },
+      };
+    }
     case "pause_budget": {
       const budgetId = readString(args.budgetId);
       return {

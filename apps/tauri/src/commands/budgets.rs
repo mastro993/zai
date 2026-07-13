@@ -78,6 +78,20 @@ pub async fn update_budget(
 }
 
 #[tauri::command]
+pub async fn delete_budget(
+    budget_id: String,
+    expected_revision: i64,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<()> {
+    debug!("Deleting budget {}...", budget_id);
+    state
+        .budgets_service()
+        .delete_budget(&budget_id, BudgetLifecycleUpdate { expected_revision })
+        .await
+        .map_err(|error| command_error("Failed to delete budget", error))
+}
+
+#[tauri::command]
 pub async fn pause_budget(
     budget_id: String,
     expected_revision: i64,

@@ -44,6 +44,10 @@ export const updateBudget = (
   });
 };
 
+export const deleteBudget = (budgetId: string, expectedRevision: number): CommandResult<void> => {
+  return invokeCommand<void>("delete_budget", { budgetId, expectedRevision });
+};
+
 export const getBudgetHistory = (
   budgetId: string,
   page = 1,

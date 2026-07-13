@@ -44,7 +44,10 @@ struct BudgetListQuery {
 pub fn router() -> Router<Arc<ServiceContext>> {
     Router::new()
         .route("/budgets", get(list_budgets).post(create_budget))
-        .route("/budgets/{budget_id}", get(get_budget).put(update_budget))
+        .route(
+            "/budgets/{budget_id}",
+            get(get_budget).put(update_budget).delete(delete_budget),
+        )
         .route("/budgets/{budget_id}/pause", post(pause_budget))
         .route("/budgets/{budget_id}/resume", post(resume_budget))
         .route("/budgets/{budget_id}/history", get(get_budget_history))
@@ -114,6 +117,20 @@ async fn update_budget(
         .await
         .map(Json)
         .map_err(|error| command_error("Failed to update budget", error))
+}
+
+async fn delete_budget(
+    State(context): State<Arc<ServiceContext>>,
+    Path(budget_id): Path<String>,
+    payload: Result<Json<BudgetLifecycleUpdate>, JsonRejection>,
+) -> BudgetResult<StatusCode> {
+    let Json(update) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    context
+        .budgets_service()
+        .delete_budget(&budget_id, update)
+        .await
+        .map(|_| StatusCode::NO_CONTENT)
+        .map_err(|error| command_error("Failed to delete budget", error))
 }
 
 async fn pause_budget(

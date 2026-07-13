@@ -76,6 +76,19 @@ describe("budget web command map", () => {
     });
   });
 
+  it("maps budget deletion to DELETE with revision safety", () => {
+    expect(
+      buildWebRequestSpec("delete_budget", {
+        budgetId: "budget-1",
+        expectedRevision: 3,
+      }),
+    ).toEqual({
+      method: "DELETE",
+      path: "/budgets/budget-1",
+      body: { expectedRevision: 3 },
+    });
+  });
+
   it("maps budget history with default pagination", () => {
     expect(buildWebRequestSpec("get_budget_history", { budgetId: "budget-1" })).toEqual({
       method: "GET",

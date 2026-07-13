@@ -18,6 +18,7 @@ pub trait BudgetsRepositoryTrait: Send + Sync {
     async fn update_budget(&self, id: &str, budget: BudgetUpdate) -> Result<Budget>;
     async fn pause_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<Budget>;
     async fn resume_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<Budget>;
+    async fn delete_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<()>;
 }
 
 #[async_trait]
@@ -34,6 +35,7 @@ pub trait BudgetsServiceTrait: Send + Sync {
     async fn update_budget(&self, id: &str, budget: BudgetUpdate) -> Result<Budget>;
     async fn pause_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<Budget>;
     async fn resume_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<Budget>;
+    async fn delete_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<()>;
 }
 
 pub trait CalendarClock: Send + Sync {

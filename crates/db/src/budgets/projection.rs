@@ -1,15 +1,19 @@
 use super::calculation::{
     calculate_configuration, count_missing_periods, invalid_budget, load_category_hierarchy,
-    next_period, parse_cadence, status_string, validate_period_boundaries,
+    next_period, parse_cadence, validate_period_boundaries,
 };
-use super::models::{BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget};
+use super::models::{BudgetConfigurationRow, BudgetRow, build_budget};
+pub(super) use super::projection_persistence::{
+    all_configurations, load_previous_period, result_row, upsert_period_result,
+};
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{budget_configurations, budget_period_results, budgets};
 use chrono::NaiveDateTime;
+use diesel::OptionalExtension;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use zai_core::features::budgets::models::{Budget, BudgetPeriod, current_period};
-use zai_core::{Error, Result};
+use zai_core::Error;
+use zai_core::features::budgets::models::{Budget, current_period};
 
 pub(crate) fn materialize_budget(
     conn: &mut SqliteConnection,
@@ -146,9 +150,18 @@ pub(crate) fn rebuild_budget_projections(
         return Ok(());
     }
 
+    let active_budget_ids = budgets::table
+        .filter(budgets::id.eq_any(budget_ids))
+        .filter(budgets::deleted_at.is_null())
+        .select(budgets::id)
+        .load::<String>(conn)
+        .into_storage()?;
+    if active_budget_ids.is_empty() {
+        return Ok(());
+    }
     let categories = load_category_hierarchy(conn)?;
-    for budget_id in budget_ids {
-        rebuild_budget_projection(conn, budget_id, &categories)?;
+    for budget_id in active_budget_ids {
+        rebuild_budget_projection(conn, &budget_id, &categories)?;
     }
     Ok(())
 }
@@ -158,11 +171,15 @@ fn rebuild_budget_projection(
     id: &str,
     categories: &[zai_core::features::budgets::models::CategoryHierarchy],
 ) -> crate::errors::Result<()> {
-    let budget = budgets::table
+    let Some(budget) = budgets::table
         .filter(budgets::id.eq(id))
         .filter(budgets::deleted_at.is_null())
         .first::<BudgetRow>(conn)
-        .into_storage()?;
+        .optional()
+        .into_storage()?
+    else {
+        return Ok(());
+    };
     let cadence = parse_cadence(&budget)?;
     let configurations = all_configurations(conn, id)?;
 
@@ -196,11 +213,15 @@ pub(crate) fn repair_budget_results(
     earliest_period_start: NaiveDateTime,
     now: NaiveDateTime,
 ) -> crate::errors::Result<()> {
-    let budget = budgets::table
+    let Some(budget) = budgets::table
         .filter(budgets::id.eq(id))
         .filter(budgets::deleted_at.is_null())
         .first::<BudgetRow>(conn)
-        .into_storage()?;
+        .optional()
+        .into_storage()?
+    else {
+        return Ok(());
+    };
     let cadence = parse_cadence(&budget)?;
     let (current_start, _) = current_period(now, cadence).map_err(StorageError::CoreError)?;
     let configurations = all_configurations(conn, id)?;
@@ -281,111 +302,5 @@ pub(crate) fn repair_budget_results(
         };
     }
 
-    Ok(())
-}
-
-fn all_configurations(
-    conn: &mut SqliteConnection,
-    id: &str,
-) -> crate::errors::Result<Vec<BudgetConfigurationRow>> {
-    budget_configurations::table
-        .filter(budget_configurations::budget_id.eq(id))
-        .order(budget_configurations::period_start.asc())
-        .load::<BudgetConfigurationRow>(conn)
-        .into_storage()
-}
-
-pub(super) fn load_previous_period(
-    conn: &mut SqliteConnection,
-    id: &str,
-    period_start: NaiveDateTime,
-) -> crate::errors::Result<Option<BudgetPeriod>> {
-    let Some(result) = budget_period_results::table
-        .filter(budget_period_results::budget_id.eq(id))
-        .filter(budget_period_results::period_start.lt(period_start))
-        .order(budget_period_results::period_start.desc())
-        .first::<BudgetPeriodResultRow>(conn)
-        .optional()
-        .into_storage()?
-    else {
-        return Ok(None);
-    };
-    let configuration = budget_configurations::table
-        .filter(budget_configurations::budget_id.eq(id))
-        .filter(budget_configurations::period_start.eq(result.period_start))
-        .first::<BudgetConfigurationRow>(conn)
-        .into_storage()?;
-    period_from_rows(configuration, result)
-        .map(Some)
-        .map_err(StorageError::CoreError)
-}
-
-pub(super) fn period_from_rows(
-    configuration: BudgetConfigurationRow,
-    result: BudgetPeriodResultRow,
-) -> Result<BudgetPeriod> {
-    if configuration.period_start >= configuration.period_end
-        || result.period_start >= result.period_end
-        || configuration.period_start != result.period_start
-        || configuration.period_end != result.period_end
-    {
-        return Err(Error::Repository(
-            "Invalid budget period boundaries".to_string(),
-        ));
-    }
-    let status = match result.status.as_str() {
-        "onTrack" => zai_core::features::budgets::models::BudgetStatus::OnTrack,
-        "warning" => zai_core::features::budgets::models::BudgetStatus::Warning,
-        "overspent" => zai_core::features::budgets::models::BudgetStatus::Overspent,
-        _ => return Err(Error::Repository("Invalid budget status".to_string())),
-    };
-    Ok(BudgetPeriod {
-        start: result.period_start,
-        end: result.period_end,
-        base_allowance: configuration.base_allowance,
-        effective_allowance: result.effective_allowance,
-        net_budget_spending: result.net_budget_spending,
-        remaining_allowance: result.remaining_allowance,
-        status,
-    })
-}
-
-pub(super) fn result_row(id: &str, period: &BudgetPeriod) -> BudgetPeriodResultRow {
-    BudgetPeriodResultRow {
-        budget_id: id.to_string(),
-        period_start: period.start,
-        period_end: period.end,
-        net_budget_spending: period.net_budget_spending,
-        effective_allowance: period.effective_allowance,
-        remaining_allowance: period.remaining_allowance,
-        status: status_string(period.status),
-    }
-}
-
-pub(super) fn upsert_period_result(
-    conn: &mut SqliteConnection,
-    result: &BudgetPeriodResultRow,
-) -> crate::errors::Result<()> {
-    let changed = diesel::update(
-        budget_period_results::table
-            .filter(budget_period_results::budget_id.eq(&result.budget_id))
-            .filter(budget_period_results::period_start.eq(result.period_start)),
-    )
-    .set((
-        budget_period_results::period_end.eq(result.period_end),
-        budget_period_results::net_budget_spending.eq(result.net_budget_spending),
-        budget_period_results::effective_allowance.eq(result.effective_allowance),
-        budget_period_results::remaining_allowance.eq(result.remaining_allowance),
-        budget_period_results::status.eq(&result.status),
-    ))
-    .execute(conn)
-    .into_storage()?;
-
-    if changed == 0 {
-        diesel::insert_into(budget_period_results::table)
-            .values(result)
-            .execute(conn)
-            .into_storage()?;
-    }
     Ok(())
 }
