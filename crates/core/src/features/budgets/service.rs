@@ -63,4 +63,9 @@ impl BudgetsServiceTrait for BudgetsService {
         update.validate()?;
         self.repository.resume_budget(id, update).await
     }
+
+    async fn delete_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<()> {
+        update.validate()?;
+        self.repository.delete_budget(id, update).await
+    }
 }

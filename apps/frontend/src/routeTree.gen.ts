@@ -18,6 +18,7 @@ import { Route as CashFlowIndexRouteImport } from './routes/cash-flow.index'
 import { Route as CashFlowTransactionsRouteImport } from './routes/cash-flow.transactions'
 import { Route as CashFlowCategoriesRouteImport } from './routes/cash-flow.categories'
 import { Route as CashFlowBudgetsRouteImport } from './routes/cash-flow.budgets'
+import { Route as CashFlowBudgetsIndexRouteImport } from './routes/cash-flow.budgets.index'
 import { Route as CashFlowBudgetsBudgetIdRouteImport } from './routes/cash-flow.budgets.$budgetId'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -65,6 +66,11 @@ const CashFlowBudgetsRoute = CashFlowBudgetsRouteImport.update({
   path: '/budgets',
   getParentRoute: () => CashFlowRoute,
 } as any)
+const CashFlowBudgetsIndexRoute = CashFlowBudgetsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CashFlowBudgetsRoute,
+} as any)
 const CashFlowBudgetsBudgetIdRoute = CashFlowBudgetsBudgetIdRouteImport.update({
   id: '/$budgetId',
   path: '/$budgetId',
@@ -82,17 +88,18 @@ export interface FileRoutesByFullPath {
   '/cash-flow/transactions': typeof CashFlowTransactionsRoute
   '/cash-flow/': typeof CashFlowIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
+  '/cash-flow/budgets/': typeof CashFlowBudgetsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/net-worth': typeof NetWorthRoute
   '/settings': typeof SettingsRoute
-  '/cash-flow/budgets': typeof CashFlowBudgetsRouteWithChildren
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
   '/cash-flow/transactions': typeof CashFlowTransactionsRoute
   '/cash-flow': typeof CashFlowIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
+  '/cash-flow/budgets': typeof CashFlowBudgetsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -106,6 +113,7 @@ export interface FileRoutesById {
   '/cash-flow/transactions': typeof CashFlowTransactionsRoute
   '/cash-flow/': typeof CashFlowIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
+  '/cash-flow/budgets/': typeof CashFlowBudgetsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -120,17 +128,18 @@ export interface FileRouteTypes {
     | '/cash-flow/transactions'
     | '/cash-flow/'
     | '/cash-flow/budgets/$budgetId'
+    | '/cash-flow/budgets/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard'
     | '/net-worth'
     | '/settings'
-    | '/cash-flow/budgets'
     | '/cash-flow/categories'
     | '/cash-flow/transactions'
     | '/cash-flow'
     | '/cash-flow/budgets/$budgetId'
+    | '/cash-flow/budgets'
   id:
     | '__root__'
     | '/'
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/cash-flow/transactions'
     | '/cash-flow/'
     | '/cash-flow/budgets/$budgetId'
+    | '/cash-flow/budgets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -218,6 +228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CashFlowBudgetsRouteImport
       parentRoute: typeof CashFlowRoute
     }
+    '/cash-flow/budgets/': {
+      id: '/cash-flow/budgets/'
+      path: '/'
+      fullPath: '/cash-flow/budgets/'
+      preLoaderRoute: typeof CashFlowBudgetsIndexRouteImport
+      parentRoute: typeof CashFlowBudgetsRoute
+    }
     '/cash-flow/budgets/$budgetId': {
       id: '/cash-flow/budgets/$budgetId'
       path: '/$budgetId'
@@ -230,10 +247,12 @@ declare module '@tanstack/react-router' {
 
 interface CashFlowBudgetsRouteChildren {
   CashFlowBudgetsBudgetIdRoute: typeof CashFlowBudgetsBudgetIdRoute
+  CashFlowBudgetsIndexRoute: typeof CashFlowBudgetsIndexRoute
 }
 
 const CashFlowBudgetsRouteChildren: CashFlowBudgetsRouteChildren = {
   CashFlowBudgetsBudgetIdRoute: CashFlowBudgetsBudgetIdRoute,
+  CashFlowBudgetsIndexRoute: CashFlowBudgetsIndexRoute,
 }
 
 const CashFlowBudgetsRouteWithChildren = CashFlowBudgetsRoute._addFileChildren(

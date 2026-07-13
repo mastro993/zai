@@ -242,6 +242,87 @@ async fn pause_and_resume_keep_budget_history_without_active_list_gaps() {
 }
 
 #[tokio::test]
+async fn delete_budget_returns_no_content_is_idempotent_and_releases_name() {
+    let (app, _dir) = setup_app("zai-budget-delete").await;
+    let (_, created) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/budgets",
+        Some(budget_payload("Deletable")),
+    )
+    .await;
+    let budget_id = created["id"].as_str().expect("budget id");
+
+    let (status, body) = request_json(
+        &app,
+        "DELETE",
+        &format!("/api/cash-flow/budgets/{budget_id}"),
+        Some(json!({ "expectedRevision": created["revision"] })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    assert_eq!(body, Value::Null);
+
+    let (list_status, list) =
+        request_json(&app, "GET", "/api/cash-flow/budgets?filter=all", None).await;
+    assert_eq!(list_status, StatusCode::OK);
+    assert_eq!(list, json!([]));
+
+    let (detail_status, detail) = request_json(
+        &app,
+        "GET",
+        &format!("/api/cash-flow/budgets/{budget_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(detail_status, StatusCode::NOT_FOUND);
+    assert_eq!(detail["code"], "notFound");
+
+    let (retry_status, retry_body) = request_json(
+        &app,
+        "DELETE",
+        &format!("/api/cash-flow/budgets/{budget_id}"),
+        Some(json!({ "expectedRevision": created["revision"] })),
+    )
+    .await;
+    assert_eq!(retry_status, StatusCode::NO_CONTENT);
+    assert_eq!(retry_body, Value::Null);
+
+    let (_, replacement) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/budgets",
+        Some(budget_payload("Deletable")),
+    )
+    .await;
+    assert_ne!(replacement["id"], budget_id);
+}
+
+#[tokio::test]
+async fn delete_budget_rejects_stale_revision() {
+    let (app, _dir) = setup_app("zai-budget-delete-revision").await;
+    let (_, created) = request_json(
+        &app,
+        "POST",
+        "/api/cash-flow/budgets",
+        Some(budget_payload("Revision")),
+    )
+    .await;
+    let budget_id = created["id"].as_str().expect("budget id");
+
+    let (status, body) = request_json(
+        &app,
+        "DELETE",
+        &format!("/api/cash-flow/budgets/{budget_id}"),
+        Some(json!({ "expectedRevision": 1 })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["code"], "revisionConflict");
+    assert_eq!(body["details"]["currentRevision"], 0);
+}
+
+#[tokio::test]
 async fn create_budget_accepts_cadence_scope_and_measurement_mode() {
     let (app, _dir) = setup_app("zai-budget-options").await;
     let (category_status, category) = request_json(

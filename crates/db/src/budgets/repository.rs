@@ -3,7 +3,7 @@ use super::calculation::{
 };
 use super::edit::update_budget as update_budget_in_storage;
 use super::history::load_history;
-use super::lifecycle::set_budget_paused;
+use super::lifecycle::{delete_budget as delete_budget_in_storage, set_budget_paused};
 use super::models::{BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget};
 use super::projection::materialize_budget;
 use crate::connection::{DbPool, get_connection};
@@ -288,6 +288,14 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
         let id = id.to_string();
         self.writer
             .exec(move |conn| set_budget_paused(conn, &id, update, false, now))
+            .await
+    }
+
+    async fn delete_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<()> {
+        let deleted_at = self.clock.sample();
+        let id = id.to_string();
+        self.writer
+            .exec(move |conn| delete_budget_in_storage(conn, &id, update, deleted_at))
             .await
     }
 }

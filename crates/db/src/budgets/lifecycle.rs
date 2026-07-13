@@ -54,3 +54,42 @@ pub(super) fn set_budget_paused(
     budget.revision = revision;
     Ok(budget)
 }
+
+pub(super) fn delete_budget(
+    conn: &mut SqliteConnection,
+    id: &str,
+    update: BudgetLifecycleUpdate,
+    deleted_at: NaiveDateTime,
+) -> crate::errors::Result<()> {
+    update.validate().map_err(StorageError::CoreError)?;
+    let stored = budgets::table
+        .filter(budgets::id.eq(id))
+        .first::<BudgetRow>(conn)
+        .into_storage()?;
+
+    if stored.deleted_at.is_some() {
+        return Ok(());
+    }
+    if stored.revision != update.expected_revision {
+        return Err(StorageError::CoreError(Error::RevisionConflict {
+            current_revision: stored.revision,
+        }));
+    }
+
+    let revision = stored.revision.checked_add(1).ok_or_else(|| {
+        StorageError::CoreError(Error::InvalidData("Budget revision overflow".to_string()))
+    })?;
+    diesel::update(
+        budgets::table
+            .filter(budgets::id.eq(id))
+            .filter(budgets::deleted_at.is_null()),
+    )
+    .set((
+        budgets::deleted_at.eq(deleted_at),
+        budgets::updated_at.eq(deleted_at),
+        budgets::revision.eq(revision),
+    ))
+    .execute(conn)
+    .into_storage()?;
+    Ok(())
+}

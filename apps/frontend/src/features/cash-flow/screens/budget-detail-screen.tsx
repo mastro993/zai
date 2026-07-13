@@ -1,5 +1,5 @@
 import { Result } from "@praha/byethrow";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,14 @@ import {
 import { ScreenBase } from "@/components/screen-base";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 
-import { getBudgetHistory, pauseBudget, resumeBudget, updateBudget } from "../commands/budgets";
+import {
+  deleteBudget,
+  getBudgetHistory,
+  pauseBudget,
+  resumeBudget,
+  updateBudget,
+} from "../commands/budgets";
+import { BudgetDeleteConfirmationDialog } from "../components/budget-delete-confirmation-dialog";
 import { BudgetFormDialog } from "../components/budget-form-dialog";
 import {
   budgetCadenceLabel,
@@ -37,6 +44,8 @@ export function BudgetDetailScreen({
   history: BudgetHistory;
   categories: Array<TransactionCategory>;
 }) {
+  const navigate = useNavigate();
+  const router = useRouter();
   const [currentBudget, setCurrentBudget] = useState(budget);
   const [history, setHistory] = useState(initialHistory);
   const [historyError, setHistoryError] = useState<string>();
@@ -44,7 +53,11 @@ export function BudgetDetailScreen({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLifecycleLoading, setIsLifecycleLoading] = useState(false);
   const [lifecycleError, setLifecycleError] = useState<string>();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string>();
   const period = currentBudget.currentPeriod;
+  const actionError = deleteError ?? lifecycleError;
 
   const toggleBudgetPaused = async () => {
     if (isLifecycleLoading) {
@@ -107,10 +120,39 @@ export function BudgetDetailScreen({
     return result;
   };
 
+  const confirmDelete = async () => {
+    if (isDeleting) {
+      return;
+    }
+    setIsDeleting(true);
+    setDeleteError(undefined);
+    const result = await deleteBudget(currentBudget.id, currentBudget.revision);
+    if (Result.isFailure(result)) {
+      setDeleteError(
+        result.error.code === "revisionConflict"
+          ? "Budget changed elsewhere. Reload it before deleting."
+          : result.error.message,
+      );
+      setIsDeleting(false);
+      return;
+    }
+
+    router.clearCache({ filter: (match) => match.routeId === "/cash-flow/budgets/" });
+    await navigate({ to: "/cash-flow/budgets" });
+  };
+
   return (
     <ScreenBase
       actions={
         <>
+          <Button
+            variant="destructive"
+            disabled={isDeleting}
+            aria-busy={isDeleting}
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            Delete budget
+          </Button>
           <Button
             variant="outline"
             disabled={isLifecycleLoading}
@@ -141,12 +183,12 @@ export function BudgetDetailScreen({
           {budgetMeasurementLabel[currentBudget.measurementMode]} budget.
         </p>
       </div>
-      {lifecycleError ? (
+      {actionError ? (
         <p
           role="alert"
           className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
         >
-          {lifecycleError}
+          {actionError}
         </p>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -263,6 +305,18 @@ export function BudgetDetailScreen({
         categories={categories}
         budget={currentBudget}
         mode="edit"
+      />
+      <BudgetDeleteConfirmationDialog
+        budget={currentBudget}
+        open={isDeleteDialogOpen}
+        isDeleting={isDeleting}
+        onOpenChange={setIsDeleteDialogOpen}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            setDeleteError(undefined);
+          }
+        }}
+        onDelete={() => void confirmDelete()}
       />
     </ScreenBase>
   );
