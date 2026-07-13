@@ -10,9 +10,18 @@ pub enum ErrorCode {
     Conflict,
     NameConflict,
     RevisionConflict,
+    BudgetImpactConfirmationRequired,
+    CategoryDeletionBlocked,
     PeriodAdvanceLimitExceeded,
     ClockRegression,
     Internal,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BudgetImpact {
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -53,6 +62,15 @@ pub enum Error {
 
     #[error("Budget revision conflict; current revision is {current_revision}")]
     RevisionConflict { current_revision: i64 },
+
+    #[error("Category change affects budget results and requires confirmation")]
+    BudgetImpactConfirmationRequired { affected_budgets: Vec<BudgetImpact> },
+
+    #[error("Category deletion is blocked because a current budget selects the category directly")]
+    CategoryDeletionBlocked {
+        category_ids: Vec<String>,
+        affected_budgets: Vec<BudgetImpact>,
+    },
 
     #[error("Budget period advance limit exceeded: {0}")]
     PeriodAdvanceLimitExceeded(String),
@@ -108,6 +126,10 @@ impl Error {
             Self::Conflict(_) => ErrorCode::Conflict,
             Self::NameConflict(_) => ErrorCode::NameConflict,
             Self::RevisionConflict { .. } => ErrorCode::RevisionConflict,
+            Self::BudgetImpactConfirmationRequired { .. } => {
+                ErrorCode::BudgetImpactConfirmationRequired
+            }
+            Self::CategoryDeletionBlocked { .. } => ErrorCode::CategoryDeletionBlocked,
             Self::PeriodAdvanceLimitExceeded(_) => ErrorCode::PeriodAdvanceLimitExceeded,
             Self::ClockRegression(_) => ErrorCode::ClockRegression,
             Self::Database(DatabaseError::NotFound(_)) => ErrorCode::NotFound,
@@ -123,6 +145,16 @@ impl Error {
             Self::RevisionConflict { current_revision } => {
                 Some(serde_json::json!({ "currentRevision": current_revision }))
             }
+            Self::BudgetImpactConfirmationRequired { affected_budgets } => {
+                Some(serde_json::json!({ "affectedBudgets": affected_budgets }))
+            }
+            Self::CategoryDeletionBlocked {
+                category_ids,
+                affected_budgets,
+            } => Some(serde_json::json!({
+                "categoryIds": category_ids,
+                "affectedBudgets": affected_budgets,
+            })),
             _ => None,
         };
         let message = format!("{}: {self}", context.into());
@@ -131,5 +163,47 @@ impl Error {
             message,
             details,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn budget_impact_errors_preserve_affected_budget_details() {
+        let envelope = Error::BudgetImpactConfirmationRequired {
+            affected_budgets: vec![BudgetImpact {
+                id: "budget-1".to_string(),
+                name: "Monthly food".to_string(),
+            }],
+        }
+        .to_envelope("Failed to update category");
+
+        assert_eq!(envelope.code, ErrorCode::BudgetImpactConfirmationRequired);
+        assert_eq!(
+            envelope.details,
+            Some(serde_json::json!({
+                "affectedBudgets": [{ "id": "budget-1", "name": "Monthly food" }]
+            }))
+        );
+    }
+
+    #[test]
+    fn direct_category_deletion_uses_distinct_structured_error_code() {
+        let envelope = Error::CategoryDeletionBlocked {
+            category_ids: vec!["food".to_string()],
+            affected_budgets: Vec::new(),
+        }
+        .to_envelope("Failed to delete category");
+
+        assert_eq!(envelope.code, ErrorCode::CategoryDeletionBlocked);
+        assert_eq!(
+            envelope.details,
+            Some(serde_json::json!({
+                "categoryIds": ["food"],
+                "affectedBudgets": []
+            }))
+        );
     }
 }

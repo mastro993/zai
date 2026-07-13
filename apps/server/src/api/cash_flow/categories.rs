@@ -10,7 +10,7 @@ use axum::{
 use serde::Deserialize;
 use zai_app::ServiceContext;
 use zai_core::features::transaction_categories::models::{
-    CategoryChildrenDeleteStrategy, NewTransactionCategory, TransactionCategory,
+    CategoryChildrenDeleteStrategy, CategoryRole, NewTransactionCategory, TransactionCategory,
     TransactionCategoryUpdate,
 };
 
@@ -27,6 +27,20 @@ pub struct ListCategoriesQuery {
 pub struct BulkDeleteCategoriesRequest {
     pub category_ids: Vec<String>,
     pub children_strategy: Option<CategoryChildrenDeleteStrategy>,
+    #[serde(default)]
+    pub confirm_budget_impact: bool,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCategoryRequest {
+    pub parent_id: Option<String>,
+    pub name: String,
+    pub description: Option<String>,
+    pub color: Option<String>,
+    pub role: Option<CategoryRole>,
+    #[serde(default)]
+    pub confirm_budget_impact: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -98,7 +112,7 @@ pub async fn create_category(
 pub async fn update_category(
     State(context): State<Arc<ServiceContext>>,
     Path(category_id): Path<String>,
-    payload: Result<Json<NewTransactionCategory>, JsonRejection>,
+    payload: Result<Json<UpdateCategoryRequest>, JsonRejection>,
 ) -> CategoryResult<Json<TransactionCategory>> {
     let Json(body) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
     let category_name = body.name.clone();
@@ -109,6 +123,7 @@ pub async fn update_category(
         description: body.description,
         color: body.color,
         role: body.role,
+        confirm_budget_impact: body.confirm_budget_impact,
     };
     context
         .transaction_categories_service()
@@ -140,6 +155,7 @@ pub async fn bulk_delete_categories(
             request
                 .children_strategy
                 .unwrap_or(CategoryChildrenDeleteStrategy::Block),
+            request.confirm_budget_impact,
         )
         .await
         .map(Json)

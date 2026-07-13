@@ -138,6 +138,58 @@ pub(crate) fn refresh_active_budget_projections(
     Ok(())
 }
 
+pub(crate) fn rebuild_budget_projections(
+    conn: &mut SqliteConnection,
+    budget_ids: &[String],
+) -> crate::errors::Result<()> {
+    if budget_ids.is_empty() {
+        return Ok(());
+    }
+
+    let categories = load_category_hierarchy(conn)?;
+    for budget_id in budget_ids {
+        rebuild_budget_projection(conn, budget_id, &categories)?;
+    }
+    Ok(())
+}
+
+fn rebuild_budget_projection(
+    conn: &mut SqliteConnection,
+    id: &str,
+    categories: &[zai_core::features::budgets::models::CategoryHierarchy],
+) -> crate::errors::Result<()> {
+    let budget = budgets::table
+        .filter(budgets::id.eq(id))
+        .filter(budgets::deleted_at.is_null())
+        .first::<BudgetRow>(conn)
+        .into_storage()?;
+    let cadence = parse_cadence(&budget)?;
+    let configurations = all_configurations(conn, id)?;
+
+    if configurations.is_empty() {
+        return Ok(());
+    }
+
+    diesel::delete(budget_period_results::table.filter(budget_period_results::budget_id.eq(id)))
+        .execute(conn)
+        .into_storage()?;
+
+    let mut previous_period = None;
+    for configuration in configurations {
+        validate_period_boundaries(&configuration, cadence)?;
+        let period =
+            calculate_configuration(conn, &configuration, categories, previous_period.as_ref())?;
+        let result = result_row(id, &period);
+        diesel::insert_into(budget_period_results::table)
+            .values(&result)
+            .execute(conn)
+            .into_storage()?;
+        previous_period = Some(period);
+    }
+
+    Ok(())
+}
+
 fn all_configurations(
     conn: &mut SqliteConnection,
     id: &str,

@@ -20,6 +20,7 @@ pub trait TransactionCategoriesServiceTrait: Send + Sync {
         &self,
         ids: Vec<&str>,
         children_strategy: CategoryChildrenDeleteStrategy,
+        confirm_budget_impact: bool,
     ) -> Result<Vec<TransactionCategory>>;
 
     async fn import_categories(
@@ -52,6 +53,7 @@ pub trait TransactionCategoriesRepositoryTrait: Send + Sync {
         &self,
         ids: Vec<&str>,
         children_strategy: CategoryChildrenDeleteStrategy,
+        confirm_budget_impact: bool,
     ) -> Result<Vec<TransactionCategory>>;
 
     async fn import_categories(

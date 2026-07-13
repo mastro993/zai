@@ -1,4 +1,5 @@
 mod calculation;
+pub(crate) mod category_impact;
 mod edit;
 mod history;
 mod models;

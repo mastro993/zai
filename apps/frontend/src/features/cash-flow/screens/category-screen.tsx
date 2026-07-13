@@ -2,6 +2,7 @@ import { Result } from "@praha/byethrow";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { getAffectedBudgets, type BudgetImpact } from "@/commands/errors";
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
@@ -14,6 +15,7 @@ import {
   updateTransactionCategory,
 } from "../commands/transaction-categories";
 import { CategoryDeleteConfirmationDialog } from "../components/category-delete-confirmation-dialog";
+import { CategoryBudgetImpactConfirmationDialog } from "../components/category-budget-impact-confirmation-dialog";
 import { CategoryFormDrawer } from "../components/category-form-drawer";
 import { CategoryImportDialog } from "../components/category-import-dialog";
 import { CategoryList, CategoryListSkeleton } from "../components/category-list";
@@ -31,6 +33,20 @@ type CategoryScreenProps = {
   initialCategories: Array<TransactionCategory>;
 };
 
+type PendingBudgetImpact =
+  | {
+      type: "update";
+      categoryId: string;
+      values: CategoryFormValues;
+      budgets: Array<BudgetImpact>;
+    }
+  | {
+      type: "delete";
+      category: TransactionCategory;
+      childrenStrategy: CategoryChildrenDeleteStrategy;
+      budgets: Array<BudgetImpact>;
+    };
+
 export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
   const [categories, setCategories] = useState(initialCategories);
   const [formMode, setFormMode] = useState<CategoryFormMode | null>(null);
@@ -42,6 +58,8 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [pendingBudgetImpact, setPendingBudgetImpact] = useState<PendingBudgetImpact | null>(null);
+  const [isConfirmingBudgetImpact, setIsConfirmingBudgetImpact] = useState(false);
 
   const rootCategories = useMemo(
     () => categories.filter((category) => !category.parentId),
@@ -103,13 +121,25 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
     }
   };
 
-  const submitCategory = async (values: CategoryFormValues) => {
+  const submitCategory = async (values: CategoryFormValues, confirmBudgetImpact = false) => {
     const result =
       formMode?.type === "edit"
-        ? await updateTransactionCategory(formMode.category.id, values)
+        ? await updateTransactionCategory(formMode.category.id, values, confirmBudgetImpact)
         : await createTransactionCategory(values);
 
     if (Result.isFailure(result)) {
+      const budgets = getAffectedBudgets(result.error);
+      if (result.error.code === "budgetImpactConfirmationRequired" && budgets.length > 0) {
+        if (formMode?.type === "edit") {
+          setPendingBudgetImpact({
+            type: "update",
+            categoryId: formMode.category.id,
+            values,
+            budgets,
+          });
+        }
+        return;
+      }
       toast.error("Failed to save category", { description: result.error.message });
       return;
     }
@@ -123,12 +153,33 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
   const deleteCategory = async (
     category: TransactionCategory,
     childrenStrategy: CategoryChildrenDeleteStrategy,
+    confirmBudgetImpact = false,
   ) => {
     setIsDeleting(true);
-    const result = await deleteTransactionCategories([category.id], childrenStrategy);
+    const result = await deleteTransactionCategories(
+      [category.id],
+      childrenStrategy,
+      confirmBudgetImpact,
+    );
 
     if (Result.isFailure(result)) {
-      toast.error("Failed to delete category", { description: result.error.message });
+      const budgets = getAffectedBudgets(result.error);
+      if (result.error.code === "budgetImpactConfirmationRequired" && budgets.length > 0) {
+        setIsDeleteDialogOpen(false);
+        setPendingBudgetImpact({
+          type: "delete",
+          category,
+          childrenStrategy,
+          budgets,
+        });
+        setIsDeleting(false);
+        return;
+      }
+      if (result.error.code === "categoryDeletionBlocked") {
+        toast.error("Category deletion blocked", { description: result.error.message });
+      } else {
+        toast.error("Failed to delete category", { description: result.error.message });
+      }
       setIsDeleteDialogOpen(false);
       setIsDeleting(false);
       return;
@@ -139,6 +190,43 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
     setIsDeleting(false);
     if (didLoadCategories) {
       toast.success("Category deleted");
+    }
+  };
+
+  const confirmBudgetImpact = async () => {
+    if (!pendingBudgetImpact) {
+      return;
+    }
+
+    setIsConfirmingBudgetImpact(true);
+    const result =
+      pendingBudgetImpact.type === "update"
+        ? await updateTransactionCategory(
+            pendingBudgetImpact.categoryId,
+            pendingBudgetImpact.values,
+            true,
+          )
+        : await deleteTransactionCategories(
+            [pendingBudgetImpact.category.id],
+            pendingBudgetImpact.childrenStrategy,
+            true,
+          );
+
+    if (Result.isFailure(result)) {
+      toast.error("Failed to apply category change", { description: result.error.message });
+      setIsConfirmingBudgetImpact(false);
+      return;
+    }
+
+    setPendingBudgetImpact(null);
+    setIsConfirmingBudgetImpact(false);
+    setIsDeleteDialogOpen(false);
+    setIsDeleting(false);
+    if (pendingBudgetImpact.type === "update") {
+      setIsFormDrawerOpen(false);
+    }
+    if (await loadCategories()) {
+      toast.success(pendingBudgetImpact.type === "update" ? "Category saved" : "Category deleted");
     }
   };
 
@@ -192,6 +280,18 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
             void deleteCategory(pendingDelete, "promote");
           }
         }}
+      />
+
+      <CategoryBudgetImpactConfirmationDialog
+        open={pendingBudgetImpact !== null}
+        budgets={pendingBudgetImpact?.budgets ?? []}
+        isConfirming={isConfirmingBudgetImpact}
+        onOpenChange={(open) => {
+          if (!open && !isConfirmingBudgetImpact) {
+            setPendingBudgetImpact(null);
+          }
+        }}
+        onConfirm={() => void confirmBudgetImpact()}
       />
 
       <CategoryImportDialog

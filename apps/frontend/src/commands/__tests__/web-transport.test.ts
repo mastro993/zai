@@ -90,6 +90,24 @@ describe("web command map", () => {
     });
   });
 
+  it("maps confirmed category deletion to the bulk-delete body", () => {
+    expect(
+      buildWebRequestSpec("delete_transaction_categories", {
+        categoryIds: ["category-1"],
+        childrenStrategy: "block",
+        confirmBudgetImpact: true,
+      }),
+    ).toEqual({
+      method: "POST",
+      path: "/categories/bulk-delete",
+      body: {
+        categoryIds: ["category-1"],
+        childrenStrategy: "block",
+        confirmBudgetImpact: true,
+      },
+    });
+  });
+
   it("maps import_transaction_categories to POST /categories/import", () => {
     const categories = [{ name: "Food", color: "#ff0000" }];
 
