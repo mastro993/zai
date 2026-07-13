@@ -133,6 +133,7 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
         &self,
         category_ids: Vec<&str>,
         children_strategy: CategoryChildrenDeleteStrategy,
+        confirm_budget_impact: bool,
     ) -> Result<Vec<TransactionCategory>> {
         if children_strategy == CategoryChildrenDeleteStrategy::Block {
             for category_id in &category_ids {
@@ -146,7 +147,7 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
         }
 
         self.repository
-            .delete_categories(category_ids, children_strategy)
+            .delete_categories(category_ids, children_strategy, confirm_budget_impact)
             .await
     }
 
@@ -408,6 +409,7 @@ mod tests {
             &self,
             ids: Vec<&str>,
             _children_strategy: CategoryChildrenDeleteStrategy,
+            _confirm_budget_impact: bool,
         ) -> Result<Vec<TransactionCategory>> {
             Ok(self
                 .categories
@@ -775,6 +777,7 @@ mod tests {
                 description: None,
                 color: None,
                 role: Some(CategoryRole::Spending),
+                confirm_budget_impact: false,
             })
             .await;
 
@@ -806,7 +809,7 @@ mod tests {
         let service = TransactionCategoriesService::new(repository);
 
         let result = service
-            .delete_categories(vec!["parent"], CategoryChildrenDeleteStrategy::Block)
+            .delete_categories(vec!["parent"], CategoryChildrenDeleteStrategy::Block, false)
             .await;
 
         assert!(result.is_err());

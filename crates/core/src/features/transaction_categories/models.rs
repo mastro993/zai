@@ -125,6 +125,8 @@ pub struct TransactionCategoryUpdate {
     pub description: Option<String>,
     pub color: Option<String>,
     pub role: Option<CategoryRole>,
+    #[serde(default)]
+    pub confirm_budget_impact: bool,
 }
 
 impl TransactionCategoryUpdate {
@@ -239,6 +241,7 @@ mod tests {
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
             role: Some(CategoryRole::Spending),
+            confirm_budget_impact: false,
         };
 
         new_category.validate().expect("validate");
@@ -257,6 +260,7 @@ mod tests {
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
             role: Some(CategoryRole::Spending),
+            confirm_budget_impact: false,
         };
 
         let result = new_category_invalid.validate();
@@ -271,6 +275,7 @@ mod tests {
             description: None,
             color: None,
             role: None,
+            confirm_budget_impact: false,
         };
 
         let result = self_ref.validate();
@@ -289,6 +294,7 @@ mod tests {
             description: None,
             color: Some("#12345".to_string()),
             role: Some(CategoryRole::Spending),
+            confirm_budget_impact: false,
         };
 
         let result = invalid_color.validate();

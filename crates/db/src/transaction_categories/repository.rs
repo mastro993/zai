@@ -1,22 +1,22 @@
 use super::models::TransactionCategoryRow;
-use crate::budgets::projection::refresh_active_budget_projections;
+use crate::budgets::category_impact::{affected_budgets_for_update, analyze_deletion};
+use crate::budgets::projection::{rebuild_budget_projections, refresh_active_budget_projections};
 use crate::connection::{DbPool, get_connection};
 use crate::errors::{IntoCore, IntoStorage, StorageError};
 use crate::schema::{transaction_categories, transactions};
 use crate::write_actor::WriteHandle;
 use async_trait::async_trait;
-use chrono::Local;
 use diesel::prelude::*;
 use diesel::r2d2::{self, Pool};
 use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
-use zai_core::Result;
 use zai_core::features::budgets::traits::CalendarClock;
 use zai_core::features::transaction_categories::models::{
     CategoryChildrenDeleteStrategy, NewTransactionCategory, TransactionCategory,
     TransactionCategoryUpdate,
 };
 use zai_core::features::transaction_categories::traits::TransactionCategoriesRepositoryTrait;
+use zai_core::{Error, Result};
 
 fn category_from_row(row: TransactionCategoryRow) -> crate::errors::Result<TransactionCategory> {
     row.try_into().map_err(StorageError::CoreError)
@@ -174,7 +174,6 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         &self,
         new_category: NewTransactionCategory,
     ) -> Result<TransactionCategory> {
-        let clock = Arc::clone(&self.clock);
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<TransactionCategory> {
@@ -202,7 +201,6 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .into_storage()?;
 
                     let category = category_from_rows(category_row, parent_row)?;
-                    refresh_active_budget_projections(conn, clock.sample())?;
                     Ok(category)
                 },
             )
@@ -213,19 +211,52 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         &self,
         updated_category: TransactionCategoryUpdate,
     ) -> Result<TransactionCategory> {
-        let clock = Arc::clone(&self.clock);
+        let now = self.clock.sample();
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<TransactionCategory> {
-                    let mut category: TransactionCategoryRow = updated_category.into();
+                    let mut category: TransactionCategoryRow = updated_category.clone().into();
 
                     let existing = transaction_categories::table
                         .find(&category.id)
                         .first::<TransactionCategoryRow>(conn)
                         .into_storage()?;
+                    let structural_change =
+                        existing.parent_id != category.parent_id || existing.role != category.role;
+                    let affected_budgets = if structural_change {
+                        refresh_active_budget_projections(conn, now)?;
+                        affected_budgets_for_update(
+                            conn,
+                            &category.id,
+                            existing.parent_id.as_deref(),
+                            category.parent_id.as_deref(),
+                            existing.role.parse().map_err(|_| {
+                                StorageError::CoreError(Error::Repository(
+                                    "Invalid category role".to_string(),
+                                ))
+                            })?,
+                            category.role.parse().map_err(|_| {
+                                StorageError::CoreError(Error::Repository(
+                                    "Invalid category role".to_string(),
+                                ))
+                            })?,
+                            now,
+                        )?
+                    } else {
+                        Vec::new()
+                    };
+
+                    if structural_change
+                        && !affected_budgets.is_empty()
+                        && !updated_category.confirm_budget_impact
+                    {
+                        return Err(StorageError::CoreError(
+                            Error::BudgetImpactConfirmationRequired { affected_budgets },
+                        ));
+                    }
 
                     category.created_at = existing.created_at;
-                    category.updated_at = chrono::Utc::now().naive_utc();
+                    category.updated_at = now;
 
                     diesel::update(transaction_categories::table.find(&category.id))
                         .set(&category)
@@ -264,7 +295,13 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .into_storage()?;
 
                     let category = category_from_rows(category_row, parent_row)?;
-                    refresh_active_budget_projections(conn, clock.sample())?;
+                    if structural_change {
+                        let affected_ids = affected_budgets
+                            .iter()
+                            .map(|budget| budget.id.clone())
+                            .collect::<Vec<_>>();
+                        rebuild_budget_projections(conn, &affected_ids)?;
+                    }
                     Ok(category)
                 },
             )
@@ -275,27 +312,39 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         &self,
         ids: Vec<&str>,
         children_strategy: CategoryChildrenDeleteStrategy,
+        confirm_budget_impact: bool,
     ) -> Result<Vec<TransactionCategory>> {
         let owned_ids = ids.iter().map(|&s| s.to_string()).collect::<Vec<String>>();
-        let clock = Arc::clone(&self.clock);
+        let now = self.clock.sample();
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<Vec<TransactionCategory>> {
-                    let now = Local::now().naive_utc();
-                    let mut ids_to_delete = owned_ids.clone();
-
-                    if children_strategy == CategoryChildrenDeleteStrategy::Delete {
-                        let child_ids = transaction_categories::table
-                            .filter(transaction_categories::parent_id.eq_any(&owned_ids))
-                            .filter(transaction_categories::deleted_at.is_null())
-                            .select(transaction_categories::id)
-                            .load::<String>(conn)
-                            .into_storage()?;
-
-                        ids_to_delete.extend(child_ids);
-                        ids_to_delete.sort();
-                        ids_to_delete.dedup();
+                    refresh_active_budget_projections(conn, now)?;
+                    let impact = analyze_deletion(
+                        conn,
+                        &owned_ids,
+                        children_strategy,
+                        now,
+                    )?;
+                    if !impact.blocked_category_ids.is_empty() {
+                        return Err(StorageError::CoreError(Error::CategoryDeletionBlocked {
+                            category_ids: impact.blocked_category_ids,
+                            affected_budgets: impact.affected_budgets,
+                        }));
                     }
+                    if !impact.affected_budgets.is_empty() && !confirm_budget_impact {
+                        return Err(StorageError::CoreError(
+                            Error::BudgetImpactConfirmationRequired {
+                                affected_budgets: impact.affected_budgets,
+                            },
+                        ));
+                    }
+                    let affected_ids = impact
+                        .affected_budgets
+                        .iter()
+                        .map(|budget| budget.id.clone())
+                        .collect::<Vec<_>>();
+                    let ids_to_delete = impact.ids_to_delete;
 
                     if children_strategy == CategoryChildrenDeleteStrategy::Promote {
                         diesel::update(
@@ -341,7 +390,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .into_iter()
                         .map(category_from_row)
                         .collect::<crate::errors::Result<Vec<_>>>()?;
-                    refresh_active_budget_projections(conn, clock.sample())?;
+                    rebuild_budget_projections(conn, &affected_ids)?;
                     Ok(categories)
                 },
             )
@@ -356,7 +405,6 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
             return Ok(Vec::new());
         }
 
-        let clock = Arc::clone(&self.clock);
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<Vec<TransactionCategory>> {
@@ -382,7 +430,6 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .into_iter()
                         .map(category_from_row)
                         .collect::<crate::errors::Result<Vec<_>>>()?;
-                    refresh_active_budget_projections(conn, clock.sample())?;
                     Ok(inserted)
                 },
             )
@@ -393,10 +440,15 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::budgets::BudgetsRepository;
     use crate::connection::run_migrations;
     use crate::test_utils::TempDb;
     use crate::write_actor::spawn_writer;
     use uuid::Uuid;
+    use zai_core::features::budgets::models::{
+        BudgetCadence, BudgetMeasurementMode, BudgetRolloverMode, NewBudget,
+    };
+    use zai_core::features::budgets::traits::BudgetsRepositoryTrait;
     use zai_core::features::transaction_categories::models::{
         CategoryRole, NewTransactionCategory, TransactionCategory,
     };
@@ -441,6 +493,19 @@ mod tests {
             .unwrap();
     }
 
+    fn new_scoped_budget(category_id: &str) -> NewBudget {
+        NewBudget {
+            id: Some("budget-1".to_string()),
+            name: "Food budget".to_string(),
+            base_allowance: 10_000,
+            cadence: Some(BudgetCadence::Month),
+            category_ids: vec![category_id.to_string()],
+            measurement_mode: Some(BudgetMeasurementMode::Spending),
+            rollover_mode: Some(BudgetRolloverMode::Off),
+            warning_percentage: Some(80),
+        }
+    }
+
     #[tokio::test]
     async fn test_get_categories() {
         let temp_db = TempDb::new();
@@ -474,9 +539,13 @@ mod tests {
         repo.create_category(cat1).await.unwrap();
         repo.create_category(cat2).await.unwrap();
         let created = repo.create_category(cat3).await.unwrap();
-        repo.delete_categories(vec![&created.id], CategoryChildrenDeleteStrategy::Block)
-            .await
-            .unwrap();
+        repo.delete_categories(
+            vec![&created.id],
+            CategoryChildrenDeleteStrategy::Block,
+            false,
+        )
+        .await
+        .unwrap();
 
         let all = repo.get_categories(None).unwrap();
         assert!(all.len() == 2);
@@ -556,9 +625,13 @@ mod tests {
         repo.create_category(cat1).await.unwrap();
         repo.create_category(cat2).await.unwrap();
         let created = repo.create_category(cat3).await.unwrap();
-        repo.delete_categories(vec![&created.id], CategoryChildrenDeleteStrategy::Block)
-            .await
-            .unwrap();
+        repo.delete_categories(
+            vec![&created.id],
+            CategoryChildrenDeleteStrategy::Block,
+            false,
+        )
+        .await
+        .unwrap();
 
         let all = repo.get_categories(Some(&parent.id)).unwrap();
         assert!(all.len() == 1);
@@ -609,6 +682,7 @@ mod tests {
             description: Some("Updated description".to_string()),
             color: Some("#3C99F6".to_string()),
             role: None,
+            confirm_budget_impact: false,
         };
 
         let updated_category = repo.update_category(updated).await.unwrap();
@@ -656,6 +730,7 @@ mod tests {
             description: None,
             color: None,
             role: Some(CategoryRole::Spending),
+            confirm_budget_impact: false,
         })
         .await
         .unwrap();
@@ -691,6 +766,7 @@ mod tests {
                 description: None,
                 color: Some("#D31212".to_string()),
                 role: None,
+                confirm_budget_impact: false,
             })
             .await
             .unwrap();
@@ -727,6 +803,7 @@ mod tests {
             .delete_categories(
                 vec![&created_1.id, &created_2.id],
                 CategoryChildrenDeleteStrategy::Block,
+                false,
             )
             .await
             .unwrap();
@@ -867,6 +944,7 @@ mod tests {
             description: None,
             color: Some("#AB63F2".to_string()),
             role: None,
+            confirm_budget_impact: false,
         };
 
         let updated_child = repo.update_category(updated_child).await.unwrap();
@@ -906,6 +984,7 @@ mod tests {
             description: None,
             color: Some("#AB63F2".to_string()),
             role: None,
+            confirm_budget_impact: false,
         };
 
         let updated_child = repo.update_category(updated_child).await.unwrap();
@@ -964,9 +1043,13 @@ mod tests {
             .await
             .unwrap();
 
-        repo.delete_categories(vec![&parent.id], CategoryChildrenDeleteStrategy::Promote)
-            .await
-            .unwrap();
+        repo.delete_categories(
+            vec![&parent.id],
+            CategoryChildrenDeleteStrategy::Promote,
+            false,
+        )
+        .await
+        .unwrap();
         let promoted = repo.get_category(&child.id).unwrap();
 
         assert!(promoted.parent_id.is_none());
@@ -1001,7 +1084,11 @@ mod tests {
             .unwrap();
 
         let deleted = repo
-            .delete_categories(vec![&parent.id], CategoryChildrenDeleteStrategy::Delete)
+            .delete_categories(
+                vec![&parent.id],
+                CategoryChildrenDeleteStrategy::Delete,
+                false,
+            )
             .await
             .unwrap();
 
@@ -1026,9 +1113,13 @@ mod tests {
             .unwrap();
         insert_transaction_with_category(&repo, &category.id);
 
-        repo.delete_categories(vec![&category.id], CategoryChildrenDeleteStrategy::Block)
-            .await
-            .unwrap();
+        repo.delete_categories(
+            vec![&category.id],
+            CategoryChildrenDeleteStrategy::Block,
+            false,
+        )
+        .await
+        .unwrap();
         let conn = &mut get_connection(&repo.pool).unwrap();
         let category_id = transactions::table
             .select(transactions::transaction_category_id)
@@ -1036,5 +1127,142 @@ mod tests {
             .unwrap();
 
         assert!(category_id.is_none());
+    }
+
+    #[tokio::test]
+    async fn role_changes_require_confirmation_when_budget_scope_is_affected() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let budgets = BudgetsRepository::new(Arc::clone(&repo.pool), repo.writer.clone());
+        let category = repo
+            .create_category(NewTransactionCategory {
+                name: "Food".to_string(),
+                parent_id: None,
+                description: None,
+                color: None,
+                role: Some(CategoryRole::Spending),
+                id: Some("food".to_string()),
+            })
+            .await
+            .expect("category");
+        budgets
+            .create_budget(new_scoped_budget(&category.id))
+            .await
+            .expect("budget");
+
+        let update = |confirm_budget_impact| TransactionCategoryUpdate {
+            id: category.id.clone(),
+            parent_id: None,
+            name: "Food".to_string(),
+            description: None,
+            color: None,
+            role: Some(CategoryRole::Income),
+            confirm_budget_impact,
+        };
+
+        let error = repo
+            .update_category(update(false))
+            .await
+            .expect_err("role change should require confirmation");
+        assert!(matches!(
+            error,
+            Error::BudgetImpactConfirmationRequired { .. }
+        ));
+        assert_eq!(
+            repo.get_category(&category.id).unwrap().role,
+            CategoryRole::Spending
+        );
+
+        repo.update_category(update(true))
+            .await
+            .expect("confirmed role change");
+        assert_eq!(
+            repo.get_category(&category.id).unwrap().role,
+            CategoryRole::Income
+        );
+    }
+
+    #[tokio::test]
+    async fn direct_current_budget_selection_blocks_category_deletion() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let budgets = BudgetsRepository::new(Arc::clone(&repo.pool), repo.writer.clone());
+        let category = repo
+            .create_category(NewTransactionCategory {
+                name: "Food".to_string(),
+                parent_id: None,
+                description: None,
+                color: None,
+                role: Some(CategoryRole::Spending),
+                id: Some("food".to_string()),
+            })
+            .await
+            .expect("category");
+        budgets
+            .create_budget(new_scoped_budget(&category.id))
+            .await
+            .expect("budget");
+
+        let error = repo
+            .delete_categories(
+                vec![&category.id],
+                CategoryChildrenDeleteStrategy::Block,
+                true,
+            )
+            .await
+            .expect_err("direct selection should block deletion");
+        assert!(matches!(error, Error::CategoryDeletionBlocked { .. }));
+        assert!(repo.get_category(&category.id).is_ok());
+    }
+
+    #[tokio::test]
+    async fn indirectly_covered_deletion_requires_confirmation_then_rebuilds_budget() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let budgets = BudgetsRepository::new(Arc::clone(&repo.pool), repo.writer.clone());
+        let root = repo
+            .create_category(NewTransactionCategory {
+                name: "Food".to_string(),
+                parent_id: None,
+                description: None,
+                color: None,
+                role: Some(CategoryRole::Spending),
+                id: Some("food".to_string()),
+            })
+            .await
+            .expect("root");
+        let child = repo
+            .create_category(NewTransactionCategory {
+                name: "Groceries".to_string(),
+                parent_id: Some(root.id.clone()),
+                description: None,
+                color: None,
+                role: None,
+                id: Some("groceries".to_string()),
+            })
+            .await
+            .expect("child");
+        let mut budget = new_scoped_budget(&root.id);
+        budget.id = Some("budget-2".to_string());
+        budgets.create_budget(budget).await.expect("budget");
+
+        let error = repo
+            .delete_categories(
+                vec![&child.id],
+                CategoryChildrenDeleteStrategy::Block,
+                false,
+            )
+            .await
+            .expect_err("indirect coverage should require confirmation");
+        assert!(matches!(
+            error,
+            Error::BudgetImpactConfirmationRequired { .. }
+        ));
+
+        repo.delete_categories(vec![&child.id], CategoryChildrenDeleteStrategy::Block, true)
+            .await
+            .expect("confirmed deletion");
+        assert!(repo.get_category(&child.id).is_err());
+        assert!(repo.get_category(&root.id).is_ok());
     }
 }

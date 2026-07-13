@@ -24,8 +24,16 @@ export class CommandError extends Error {
   }
 }
 
+export interface BudgetImpact {
+  id: string;
+  name: string;
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
+
+const readRecord = (value: unknown): Record<string, unknown> | undefined =>
+  isRecord(value) && !Array.isArray(value) ? value : undefined;
 
 const isCommandErrorEnvelope = (value: unknown): value is CommandErrorEnvelope =>
   isRecord(value) && typeof value.code === "string" && typeof value.message === "string";
@@ -57,6 +65,19 @@ export const toCommandError = (error: unknown): CommandError => {
   }
 
   return new CommandError(String(error));
+};
+
+export const getAffectedBudgets = (error: CommandError): Array<BudgetImpact> => {
+  const details = readRecord(error.details);
+  const budgets = details?.affectedBudgets;
+  if (!Array.isArray(budgets)) {
+    return [];
+  }
+
+  return budgets.filter(
+    (budget): budget is BudgetImpact =>
+      isRecord(budget) && typeof budget.id === "string" && typeof budget.name === "string",
+  );
 };
 
 export type CommandResult<T> = Result.ResultAsync<T, CommandError>;

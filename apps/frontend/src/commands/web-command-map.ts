@@ -140,6 +140,7 @@ export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): We
         body: {
           categoryIds,
           ...(args.childrenStrategy ? { childrenStrategy: args.childrenStrategy } : {}),
+          ...(args.confirmBudgetImpact ? { confirmBudgetImpact: true } : {}),
         },
       };
     }

@@ -81,6 +81,7 @@ pub async fn update_transaction_category(
 pub async fn delete_transaction_categories(
     category_ids: Vec<String>,
     children_strategy: Option<CategoryChildrenDeleteStrategy>,
+    confirm_budget_impact: Option<bool>,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<Vec<TransactionCategory>> {
     debug!(
@@ -94,6 +95,7 @@ pub async fn delete_transaction_categories(
         .delete_categories(
             category_id_refs,
             children_strategy.unwrap_or(CategoryChildrenDeleteStrategy::Block),
+            confirm_budget_impact.unwrap_or(false),
         )
         .await
         .map_err(|error| command_error("Failed to delete transaction categories", error))

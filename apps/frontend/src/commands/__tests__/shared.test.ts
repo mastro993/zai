@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Result } from "@praha/byethrow";
 
-import { CommandError, invokeCommand } from "../shared";
+import { CommandError, getAffectedBudgets } from "../errors";
+import { invokeCommand } from "../shared";
 
 const invokeMock = vi.hoisted(() => vi.fn());
 
@@ -73,5 +74,21 @@ describe("desktop command transport", () => {
       details: { resource: "category" },
       message: "Failed to create transaction category: Conflict",
     });
+  });
+});
+
+describe("budget impact errors", () => {
+  it("extracts affected budgets from structured command details", () => {
+    const error = new CommandError("confirmation required", {
+      code: "budgetImpactConfirmationRequired",
+      details: {
+        affectedBudgets: [
+          { id: "budget-1", name: "Monthly food" },
+          { id: 42, name: "invalid" },
+        ],
+      },
+    });
+
+    expect(getAffectedBudgets(error)).toEqual([{ id: "budget-1", name: "Monthly food" }]);
   });
 });

@@ -44,11 +44,13 @@ export const createTransactionCategory = (
 export const updateTransactionCategory = (
   id: string,
   values: CategoryFormValues,
+  confirmBudgetImpact = false,
 ): CommandResult<TransactionCategory> => {
   return invokeCommand<TransactionCategory>("update_transaction_category", {
     updatedCategory: {
       id,
       ...toCategoryPayload(values),
+      ...(confirmBudgetImpact ? { confirmBudgetImpact: true } : {}),
     },
   });
 };
@@ -56,10 +58,12 @@ export const updateTransactionCategory = (
 export const deleteTransactionCategories = (
   categoryIds: Array<string>,
   childrenStrategy: CategoryChildrenDeleteStrategy = "block",
+  confirmBudgetImpact = false,
 ): CommandResult<Array<TransactionCategory>> => {
   return invokeCommand<Array<TransactionCategory>>("delete_transaction_categories", {
     categoryIds,
     childrenStrategy,
+    ...(confirmBudgetImpact ? { confirmBudgetImpact: true } : {}),
   });
 };
 
