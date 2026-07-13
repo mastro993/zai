@@ -10,7 +10,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 use zai_core::Error;
 use zai_core::features::budgets::models::{
-    BudgetCadence, BudgetMeasurementMode, BudgetStatus, NewBudget,
+    BudgetCadence, BudgetListFilter, BudgetMeasurementMode, BudgetStatus, NewBudget,
 };
 use zai_core::features::budgets::traits::BudgetsRepositoryTrait;
 use zai_core::features::transaction_categories::models::{CategoryRole, NewTransactionCategory};
@@ -184,7 +184,14 @@ async fn active_budget_names_are_case_insensitively_unique_with_structured_error
         .expect_err("duplicate name should fail");
 
     assert!(matches!(error, Error::NameConflict(_)));
-    assert_eq!(budgets.list_budgets().await.expect("list").len(), 1);
+    assert_eq!(
+        budgets
+            .list_budgets(BudgetListFilter::Active)
+            .await
+            .expect("list")
+            .len(),
+        1
+    );
 }
 
 #[tokio::test]
@@ -372,3 +379,6 @@ mod repository_history_tests;
 
 #[path = "repository_update_tests.rs"]
 mod repository_update_tests;
+
+#[path = "repository_repair_tests.rs"]
+mod repository_repair_tests;

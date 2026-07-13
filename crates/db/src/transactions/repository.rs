@@ -1,5 +1,5 @@
 use super::models::TransactionRow;
-use crate::budgets::projection::refresh_active_budget_projections;
+use crate::budgets::repair_transaction_budget_projections;
 use crate::connection::{DbPool, get_connection};
 use crate::errors::{IntoCore, IntoStorage, StorageError};
 use crate::pagination::{Paginate, total_pages};
@@ -249,7 +249,12 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         .first::<TransactionRow>(conn)
                         .into_storage()?;
 
-                    refresh_active_budget_projections(conn, clock.sample())?;
+                    repair_transaction_budget_projections(
+                        conn,
+                        clock.sample(),
+                        &[],
+                        std::slice::from_ref(&transaction),
+                    )?;
 
                     Ok(inserted.into())
                 },
@@ -280,7 +285,12 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         .execute(conn)
                         .into_storage()?;
 
-                    refresh_active_budget_projections(conn, clock.sample())?;
+                    repair_transaction_budget_projections(
+                        conn,
+                        clock.sample(),
+                        std::slice::from_ref(&existing),
+                        std::slice::from_ref(&transaction),
+                    )?;
 
                     Ok(transaction.into())
                 },
@@ -297,6 +307,11 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<Transaction> {
                     let now = Local::now().naive_utc();
 
+                    let existing = transactions::table
+                        .find(&transaction_id)
+                        .first::<TransactionRow>(conn)
+                        .into_storage()?;
+
                     diesel::update(transactions::table.find(&transaction_id))
                         .set(transactions::deleted_at.eq(now))
                         .execute(conn)
@@ -308,7 +323,12 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         .first::<TransactionRow>(conn)
                         .into_storage()?;
 
-                    refresh_active_budget_projections(conn, clock.sample())?;
+                    repair_transaction_budget_projections(
+                        conn,
+                        clock.sample(),
+                        std::slice::from_ref(&existing),
+                        std::slice::from_ref(&deleted),
+                    )?;
 
                     Ok(deleted.into())
                 },
@@ -325,6 +345,11 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<Vec<Transaction>> {
                     let now = Local::now().naive_utc();
 
+                    let existing = transactions::table
+                        .filter(transactions::id.eq_any(&owned_ids))
+                        .load::<TransactionRow>(conn)
+                        .into_storage()?;
+
                     diesel::update(transactions::table.filter(transactions::id.eq_any(&owned_ids)))
                         .set(transactions::deleted_at.eq(now))
                         .execute(conn)
@@ -337,8 +362,13 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         .into_storage()?;
 
                     let deleted_transactions: Vec<Transaction> =
-                        deleted.into_iter().map(Transaction::from).collect();
-                    refresh_active_budget_projections(conn, clock.sample())?;
+                        deleted.iter().cloned().map(Transaction::from).collect();
+                    repair_transaction_budget_projections(
+                        conn,
+                        clock.sample(),
+                        &existing,
+                        &deleted,
+                    )?;
                     Ok(deleted_transactions)
                 },
             )
@@ -391,7 +421,12 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         .load::<TransactionRow>(conn)
                         .into_storage()?;
 
-                    refresh_active_budget_projections(conn, clock.sample())?;
+                    repair_transaction_budget_projections(
+                        conn,
+                        clock.sample(),
+                        &[],
+                        &transactions_rows,
+                    )?;
 
                     Ok(inserted.into_iter().map(Transaction::from).collect())
                 },
@@ -461,7 +496,12 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                             .collect()
                     };
 
-                    refresh_active_budget_projections(conn, clock.sample())?;
+                    repair_transaction_budget_projections(
+                        conn,
+                        clock.sample(),
+                        &[],
+                        &transactions_rows,
+                    )?;
 
                     Ok((inserted_categories, inserted_transactions))
                 },

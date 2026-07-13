@@ -15,7 +15,7 @@ import {
 import { ScreenBase } from "@/components/screen-base";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 
-import { getBudgetHistory, updateBudget } from "../commands/budgets";
+import { getBudgetHistory, pauseBudget, resumeBudget, updateBudget } from "../commands/budgets";
 import { BudgetFormDialog } from "../components/budget-form-dialog";
 import {
   budgetCadenceLabel,
@@ -42,7 +42,38 @@ export function BudgetDetailScreen({
   const [historyError, setHistoryError] = useState<string>();
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isLifecycleLoading, setIsLifecycleLoading] = useState(false);
+  const [lifecycleError, setLifecycleError] = useState<string>();
   const period = currentBudget.currentPeriod;
+
+  const toggleBudgetPaused = async () => {
+    if (isLifecycleLoading) {
+      return;
+    }
+    setIsLifecycleLoading(true);
+    setLifecycleError(undefined);
+    const result = currentBudget.paused
+      ? await resumeBudget(currentBudget.id, currentBudget.revision)
+      : await pauseBudget(currentBudget.id, currentBudget.revision);
+    if (Result.isFailure(result)) {
+      setLifecycleError(
+        result.error.code === "revisionConflict"
+          ? "Budget changed elsewhere. Reload it before changing lifecycle."
+          : result.error.message,
+      );
+      setIsLifecycleLoading(false);
+      return;
+    }
+
+    setCurrentBudget(result.value);
+    const historyResult = await getBudgetHistory(currentBudget.id);
+    if (Result.isSuccess(historyResult)) {
+      setHistory(historyResult.value);
+    } else {
+      setLifecycleError(historyResult.error.message);
+    }
+    setIsLifecycleLoading(false);
+  };
 
   const changeHistoryPage = async (page: number) => {
     if (page < 1 || page > history.totalPages || isHistoryLoading) {
@@ -80,6 +111,20 @@ export function BudgetDetailScreen({
     <ScreenBase
       actions={
         <>
+          <Button
+            variant="outline"
+            disabled={isLifecycleLoading}
+            aria-busy={isLifecycleLoading}
+            onClick={() => void toggleBudgetPaused()}
+          >
+            {isLifecycleLoading
+              ? currentBudget.paused
+                ? "Resuming..."
+                : "Pausing..."
+              : currentBudget.paused
+                ? "Resume budget"
+                : "Pause budget"}
+          </Button>
           <Button variant="outline" onClick={() => setIsFormOpen(true)}>
             Edit budget
           </Button>
@@ -92,9 +137,18 @@ export function BudgetDetailScreen({
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-medium">{currentBudget.name}</h1>
         <p className="text-sm text-muted-foreground">
+          {currentBudget.paused ? "Paused" : "Active"} ·{" "}
           {budgetMeasurementLabel[currentBudget.measurementMode]} budget.
         </p>
       </div>
+      {lifecycleError ? (
+        <p
+          role="alert"
+          className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+        >
+          {lifecycleError}
+        </p>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Metric
           label="Effective allowance"

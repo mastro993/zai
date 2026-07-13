@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { budgetFormSchema } from "../budget";
+import { budgetFormSchema, budgetSchema } from "../budget";
 
 describe("budgetFormSchema", () => {
   it("trims names and converts allowance to minor units", () => {
@@ -80,5 +80,33 @@ describe("budgetFormSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("budgetSchema", () => {
+  it("accepts paused lifecycle state", () => {
+    const result = budgetSchema.safeParse({
+      id: "budget-1",
+      name: "Paused budget",
+      revision: 1,
+      paused: true,
+      categoryIds: [],
+      cadence: "month",
+      measurementMode: "spending",
+      baseAllowance: 10000,
+      rolloverMode: "off",
+      warningPercentage: 80,
+      currentPeriod: {
+        start: "2026-07-01T00:00:00",
+        end: "2026-08-01T00:00:00",
+        baseAllowance: 10000,
+        effectiveAllowance: 10000,
+        netBudgetSpending: 1000,
+        remainingAllowance: 9000,
+        status: "onTrack",
+      },
+    });
+
+    expect(result.success).toBe(true);
   });
 });

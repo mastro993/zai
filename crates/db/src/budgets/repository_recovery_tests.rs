@@ -1,7 +1,7 @@
 use super::setup;
 use crate::test_utils::TempDb;
 use diesel::{Connection, RunQueryDsl, SqliteConnection, sql_query};
-use zai_core::features::budgets::models::NewBudget;
+use zai_core::features::budgets::models::{BudgetListFilter, NewBudget};
 use zai_core::features::budgets::traits::BudgetsRepositoryTrait;
 
 #[tokio::test]
@@ -23,7 +23,7 @@ async fn listing_budget_recovers_when_projection_configuration_is_missing() {
     .expect("orphan budget");
 
     let listed = budgets
-        .list_budgets()
+        .list_budgets(BudgetListFilter::Active)
         .await
         .expect("orphan budget should be recovered");
 

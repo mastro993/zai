@@ -6,6 +6,7 @@ export const BUDGET_MEASUREMENT_MODES = ["spending", "netCashFlow"] as const;
 export const BUDGET_ROLLOVER_MODES = ["off", "previousPeriodOnly", "cumulative"] as const;
 export const BUDGET_CADENCES = ["day", "week", "month", "year"] as const;
 export const BUDGET_STATUSES = ["onTrack", "warning", "overspent"] as const;
+export const BUDGET_LIST_FILTERS = ["active", "paused", "all"] as const;
 
 const allowanceInputSchema = z
   .string()
@@ -57,6 +58,7 @@ export const budgetSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   revision: z.number().int().nonnegative(),
+  paused: z.boolean(),
   categoryIds: z.array(z.string()),
   cadence: z.enum(BUDGET_CADENCES),
   measurementMode: z.enum(BUDGET_MEASUREMENT_MODES),
@@ -77,4 +79,5 @@ export type BudgetFormInput = z.input<typeof budgetFormSchema>;
 export type BudgetFormValues = z.infer<typeof budgetFormSchema>;
 export type Budget = z.infer<typeof budgetSchema>;
 export type BudgetStatus = (typeof BUDGET_STATUSES)[number];
+export type BudgetListFilter = (typeof BUDGET_LIST_FILTERS)[number];
 export type BudgetHistory = z.infer<typeof budgetHistorySchema>;
