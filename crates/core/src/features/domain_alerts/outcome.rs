@@ -7,6 +7,12 @@ pub enum AlertInsertOutcome {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DomainAlertLifecycleOutcome {
+    pub alert: DomainAlert,
+    pub changed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommittedOutcome<T> {
     pub value: T,
     pub created_alerts: Vec<DomainAlert>,

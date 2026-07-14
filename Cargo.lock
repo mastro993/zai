@@ -6880,6 +6880,7 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-plugin-stronghold",
  "tauri-specta",
+ "tokio",
  "zai-app",
  "zai-core",
 ]
@@ -6933,6 +6934,7 @@ version = "0.0.1-alpha.1"
 dependencies = [
  "axum",
  "chrono",
+ "futures-util",
  "serde",
  "serde_json",
  "thiserror 2.0.16",

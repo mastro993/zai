@@ -1,6 +1,7 @@
 use super::insert::insert_domain_alert;
 use super::lifecycle::{
-    mark_all_domain_alerts_read, mark_domain_alert_read, mark_domain_alert_unread,
+    mark_all_domain_alerts_read, mark_domain_alert_read_with_outcome,
+    mark_domain_alert_unread_with_outcome,
 };
 use super::list::{list_domain_alerts_from_pool, unread_domain_alert_count_from_pool};
 use crate::connection::DbPool;
@@ -11,23 +12,45 @@ use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
 use zai_core::Result;
 use zai_core::features::domain_alerts::{
-    AlertInsertOutcome, DomainAlert, DomainAlertListPage, DomainAlertsRepositoryTrait,
+    AlertInsertOutcome, CommittedOutcome, DomainAlert, DomainAlertEvent, DomainAlertEventPublisher,
+    DomainAlertLifecycleOutcome, DomainAlertListPage, DomainAlertsRepositoryTrait,
     ListDomainAlertsQuery, NewDomainAlert,
 };
 
 pub struct DomainAlertsRepository {
     pool: Arc<DbPool>,
     writer: WriteHandle,
+    event_publisher: Arc<dyn DomainAlertEventPublisher>,
 }
 
 impl DomainAlertsRepository {
     #[cfg(test)]
     pub(crate) fn new(pool: Arc<DbPool>, writer: WriteHandle) -> Self {
-        Self { pool, writer }
+        Self::new_with_publisher(
+            pool,
+            writer,
+            zai_core::features::domain_alerts::DomainAlertEventBus::new(),
+        )
     }
 
-    pub(crate) fn new_with_writer(pool: Arc<DbPool>, writer: WriteHandle) -> Self {
-        Self { pool, writer }
+    pub(crate) fn new_with_writer_and_publisher(
+        pool: Arc<DbPool>,
+        writer: WriteHandle,
+        event_publisher: Arc<dyn DomainAlertEventPublisher>,
+    ) -> Self {
+        Self::new_with_publisher(pool, writer, event_publisher)
+    }
+
+    pub(crate) fn new_with_publisher(
+        pool: Arc<DbPool>,
+        writer: WriteHandle,
+        event_publisher: Arc<dyn DomainAlertEventPublisher>,
+    ) -> Self {
+        Self {
+            pool,
+            writer,
+            event_publisher,
+        }
     }
 
     pub fn pool(&self) -> &Arc<DbPool> {
@@ -47,9 +70,56 @@ impl DomainAlertsRepository {
     }
 
     pub async fn insert(&self, alert: NewDomainAlert) -> Result<AlertInsertOutcome> {
-        self.writer
+        let outcome = self
+            .writer
             .exec(move |conn| insert_domain_alert(conn, &alert))
-            .await
+            .await?;
+        if let AlertInsertOutcome::Created(alert) = &outcome {
+            self.publish_event(DomainAlertEvent::Created {
+                alert: Box::new((**alert).clone()),
+            });
+        }
+        Ok(outcome)
+    }
+
+    pub fn publish_committed_outcome<T>(&self, outcome: &CommittedOutcome<T>) {
+        for alert in &outcome.created_alerts {
+            self.publish_event(DomainAlertEvent::Created {
+                alert: Box::new(alert.clone()),
+            });
+        }
+    }
+
+    fn publish_event(&self, event: DomainAlertEvent) {
+        let _ = self.event_publisher.publish(&event);
+    }
+
+    fn publish_state_changed(&self) {
+        self.publish_event(DomainAlertEvent::StateChanged);
+    }
+
+    pub async fn mark_read_with_outcome(&self, id: &str) -> Result<DomainAlertLifecycleOutcome> {
+        let id = id.to_string();
+        let outcome = self
+            .writer
+            .exec(move |conn| mark_domain_alert_read_with_outcome(conn, &id))
+            .await?;
+        if outcome.changed {
+            self.publish_state_changed();
+        }
+        Ok(outcome)
+    }
+
+    pub async fn mark_unread_with_outcome(&self, id: &str) -> Result<DomainAlertLifecycleOutcome> {
+        let id = id.to_string();
+        let outcome = self
+            .writer
+            .exec(move |conn| mark_domain_alert_unread_with_outcome(conn, &id))
+            .await?;
+        if outcome.changed {
+            self.publish_state_changed();
+        }
+        Ok(outcome)
     }
 }
 
@@ -64,20 +134,30 @@ impl DomainAlertsRepositoryTrait for DomainAlertsRepository {
     }
 
     async fn mark_read(&self, id: &str) -> Result<DomainAlert> {
-        let id = id.to_string();
-        self.writer
-            .exec(move |conn| mark_domain_alert_read(conn, &id))
+        self.mark_read_with_outcome(id)
             .await
+            .map(|outcome| outcome.alert)
     }
 
     async fn mark_unread(&self, id: &str) -> Result<DomainAlert> {
-        let id = id.to_string();
-        self.writer
-            .exec(move |conn| mark_domain_alert_unread(conn, &id))
+        self.mark_unread_with_outcome(id)
             .await
+            .map(|outcome| outcome.alert)
+    }
+
+    async fn mark_read_with_outcome(&self, id: &str) -> Result<DomainAlertLifecycleOutcome> {
+        self.mark_read_with_outcome(id).await
+    }
+
+    async fn mark_unread_with_outcome(&self, id: &str) -> Result<DomainAlertLifecycleOutcome> {
+        self.mark_unread_with_outcome(id).await
     }
 
     async fn mark_all_read(&self) -> Result<i64> {
-        self.writer.exec(mark_all_domain_alerts_read).await
+        let affected = self.writer.exec(mark_all_domain_alerts_read).await?;
+        if affected > 0 {
+            self.publish_state_changed();
+        }
+        Ok(affected)
     }
 }

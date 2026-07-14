@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use zai_core::Result;
 use zai_core::features::budgets::traits::{CalendarClock, LocalCalendarClock};
+use zai_core::features::domain_alerts::DomainAlertEventBus;
 
 pub(crate) type DbPool = Pool<ConnectionManager<SqliteConnection>>;
 pub(crate) type DbConnection = PooledConnection<ConnectionManager<SqliteConnection>>;
@@ -29,6 +30,7 @@ pub struct Database {
     pool: Arc<DbPool>,
     writer: WriteHandle,
     clock: Arc<dyn CalendarClock>,
+    domain_alert_event_bus: Arc<DomainAlertEventBus>,
 }
 
 impl Database {
@@ -61,14 +63,26 @@ impl Database {
     }
 
     pub fn domain_alerts_repository(&self) -> Arc<DomainAlertsRepository> {
-        Arc::new(DomainAlertsRepository::new_with_writer(
+        Arc::new(DomainAlertsRepository::new_with_writer_and_publisher(
             Arc::clone(&self.pool),
             self.writer.clone(),
+            self.domain_alert_event_bus.clone(),
         ))
+    }
+
+    pub fn domain_alert_event_bus(&self) -> Arc<DomainAlertEventBus> {
+        Arc::clone(&self.domain_alert_event_bus)
     }
 }
 
 pub fn connect(app_data_dir: impl AsRef<Path>) -> Result<Database> {
+    connect_with_event_bus(app_data_dir, DomainAlertEventBus::new())
+}
+
+pub fn connect_with_event_bus(
+    app_data_dir: impl AsRef<Path>,
+    domain_alert_event_bus: Arc<DomainAlertEventBus>,
+) -> Result<Database> {
     let db_path = get_db_path(app_data_dir.as_ref());
     init(&db_path)?;
     let pool = create_pool(&db_path)?;
@@ -81,6 +95,7 @@ pub fn connect(app_data_dir: impl AsRef<Path>) -> Result<Database> {
         pool,
         writer,
         clock,
+        domain_alert_event_bus,
     })
 }
 

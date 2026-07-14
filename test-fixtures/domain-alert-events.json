@@ -1,0 +1,22 @@
+[
+  {
+    "version": 1,
+    "type": "created",
+    "alert": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "producerKey": "budget.status",
+      "occurrenceKey": "period-1",
+      "severity": "warning",
+      "title": "Budget warning",
+      "body": "Budget body",
+      "destination": null,
+      "data": null,
+      "createdAt": "2026-07-14T12:00:00",
+      "readAt": null
+    }
+  },
+  {
+    "version": 1,
+    "type": "stateChanged"
+  }
+]

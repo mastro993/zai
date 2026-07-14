@@ -5,6 +5,7 @@ import {
   type DomainAlertListPage,
   type DomainAlertRichData,
 } from "../types/domain-alert";
+import { parseDomainAlertEvent as parseEvent } from "../types/domain-alert-event";
 
 export const parseDomainAlert = (value: unknown): DomainAlert | null => {
   const parsed = domainAlertSchema.safeParse(value);
@@ -15,6 +16,8 @@ export const parseDomainAlertListPage = (value: unknown): DomainAlertListPage | 
   const parsed = domainAlertListPageSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
 };
+
+export const parseDomainAlertEvent = parseEvent;
 
 export const isUnreadAlert = (alert: DomainAlert): boolean => !alert.readAt;
 
