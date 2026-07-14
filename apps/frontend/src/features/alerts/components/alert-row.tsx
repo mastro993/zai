@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Alert02Icon, AlertCircleIcon, InformationCircleIcon } from "@hugeicons/core-free-icons";
 
@@ -22,6 +23,7 @@ const severityIcon = (severity: DomainAlertSeverity) => {
 
 interface AlertRowProps {
   alert: DomainAlert;
+  autoFocus?: boolean;
   destinationFeedback?: string | null;
   isLifecyclePending?: boolean;
   lifecycleError?: string | null;
@@ -31,20 +33,32 @@ interface AlertRowProps {
 
 export function AlertRow({
   alert,
+  autoFocus = false,
   destinationFeedback = null,
   isLifecyclePending = false,
   lifecycleError = null,
   onOpen,
   onToggleReadState,
 }: AlertRowProps) {
+  const rowRef = useRef<HTMLElement>(null);
   const unread = isUnreadAlert(alert);
   const navigable = isNavigableAlertDestination(alert.destination);
   const lifecycleLabel = unread ? "Mark read" : "Mark unread";
 
+  useEffect(() => {
+    if (!autoFocus || !rowRef.current) {
+      return;
+    }
+    rowRef.current.scrollIntoView({ block: "nearest" });
+    rowRef.current.focus({ preventScroll: true });
+  }, [autoFocus]);
+
   return (
     <article
+      ref={rowRef}
+      tabIndex={autoFocus ? -1 : undefined}
       className={cn(
-        "flex flex-col gap-2 border-b border-border px-4 py-3",
+        "flex flex-col gap-2 border-b border-border px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-ring",
         unread && "bg-primary/5",
       )}
       aria-label={`${domainAlertSeverityLabel(alert.severity)} alert: ${alert.title}`}

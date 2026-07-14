@@ -16,6 +16,7 @@ export interface AlertsControllerValue {
   filters: AlertSessionFilters;
   hasActiveFilters: boolean;
   isLedgerOpen: boolean;
+  ledgerFocusAlertId: string | null;
   items: Array<DomainAlert>;
   lifecycleErrors: Record<string, string>;
   lifecyclePendingId: string | null;

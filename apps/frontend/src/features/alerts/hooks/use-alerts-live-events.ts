@@ -1,29 +1,29 @@
 import { useEffect, useRef } from "react";
-import { toast } from "sonner";
-
 import { createAlertEventTransport } from "../commands/alert-events";
 import { parseDomainAlertEvent } from "../lib/parse";
+import { shouldShowUrgentAlertToast, showUrgentAlertToast } from "../lib/urgent-alert-toast";
+import type { DomainAlert } from "../types/domain-alert";
 
 interface AlertsLiveEventHandlers {
-  onOpenLedger: () => void;
+  onActivateAlert: (alert: DomainAlert) => void;
   onReconcile: () => void;
   onReady: () => void;
 }
 
 export function useAlertsLiveEvents({
-  onOpenLedger,
+  onActivateAlert,
   onReconcile,
   onReady,
 }: AlertsLiveEventHandlers) {
-  const onOpenLedgerRef = useRef(onOpenLedger);
+  const onActivateAlertRef = useRef(onActivateAlert);
   const onReconcileRef = useRef(onReconcile);
   const onReadyRef = useRef(onReady);
 
   useEffect(() => {
-    onOpenLedgerRef.current = onOpenLedger;
+    onActivateAlertRef.current = onActivateAlert;
     onReconcileRef.current = onReconcile;
     onReadyRef.current = onReady;
-  }, [onOpenLedger, onReconcile, onReady]);
+  }, [onActivateAlert, onReconcile, onReady]);
 
   useEffect(() => {
     let active = true;
@@ -31,18 +31,12 @@ export function useAlertsLiveEvents({
       (value) => {
         const event = parseDomainAlertEvent(value);
         if (
-          event?.type === "created" &&
-          (event.alert.severity === "warning" || event.alert.severity === "critical") &&
-          document.visibilityState === "visible" &&
-          document.hasFocus()
+          shouldShowUrgentAlertToast(event, {
+            hasFocus: () => document.hasFocus(),
+            visibilityState: document.visibilityState,
+          })
         ) {
-          toast.warning(event.alert.title, {
-            description: event.alert.body,
-            action: {
-              label: "Open alerts",
-              onClick: () => onOpenLedgerRef.current(),
-            },
-          });
+          showUrgentAlertToast(event.alert, (alert) => onActivateAlertRef.current(alert));
         }
         onReconcileRef.current();
       },

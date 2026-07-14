@@ -21,6 +21,7 @@ export function AlertsLedgerSheet() {
     filters,
     hasActiveFilters,
     isLedgerOpen,
+    ledgerFocusAlertId,
     items,
     lifecycleErrors,
     lifecyclePendingId,
@@ -120,6 +121,7 @@ export function AlertsLedgerSheet() {
                 <AlertRow
                   key={alert.id}
                   alert={alert}
+                  autoFocus={ledgerFocusAlertId === alert.id}
                   destinationFeedback={
                     destinationFeedback?.alertId === alert.id ? destinationFeedback.message : null
                   }

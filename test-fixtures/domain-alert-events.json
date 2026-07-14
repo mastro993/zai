@@ -17,6 +17,41 @@
   },
   {
     "version": 1,
+    "type": "created",
+    "alert": {
+      "id": "660e8400-e29b-41d4-a716-446655440001",
+      "producerKey": "budget.status",
+      "occurrenceKey": "period-2",
+      "severity": "info",
+      "title": "Budget info",
+      "body": "Budget info body",
+      "destination": null,
+      "data": null,
+      "createdAt": "2026-07-14T12:05:00",
+      "readAt": null
+    }
+  },
+  {
+    "version": 1,
+    "type": "created",
+    "alert": {
+      "id": "770e8400-e29b-41d4-a716-446655440002",
+      "producerKey": "budget.status",
+      "occurrenceKey": "period-3",
+      "severity": "critical",
+      "title": "Budget critical",
+      "body": "Budget critical body",
+      "destination": {
+        "type": "budget",
+        "budgetId": "880e8400-e29b-41d4-a716-446655440003"
+      },
+      "data": null,
+      "createdAt": "2026-07-14T12:10:00",
+      "readAt": null
+    }
+  },
+  {
+    "version": 1,
     "type": "stateChanged"
   }
 ]

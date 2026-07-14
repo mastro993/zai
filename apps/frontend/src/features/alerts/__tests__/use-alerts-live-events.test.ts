@@ -1,15 +1,22 @@
 // @vitest-environment jsdom
+import fixtures from "../../../../../../test-fixtures/domain-alert-events.json";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createTransportMock, warningMock } = vi.hoisted(() => ({
+const { createTransportMock, showUrgentAlertToastMock } = vi.hoisted(() => ({
   createTransportMock: vi.fn(),
-  warningMock: vi.fn(),
+  showUrgentAlertToastMock: vi.fn(),
 }));
 
-vi.mock("sonner", () => ({
-  toast: { warning: warningMock },
-}));
+import type * as UrgentAlertToastModule from "../lib/urgent-alert-toast";
+
+vi.mock("../lib/urgent-alert-toast", async () => {
+  const actual = await vi.importActual<UrgentAlertToastModule>("../lib/urgent-alert-toast");
+  return {
+    ...actual,
+    showUrgentAlertToast: showUrgentAlertToastMock,
+  };
+});
 vi.mock("../commands/alert-events", () => ({
   createAlertEventTransport: createTransportMock,
 }));
@@ -24,7 +31,7 @@ describe("useAlertsLiveEvents", () => {
 
   beforeEach(() => {
     close = vi.fn();
-    warningMock.mockReset();
+    showUrgentAlertToastMock.mockReset();
     createTransportMock.mockReset();
     createTransportMock.mockImplementation(() => ({
       subscribe: (onEvent: (value: unknown) => void, onReconnect: () => void) => {
@@ -33,31 +40,32 @@ describe("useAlertsLiveEvents", () => {
         return { ready: Promise.resolve(), close };
       },
     }));
+    vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("reconciles valid, malformed, unknown, reconnect, focus, and visible events", async () => {
+  it("reconciles valid, malformed, unknown, reconnect, focus, and visible events without toasts", async () => {
     const onReconcile = vi.fn();
     const onReady = vi.fn();
     const { unmount } = renderHook(() =>
       useAlertsLiveEvents({
-        onOpenLedger: vi.fn(),
+        onActivateAlert: vi.fn(),
         onReconcile,
         onReady,
       }),
     );
 
     await waitFor(() => expect(onReady).toHaveBeenCalledOnce());
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      value: "visible",
-    });
 
     await act(async () => {
-      emit(JSON.stringify({ version: 1, type: "stateChanged" }));
+      emit(JSON.stringify(fixtures[3]));
       emit("not json");
       emit(JSON.stringify({ version: 1, type: "unknown" }));
       reconnect();
@@ -66,50 +74,61 @@ describe("useAlertsLiveEvents", () => {
     });
 
     expect(onReconcile).toHaveBeenCalledTimes(6);
+    expect(showUrgentAlertToastMock).not.toHaveBeenCalled();
     unmount();
     expect(close).toHaveBeenCalledOnce();
   });
 
-  it("shows foreground warning alerts with an action that opens the ledger", async () => {
-    const onOpenLedger = vi.fn();
-    const { unmount } = renderHook(() =>
+  it("shows urgent toasts only for live foreground warning and critical created events", async () => {
+    const onActivateAlert = vi.fn();
+    renderHook(() =>
       useAlertsLiveEvents({
-        onOpenLedger,
+        onActivateAlert,
         onReconcile: vi.fn(),
         onReady: vi.fn(),
       }),
     );
+
+    await act(async () => {
+      emit(JSON.stringify(fixtures[1]));
+      emit(JSON.stringify(fixtures[0]));
+      emit(JSON.stringify(fixtures[2]));
+    });
+
+    expect(showUrgentAlertToastMock).toHaveBeenCalledTimes(2);
+    const [, activateHandler] = showUrgentAlertToastMock.mock.calls[0] as [
+      unknown,
+      (alert: { id: string }) => void,
+    ];
+    activateHandler({ id: "550e8400-e29b-41d4-a716-446655440000" } as never);
+    expect(onActivateAlert).toHaveBeenCalledWith({
+      id: "550e8400-e29b-41d4-a716-446655440000",
+    });
+  });
+
+  it("suppresses urgent toasts when the document is hidden or unfocused", async () => {
+    renderHook(() =>
+      useAlertsLiveEvents({
+        onActivateAlert: vi.fn(),
+        onReconcile: vi.fn(),
+        onReady: vi.fn(),
+      }),
+    );
+
+    vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    await act(async () => {
+      emit(JSON.stringify(fixtures[0]));
+    });
+    expect(showUrgentAlertToastMock).not.toHaveBeenCalled();
+
     vi.spyOn(document, "hasFocus").mockReturnValue(true);
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
-      value: "visible",
+      value: "hidden",
     });
-
     await act(async () => {
-      emit(
-        JSON.stringify({
-          version: 1,
-          type: "created",
-          alert: {
-            id: "550e8400-e29b-41d4-a716-446655440000",
-            producerKey: "budget.status",
-            occurrenceKey: "period-1",
-            severity: "warning",
-            title: "Budget warning",
-            body: "Budget body",
-            destination: null,
-            data: null,
-            createdAt: "2026-07-14T12:00:00",
-            readAt: null,
-          },
-        }),
-      );
+      emit(JSON.stringify(fixtures[2]));
     });
-
-    expect(warningMock).toHaveBeenCalledOnce();
-    const [, options] = warningMock.mock.calls[0] as [string, { action: { onClick: () => void } }];
-    options.action.onClick();
-    expect(onOpenLedger).toHaveBeenCalledOnce();
-    unmount();
+    expect(showUrgentAlertToastMock).not.toHaveBeenCalled();
   });
 });
