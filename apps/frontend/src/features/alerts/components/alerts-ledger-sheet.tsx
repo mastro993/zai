@@ -16,19 +16,24 @@ export function AlertsLedgerSheet() {
   const {
     clearFilters,
     closeLedger,
+    destinationFeedback,
     errorMessage,
     filters,
     hasActiveFilters,
     isLedgerOpen,
     items,
+    lifecycleErrors,
+    lifecyclePendingId,
     loadOlder,
     loadOlderError,
     loadOlderStatus,
     nextCursor,
+    openAlert,
     refresh,
     refreshStatus,
     setReadStateFilter,
     setSeverityFilter,
+    toggleAlertReadState,
     unreadCount,
   } = useAlertsController();
 
@@ -89,7 +94,19 @@ export function AlertsLedgerSheet() {
           ) : null}
 
           {!isLoading && items.length > 0
-            ? items.map((alert) => <AlertRow key={alert.id} alert={alert} />)
+            ? items.map((alert) => (
+                <AlertRow
+                  key={alert.id}
+                  alert={alert}
+                  destinationFeedback={
+                    destinationFeedback?.alertId === alert.id ? destinationFeedback.message : null
+                  }
+                  isLifecyclePending={lifecyclePendingId === alert.id}
+                  lifecycleError={lifecycleErrors[alert.id] ?? null}
+                  onOpen={() => void openAlert(alert)}
+                  onToggleReadState={() => void toggleAlertReadState(alert)}
+                />
+              ))
             : null}
 
           {nextCursor && items.length > 0 ? (

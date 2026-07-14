@@ -5,6 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CommandError } from "@/commands/errors";
 
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => vi.fn(),
+}));
+
 import * as alertsCommands from "../commands/alerts";
 import { AlertsControllerProvider, useAlertsController } from "../hooks/use-alerts-controller";
 import { setAlertSessionFilters } from "../lib/session-filters";

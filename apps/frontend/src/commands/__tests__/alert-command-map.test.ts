@@ -16,6 +16,14 @@ describe("alerts web command map", () => {
       method: "GET",
       path: "/alerts/unread-count",
     });
+    expect(buildWebRequestSpec("mark_alert_read", { alertId: "alert-1" })).toEqual({
+      method: "POST",
+      path: "/alerts/alert-1/read",
+    });
+    expect(buildWebRequestSpec("mark_alert_unread", { alertId: "alert-1" })).toEqual({
+      method: "POST",
+      path: "/alerts/alert-1/unread",
+    });
   });
 
   it("serializes list query filters and cursor into the request path", () => {

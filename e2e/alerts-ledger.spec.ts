@@ -11,14 +11,28 @@ const fixedAlerts = {
       body: "Spending exceeded 80% of allowance.",
       createdAt: "2026-07-14T10:00:00",
       readAt: null,
+      destination: {
+        type: "budget",
+        budgetId: "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+      },
     },
   ],
   nextCursor: null,
 };
 
+const readAlert = {
+  ...fixedAlerts.items[0],
+  readAt: "2026-07-14T11:00:00",
+};
+
 const isUnreadFirstPageRequest = (url: string): boolean => {
   const parsed = new URL(url);
   return parsed.searchParams.get("readState") === "unread" && !parsed.searchParams.has("cursor");
+};
+
+const isDefaultListRequest = (url: string): boolean => {
+  const parsed = new URL(url);
+  return !parsed.searchParams.has("readState") && !parsed.searchParams.has("cursor");
 };
 
 test.describe("alerts ledger", () => {
@@ -77,6 +91,106 @@ test.describe("alerts ledger", () => {
     await expect(dot).not.toHaveClass(/animate-pulse/);
   });
 
+  test("exposes labelled mark read action and updates row state", async ({ page }) => {
+    await page.route("**/api/alerts/*/read", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(readAlert),
+      });
+    });
+
+    await page.goto("/dashboard");
+    const listRefresh = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/alerts") &&
+        response.request().method() === "GET" &&
+        !response.url().includes("unread-count"),
+    );
+    await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
+    await listRefresh;
+
+    const markRead = page.getByRole("button", { name: "Mark read: Budget warning" });
+    await expect(markRead).toBeVisible();
+    const markReadResponse = page.waitForResponse((response) => response.url().includes("/read"));
+    await markRead.click();
+    await markReadResponse;
+
+    await expect(page.getByRole("button", { name: "Mark unread: Budget warning" })).toBeVisible();
+    await expect(
+      page.getByRole("article", { name: /Warning alert: Budget warning/i }).getByText("Read", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Alerts, 0 unread" })).toBeVisible();
+  });
+
+  test("marks unread alert read before navigating to budget destination", async ({ page }) => {
+    let markedRead = false;
+    await page.route("**/api/alerts/*/read", async (route) => {
+      markedRead = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(readAlert),
+      });
+    });
+    await page.route("**/api/cash-flow/budgets/*/history*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: [],
+          page: 1,
+          perPage: 50,
+          totalPages: 1,
+        }),
+      });
+    });
+    await page.route("**/api/cash-flow/transaction-categories**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([]),
+      });
+    });
+    await page.route("**/api/cash-flow/budgets/*", async (route) => {
+      expect(markedRead).toBe(true);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+          name: "Monthly groceries",
+          revision: 1,
+          paused: false,
+          categoryIds: [],
+          cadence: "month",
+          measurementMode: "spending",
+          baseAllowance: 10000,
+          rolloverMode: "off",
+          warningPercentage: 80,
+          currentPeriod: {
+            start: "2026-07-01T00:00:00",
+            end: "2026-08-01T00:00:00",
+            baseAllowance: 10000,
+            effectiveAllowance: 10000,
+            netBudgetSpending: 2500,
+            remainingAllowance: 7500,
+            status: "onTrack",
+          },
+        }),
+      });
+    });
+
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
+    await page.getByRole("button", { name: "Open alert: Budget warning" }).click();
+
+    await expect(page).toHaveURL(/\/cash-flow\/budgets\/6ba7b811-9dad-11d1-80b4-00c04fd430c8$/);
+  });
+
   test("filters alerts and loads older pages from cursor", async ({ page }) => {
     await page.unroute("**/api/alerts");
     await page.route("**/api/alerts", async (route) => {
@@ -122,16 +236,32 @@ test.describe("alerts ledger", () => {
     });
 
     await page.goto("/dashboard");
-    await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
-
     const dialog = page.getByRole("dialog", { name: "Alerts" });
+    const ledgerOpen = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.ok() &&
+        isDefaultListRequest(response.url()),
+    );
+    await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
+    await ledgerOpen;
+    await expect(dialog).toBeVisible();
+
+    const resetFilters = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.ok() &&
+        isDefaultListRequest(response.url()),
+    );
+    await dialog.getByRole("button", { name: "All" }).click();
+    await resetFilters;
+
     const unreadFilterResponse = page.waitForResponse(
       (response) =>
         response.request().method() === "GET" &&
         response.ok() &&
         isUnreadFirstPageRequest(response.url()),
     );
-
     await dialog.getByRole("button", { name: "Unread" }).click();
     await unreadFilterResponse;
 
@@ -143,7 +273,6 @@ test.describe("alerts ledger", () => {
         response.ok() &&
         new URL(response.url()).searchParams.get("cursor") === "cursor-page-2",
     );
-
     await dialog.getByRole("button", { name: "Load older alerts" }).click();
     await olderPageResponse;
 
