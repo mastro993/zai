@@ -25,7 +25,7 @@ impl TempAppDataDir {
         }
     }
 
-    fn path(&self) -> &Path {
+    pub fn path(&self) -> &Path {
         &self.path
     }
 }
