@@ -47,7 +47,10 @@ impl FromStr for DomainAlertSeverity {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum DomainAlertDestination {
-    Budget { budget_id: String },
+    Budget {
+        #[serde(rename = "budgetId")]
+        budget_id: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
