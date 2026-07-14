@@ -92,7 +92,28 @@ test.describe("alerts ledger", () => {
   });
 
   test("exposes labelled mark read action and updates row state", async ({ page }) => {
+    let currentAlerts = fixedAlerts;
+    let currentUnreadCount = 1;
+
+    await page.unroute("**/api/alerts/unread-count");
+    await page.unroute("**/api/alerts");
+    await page.route("**/api/alerts/unread-count", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(currentUnreadCount),
+      });
+    });
+    await page.route("**/api/alerts", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(currentAlerts),
+      });
+    });
     await page.route("**/api/alerts/*/read", async (route) => {
+      currentAlerts = { ...fixedAlerts, items: [readAlert] };
+      currentUnreadCount = 0;
       await route.fulfill({
         status: 200,
         contentType: "application/json",

@@ -21,6 +21,7 @@ type ApplyLifecycleResult = (
 interface UseAlertDestinationOptions {
   applyLifecycleResult: ApplyLifecycleResult;
   closeLedger: () => void;
+  refresh: () => Promise<void>;
   setDestinationFeedback: Dispatch<SetStateAction<DestinationFeedback | null>>;
   setLifecyclePendingId: Dispatch<SetStateAction<string | null>>;
 }
@@ -30,6 +31,7 @@ const STALE_BUDGET_MESSAGE = "This budget is no longer available. The alert hist
 export function useAlertDestination({
   applyLifecycleResult,
   closeLedger,
+  refresh,
   setDestinationFeedback,
   setLifecyclePendingId,
 }: UseAlertDestinationOptions) {
@@ -48,6 +50,7 @@ export function useAlertDestination({
         if (!updated) {
           return;
         }
+        await refresh();
         current = updated;
       }
 
@@ -70,6 +73,13 @@ export function useAlertDestination({
         params: { budgetId: current.destination.budgetId },
       });
     },
-    [applyLifecycleResult, closeLedger, navigate, setDestinationFeedback, setLifecyclePendingId],
+    [
+      applyLifecycleResult,
+      closeLedger,
+      navigate,
+      refresh,
+      setDestinationFeedback,
+      setLifecyclePendingId,
+    ],
   );
 }

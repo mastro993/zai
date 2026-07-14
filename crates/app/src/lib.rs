@@ -1,5 +1,6 @@
 use std::{path::Path, sync::Arc};
 
+use zai_core::features::domain_alerts::DomainAlertEventBus;
 use zai_core::features::{
     budgets::{service::BudgetsService, traits::BudgetsServiceTrait},
     domain_alerts::{DomainAlertsService, DomainAlertsServiceTrait},
@@ -14,6 +15,7 @@ pub struct ServiceContext {
     pub domain_alerts_service: Arc<dyn DomainAlertsServiceTrait>,
     pub transaction_categories_service: Arc<dyn TransactionCategoriesServiceTrait>,
     pub transactions_service: Arc<dyn TransactionsServiceTrait>,
+    pub domain_alert_event_bus: Arc<DomainAlertEventBus>,
 }
 
 impl ServiceContext {
@@ -32,10 +34,23 @@ impl ServiceContext {
     pub fn transactions_service(&self) -> Arc<dyn TransactionsServiceTrait> {
         Arc::clone(&self.transactions_service)
     }
+
+    pub fn domain_alert_event_bus(&self) -> Arc<DomainAlertEventBus> {
+        Arc::clone(&self.domain_alert_event_bus)
+    }
 }
 
 pub fn initialize_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<ServiceContext> {
-    let database = zai_db::connect(app_data_dir)?;
+    let domain_alert_event_bus = DomainAlertEventBus::new();
+    initialize_context_with_event_bus(app_data_dir, domain_alert_event_bus)
+}
+
+pub fn initialize_context_with_event_bus(
+    app_data_dir: impl AsRef<Path>,
+    domain_alert_event_bus: Arc<DomainAlertEventBus>,
+) -> zai_core::Result<ServiceContext> {
+    let database =
+        zai_db::connect_with_event_bus(app_data_dir, Arc::clone(&domain_alert_event_bus))?;
     log::info!("Database initialized at {}", database.path().display());
 
     let transaction_categories_repository = database.transaction_categories_repository();
@@ -50,6 +65,7 @@ pub fn initialize_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<Se
             transaction_categories_repository,
         )),
         transactions_service: Arc::new(TransactionsService::new(transactions_repository)),
+        domain_alert_event_bus,
     })
 }
 

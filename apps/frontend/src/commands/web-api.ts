@@ -15,3 +15,6 @@ export const joinWebApiUrl = (origin: string, ...pathSegments: Array<string>): s
 
   return path.length > 0 ? `${normalizedOrigin}/${path}` : normalizedOrigin;
 };
+
+export const resolveAlertsEventUrl = (): string =>
+  joinWebApiUrl(resolveWebApiOrigin(), "api/alerts/events");

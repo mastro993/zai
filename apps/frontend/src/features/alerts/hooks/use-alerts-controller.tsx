@@ -1,8 +1,8 @@
 import { Result } from "@praha/byethrow";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { listAlerts, markAllAlertsRead, markAlertRead, markAlertUnread } from "../commands/alerts";
 import { buildListAlertsQuery } from "../lib/build-list-query";
+import { mergeReconciledAlertPage } from "../lib/merge-page";
 import { isUnreadAlert, parseDomainAlert, parseDomainAlertListPage } from "../lib/parse";
 import {
   getAlertSessionFilters,
@@ -19,13 +19,17 @@ import {
 } from "./alerts-controller-context";
 import { fetchUnreadCount } from "./alerts-controller-queries";
 import { type DestinationFeedback, useAlertDestination } from "./use-alert-destination";
+import { useAlertsLiveEvents } from "./use-alerts-live-events";
+
+interface RefreshOptions {
+  preserveItems?: boolean;
+}
 
 export function AlertsControllerProvider({ children }: { children: ReactNode }) {
   const bellRef = useRef<HTMLButtonElement>(null);
   const [isLedgerOpen, setIsLedgerOpen] = useState(false);
   const [filters, setFilters] = useState<AlertSessionFilters>(getAlertSessionFilters);
   const filtersRef = useRef(filters);
-  filtersRef.current = filters;
   const listRequestIdRef = useRef(0);
   const [items, setItems] = useState<Array<DomainAlert>>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -100,12 +104,18 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
   );
 
   const applyListPage = useCallback(
-    (requestId: number, parsedPage: NonNullable<ReturnType<typeof parseDomainAlertListPage>>) => {
+    (
+      requestId: number,
+      parsedPage: NonNullable<ReturnType<typeof parseDomainAlertListPage>>,
+      preserveItems: boolean,
+    ) => {
       if (requestId !== listRequestIdRef.current) {
         return;
       }
 
-      setItems(parsedPage.items);
+      setItems((current) =>
+        preserveItems ? mergeReconciledAlertPage(current, parsedPage) : parsedPage.items,
+      );
       setNextCursor(parsedPage.nextCursor ?? null);
       setRefreshStatus("ready");
       setErrorMessage(null);
@@ -115,37 +125,40 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
     [],
   );
 
-  const refresh = useCallback(async () => {
-    const requestId = ++listRequestIdRef.current;
-    setRefreshStatus((status) => (status === "idle" ? "loading" : status));
-    const activeFilters = filtersRef.current;
-    const [listResult, count] = await Promise.all([fetchPage(activeFilters), fetchUnreadCount()]);
+  const refresh = useCallback(
+    async (options: RefreshOptions = {}) => {
+      const requestId = ++listRequestIdRef.current;
+      setRefreshStatus((status) => (status === "idle" ? "loading" : status));
+      const activeFilters = filtersRef.current;
+      const [listResult, count] = await Promise.all([fetchPage(activeFilters), fetchUnreadCount()]);
 
-    if (requestId !== listRequestIdRef.current) {
-      return;
-    }
+      if (requestId !== listRequestIdRef.current) {
+        return;
+      }
 
-    applyUnreadCount(count);
-    if (Result.isFailure(listResult)) {
-      setRefreshStatus("error");
-      setErrorMessage(listResult.error.message);
-      return;
-    }
+      applyUnreadCount(count);
+      if (Result.isFailure(listResult)) {
+        setRefreshStatus("error");
+        setErrorMessage(listResult.error.message);
+        return;
+      }
 
-    if (count === null) {
-      setRefreshStatus("error");
-      setErrorMessage("Saved alert count could not be read.");
-      return;
-    }
-    const parsedPage = parseDomainAlertListPage(listResult.value);
-    if (!parsedPage) {
-      setRefreshStatus("error");
-      setErrorMessage("Saved alerts could not be read.");
-      return;
-    }
+      if (count === null) {
+        setRefreshStatus("error");
+        setErrorMessage("Saved alert count could not be read.");
+        return;
+      }
+      const parsedPage = parseDomainAlertListPage(listResult.value);
+      if (!parsedPage) {
+        setRefreshStatus("error");
+        setErrorMessage("Saved alerts could not be read.");
+        return;
+      }
 
-    applyListPage(requestId, parsedPage);
-  }, [applyListPage, applyUnreadCount, fetchPage]);
+      applyListPage(requestId, parsedPage, options.preserveItems === true);
+    },
+    [applyListPage, applyUnreadCount, fetchPage],
+  );
 
   const applyFilters = useCallback(
     async (nextFilters: AlertSessionFilters) => {
@@ -180,14 +193,10 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
         return;
       }
 
-      applyListPage(requestId, parsedPage);
+      applyListPage(requestId, parsedPage, false);
     },
     [applyListPage, applyUnreadCount, fetchPage],
   );
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   const setReadStateFilter = useCallback(
     (readState: DomainAlertReadState) => {
@@ -242,7 +251,7 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       return;
     }
 
-    setItems((current) => [...current, ...parsedPage.items]);
+    setItems((current) => mergeReconciledAlertPage(current, parsedPage));
     setNextCursor(parsedPage.nextCursor ?? null);
     setLoadOlderStatus("idle");
   }, [fetchPage, loadOlderStatus, nextCursor]);
@@ -250,8 +259,24 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
   const openLedger = useCallback(() => {
     setIsLedgerOpen(true);
     setDestinationFeedback(null);
+    void refresh({ preserveItems: true });
+  }, [refresh]);
+
+  const reconcileLiveState = useCallback(() => {
+    void refresh({ preserveItems: true });
+  }, [refresh]);
+
+  const loadInitialState = useCallback(() => {
     void refresh();
   }, [refresh]);
+
+  const refreshPreservingItems = useCallback(() => refresh({ preserveItems: true }), [refresh]);
+
+  useAlertsLiveEvents({
+    onOpenLedger: openLedger,
+    onReconcile: reconcileLiveState,
+    onReady: loadInitialState,
+  });
 
   const closeLedger = useCallback(() => {
     setIsLedgerOpen(false);
@@ -265,10 +290,13 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       const result = isUnreadAlert(alert)
         ? await markAlertRead(alert.id)
         : await markAlertUnread(alert.id);
-      applyLifecycleResult(alert, result);
+      const updated = applyLifecycleResult(alert, result);
+      if (updated) {
+        await refresh({ preserveItems: true });
+      }
       setLifecyclePendingId(null);
     },
-    [applyLifecycleResult],
+    [applyLifecycleResult, refresh],
   );
 
   const markAllRead = useCallback(async () => {
@@ -286,13 +314,14 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       return;
     }
 
-    await refresh();
+    await refresh({ preserveItems: true });
     setMarkAllReadPending(false);
   }, [markAllReadPending, refresh, unreadCount, unreadCountKnown]);
 
   const openAlert = useAlertDestination({
     applyLifecycleResult,
     closeLedger,
+    refresh: refreshPreservingItems,
     setDestinationFeedback,
     setLifecyclePendingId,
   });
