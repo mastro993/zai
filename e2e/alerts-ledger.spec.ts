@@ -247,14 +247,17 @@ test.describe("alerts ledger", () => {
     await ledgerOpen;
     await expect(dialog).toBeVisible();
 
-    const resetFilters = page.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" &&
-        response.ok() &&
-        isDefaultListRequest(response.url()),
-    );
-    await dialog.getByRole("button", { name: "All" }).click();
-    await resetFilters;
+    const unreadButton = dialog.getByRole("button", { name: "Unread" });
+    if ((await unreadButton.getAttribute("aria-pressed")) === "true") {
+      const readFilterResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.ok() &&
+          new URL(response.url()).searchParams.get("readState") === "read",
+      );
+      await dialog.getByRole("button", { name: "Read" }).click();
+      await readFilterResponse;
+    }
 
     const unreadFilterResponse = page.waitForResponse(
       (response) =>
@@ -262,7 +265,7 @@ test.describe("alerts ledger", () => {
         response.ok() &&
         isUnreadFirstPageRequest(response.url()),
     );
-    await dialog.getByRole("button", { name: "Unread" }).click();
+    await unreadButton.click();
     await unreadFilterResponse;
 
     await expect(dialog.getByRole("button", { name: "Load older alerts" })).toBeVisible();
