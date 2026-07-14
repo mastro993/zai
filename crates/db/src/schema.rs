@@ -76,10 +76,26 @@ diesel::table! {
 diesel::joinable!(budget_configurations -> budgets (budget_id));
 diesel::joinable!(budget_period_results -> budgets (budget_id));
 
+diesel::table! {
+    domain_alerts (id) {
+        id -> Text,
+        producer_key -> Text,
+        occurrence_key -> Text,
+        severity -> Text,
+        title -> Text,
+        body -> Text,
+        destination -> Nullable<Text>,
+        data -> Nullable<Text>,
+        created_at -> Timestamp,
+        read_at -> Nullable<Timestamp>,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     transaction_categories,
     transactions,
     budget_configurations,
     budget_period_results,
     budgets,
+    domain_alerts,
 );

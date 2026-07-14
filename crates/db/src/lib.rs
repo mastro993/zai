@@ -12,3 +12,4 @@ mod write_actor;
 
 pub use connection::{Database, connect};
 pub mod budgets;
+pub mod domain_alerts;
