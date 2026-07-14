@@ -13,6 +13,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 import { AlertsLedgerFilters } from "../components/alerts-ledger-filters";
+import { AlertsLedgerSheet } from "../components/alerts-ledger-sheet";
 import { AlertRow } from "../components/alert-row";
 import { AlertsControllerProvider, useAlertsController } from "../hooks/use-alerts-controller";
 import { alertsBellLabel, domainAlertSeverityLabel, formatAlertCreatedAt } from "../lib/format";
@@ -25,6 +26,7 @@ vi.mock("@hugeicons/react", () => ({
 
 const markAlertRead = vi.fn();
 const markAlertUnread = vi.fn();
+const markAllAlertsRead = vi.fn();
 const getBudget = vi.fn();
 
 vi.mock("../commands/alerts", () => ({
@@ -37,6 +39,7 @@ vi.mock("../commands/alerts", () => ({
     ),
   ),
   getUnreadAlertCount: vi.fn(() => Promise.resolve(Result.succeed(0))),
+  markAllAlertsRead: (...args: Array<unknown>) => markAllAlertsRead(...args),
   markAlertRead: (...args: Array<unknown>) => markAlertRead(...args),
   markAlertUnread: (...args: Array<unknown>) => markAlertUnread(...args),
 }));
@@ -79,6 +82,9 @@ function ControllerProbe() {
   const controller = useAlertsController();
   return (
     <div>
+      <button type="button" data-testid="open-ledger" onClick={controller.openLedger}>
+        Open ledger
+      </button>
       <button
         type="button"
         data-testid="toggle-read"
@@ -97,6 +103,7 @@ function ControllerProbe() {
       <span data-testid="destination-feedback">
         {controller.destinationFeedback?.message ?? ""}
       </span>
+      <AlertsLedgerSheet />
     </div>
   );
 }
@@ -193,6 +200,7 @@ describe("alerts controller lifecycle", () => {
   beforeEach(() => {
     markAlertRead.mockReset();
     markAlertUnread.mockReset();
+    markAllAlertsRead.mockReset();
     getBudget.mockReset();
     navigateMock.mockReset();
   });
@@ -272,5 +280,17 @@ describe("alerts controller lifecycle", () => {
       );
     });
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it("disables mark all read when no unread alerts remain", async () => {
+    renderController();
+
+    fireEvent.click(screen.getByTestId("open-ledger"));
+
+    await waitFor(() => {
+      const markAll = screen.getByRole("button", { name: "Mark all read" }) as HTMLButtonElement;
+      expect(markAll.disabled).toBe(true);
+    });
+    expect(markAllAlertsRead).not.toHaveBeenCalled();
   });
 });

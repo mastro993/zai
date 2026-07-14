@@ -51,6 +51,7 @@ pub fn router() -> Router<Arc<ServiceContext>> {
     Router::new()
         .route("/alerts", get(list_alerts))
         .route("/alerts/unread-count", get(get_unread_alert_count))
+        .route("/alerts/mark-all-read", post(mark_all_alerts_read))
         .route("/alerts/{alert_id}/read", post(mark_alert_read))
         .route("/alerts/{alert_id}/unread", post(mark_alert_unread))
 }
@@ -77,6 +78,17 @@ async fn get_unread_alert_count(
         .await
         .map(Json)
         .map_err(|error| command_error("Failed to load unread alert count", error))
+}
+
+async fn mark_all_alerts_read(
+    State(context): State<Arc<ServiceContext>>,
+) -> AlertResult<Json<i64>> {
+    context
+        .domain_alerts_service()
+        .mark_all_read()
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to mark all alerts read", error))
 }
 
 async fn mark_alert_read(

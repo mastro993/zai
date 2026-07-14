@@ -207,3 +207,21 @@ async fn mark_alert_read_returns_not_found_for_unknown_id() {
     assert_eq!(status, StatusCode::NOT_FOUND);
     assert_eq!(body["code"].as_str(), Some("notFound"));
 }
+
+#[tokio::test]
+async fn mark_all_alerts_read_returns_affected_count_and_is_idempotent() {
+    let (router, _context, dir) = setup_app("zai-alerts-mark-all-read").await;
+    seed_unread_alerts(dir.path()).await;
+
+    let (status, body) = request_json(&router, "POST", "/api/alerts/mark-all-read", None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body.as_i64(), Some(3));
+
+    let (status, body) = request_json(&router, "POST", "/api/alerts/mark-all-read", None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body.as_i64(), Some(0));
+
+    let (status, body) = request_json(&router, "GET", "/api/alerts/unread-count", None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body.as_i64(), Some(0));
+}

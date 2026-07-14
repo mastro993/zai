@@ -9,6 +9,7 @@ pub trait DomainAlertsRepositoryTrait: Send + Sync {
     async fn unread_count(&self) -> Result<i64>;
     async fn mark_read(&self, id: &str) -> Result<DomainAlert>;
     async fn mark_unread(&self, id: &str) -> Result<DomainAlert>;
+    async fn mark_all_read(&self) -> Result<i64>;
 }
 
 #[async_trait]
@@ -17,4 +18,5 @@ pub trait DomainAlertsServiceTrait: Send + Sync {
     async fn unread_count(&self) -> Result<i64>;
     async fn mark_read(&self, id: &str) -> Result<DomainAlert>;
     async fn mark_unread(&self, id: &str) -> Result<DomainAlert>;
+    async fn mark_all_read(&self) -> Result<i64>;
 }

@@ -14,6 +14,10 @@ export const getUnreadAlertCount = (): CommandResult<number> => {
   return invokeCommand<number>("get_unread_alert_count");
 };
 
+export const markAllAlertsRead = (): CommandResult<number> => {
+  return invokeCommand<number>("mark_all_alerts_read");
+};
+
 export const markAlertRead = (alertId: string): CommandResult<DomainAlert> => {
   return invokeCommand<DomainAlert>("mark_alert_read", { alertId });
 };

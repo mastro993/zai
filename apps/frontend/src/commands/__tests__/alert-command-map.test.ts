@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -5,6 +9,11 @@ import {
   resolveAlertsApiBaseUrl,
   resolveWebApiBaseUrlForCommand,
 } from "../web-command-map";
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
+
+const readRepoFile = (relativePath: string): string =>
+  readFileSync(path.join(repoRoot, relativePath), "utf8");
 
 describe("alerts web command map", () => {
   it("maps list and unread count reads to the alerts API", () => {
@@ -15,6 +24,10 @@ describe("alerts web command map", () => {
     expect(buildWebRequestSpec("get_unread_alert_count")).toEqual({
       method: "GET",
       path: "/alerts/unread-count",
+    });
+    expect(buildWebRequestSpec("mark_all_alerts_read")).toEqual({
+      method: "POST",
+      path: "/alerts/mark-all-read",
     });
     expect(buildWebRequestSpec("mark_alert_read", { alertId: "alert-1" })).toEqual({
       method: "POST",
@@ -45,5 +58,20 @@ describe("alerts web command map", () => {
   it("routes alert commands to the alerts API base", () => {
     expect(resolveWebApiBaseUrlForCommand("list_alerts")).toBe(resolveAlertsApiBaseUrl());
     expect(resolveWebApiBaseUrlForCommand("get_budgets")).not.toBe(resolveAlertsApiBaseUrl());
+  });
+
+  it("keeps bulk alert command registration aligned across transports", () => {
+    expect(readRepoFile("apps/frontend/src/features/alerts/commands/alerts.ts")).toContain(
+      'invokeCommand<number>("mark_all_alerts_read")',
+    );
+    expect(readRepoFile("apps/frontend/src/commands/alerts-web-command-map.ts")).toContain(
+      'case "mark_all_alerts_read"',
+    );
+    expect(readRepoFile("apps/tauri/src/lib.rs")).toContain(
+      "commands::domain_alerts::mark_all_alerts_read",
+    );
+    expect(readRepoFile("apps/tauri/src/commands/domain_alerts.rs")).toContain(
+      "CommandResult<i64>",
+    );
   });
 });
