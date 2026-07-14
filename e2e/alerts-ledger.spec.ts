@@ -92,10 +92,20 @@ test.describe("alerts ledger", () => {
 
     await page.goto("/dashboard");
     await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
+    await page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/alerts") &&
+        response.request().method() === "GET" &&
+        !response.url().includes("unread-count"),
+    );
 
     const markRead = page.getByRole("button", { name: "Mark read: Budget warning" });
     await expect(markRead).toBeVisible();
+    const markReadResponse = page.waitForResponse((response) =>
+      response.url().includes("/read"),
+    );
     await markRead.click();
+    await markReadResponse;
 
     await expect(page.getByRole("button", { name: "Mark unread: Budget warning" })).toBeVisible();
     await expect(
@@ -103,6 +113,7 @@ test.describe("alerts ledger", () => {
         exact: true,
       }),
     ).toBeVisible();
+    await page.keyboard.press("Escape");
     await expect(page.getByRole("button", { name: "Alerts, 0 unread" })).toBeVisible();
   });
 
