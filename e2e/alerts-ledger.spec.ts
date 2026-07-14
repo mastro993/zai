@@ -193,7 +193,7 @@ test.describe("alerts ledger", () => {
 
   test("filters alerts and loads older pages from cursor", async ({ page }) => {
     await page.unroute("**/api/alerts");
-    await page.route("**/api/alerts", async (route) => {
+    await page.route("**/api/alerts?*", async (route) => {
       const url = route.request().url();
 
       if (isUnreadFirstPageRequest(url)) {
