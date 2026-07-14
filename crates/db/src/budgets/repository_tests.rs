@@ -382,3 +382,6 @@ mod repository_update_tests;
 
 #[path = "repository_repair_tests.rs"]
 mod repository_repair_tests;
+
+#[path = "repository_safety_tests.rs"]
+mod repository_safety_tests;

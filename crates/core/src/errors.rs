@@ -14,6 +14,7 @@ pub enum ErrorCode {
     CategoryDeletionBlocked,
     PeriodAdvanceLimitExceeded,
     ClockRegression,
+    CalculationOverflow,
     Internal,
 }
 
@@ -78,6 +79,9 @@ pub enum Error {
     #[error("Budget calendar clock regression: {0}")]
     ClockRegression(String),
 
+    #[error("Budget calculation overflow: {0}")]
+    CalculationOverflow(String),
+
     #[error("Invalid data: {0}")]
     InvalidData(String),
 
@@ -132,6 +136,7 @@ impl Error {
             Self::CategoryDeletionBlocked { .. } => ErrorCode::CategoryDeletionBlocked,
             Self::PeriodAdvanceLimitExceeded(_) => ErrorCode::PeriodAdvanceLimitExceeded,
             Self::ClockRegression(_) => ErrorCode::ClockRegression,
+            Self::CalculationOverflow(_) => ErrorCode::CalculationOverflow,
             Self::Database(DatabaseError::NotFound(_)) => ErrorCode::NotFound,
             Self::Database(DatabaseError::UniqueViolation(_))
             | Self::Database(DatabaseError::ForeignKeyViolation(_)) => ErrorCode::Conflict,
@@ -205,5 +210,13 @@ mod tests {
                 "affectedBudgets": []
             }))
         );
+    }
+
+    #[test]
+    fn calculation_overflow_uses_distinct_structured_error_code() {
+        let envelope = Error::CalculationOverflow("Budget calculation overflow".to_string())
+            .to_envelope("Failed to materialize budget");
+
+        assert_eq!(envelope.code, ErrorCode::CalculationOverflow);
     }
 }
