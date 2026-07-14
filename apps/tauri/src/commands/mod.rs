@@ -1,6 +1,7 @@
 use zai_core::{Error as CoreError, ErrorEnvelope};
 
 pub mod budgets;
+pub mod domain_alerts;
 pub mod stronghold;
 pub mod transaction_categories;
 pub mod transactions;

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { AlertsBell } from "@/features/alerts/components/alerts-bell";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -64,9 +65,10 @@ export function ScreenBase({ actions, children, className }: ScreenBaseProps) {
           <SidebarTrigger />
           <ScreenBreadcrumbs />
         </div>
-        {actions ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">{actions}</div>
-        ) : null}
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {actions}
+          <AlertsBell />
+        </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">{children}</div>
     </div>

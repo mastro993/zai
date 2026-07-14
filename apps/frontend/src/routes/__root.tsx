@@ -3,6 +3,8 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { HugeiconsIcon } from "@hugeicons/react";
 
+import { AlertsControllerProvider } from "@/features/alerts/hooks/use-alerts-controller";
+
 import {
   Sidebar,
   SidebarContent,
@@ -31,22 +33,24 @@ export const Route = createRootRoute({
 
 function AppLayout() {
   return (
-    <SidebarProvider className="h-svh overflow-hidden">
-      <AppSidebar />
-      <SidebarInset className="min-h-0 overflow-hidden">
-        <Outlet />
-      </SidebarInset>
-      <Toaster position="bottom-right" />
-      <TanStackDevtools
-        config={{ position: "bottom-right" }}
-        plugins={[
-          {
-            name: "Tanstack Router",
-            render: <TanStackRouterDevtoolsPanel />,
-          },
-        ]}
-      />
-    </SidebarProvider>
+    <AlertsControllerProvider>
+      <SidebarProvider className="h-svh overflow-hidden">
+        <AppSidebar />
+        <SidebarInset className="min-h-0 overflow-hidden">
+          <Outlet />
+        </SidebarInset>
+        <Toaster position="bottom-right" />
+        <TanStackDevtools
+          config={{ position: "bottom-right" }}
+          plugins={[
+            {
+              name: "Tanstack Router",
+              render: <TanStackRouterDevtoolsPanel />,
+            },
+          ]}
+        />
+      </SidebarProvider>
+    </AlertsControllerProvider>
   );
 }
 

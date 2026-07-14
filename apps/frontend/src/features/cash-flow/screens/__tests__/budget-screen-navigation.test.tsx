@@ -79,6 +79,29 @@ vi.mock("@/features/cash-flow/commands/budgets", async () => {
   };
 });
 
+vi.mock("@/features/alerts/hooks/use-alerts-controller", () => ({
+  AlertsControllerProvider: ({ children }: { children: React.ReactNode }) => children,
+  useAlertsController: () => ({
+    bellRef: { current: null },
+    closeLedger: vi.fn(),
+    errorMessage: null,
+    isLedgerOpen: false,
+    items: [],
+    openLedger: vi.fn(),
+    refresh: vi.fn(async () => undefined),
+    refreshStatus: "ready",
+    unreadCount: 0,
+  }),
+}));
+
+vi.mock("@/features/alerts/components/alerts-bell", () => ({
+  AlertsBell: () => null,
+}));
+
+vi.mock("@hugeicons/react", () => ({
+  HugeiconsIcon: () => <span data-testid="icon" />,
+}));
+
 vi.mock("@/features/cash-flow/commands/transaction-categories", async () => {
   const { Result } = await import("@praha/byethrow");
   const success = <T,>(value: T) => Promise.resolve(Result.succeed(value));

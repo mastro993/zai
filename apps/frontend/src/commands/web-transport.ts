@@ -10,7 +10,7 @@ import type { CommandArgs, CommandTransport } from "./types";
 import {
   buildWebRequestSpec,
   buildWebRequestUrl,
-  resolveCashFlowApiBaseUrl,
+  resolveWebApiBaseUrlForCommand,
 } from "./web-command-map";
 
 const parseApiError = async (response: Response): Promise<CommandError> => {
@@ -45,11 +45,14 @@ const parseJsonResponse = async <T>(response: Response): Promise<T> => {
 export const createWebCommandTransport = (): CommandTransport => ({
   invoke: async <T>(command: string, args?: CommandArgs) => {
     const spec = buildWebRequestSpec(command, args);
-    const response = await fetch(buildWebRequestUrl(resolveCashFlowApiBaseUrl(), spec), {
-      method: spec.method,
-      headers: spec.body ? { "Content-Type": "application/json" } : undefined,
-      body: spec.body ? JSON.stringify(spec.body) : undefined,
-    });
+    const response = await fetch(
+      buildWebRequestUrl(resolveWebApiBaseUrlForCommand(command), spec),
+      {
+        method: spec.method,
+        headers: spec.body ? { "Content-Type": "application/json" } : undefined,
+        body: spec.body ? JSON.stringify(spec.body) : undefined,
+      },
+    );
 
     if (!response.ok) {
       return Promise.reject(await parseApiError(response));
