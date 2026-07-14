@@ -2,8 +2,23 @@ use crate::connection::DbPool;
 use crate::errors::{IntoCore, Result};
 use diesel::SqliteConnection;
 use std::any::Any;
+#[cfg(test)]
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::{mpsc, oneshot};
 use zai_core::{DatabaseError, Error};
+
+#[cfg(test)]
+static WRITER_EXEC_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+#[cfg(test)]
+pub(crate) fn reset_writer_exec_count() {
+    WRITER_EXEC_COUNT.store(0, Ordering::SeqCst);
+}
+
+#[cfg(test)]
+pub(crate) fn writer_exec_count() -> usize {
+    WRITER_EXEC_COUNT.load(Ordering::SeqCst)
+}
 
 type Job<T> = Box<dyn FnOnce(&mut SqliteConnection) -> Result<T> + Send + 'static>;
 type BoxedValue = Box<dyn Any + Send + 'static>;
@@ -21,6 +36,9 @@ impl WriteHandle {
         T: Send + 'static + Any,
     {
         let (ret_tx, ret_rx) = oneshot::channel();
+
+        #[cfg(test)]
+        WRITER_EXEC_COUNT.fetch_add(1, Ordering::SeqCst);
 
         self.tx
             .send((
