@@ -4,9 +4,9 @@ mod list;
 mod models;
 mod repository;
 #[cfg(test)]
-mod repository_lifecycle_tests;
-#[cfg(test)]
 mod repository_insert_tests;
+#[cfg(test)]
+mod repository_lifecycle_tests;
 #[cfg(test)]
 mod repository_list_tests;
 

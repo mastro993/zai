@@ -2,9 +2,7 @@ mod common;
 
 use axum::http::StatusCode;
 use common::{request_json, setup_app};
-use zai_core::features::domain_alerts::{
-    AlertInsertOutcome, DomainAlertSeverity, NewDomainAlert,
-};
+use zai_core::features::domain_alerts::{AlertInsertOutcome, DomainAlertSeverity, NewDomainAlert};
 use zai_db::connect;
 
 async fn insert_sample_alert(app_data_dir: &std::path::Path) -> String {
