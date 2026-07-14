@@ -18,6 +18,10 @@ export const parseDomainAlertListPage = (value: unknown): DomainAlertListPage | 
 
 export const isUnreadAlert = (alert: DomainAlert): boolean => !alert.readAt;
 
+export const isNavigableAlertDestination = (
+  destination: DomainAlert["destination"],
+): destination is NonNullable<DomainAlert["destination"]> => destination?.type === "budget";
+
 export const parseAlertRichData = (value: unknown): DomainAlertRichData | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;

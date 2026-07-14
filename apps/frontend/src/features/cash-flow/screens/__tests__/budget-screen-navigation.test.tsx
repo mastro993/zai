@@ -84,12 +84,17 @@ vi.mock("@/features/alerts/hooks/use-alerts-controller", () => ({
   useAlertsController: () => ({
     bellRef: { current: null },
     closeLedger: vi.fn(),
+    destinationFeedback: null,
     errorMessage: null,
     isLedgerOpen: false,
     items: [],
+    lifecycleErrors: {},
+    lifecyclePendingId: null,
+    openAlert: vi.fn(async () => undefined),
     openLedger: vi.fn(),
     refresh: vi.fn(async () => undefined),
     refreshStatus: "ready",
+    toggleAlertReadState: vi.fn(async () => undefined),
     unreadCount: 0,
   }),
 }));

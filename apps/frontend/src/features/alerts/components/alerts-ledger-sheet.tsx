@@ -12,8 +12,20 @@ import { AlertRow } from "./alert-row";
 import { AlertsLedgerSkeleton } from "./alerts-ledger-skeleton";
 
 export function AlertsLedgerSheet() {
-  const { closeLedger, errorMessage, isLedgerOpen, items, refresh, refreshStatus, unreadCount } =
-    useAlertsController();
+  const {
+    closeLedger,
+    destinationFeedback,
+    errorMessage,
+    isLedgerOpen,
+    items,
+    lifecycleErrors,
+    lifecyclePendingId,
+    openAlert,
+    refresh,
+    refreshStatus,
+    toggleAlertReadState,
+    unreadCount,
+  } = useAlertsController();
 
   const isLoading = (refreshStatus === "idle" || refreshStatus === "loading") && items.length === 0;
   const showError = refreshStatus === "error" && errorMessage !== null;
@@ -54,7 +66,19 @@ export function AlertsLedgerSheet() {
           ) : null}
 
           {!isLoading && items.length > 0
-            ? items.map((alert) => <AlertRow key={alert.id} alert={alert} />)
+            ? items.map((alert) => (
+                <AlertRow
+                  key={alert.id}
+                  alert={alert}
+                  destinationFeedback={
+                    destinationFeedback?.alertId === alert.id ? destinationFeedback.message : null
+                  }
+                  isLifecyclePending={lifecyclePendingId === alert.id}
+                  lifecycleError={lifecycleErrors[alert.id] ?? null}
+                  onOpen={() => void openAlert(alert)}
+                  onToggleReadState={() => void toggleAlertReadState(alert)}
+                />
+              ))
             : null}
         </div>
       </SheetContent>

@@ -61,6 +61,8 @@ pub fn run() {
             commands::budgets::resume_budget,
             commands::domain_alerts::list_alerts,
             commands::domain_alerts::get_unread_alert_count,
+            commands::domain_alerts::mark_alert_read,
+            commands::domain_alerts::mark_alert_unread,
             commands::stronghold::get_stronghold_vault_password,
             commands::transaction_categories::get_transaction_category,
             commands::transaction_categories::get_transaction_categories,
