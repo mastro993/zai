@@ -89,13 +89,6 @@ test.describe("alerts ledger", () => {
         body: JSON.stringify(readAlert),
       });
     });
-    await page.route("**/api/alerts/unread-count", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(0),
-      });
-    });
 
     await page.goto("/dashboard");
     await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
@@ -117,6 +110,25 @@ test.describe("alerts ledger", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(readAlert),
+      });
+    });
+    await page.route("**/api/cash-flow/budgets/*/history*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: [],
+          page: 1,
+          perPage: 50,
+          totalPages: 1,
+        }),
+      });
+    });
+    await page.route("**/api/cash-flow/transaction-categories**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([]),
       });
     });
     await page.route("**/api/cash-flow/budgets/*", async (route) => {
@@ -150,7 +162,7 @@ test.describe("alerts ledger", () => {
 
     await page.goto("/dashboard");
     await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
-    await page.getByRole("button", { name: "Budget warning" }).click();
+    await page.getByRole("button", { name: "Open alert: Budget warning" }).click();
 
     await expect(page).toHaveURL(/\/cash-flow\/budgets\/6ba7b811-9dad-11d1-80b4-00c04fd430c8$/);
   });

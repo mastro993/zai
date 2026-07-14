@@ -155,7 +155,7 @@ describe("alert row rendering", () => {
       />,
     );
 
-    screen.getByRole("button", { name: "Budget warning" });
+    screen.getByRole("button", { name: "Open alert: Budget warning" });
     screen.getByRole("status");
   });
 });

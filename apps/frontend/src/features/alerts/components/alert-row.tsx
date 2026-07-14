@@ -63,6 +63,7 @@ export function AlertRow({
                 type="button"
                 variant="link"
                 className="h-auto p-0 text-xs font-medium text-foreground"
+                aria-label={`Open alert: ${alert.title}`}
                 onClick={() => onOpen?.()}
                 disabled={isLifecyclePending}
               >
