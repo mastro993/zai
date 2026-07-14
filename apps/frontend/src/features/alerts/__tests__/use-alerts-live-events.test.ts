@@ -8,12 +8,10 @@ const { createTransportMock, showUrgentAlertToastMock } = vi.hoisted(() => ({
   showUrgentAlertToastMock: vi.fn(),
 }));
 
-import type * as UrgentAlertToastModule from "../lib/urgent-alert-toast";
-
 vi.mock("../lib/urgent-alert-toast", async () => {
-  const actual = await vi.importActual<UrgentAlertToastModule>("../lib/urgent-alert-toast");
+  const actual = await vi.importActual("../lib/urgent-alert-toast");
   return {
-    ...actual,
+    ...(actual as Record<string, unknown>),
     showUrgentAlertToast: showUrgentAlertToastMock,
   };
 });
