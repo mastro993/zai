@@ -17,11 +17,7 @@ pub struct ContractHarness {
 }
 
 pub async fn setup_contract(prefix: &str) -> ContractHarness {
-    let (router, dir) = crate::common::setup_app(prefix).await;
-    let app_data_dir = dir.path().to_path_buf();
-    let context = Arc::new(
-        zai_app::initialize_context(&app_data_dir).expect("shared context should initialize"),
-    );
+    let (router, context, dir) = crate::common::setup_app(prefix).await;
     ContractHarness {
         context,
         router,
@@ -42,15 +38,11 @@ pub struct ContractExpectation {
     pub expected_error_code: Option<&'static str>,
 }
 
-fn budget_payload(name: &str, id: Option<&str>) -> Value {
-    let mut payload = json!({
+fn budget_payload(name: &str) -> Value {
+    json!({
         "name": name,
         "baseAllowance": 10000
-    });
-    if let Some(id) = id {
-        payload["id"] = json!(id);
-    }
-    payload
+    })
 }
 
 fn normalize_success(value: &mut Value) {
@@ -59,6 +51,7 @@ fn normalize_success(value: &mut Value) {
     };
     object.remove("createdAt");
     object.remove("updatedAt");
+    object.remove("id");
     if let Some(period) = object.get_mut("currentPeriod").and_then(Value::as_object_mut) {
         period.remove("start");
         period.remove("end");
@@ -94,9 +87,44 @@ fn normalize_history(value: &mut Value) {
     }
 }
 
-pub async fn assert_transport_parity(harness: &ContractHarness, expectation: ContractExpectation) {
+pub async fn assert_read_parity(harness: &ContractHarness, expectation: ContractExpectation) {
+    compare_transports(&harness.router, &harness.context, &expectation).await;
+}
+
+pub async fn compare_http_and_tauri(
+    http: &ContractHarness,
+    tauri: &ContractHarness,
+    build_expectation: impl Fn(&str) -> ContractExpectation,
+    http_id: &str,
+    tauri_id: &str,
+) {
+    let http_expectation = build_expectation(http_id);
+    let tauri_expectation = build_expectation(tauri_id);
+
     let (http_status, http_body) = request_json(
-        &harness.router,
+        &http.router,
+        http_expectation.http.method,
+        &http_expectation.http.path,
+        http_expectation.http.body.clone(),
+    )
+    .await;
+    assert_eq!(
+        http_status, http_expectation.http.expected_status,
+        "http status mismatch for {} {}: {http_body}",
+        http_expectation.http.method, http_expectation.http.path
+    );
+
+    let tauri_body = run_tauri_for_http(&tauri.context, &tauri_expectation.http).await;
+    compare_bodies(&http_expectation, http_body, tauri_body);
+}
+
+async fn compare_transports(
+    router: &axum::Router,
+    context: &ServiceContext,
+    expectation: &ContractExpectation,
+) {
+    let (http_status, http_body) = request_json(
+        router,
         expectation.http.method,
         &expectation.http.path,
         expectation.http.body.clone(),
@@ -108,8 +136,15 @@ pub async fn assert_transport_parity(harness: &ContractHarness, expectation: Con
         expectation.http.method, expectation.http.path
     );
 
-    let tauri_body = run_tauri_for_http(&harness.context, &expectation.http).await;
+    let tauri_body = run_tauri_for_http(context, &expectation.http).await;
+    compare_bodies(expectation, http_body, tauri_body);
+}
 
+fn compare_bodies(
+    expectation: &ContractExpectation,
+    http_body: Value,
+    tauri_body: Value,
+) {
     if let Some(code) = expectation.expected_error_code {
         assert_eq!(http_body["code"], code, "http error code");
         assert_eq!(tauri_body["code"], code, "tauri error code");
@@ -294,26 +329,22 @@ fn extract_budget_id(path: &str, suffix: &str) -> String {
         .to_string()
 }
 
-pub async fn seed_budget(
-    harness: &ContractHarness,
-    name: &str,
-    id: Option<&str>,
-) -> (StatusCode, Value) {
+pub async fn seed_budget(harness: &ContractHarness, name: &str) -> (StatusCode, Value) {
     request_json(
         &harness.router,
         "POST",
         "/api/cash-flow/budgets",
-        Some(budget_payload(name, id)),
+        Some(budget_payload(name)),
     )
     .await
 }
 
-pub fn create_success(id: &str) -> ContractExpectation {
+pub fn create_success(name: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
             path: "/api/cash-flow/budgets".to_string(),
-            body: Some(budget_payload("Monthly spending", Some(id))),
+            body: Some(budget_payload(name)),
             expected_status: StatusCode::CREATED,
         },
         compare_body: true,
@@ -365,7 +396,7 @@ pub fn name_conflict_error() -> ContractExpectation {
         http: HttpCall {
             method: "POST",
             path: "/api/cash-flow/budgets".to_string(),
-            body: Some(budget_payload(" monthly ", None)),
+            body: Some(budget_payload(" monthly ")),
             expected_status: StatusCode::CONFLICT,
         },
         compare_body: false,
@@ -456,19 +487,6 @@ pub fn delete_no_content(budget_id: &str, revision: i64) -> ContractExpectation 
     }
 }
 
-pub fn paused_list_success() -> ContractExpectation {
-    ContractExpectation {
-        http: HttpCall {
-            method: "GET",
-            path: "/api/cash-flow/budgets?filter=paused".to_string(),
-            body: None,
-            expected_status: StatusCode::OK,
-        },
-        compare_body: true,
-        expected_error_code: None,
-    }
-}
-
 pub fn pause_success(budget_id: &str, revision: i64) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
@@ -515,5 +533,70 @@ pub fn update_success(budget_id: &str, revision: i64) -> ContractExpectation {
         compare_body: true,
         expected_error_code: None,
     }
+}
+
+pub async fn request_update(
+    harness: &ContractHarness,
+    budget_id: &str,
+    revision: i64,
+) -> (StatusCode, Value) {
+    request_json(
+        &harness.router,
+        "PUT",
+        &format!("/api/cash-flow/budgets/{budget_id}"),
+        Some(json!({
+            "expectedRevision": revision,
+            "name": "Updated monthly",
+            "baseAllowance": 20000,
+            "cadence": "month",
+            "categoryIds": [],
+            "measurementMode": "spending",
+            "rolloverMode": "off",
+            "warningPercentage": 80
+        })),
+    )
+    .await
+}
+
+pub async fn request_pause(
+    harness: &ContractHarness,
+    budget_id: &str,
+    revision: i64,
+) -> (StatusCode, Value) {
+    request_json(
+        &harness.router,
+        "POST",
+        &format!("/api/cash-flow/budgets/{budget_id}/pause"),
+        Some(json!({ "expectedRevision": revision })),
+    )
+    .await
+}
+
+pub async fn request_resume(
+    harness: &ContractHarness,
+    budget_id: &str,
+    revision: i64,
+) -> (StatusCode, Value) {
+    request_json(
+        &harness.router,
+        "POST",
+        &format!("/api/cash-flow/budgets/{budget_id}/resume"),
+        Some(json!({ "expectedRevision": revision })),
+    )
+    .await
+}
+
+pub async fn request_delete(
+    harness: &ContractHarness,
+    budget_id: &str,
+    revision: i64,
+) -> (StatusCode, Value) {
+    request_json(
+        &harness.router,
+        "DELETE",
+        &format!("/api/cash-flow/budgets/{budget_id}"),
+        Some(json!({ "expectedRevision": revision })),
+    )
+    .await
 }
 

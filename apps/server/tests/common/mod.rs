@@ -36,12 +36,16 @@ impl Drop for TempAppDataDir {
     }
 }
 
-pub async fn setup_app(prefix: &str) -> (axum::Router, TempAppDataDir) {
+pub async fn setup_app(prefix: &str) -> (axum::Router, Arc<zai_app::ServiceContext>, TempAppDataDir) {
     let app_data_dir = TempAppDataDir::new(prefix);
     let context = Arc::new(
         initialize_context(app_data_dir.path()).expect("shared context should initialize"),
     );
-    (create_router(context), app_data_dir)
+    (
+        create_router(Arc::clone(&context)),
+        context,
+        app_data_dir,
+    )
 }
 
 pub async fn request_json(
