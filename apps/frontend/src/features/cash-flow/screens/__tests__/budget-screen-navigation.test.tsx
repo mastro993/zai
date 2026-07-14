@@ -92,6 +92,16 @@ vi.mock("@/features/cash-flow/commands/transaction-categories", async () => {
   };
 });
 
+vi.mock("@/features/alerts/commands/alerts", async () => {
+  const { Result } = await import("@praha/byethrow");
+  const success = <T,>(value: T) => Promise.resolve(Result.succeed(value));
+
+  return {
+    getUnreadAlertCount: vi.fn(() => success(0)),
+    listAlerts: vi.fn(() => success({ items: [], nextCursor: null })),
+  };
+});
+
 import { routeTree } from "@/routeTree.gen";
 
 describe("cash-flow budget navigation", () => {

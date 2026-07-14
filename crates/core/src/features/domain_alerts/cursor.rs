@@ -19,12 +19,12 @@ pub fn encode_cursor(created_at: NaiveDateTime, id: &str) -> String {
 
 pub fn decode_cursor(value: &str) -> Result<DomainAlertCursor> {
     let mut parts = value.split(CURSOR_SEPARATOR);
-    let version = parts.next().ok_or_else(|| invalid_cursor())?;
+    let version = parts.next().ok_or_else(invalid_cursor)?;
     if version != CURSOR_VERSION {
         return Err(invalid_cursor());
     }
-    let created_at_raw = parts.next().ok_or_else(|| invalid_cursor())?;
-    let id = parts.next().ok_or_else(|| invalid_cursor())?;
+    let created_at_raw = parts.next().ok_or_else(invalid_cursor)?;
+    let id = parts.next().ok_or_else(invalid_cursor)?;
     if parts.next().is_some() {
         return Err(invalid_cursor());
     }
