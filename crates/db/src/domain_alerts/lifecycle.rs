@@ -53,3 +53,12 @@ pub fn mark_domain_alert_unread(
     let updated = load_alert_row(conn, id)?;
     build_domain_alert(updated).map_err(StorageError::CoreError)
 }
+
+pub fn mark_all_domain_alerts_read(conn: &mut SqliteConnection) -> crate::errors::Result<i64> {
+    let read_at = chrono::Utc::now().naive_utc();
+    diesel::update(domain_alerts::table.filter(domain_alerts::read_at.is_null()))
+        .set(domain_alerts::read_at.eq(read_at))
+        .execute(conn)
+        .into_storage()
+        .map(|affected| affected as i64)
+}

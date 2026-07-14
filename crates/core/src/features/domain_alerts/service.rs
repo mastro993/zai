@@ -34,6 +34,10 @@ impl DomainAlertsServiceTrait for DomainAlertsService {
         validate_alert_id(id)?;
         self.repository.mark_unread(id).await
     }
+
+    async fn mark_all_read(&self) -> Result<i64> {
+        self.repository.mark_all_read().await
+    }
 }
 
 fn validate_alert_id(id: &str) -> Result<()> {

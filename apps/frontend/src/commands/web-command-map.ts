@@ -1,16 +1,10 @@
 import { CommandError } from "./errors";
 import type { CommandArgs } from "./types";
 import { joinWebApiUrl, resolveWebApiOrigin } from "./web-api";
+import { ALERT_COMMANDS, buildAlertCommandRequestSpec } from "./alerts-web-command-map";
 
 export const CASH_FLOW_API_PREFIX = "api/cash-flow";
 export const ALERTS_API_PREFIX = "api";
-
-const ALERT_COMMANDS = new Set([
-  "list_alerts",
-  "get_unread_alert_count",
-  "mark_alert_read",
-  "mark_alert_unread",
-]);
 
 export type WebRequestSpec = {
   method: "GET" | "POST" | "PUT" | "DELETE";
@@ -129,6 +123,11 @@ export const buildTransactionsListQuery = (args: CommandArgs = {}): string => {
 };
 
 export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): WebRequestSpec => {
+  const alertSpec = buildAlertCommandRequestSpec(command, args);
+  if (alertSpec) {
+    return alertSpec;
+  }
+
   switch (command) {
     case "get_transaction_categories": {
       const parentId = readString(args.parentId);
@@ -372,31 +371,11 @@ export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): We
         body: { expectedRevision: readNumber(args.expectedRevision, -1) },
       };
     }
-    case "get_unread_alert_count": {
-      return {
-        method: "GET",
-        path: "/alerts/unread-count",
-      };
-    }
     case "list_alerts": {
       const search = buildAlertsListSearch(args);
       return {
         method: "GET",
         path: search ? `/alerts?${search}` : "/alerts",
-      };
-    }
-    case "mark_alert_read": {
-      const alertId = readString(args.alertId);
-      return {
-        method: "POST",
-        path: alertId ? `/alerts/${alertId}/read` : "/alerts/__missing_alert_id__/read",
-      };
-    }
-    case "mark_alert_unread": {
-      const alertId = readString(args.alertId);
-      return {
-        method: "POST",
-        path: alertId ? `/alerts/${alertId}/unread` : "/alerts/__missing_alert_id__/unread",
       };
     }
     default:

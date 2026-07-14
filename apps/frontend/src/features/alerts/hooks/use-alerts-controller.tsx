@@ -1,32 +1,9 @@
 import { Result } from "@praha/byethrow";
-import { useNavigate } from "@tanstack/react-router";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-  type RefObject,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-import { getBudget } from "@/features/cash-flow/commands/budgets";
-
-import {
-  getUnreadAlertCount,
-  listAlerts,
-  markAlertRead,
-  markAlertUnread,
-} from "../commands/alerts";
+import { listAlerts, markAllAlertsRead, markAlertRead, markAlertUnread } from "../commands/alerts";
 import { buildListAlertsQuery } from "../lib/build-list-query";
-import {
-  isNavigableAlertDestination,
-  isUnreadAlert,
-  parseDomainAlert,
-  parseDomainAlertListPage,
-} from "../lib/parse";
+import { isUnreadAlert, parseDomainAlert, parseDomainAlertListPage } from "../lib/parse";
 import {
   getAlertSessionFilters,
   hasActiveAlertFilters,
@@ -35,52 +12,15 @@ import {
   type AlertSeverityFilter,
 } from "../lib/session-filters";
 import type { DomainAlert, DomainAlertReadState } from "../types/domain-alert";
-
-type AlertsRefreshStatus = "idle" | "loading" | "ready" | "error";
-type LoadOlderStatus = "idle" | "loading" | "error";
-
-interface DestinationFeedback {
-  alertId: string;
-  message: string;
-}
-
-interface AlertsControllerValue {
-  bellRef: RefObject<HTMLButtonElement | null>;
-  clearFilters: () => void;
-  closeLedger: () => void;
-  destinationFeedback: DestinationFeedback | null;
-  errorMessage: string | null;
-  filters: AlertSessionFilters;
-  hasActiveFilters: boolean;
-  isLedgerOpen: boolean;
-  items: Array<DomainAlert>;
-  lifecycleErrors: Record<string, string>;
-  lifecyclePendingId: string | null;
-  loadOlder: () => Promise<void>;
-  loadOlderError: string | null;
-  loadOlderStatus: LoadOlderStatus;
-  nextCursor: string | null;
-  openAlert: (alert: DomainAlert) => Promise<void>;
-  openLedger: () => void;
-  refresh: () => Promise<void>;
-  refreshStatus: AlertsRefreshStatus;
-  setReadStateFilter: (readState: DomainAlertReadState) => void;
-  setSeverityFilter: (severity: AlertSeverityFilter) => void;
-  toggleAlertReadState: (alert: DomainAlert) => Promise<void>;
-  unreadCount: number;
-}
-
-const AlertsControllerContext = createContext<AlertsControllerValue | null>(null);
-
-const STALE_BUDGET_MESSAGE = "This budget is no longer available. The alert history is unchanged.";
-
-const fetchUnreadCount = async (): Promise<number | null> => {
-  const countResult = await getUnreadAlertCount();
-  return Result.isSuccess(countResult) ? countResult.value : null;
-};
+import {
+  AlertsControllerContext,
+  type AlertsRefreshStatus,
+  type LoadOlderStatus,
+} from "./alerts-controller-context";
+import { fetchUnreadCount } from "./alerts-controller-queries";
+import { type DestinationFeedback, useAlertDestination } from "./use-alert-destination";
 
 export function AlertsControllerProvider({ children }: { children: ReactNode }) {
-  const navigate = useNavigate();
   const bellRef = useRef<HTMLButtonElement>(null);
   const [isLedgerOpen, setIsLedgerOpen] = useState(false);
   const [filters, setFilters] = useState<AlertSessionFilters>(getAlertSessionFilters);
@@ -90,13 +30,26 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
   const [items, setItems] = useState<Array<DomainAlert>>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadCountKnown, setUnreadCountKnown] = useState(false);
   const [refreshStatus, setRefreshStatus] = useState<AlertsRefreshStatus>("idle");
   const [loadOlderStatus, setLoadOlderStatus] = useState<LoadOlderStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loadOlderError, setLoadOlderError] = useState<string | null>(null);
   const [lifecycleErrors, setLifecycleErrors] = useState<Record<string, string>>({});
   const [lifecyclePendingId, setLifecyclePendingId] = useState<string | null>(null);
+  const [markAllReadError, setMarkAllReadError] = useState<string | null>(null);
+  const [markAllReadPending, setMarkAllReadPending] = useState(false);
   const [destinationFeedback, setDestinationFeedback] = useState<DestinationFeedback | null>(null);
+
+  const applyUnreadCount = useCallback((count: number | null) => {
+    if (count === null) {
+      setUnreadCountKnown(false);
+      return;
+    }
+
+    setUnreadCount(count);
+    setUnreadCountKnown(true);
+  }, []);
 
   const fetchPage = useCallback(async (queryFilters: AlertSessionFilters, cursor?: string) => {
     return listAlerts(buildListAlertsQuery(queryFilters, cursor ? { cursor } : {}));
@@ -147,11 +100,7 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
   );
 
   const applyListPage = useCallback(
-    (
-      requestId: number,
-      parsedPage: NonNullable<ReturnType<typeof parseDomainAlertListPage>>,
-      count: number | null,
-    ) => {
+    (requestId: number, parsedPage: NonNullable<ReturnType<typeof parseDomainAlertListPage>>) => {
       if (requestId !== listRequestIdRef.current) {
         return;
       }
@@ -162,10 +111,6 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       setErrorMessage(null);
       setLoadOlderStatus("idle");
       setLoadOlderError(null);
-
-      if (count !== null) {
-        setUnreadCount(count);
-      }
     },
     [],
   );
@@ -180,12 +125,18 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       return;
     }
 
+    applyUnreadCount(count);
     if (Result.isFailure(listResult)) {
       setRefreshStatus("error");
       setErrorMessage(listResult.error.message);
       return;
     }
 
+    if (count === null) {
+      setRefreshStatus("error");
+      setErrorMessage("Saved alert count could not be read.");
+      return;
+    }
     const parsedPage = parseDomainAlertListPage(listResult.value);
     if (!parsedPage) {
       setRefreshStatus("error");
@@ -193,8 +144,8 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       return;
     }
 
-    applyListPage(requestId, parsedPage, count);
-  }, [applyListPage, fetchPage]);
+    applyListPage(requestId, parsedPage);
+  }, [applyListPage, applyUnreadCount, fetchPage]);
 
   const applyFilters = useCallback(
     async (nextFilters: AlertSessionFilters) => {
@@ -210,12 +161,18 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
         return;
       }
 
+      applyUnreadCount(count);
       if (Result.isFailure(listResult)) {
         setRefreshStatus("error");
         setErrorMessage(listResult.error.message);
         return;
       }
 
+      if (count === null) {
+        setRefreshStatus("error");
+        setErrorMessage("Saved alert count could not be read.");
+        return;
+      }
       const parsedPage = parseDomainAlertListPage(listResult.value);
       if (!parsedPage) {
         setRefreshStatus("error");
@@ -223,9 +180,9 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
         return;
       }
 
-      applyListPage(requestId, parsedPage, count);
+      applyListPage(requestId, parsedPage);
     },
-    [applyListPage, fetchPage],
+    [applyListPage, applyUnreadCount, fetchPage],
   );
 
   useEffect(() => {
@@ -265,8 +222,13 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
 
     setLoadOlderStatus("loading");
     setLoadOlderError(null);
+    const requestId = listRequestIdRef.current;
 
     const listResult = await fetchPage(filtersRef.current, nextCursor);
+    if (requestId !== listRequestIdRef.current) {
+      setLoadOlderStatus("idle");
+      return;
+    }
     if (Result.isFailure(listResult)) {
       setLoadOlderStatus("error");
       setLoadOlderError(listResult.error.message);
@@ -309,43 +271,31 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
     [applyLifecycleResult],
   );
 
-  const openAlert = useCallback(
-    async (alert: DomainAlert) => {
-      setDestinationFeedback(null);
-      let current = alert;
+  const markAllRead = useCallback(async () => {
+    if (markAllReadPending || !unreadCountKnown || unreadCount === 0) {
+      return;
+    }
 
-      if (isUnreadAlert(alert)) {
-        setLifecyclePendingId(alert.id);
-        const result = await markAlertRead(alert.id);
-        const updated = applyLifecycleResult(alert, result);
-        setLifecyclePendingId(null);
-        if (!updated) {
-          return;
-        }
-        current = updated;
-      }
+    setMarkAllReadPending(true);
+    setMarkAllReadError(null);
+    const result = await markAllAlertsRead();
 
-      if (!isNavigableAlertDestination(current.destination)) {
-        return;
-      }
+    if (Result.isFailure(result)) {
+      setMarkAllReadError(result.error.message);
+      setMarkAllReadPending(false);
+      return;
+    }
 
-      const budgetResult = await getBudget(current.destination.budgetId);
-      if (Result.isFailure(budgetResult)) {
-        setDestinationFeedback({
-          alertId: current.id,
-          message: STALE_BUDGET_MESSAGE,
-        });
-        return;
-      }
+    await refresh();
+    setMarkAllReadPending(false);
+  }, [markAllReadPending, refresh, unreadCount, unreadCountKnown]);
 
-      closeLedger();
-      await navigate({
-        to: "/cash-flow/budgets/$budgetId",
-        params: { budgetId: current.destination.budgetId },
-      });
-    },
-    [applyLifecycleResult, closeLedger, navigate],
-  );
+  const openAlert = useAlertDestination({
+    applyLifecycleResult,
+    closeLedger,
+    setDestinationFeedback,
+    setLifecyclePendingId,
+  });
 
   const hasActiveFilters = hasActiveAlertFilters(filters);
 
@@ -365,6 +315,9 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       loadOlder,
       loadOlderError,
       loadOlderStatus,
+      markAllRead,
+      markAllReadError,
+      markAllReadPending,
       nextCursor,
       openAlert,
       openLedger,
@@ -374,6 +327,7 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       setSeverityFilter,
       toggleAlertReadState,
       unreadCount,
+      unreadCountKnown,
     }),
     [
       clearFilters,
@@ -389,6 +343,9 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       loadOlder,
       loadOlderError,
       loadOlderStatus,
+      markAllRead,
+      markAllReadError,
+      markAllReadPending,
       nextCursor,
       openAlert,
       openLedger,
@@ -398,6 +355,7 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       setSeverityFilter,
       toggleAlertReadState,
       unreadCount,
+      unreadCountKnown,
     ],
   );
 
@@ -406,10 +364,4 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
   );
 }
 
-export const useAlertsController = (): AlertsControllerValue => {
-  const context = useContext(AlertsControllerContext);
-  if (!context) {
-    throw new Error("useAlertsController must be used within AlertsControllerProvider.");
-  }
-  return context;
-};
+export { useAlertsController } from "./alerts-controller-context";

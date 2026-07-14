@@ -52,6 +52,7 @@ describe("alerts controller filters and pagination", () => {
     vi.restoreAllMocks();
     vi.spyOn(alertsCommands, "getUnreadAlertCount").mockResolvedValue(Result.succeed(2));
     vi.spyOn(alertsCommands, "listAlerts").mockResolvedValue(Result.succeed(pageOne));
+    vi.spyOn(alertsCommands, "markAllAlertsRead").mockResolvedValue(Result.succeed(1));
   });
 
   it("loads the first page on mount and exposes next cursor", async () => {
@@ -161,5 +162,148 @@ describe("alerts controller filters and pagination", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(result.current.nextCursor).toBe("cursor-page-2");
+  });
+
+  it("refreshes canonical page and exact unread count after marking all read", async () => {
+    setAlertSessionFilters({ readState: "unread", severity: "warning" });
+    const refreshedPage: DomainAlertListPage = {
+      items: [{ ...pageOne.items[0], readAt: "2026-07-14T11:00:00" }],
+      nextCursor: null,
+    };
+    vi.mocked(alertsCommands.listAlerts)
+      .mockResolvedValueOnce(Result.succeed(pageOne))
+      .mockResolvedValueOnce(Result.succeed(refreshedPage));
+    vi.mocked(alertsCommands.getUnreadAlertCount)
+      .mockResolvedValueOnce(Result.succeed(2))
+      .mockResolvedValueOnce(Result.succeed(0));
+
+    const { result } = renderHook(() => useAlertsController(), {
+      wrapper: AlertsControllerProvider,
+    });
+    await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
+
+    await act(async () => {
+      await result.current.markAllRead();
+    });
+
+    expect(alertsCommands.markAllAlertsRead).toHaveBeenCalledOnce();
+    expect(alertsCommands.listAlerts).toHaveBeenLastCalledWith({
+      readState: "unread",
+      severities: ["warning"],
+    });
+    expect(result.current.filters).toEqual({ readState: "unread", severity: "warning" });
+    expect(result.current.unreadCount).toBe(0);
+    expect(result.current.items[0].readAt).toBe("2026-07-14T11:00:00");
+  });
+
+  it("retains rows when mark-all refresh fails but reconciles unread count", async () => {
+    vi.mocked(alertsCommands.listAlerts)
+      .mockResolvedValueOnce(Result.succeed(pageOne))
+      .mockResolvedValueOnce(Result.fail(new CommandError("refresh down")));
+    vi.mocked(alertsCommands.getUnreadAlertCount)
+      .mockResolvedValueOnce(Result.succeed(2))
+      .mockResolvedValueOnce(Result.succeed(0));
+
+    const { result } = renderHook(() => useAlertsController(), {
+      wrapper: AlertsControllerProvider,
+    });
+    await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
+
+    await act(async () => {
+      await result.current.markAllRead();
+    });
+
+    expect(result.current.refreshStatus).toBe("error");
+    expect(result.current.items).toEqual(pageOne.items);
+    expect(result.current.unreadCount).toBe(0);
+  });
+
+  it("retains rows and disables bulk action when count reconciliation fails", async () => {
+    vi.mocked(alertsCommands.listAlerts)
+      .mockResolvedValueOnce(Result.succeed(pageOne))
+      .mockResolvedValueOnce(Result.succeed({ items: [], nextCursor: null }));
+    vi.mocked(alertsCommands.getUnreadAlertCount)
+      .mockResolvedValueOnce(Result.succeed(2))
+      .mockResolvedValueOnce(Result.fail(new CommandError("count down")));
+
+    const { result } = renderHook(() => useAlertsController(), {
+      wrapper: AlertsControllerProvider,
+    });
+    await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
+
+    await act(async () => {
+      await result.current.markAllRead();
+    });
+
+    expect(result.current.refreshStatus).toBe("error");
+    expect(result.current.items).toEqual(pageOne.items);
+    expect(result.current.unreadCountKnown).toBe(false);
+  });
+
+  it("exposes mark-all errors without clearing the current page", async () => {
+    vi.mocked(alertsCommands.markAllAlertsRead).mockResolvedValueOnce(
+      Result.fail(new CommandError("bulk operation failed")),
+    );
+
+    const { result } = renderHook(() => useAlertsController(), {
+      wrapper: AlertsControllerProvider,
+    });
+    await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
+
+    await act(async () => {
+      await result.current.markAllRead();
+    });
+
+    expect(result.current.markAllReadError).toBe("bulk operation failed");
+    expect(result.current.items).toEqual(pageOne.items);
+    expect(alertsCommands.listAlerts).toHaveBeenCalledOnce();
+  });
+
+  it("does not append an older page after bulk refresh starts", async () => {
+    let firstPage = true;
+    let releaseOlder: ((page: DomainAlertListPage) => void) | undefined;
+    const olderPage = new Promise<DomainAlertListPage>((resolve) => {
+      releaseOlder = resolve;
+    });
+    const refreshedPage: DomainAlertListPage = {
+      items: [{ ...pageOne.items[0], readAt: "2026-07-14T11:00:00" }],
+      nextCursor: null,
+    };
+
+    vi.mocked(alertsCommands.listAlerts).mockImplementation((query) => {
+      if (query?.cursor) {
+        return olderPage.then((page) => Result.succeed(page));
+      }
+      if (firstPage) {
+        firstPage = false;
+        return Promise.resolve(Result.succeed(pageOne));
+      }
+      return Promise.resolve(Result.succeed(refreshedPage));
+    });
+    vi.mocked(alertsCommands.getUnreadAlertCount)
+      .mockResolvedValueOnce(Result.succeed(2))
+      .mockResolvedValueOnce(Result.succeed(0));
+
+    const { result } = renderHook(() => useAlertsController(), {
+      wrapper: AlertsControllerProvider,
+    });
+    await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
+
+    let loadOlderPromise: Promise<void> | undefined;
+    await act(async () => {
+      loadOlderPromise = result.current.loadOlder();
+    });
+    await waitFor(() =>
+      expect(alertsCommands.listAlerts).toHaveBeenLastCalledWith({ cursor: "cursor-page-2" }),
+    );
+
+    await act(async () => {
+      await result.current.markAllRead();
+    });
+    releaseOlder?.(pageTwo);
+    await loadOlderPromise;
+
+    expect(result.current.items).toEqual(refreshedPage.items);
+    expect(result.current.nextCursor).toBeNull();
   });
 });

@@ -1,14 +1,19 @@
 use super::DomainAlertsRepository;
+use super::insert::insert_domain_alert;
+use super::lifecycle::mark_all_domain_alerts_read;
 use super::models::DomainAlertRow;
 use crate::connection::run_migrations;
 use crate::schema::domain_alerts;
 use crate::test_utils::TempDb;
 use crate::write_actor::spawn_writer;
 use chrono::NaiveDate;
+use diesel::Connection;
+use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use diesel::r2d2::{self, Pool};
 use diesel::sqlite::SqliteConnection;
-use std::sync::Arc;
+use std::sync::{Arc, Barrier, mpsc};
+use std::thread;
 use zai_core::Error;
 use zai_core::features::domain_alerts::{
     AlertInsertOutcome, DomainAlertDestination, DomainAlertSeverity, DomainAlertsRepositoryTrait,
@@ -109,6 +114,119 @@ async fn mark_lifecycle_updates_unread_count() {
     assert_eq!(repo.unread_count().await.expect("count"), 0);
     repo.mark_unread(&row.id).await.expect("mark unread");
     assert_eq!(repo.unread_count().await.expect("count"), 1);
+}
+
+#[tokio::test]
+async fn mark_all_read_returns_affected_count_and_is_idempotent() {
+    let temp_db = TempDb::new();
+    let repo = setup(&temp_db);
+    let already_read = insert_alert(&repo, sample_alert("period-8")).await;
+    let unread_one = insert_alert(&repo, sample_alert("period-9")).await;
+    let unread_two = insert_alert(&repo, sample_alert("period-10")).await;
+
+    let already_read = repo
+        .mark_read(&already_read.id)
+        .await
+        .expect("mark existing alert read");
+    let affected = repo.mark_all_read().await.expect("mark all read");
+
+    assert_eq!(affected, 2);
+    assert_eq!(repo.unread_count().await.expect("count"), 0);
+
+    let page = repo
+        .list_alerts(&Default::default())
+        .await
+        .expect("list alerts");
+    let read_at = page
+        .items
+        .iter()
+        .find(|alert| alert.id == unread_one.id)
+        .and_then(|alert| alert.read_at)
+        .expect("first unread alert should be read");
+    assert_eq!(
+        page.items
+            .iter()
+            .find(|alert| alert.id == unread_two.id)
+            .and_then(|alert| alert.read_at),
+        Some(read_at)
+    );
+    assert_eq!(
+        page.items
+            .iter()
+            .find(|alert| alert.id == already_read.id)
+            .and_then(|alert| alert.read_at),
+        already_read.read_at
+    );
+
+    assert_eq!(repo.mark_all_read().await.expect("repeat mark all read"), 0);
+    assert_eq!(repo.unread_count().await.expect("count"), 0);
+    let repeated_page = repo
+        .list_alerts(&Default::default())
+        .await
+        .expect("list alerts after repeat");
+    for alert in &page.items {
+        let repeated = repeated_page
+            .items
+            .iter()
+            .find(|repeated| repeated.id == alert.id)
+            .expect("repeated alert");
+        assert_eq!(repeated.read_at, alert.read_at,);
+        assert_eq!(repeated.created_at, alert.created_at);
+    }
+}
+
+#[tokio::test]
+async fn mark_all_read_does_not_change_alert_committed_after_transaction_begins() {
+    let temp_db = TempDb::new();
+    let repo = setup(&temp_db);
+    insert_alert(&repo, sample_alert("period-11")).await;
+
+    let db_path = temp_db.path().to_string();
+    let release = Arc::new(Barrier::new(2));
+    let (updated_tx, updated_rx) = mpsc::channel();
+    let marker_release = Arc::clone(&release);
+    let marker = thread::spawn(move || {
+        let mut conn = SqliteConnection::establish(&db_path).expect("marker connection");
+        conn.batch_execute("PRAGMA busy_timeout = 30000;")
+            .expect("marker busy timeout");
+        conn.immediate_transaction(|conn| {
+            let affected = mark_all_domain_alerts_read(conn).expect("mark all read");
+            updated_tx.send(affected).expect("send affected count");
+            marker_release.wait();
+            Ok::<_, diesel::result::Error>(affected)
+        })
+        .expect("mark all transaction");
+    });
+
+    assert_eq!(updated_rx.recv().expect("affected count"), 1);
+
+    let inserter_path = temp_db.path().to_string();
+    let inserter = thread::spawn(move || {
+        let mut conn = SqliteConnection::establish(&inserter_path).expect("inserter connection");
+        conn.batch_execute("PRAGMA busy_timeout = 30000;")
+            .expect("inserter busy timeout");
+        conn.immediate_transaction(|conn| {
+            insert_domain_alert(conn, &sample_alert("period-12")).expect("insert after mark");
+            Ok::<_, diesel::result::Error>(())
+        })
+        .expect("insert transaction");
+    });
+
+    release.wait();
+    marker.join().expect("marker thread");
+    inserter.join().expect("inserter thread");
+
+    let page = repo
+        .list_alerts(&Default::default())
+        .await
+        .expect("list alerts");
+    assert_eq!(
+        page.items
+            .iter()
+            .find(|alert| alert.occurrence_key == "period-12")
+            .and_then(|alert| alert.read_at),
+        None
+    );
 }
 
 #[tokio::test]

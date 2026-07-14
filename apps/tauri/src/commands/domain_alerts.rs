@@ -31,6 +31,16 @@ pub async fn get_unread_alert_count(state: State<'_, Arc<ServiceContext>>) -> Co
 }
 
 #[tauri::command]
+pub async fn mark_all_alerts_read(state: State<'_, Arc<ServiceContext>>) -> CommandResult<i64> {
+    debug!("Marking all domain alerts read...");
+    state
+        .domain_alerts_service()
+        .mark_all_read()
+        .await
+        .map_err(|error| command_error("Failed to mark all alerts read", error))
+}
+
+#[tauri::command]
 pub async fn mark_alert_read(
     alert_id: String,
     state: State<'_, Arc<ServiceContext>>,

@@ -1,5 +1,7 @@
 use super::insert::insert_domain_alert;
-use super::lifecycle::{mark_domain_alert_read, mark_domain_alert_unread};
+use super::lifecycle::{
+    mark_all_domain_alerts_read, mark_domain_alert_read, mark_domain_alert_unread,
+};
 use super::list::{list_domain_alerts_from_pool, unread_domain_alert_count_from_pool};
 use crate::connection::DbPool;
 use crate::errors::IntoCore;
@@ -73,5 +75,9 @@ impl DomainAlertsRepositoryTrait for DomainAlertsRepository {
         self.writer
             .exec(move |conn| mark_domain_alert_unread(conn, &id))
             .await
+    }
+
+    async fn mark_all_read(&self) -> Result<i64> {
+        self.writer.exec(mark_all_domain_alerts_read).await
     }
 }

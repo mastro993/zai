@@ -126,6 +126,49 @@ test.describe("alerts ledger", () => {
     await expect(page.getByRole("button", { name: "Alerts, 0 unread" })).toBeVisible();
   });
 
+  test("marks all unread alerts read and disables action after reconciliation", async ({
+    page,
+  }) => {
+    let allRead = false;
+    await page.unroute("**/api/alerts/unread-count");
+    await page.unroute("**/api/alerts");
+    await page.route("**/api/alerts/unread-count", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(allRead ? 0 : 1),
+      });
+    });
+    await page.route("**/api/alerts", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(allRead ? { ...fixedAlerts, items: [readAlert] } : fixedAlerts),
+      });
+    });
+    await page.route("**/api/alerts/mark-all-read", async (route) => {
+      allRead = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(1),
+      });
+    });
+
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Alerts" });
+    const markAllRead = dialog.getByRole("button", { name: "Mark all read" });
+    await expect(markAllRead).toBeEnabled();
+    await markAllRead.click();
+
+    await expect(dialog.getByText("Read", { exact: true })).toBeVisible();
+    await expect(markAllRead).toBeDisabled();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Alerts, 0 unread" })).toBeVisible();
+  });
+
   test("marks unread alert read before navigating to budget destination", async ({ page }) => {
     let markedRead = false;
     await page.route("**/api/alerts/*/read", async (route) => {

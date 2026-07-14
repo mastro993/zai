@@ -14,6 +14,11 @@ const FRONTEND_WRAPPER_FILES = [
   "apps/frontend/src/features/cash-flow/commands/transactions.ts",
 ] as const;
 
+const WEB_COMMAND_MAP_FILES = [
+  "apps/frontend/src/commands/web-command-map.ts",
+  "apps/frontend/src/commands/alerts-web-command-map.ts",
+] as const;
+
 const readFile = (relativePath: string): string =>
   readFileSync(path.join(repoRoot, relativePath), "utf8");
 
@@ -51,11 +56,13 @@ const readTauriCommands = (): Set<string> | null => {
 };
 
 const readWebCommands = (): Set<string> => {
-  const source = readFile("apps/frontend/src/commands/web-command-map.ts");
   const commands = new Set<string>();
 
-  for (const match of source.matchAll(/case "([^"]+)":/g)) {
-    commands.add(match[1]);
+  for (const relativePath of WEB_COMMAND_MAP_FILES) {
+    const source = readFile(relativePath);
+    for (const match of source.matchAll(/case "([^"]+)":/g)) {
+      commands.add(match[1]);
+    }
   }
 
   return commands;

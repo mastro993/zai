@@ -27,6 +27,9 @@ export function AlertsLedgerSheet() {
     loadOlder,
     loadOlderError,
     loadOlderStatus,
+    markAllRead,
+    markAllReadError,
+    markAllReadPending,
     nextCursor,
     openAlert,
     refresh,
@@ -35,6 +38,7 @@ export function AlertsLedgerSheet() {
     setSeverityFilter,
     toggleAlertReadState,
     unreadCount,
+    unreadCountKnown,
   } = useAlertsController();
 
   const isLoading = (refreshStatus === "idle" || refreshStatus === "loading") && items.length === 0;
@@ -51,11 +55,29 @@ export function AlertsLedgerSheet() {
         className="!w-screen !max-w-none gap-0 p-0 sm:!w-[28rem] sm:!max-w-[28rem]"
         aria-label="Alerts"
       >
-        <SheetHeader className="border-b border-border">
-          <SheetTitle>Alerts</SheetTitle>
-          <SheetDescription>
-            {unreadCount === 1 ? "1 unread alert" : `${unreadCount} unread alerts`}
-          </SheetDescription>
+        <SheetHeader className="border-b border-border pr-14">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <SheetTitle>Alerts</SheetTitle>
+              <SheetDescription>
+                {unreadCount === 1 ? "1 unread alert" : `${unreadCount} unread alerts`}
+              </SheetDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!unreadCountKnown || unreadCount === 0 || markAllReadPending}
+              onClick={() => void markAllRead()}
+            >
+              {markAllReadPending ? "Marking all read..." : "Mark all read"}
+            </Button>
+          </div>
+          {markAllReadError ? (
+            <p className="pt-2 text-xs text-destructive" role="alert">
+              {markAllReadError}
+            </p>
+          ) : null}
         </SheetHeader>
 
         <AlertsLedgerFilters
