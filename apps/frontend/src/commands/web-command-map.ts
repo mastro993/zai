@@ -3,6 +3,9 @@ import type { CommandArgs } from "./types";
 import { joinWebApiUrl, resolveWebApiOrigin } from "./web-api";
 
 export const CASH_FLOW_API_PREFIX = "api/cash-flow";
+export const ALERTS_API_PREFIX = "api";
+
+const ALERT_COMMANDS = new Set(["list_alerts", "get_unread_alert_count"]);
 
 export type WebRequestSpec = {
   method: "GET" | "POST" | "PUT" | "DELETE";
@@ -42,6 +45,12 @@ const omitId = (payload: Record<string, unknown>): Record<string, unknown> => {
 
 export const resolveCashFlowApiBaseUrl = (): string =>
   joinWebApiUrl(resolveWebApiOrigin(), CASH_FLOW_API_PREFIX);
+
+export const resolveAlertsApiBaseUrl = (): string =>
+  joinWebApiUrl(resolveWebApiOrigin(), ALERTS_API_PREFIX);
+
+export const resolveWebApiBaseUrlForCommand = (command: string): string =>
+  ALERT_COMMANDS.has(command) ? resolveAlertsApiBaseUrl() : resolveCashFlowApiBaseUrl();
 
 const readNumber = (value: unknown, fallback: number): number => {
   return typeof value === "number" ? value : fallback;
@@ -328,6 +337,18 @@ export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): We
         method: "POST",
         path: budgetId ? `/budgets/${budgetId}/resume` : "/budgets/__missing_budget_id__/resume",
         body: { expectedRevision: readNumber(args.expectedRevision, -1) },
+      };
+    }
+    case "get_unread_alert_count": {
+      return {
+        method: "GET",
+        path: "/alerts/unread-count",
+      };
+    }
+    case "list_alerts": {
+      return {
+        method: "GET",
+        path: "/alerts",
       };
     }
     default:

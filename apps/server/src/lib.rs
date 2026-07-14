@@ -125,6 +125,7 @@ pub fn create_router(context: Arc<ServiceContext>) -> Router {
     Router::new()
         .route("/health", get(health))
         .nest("/api/cash-flow", api::cash_flow::router())
+        .nest("/api", api::alerts::router())
         .layer(default_cors_layer())
         .with_state(context)
 }

@@ -1,11 +1,18 @@
 use super::insert::insert_domain_alert;
+use super::list::{
+    list_domain_alerts_from_pool, unread_domain_alert_count_from_pool,
+};
 use crate::connection::DbPool;
 use crate::errors::IntoCore;
 use crate::write_actor::WriteHandle;
+use async_trait::async_trait;
 use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
 use zai_core::Result;
-use zai_core::features::domain_alerts::{AlertInsertOutcome, NewDomainAlert};
+use zai_core::features::domain_alerts::{
+    AlertInsertOutcome, DomainAlertListPage, DomainAlertsRepositoryTrait, ListDomainAlertsQuery,
+    NewDomainAlert,
+};
 
 pub struct DomainAlertsRepository {
     pool: Arc<DbPool>,
@@ -42,5 +49,16 @@ impl DomainAlertsRepository {
         self.writer
             .exec(move |conn| insert_domain_alert(conn, &alert))
             .await
+    }
+}
+
+#[async_trait]
+impl DomainAlertsRepositoryTrait for DomainAlertsRepository {
+    async fn list_alerts(&self, query: &ListDomainAlertsQuery) -> Result<DomainAlertListPage> {
+        list_domain_alerts_from_pool(&self.pool, query).await
+    }
+
+    async fn unread_count(&self) -> Result<i64> {
+        unread_domain_alert_count_from_pool(&self.pool).await
     }
 }
