@@ -1,4 +1,5 @@
 use crate::budgets::BudgetsRepository;
+use crate::domain_alerts::DomainAlertsRepository;
 use crate::errors::{IntoCore, StorageError};
 use crate::transaction_categories::TransactionCategoriesRepository;
 use crate::transactions::TransactionsRepository;
@@ -56,6 +57,13 @@ impl Database {
             Arc::clone(&self.pool),
             self.writer.clone(),
             Arc::clone(&self.clock),
+        ))
+    }
+
+    pub fn domain_alerts_repository(&self) -> Arc<DomainAlertsRepository> {
+        Arc::new(DomainAlertsRepository::new_with_writer(
+            Arc::clone(&self.pool),
+            self.writer.clone(),
         ))
     }
 }
