@@ -52,7 +52,10 @@ fn normalize_success(value: &mut Value) {
     object.remove("createdAt");
     object.remove("updatedAt");
     object.remove("id");
-    if let Some(period) = object.get_mut("currentPeriod").and_then(Value::as_object_mut) {
+    if let Some(period) = object
+        .get_mut("currentPeriod")
+        .and_then(Value::as_object_mut)
+    {
         period.remove("start");
         period.remove("end");
     }
@@ -140,11 +143,7 @@ async fn compare_transports(
     compare_bodies(expectation, http_body, tauri_body);
 }
 
-fn compare_bodies(
-    expectation: &ContractExpectation,
-    http_body: Value,
-    tauri_body: Value,
-) {
+fn compare_bodies(expectation: &ContractExpectation, http_body: Value, tauri_body: Value) {
     if let Some(code) = expectation.expected_error_code {
         assert_eq!(http_body["code"], code, "http error code");
         assert_eq!(tauri_body["code"], code, "tauri error code");
@@ -190,7 +189,9 @@ async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Value 
                 "Failed to load budgets",
             )
         }
-        ("GET", path) if path.starts_with("/api/cash-flow/budgets/") && path.ends_with("/history") => {
+        ("GET", path)
+            if path.starts_with("/api/cash-flow/budgets/") && path.ends_with("/history") =>
+        {
             let budget_id = extract_budget_id(path, "/history");
             let (page, per_page) = parse_history_query_from_path(&call.path);
             tauri_success(
@@ -268,10 +269,7 @@ async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Value 
     }
 }
 
-fn tauri_success<T: serde::Serialize>(
-    result: Result<T, Error>,
-    context: &'static str,
-) -> Value {
+fn tauri_success<T: serde::Serialize>(result: Result<T, Error>, context: &'static str) -> Value {
     match result {
         Ok(value) => serde_json::to_value(value).expect("serialize success"),
         Err(error) => tauri_error(context, error),
@@ -323,10 +321,7 @@ fn parse_history_query_from_path(path: &str) -> (i64, i64) {
 
 fn extract_budget_id(path: &str, suffix: &str) -> String {
     let trimmed = path.trim_start_matches("/api/cash-flow/budgets/");
-    trimmed
-        .strip_suffix(suffix)
-        .unwrap_or(trimmed)
-        .to_string()
+    trimmed.strip_suffix(suffix).unwrap_or(trimmed).to_string()
 }
 
 pub async fn seed_budget(harness: &ContractHarness, name: &str) -> (StatusCode, Value) {
@@ -599,4 +594,3 @@ pub async fn request_delete(
     )
     .await
 }
-

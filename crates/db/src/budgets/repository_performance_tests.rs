@@ -52,11 +52,7 @@ fn setup_with_clock(
     let writer = spawn_writer(pool.clone()).expect("writer");
     let pool = Arc::new(pool);
     (
-        BudgetsRepository::new_with_clock(
-            Arc::clone(&pool),
-            writer.clone(),
-            Arc::clone(&clock),
-        ),
+        BudgetsRepository::new_with_clock(Arc::clone(&pool), writer.clone(), Arc::clone(&clock)),
         TransactionsRepository::new_with_clock(
             Arc::clone(&pool),
             writer.clone(),
@@ -73,7 +69,10 @@ fn date(year: i32, month: u32, day: u32) -> NaiveDateTime {
         .expect("time")
 }
 
-fn explain_plan(conn: &mut diesel::sqlite::SqliteConnection, sql: &str) -> Vec<ExplainQueryPlanRow> {
+fn explain_plan(
+    conn: &mut diesel::sqlite::SqliteConnection,
+    sql: &str,
+) -> Vec<ExplainQueryPlanRow> {
     sql_query(format!("EXPLAIN QUERY PLAN {sql}"))
         .load(conn)
         .expect("explain query plan")
@@ -81,8 +80,7 @@ fn explain_plan(conn: &mut diesel::sqlite::SqliteConnection, sql: &str) -> Vec<E
 
 fn assert_uses_index(plan: &[ExplainQueryPlanRow], index_name: &str) {
     assert!(
-        plan.iter()
-            .any(|row| row.detail.contains(index_name)),
+        plan.iter().any(|row| row.detail.contains(index_name)),
         "expected {index_name} in query plan: {plan:?}"
     );
 }
@@ -117,15 +115,14 @@ fn bulk_seed_transactions(conn: &mut diesel::sqlite::SqliteConnection, count: us
         let statement = format!(
             "INSERT INTO transactions (id, description, amount, transaction_date, transaction_type, transaction_category_id, notes, created_at, updated_at, deleted_at) VALUES {values}"
         );
-        diesel::sql_query(statement).execute(conn).expect("bulk insert");
+        diesel::sql_query(statement)
+            .execute(conn)
+            .expect("bulk insert");
         remaining -= batch;
     }
 }
 
-async fn seed_performance_fixture(
-    temp_db: &TempDb,
-    budgets: &BudgetsRepository,
-) -> String {
+async fn seed_performance_fixture(temp_db: &TempDb, budgets: &BudgetsRepository) -> String {
     let mut conn = diesel::SqliteConnection::establish(temp_db.path()).expect("connection");
     bulk_seed_transactions(&mut conn, 100_000);
 
@@ -168,12 +165,20 @@ async fn list_and_detail_reads_avoid_transaction_scans_and_writer_for_current_bu
         .await
         .expect("list budgets");
     assert_eq!(listed.len(), 50);
-    assert_eq!(writer_exec_count(), 0, "current list reads should not acquire writer");
+    assert_eq!(
+        writer_exec_count(),
+        0,
+        "current list reads should not acquire writer"
+    );
 
     reset_writer_exec_count();
     let detail = budgets.get_budget(&first_id).await.expect("get budget");
     assert_eq!(detail.id, first_id);
-    assert_eq!(writer_exec_count(), 0, "current detail reads should not acquire writer");
+    assert_eq!(
+        writer_exec_count(),
+        0,
+        "current detail reads should not acquire writer"
+    );
 
     let mut conn = diesel::SqliteConnection::establish(temp_db.path()).expect("connection");
     let list_plan = explain_plan(
@@ -293,4 +298,3 @@ async fn two_thousand_period_catch_up_remains_bounded_and_batched() {
     assert_eq!(counts.configurations, 2_001);
     assert_eq!(counts.results, 2_001);
 }
-

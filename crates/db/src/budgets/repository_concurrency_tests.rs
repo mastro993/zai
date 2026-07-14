@@ -7,14 +7,14 @@ use crate::write_actor::spawn_writer;
 use diesel::r2d2::{self, Pool};
 use std::sync::Arc;
 use tokio::sync::Barrier;
+use zai_core::features::budgets::traits::BudgetsRepositoryTrait;
 use zai_core::{
     Error,
     features::budgets::models::{
-        BudgetCadence, BudgetLifecycleUpdate, BudgetListFilter, BudgetMeasurementMode, BudgetUpdate,
-        NewBudget,
+        BudgetCadence, BudgetLifecycleUpdate, BudgetListFilter, BudgetMeasurementMode,
+        BudgetUpdate, NewBudget,
     },
 };
-use zai_core::features::budgets::traits::BudgetsRepositoryTrait;
 
 fn setup(
     temp_db: &TempDb,
@@ -67,7 +67,9 @@ async fn concurrent_pause_requests_keep_single_revision_chain() {
             budgets
                 .pause_budget(
                     "concurrent-pause",
-                    BudgetLifecycleUpdate { expected_revision: 0 },
+                    BudgetLifecycleUpdate {
+                        expected_revision: 0,
+                    },
                 )
                 .await
         })
@@ -80,7 +82,9 @@ async fn concurrent_pause_requests_keep_single_revision_chain() {
             budgets
                 .pause_budget(
                     "concurrent-pause",
-                    BudgetLifecycleUpdate { expected_revision: 0 },
+                    BudgetLifecycleUpdate {
+                        expected_revision: 0,
+                    },
                 )
                 .await
         })
@@ -88,10 +92,7 @@ async fn concurrent_pause_requests_keep_single_revision_chain() {
 
     let (left, right) = tokio::try_join!(left, right).expect("join");
     let outcomes = [left, right];
-    let successes = outcomes
-        .iter()
-        .filter(|result| result.is_ok())
-        .count();
+    let successes = outcomes.iter().filter(|result| result.is_ok()).count();
     let conflicts = outcomes
         .iter()
         .filter(|result| matches!(result, Err(Error::RevisionConflict { .. })))
@@ -149,7 +150,9 @@ async fn concurrent_update_and_delete_keep_atomic_revision_outcomes() {
             budgets
                 .delete_budget(
                     "concurrent-delete",
-                    BudgetLifecycleUpdate { expected_revision: 0 },
+                    BudgetLifecycleUpdate {
+                        expected_revision: 0,
+                    },
                 )
                 .await
         })
@@ -186,12 +189,10 @@ async fn concurrent_update_and_delete_keep_atomic_revision_outcomes() {
             .get_budget("concurrent-delete")
             .await
             .expect_err("deleted budget should not load");
-        assert!(
-            matches!(
-                missing,
-                Error::NotFound(_) | Error::Database(zai_core::DatabaseError::NotFound(_))
-            )
-        );
+        assert!(matches!(
+            missing,
+            Error::NotFound(_) | Error::Database(zai_core::DatabaseError::NotFound(_))
+        ));
     } else {
         assert_eq!(active.len(), 1);
         assert_eq!(active[0].name, "Updated");
@@ -218,7 +219,9 @@ async fn stale_successful_response_is_not_returned_after_losing_revision_race() 
             budgets
                 .pause_budget(
                     "stale-response",
-                    BudgetLifecycleUpdate { expected_revision: 0 },
+                    BudgetLifecycleUpdate {
+                        expected_revision: 0,
+                    },
                 )
                 .await
         })
@@ -231,7 +234,9 @@ async fn stale_successful_response_is_not_returned_after_losing_revision_race() 
             budgets
                 .resume_budget(
                     "stale-response",
-                    BudgetLifecycleUpdate { expected_revision: 0 },
+                    BudgetLifecycleUpdate {
+                        expected_revision: 0,
+                    },
                 )
                 .await
         })
