@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const DOMAIN_ALERT_SEVERITIES = ["info", "warning", "critical"] as const;
+export const DOMAIN_ALERT_READ_STATES = ["all", "read", "unread"] as const;
 
 const domainAlertDestinationSchema = z.discriminatedUnion("type", [
   z.object({
@@ -33,7 +34,18 @@ export const domainAlertListPageSchema = z.object({
   nextCursor: z.string().nullable().optional(),
 });
 
+export const domainAlertReadStateSchema = z.enum(DOMAIN_ALERT_READ_STATES);
+
+export const listDomainAlertsQuerySchema = z.object({
+  cursor: z.string().min(1).optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+  readState: domainAlertReadStateSchema.optional(),
+  severities: z.array(z.enum(DOMAIN_ALERT_SEVERITIES)).min(1).optional(),
+});
+
 export type DomainAlertSeverity = (typeof DOMAIN_ALERT_SEVERITIES)[number];
+export type DomainAlertReadState = z.infer<typeof domainAlertReadStateSchema>;
+export type ListDomainAlertsQuery = z.infer<typeof listDomainAlertsQuerySchema>;
 export type DomainAlertDestination = z.infer<typeof domainAlertDestinationSchema>;
 export type DomainAlertRichData = z.infer<typeof domainAlertRichDataSchema>;
 export type DomainAlert = z.infer<typeof domainAlertSchema>;

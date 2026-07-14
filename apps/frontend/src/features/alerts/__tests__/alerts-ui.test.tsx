@@ -12,6 +12,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => navigateMock,
 }));
 
+import { AlertsLedgerFilters } from "../components/alerts-ledger-filters";
 import { AlertRow } from "../components/alert-row";
 import { AlertsControllerProvider, useAlertsController } from "../hooks/use-alerts-controller";
 import { alertsBellLabel, domainAlertSeverityLabel, formatAlertCreatedAt } from "../lib/format";
@@ -164,6 +165,27 @@ describe("alerts bell label", () => {
   it("includes exact unread count in accessible name", () => {
     expect(alertsBellLabel(0)).toBe("Alerts, 0 unread");
     expect(alertsBellLabel(3)).toBe("Alerts, 3 unread");
+  });
+});
+
+describe("alerts ledger filters", () => {
+  it("forwards read and severity changes", () => {
+    const onReadStateChange = vi.fn();
+    const onSeverityChange = vi.fn();
+
+    render(
+      <AlertsLedgerFilters
+        filters={{ readState: "all", severity: "all" }}
+        onReadStateChange={onReadStateChange}
+        onSeverityChange={onSeverityChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Unread" }));
+    fireEvent.click(screen.getByRole("button", { name: "Critical" }));
+
+    expect(onReadStateChange).toHaveBeenCalledWith("unread");
+    expect(onSeverityChange).toHaveBeenCalledWith("critical");
   });
 });
 

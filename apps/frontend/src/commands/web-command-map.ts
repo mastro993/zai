@@ -61,6 +61,34 @@ const readNumber = (value: unknown, fallback: number): number => {
   return typeof value === "number" ? value : fallback;
 };
 
+const buildAlertsListSearch = (args: CommandArgs = {}): string => {
+  const query = readRecord(args.query);
+  if (!query) {
+    return "";
+  }
+
+  const params = new URLSearchParams();
+  const cursor = readString(query.cursor);
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
+  if (typeof query.limit === "number") {
+    params.set("limit", String(query.limit));
+  }
+  const readState = readString(query.readState);
+  if (readState && readState !== "all") {
+    params.set("readState", readState);
+  }
+  const severities = readStringArray(query.severities);
+  if (severities) {
+    for (const severity of severities) {
+      params.append("severities", severity);
+    }
+  }
+
+  return params.toString();
+};
+
 export const buildTransactionsListQuery = (args: CommandArgs = {}): string => {
   const params = new URLSearchParams();
   params.set("page", String(readNumber(args.page, 1)));
@@ -351,9 +379,10 @@ export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): We
       };
     }
     case "list_alerts": {
+      const search = buildAlertsListSearch(args);
       return {
         method: "GET",
-        path: "/alerts",
+        path: search ? `/alerts?${search}` : "/alerts",
       };
     }
     case "mark_alert_read": {

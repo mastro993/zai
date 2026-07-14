@@ -25,6 +25,16 @@ const readAlert = {
   readAt: "2026-07-14T11:00:00",
 };
 
+const isUnreadFirstPageRequest = (url: string): boolean => {
+  const parsed = new URL(url);
+  return parsed.searchParams.get("readState") === "unread" && !parsed.searchParams.has("cursor");
+};
+
+const isDefaultListRequest = (url: string): boolean => {
+  const parsed = new URL(url);
+  return !parsed.searchParams.has("readState") && !parsed.searchParams.has("cursor");
+};
+
 test.describe("alerts ledger", () => {
   test.beforeEach(async ({ page }) => {
     await page.route("**/api/alerts/unread-count", async (route) => {
@@ -179,5 +189,96 @@ test.describe("alerts ledger", () => {
     await page.getByRole("button", { name: "Open alert: Budget warning" }).click();
 
     await expect(page).toHaveURL(/\/cash-flow\/budgets\/6ba7b811-9dad-11d1-80b4-00c04fd430c8$/);
+  });
+
+  test("filters alerts and loads older pages from cursor", async ({ page }) => {
+    await page.unroute("**/api/alerts");
+    await page.route("**/api/alerts?*", async (route) => {
+      const url = route.request().url();
+
+      if (isUnreadFirstPageRequest(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            items: [fixedAlerts.items[0]],
+            nextCursor: "cursor-page-2",
+          }),
+        });
+        return;
+      }
+
+      if (new URL(url).searchParams.get("cursor") === "cursor-page-2") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            items: [
+              {
+                ...fixedAlerts.items[0],
+                id: "7ba7b810-9dad-11d1-80b4-00c04fd430c9",
+                occurrenceKey: "period-2",
+                title: "Older warning",
+                createdAt: "2026-07-13T10:00:00",
+              },
+            ],
+            nextCursor: null,
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(fixedAlerts),
+      });
+    });
+
+    await page.goto("/dashboard");
+    const dialog = page.getByRole("dialog", { name: "Alerts" });
+    const ledgerOpen = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.ok() &&
+        isDefaultListRequest(response.url()),
+    );
+    await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
+    await ledgerOpen;
+    await expect(dialog).toBeVisible();
+
+    const unreadButton = dialog.getByRole("button", { name: "Unread" });
+    if ((await unreadButton.getAttribute("aria-pressed")) === "true") {
+      const readFilterResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.ok() &&
+          new URL(response.url()).searchParams.get("readState") === "read",
+      );
+      await dialog.getByRole("button", { name: "Read" }).click();
+      await readFilterResponse;
+    }
+
+    const unreadFilterResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.ok() &&
+        isUnreadFirstPageRequest(response.url()),
+    );
+    await unreadButton.click();
+    await unreadFilterResponse;
+
+    await expect(dialog.getByRole("button", { name: "Load older alerts" })).toBeVisible();
+
+    const olderPageResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.ok() &&
+        new URL(response.url()).searchParams.get("cursor") === "cursor-page-2",
+    );
+    await dialog.getByRole("button", { name: "Load older alerts" }).click();
+    await olderPageResponse;
+
+    await expect(dialog.getByText("Older warning")).toBeVisible();
   });
 });

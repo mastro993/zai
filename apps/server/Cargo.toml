@@ -23,6 +23,7 @@ zai-core = { workspace = true }
 
 [dev-dependencies]
 axum = "0.8"
+chrono = { workspace = true }
 serde_json = { workspace = true }
 tower = { version = "0.5", features = ["util"] }
 tokio = { workspace = true, features = ["io-util", "net"] }
