@@ -16,3 +16,4 @@ uuid = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
+serde_urlencoded = "0.7"

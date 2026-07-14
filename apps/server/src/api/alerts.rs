@@ -28,6 +28,7 @@ struct ListAlertsQuery {
     limit: i64,
     #[serde(default)]
     read_state: DomainAlertReadState,
+    #[serde(default, deserialize_with = "zai_core::features::domain_alerts::deserialize_optional_severities")]
     severities: Option<Vec<DomainAlertSeverity>>,
 }
 

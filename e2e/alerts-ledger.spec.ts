@@ -71,4 +71,61 @@ test.describe("alerts ledger", () => {
     await expect(dot).toBeVisible();
     await expect(dot).not.toHaveClass(/animate-pulse/);
   });
+
+  test("filters alerts and loads older pages from cursor", async ({ page }) => {
+    let listRequestCount = 0;
+    await page.route("**/api/alerts", async (route) => {
+      listRequestCount += 1;
+      const url = new URL(route.request().url());
+      const readState = url.searchParams.get("readState");
+      const cursor = url.searchParams.get("cursor");
+
+      if (readState === "unread" && !cursor) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            items: [fixedAlerts.items[0]],
+            nextCursor: "cursor-page-2",
+          }),
+        });
+        return;
+      }
+
+      if (readState === "unread" && cursor === "cursor-page-2") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            items: [
+              {
+                ...fixedAlerts.items[0],
+                id: "7ba7b810-9dad-11d1-80b4-00c04fd430c9",
+                occurrenceKey: "period-2",
+                title: "Older warning",
+                createdAt: "2026-07-13T10:00:00",
+              },
+            ],
+            nextCursor: null,
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(fixedAlerts),
+      });
+    });
+
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
+    await page.getByRole("button", { name: "Unread" }).click();
+    await expect(page.getByText("Budget warning")).toBeVisible();
+
+    await page.getByRole("button", { name: "Load older alerts" }).click();
+    await expect(page.getByText("Older warning")).toBeVisible();
+    expect(listRequestCount).toBeGreaterThanOrEqual(3);
+  });
 });

@@ -6,6 +6,8 @@ mod outcome;
 #[cfg(test)]
 mod outcome_tests;
 mod query;
+#[cfg(test)]
+mod query_tests;
 mod service;
 mod traits;
 
@@ -16,7 +18,7 @@ pub use models::{
 pub use outcome::{AlertInsertOutcome, CommittedOutcome};
 pub use query::{
     DEFAULT_LIST_LIMIT, DomainAlertListPage, DomainAlertReadState, ListDomainAlertsQuery,
-    MAX_LIST_LIMIT, MIN_LIST_LIMIT,
+    MAX_LIST_LIMIT, MIN_LIST_LIMIT, deserialize_optional_severities,
 };
 pub use service::DomainAlertsService;
 pub use traits::{DomainAlertsRepositoryTrait, DomainAlertsServiceTrait};

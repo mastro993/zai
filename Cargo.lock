@@ -6903,6 +6903,7 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "thiserror 2.0.16",
  "tokio",
  "uuid",
@@ -6941,6 +6942,7 @@ dependencies = [
  "uuid",
  "zai-app",
  "zai-core",
+ "zai-db",
 ]
 
 [[package]]

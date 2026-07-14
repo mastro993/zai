@@ -1,10 +1,30 @@
 use super::models::{DomainAlert, DomainAlertSeverity};
 use crate::Result;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 pub const DEFAULT_LIST_LIMIT: i64 = 50;
 pub const MIN_LIST_LIMIT: i64 = 1;
 pub const MAX_LIST_LIMIT: i64 = 100;
+
+pub fn deserialize_optional_severities<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Option<Vec<DomainAlertSeverity>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum SeverityInput {
+        One(DomainAlertSeverity),
+        Many(Vec<DomainAlertSeverity>),
+    }
+
+    match Option::<SeverityInput>::deserialize(deserializer)? {
+        None => Ok(None),
+        Some(SeverityInput::One(severity)) => Ok(Some(vec![severity])),
+        Some(SeverityInput::Many(severities)) => Ok(Some(severities)),
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -21,6 +41,7 @@ pub struct ListDomainAlertsQuery {
     pub cursor: Option<String>,
     pub limit: Option<i64>,
     pub read_state: Option<DomainAlertReadState>,
+    #[serde(default, deserialize_with = "deserialize_optional_severities")]
     pub severities: Option<Vec<DomainAlertSeverity>>,
 }
 
