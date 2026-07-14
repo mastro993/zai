@@ -128,6 +128,7 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       const requestId = ++listRequestIdRef.current;
       setAlertSessionFilters(nextFilters);
       setFilters(nextFilters);
+      filtersRef.current = nextFilters;
       setRefreshStatus((status) => (status === "idle" ? "loading" : status));
 
       const [listResult, count] = await Promise.all([fetchPage(nextFilters), fetchUnreadCount()]);
@@ -160,22 +161,24 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
 
   const setReadStateFilter = useCallback(
     (readState: DomainAlertReadState) => {
-      if (readState === filters.readState) {
+      const currentFilters = filtersRef.current;
+      if (readState === currentFilters.readState) {
         return;
       }
-      void applyFilters({ ...filters, readState });
+      void applyFilters({ ...currentFilters, readState });
     },
-    [applyFilters, filters],
+    [applyFilters],
   );
 
   const setSeverityFilter = useCallback(
     (severity: AlertSeverityFilter) => {
-      if (severity === filters.severity) {
+      const currentFilters = filtersRef.current;
+      if (severity === currentFilters.severity) {
         return;
       }
-      void applyFilters({ ...filters, severity });
+      void applyFilters({ ...currentFilters, severity });
     },
-    [applyFilters, filters],
+    [applyFilters],
   );
 
   const clearFilters = useCallback(() => {

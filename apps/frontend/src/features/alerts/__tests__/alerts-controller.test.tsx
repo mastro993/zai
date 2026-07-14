@@ -113,4 +113,49 @@ describe("alerts controller filters and pagination", () => {
     await waitFor(() => expect(result.current.refreshStatus).toBe("error"));
     expect(result.current.items).toHaveLength(1);
   });
+
+  it("ignores stale refresh responses after a filter change", async () => {
+    let releaseStaleRefresh: ((page: DomainAlertListPage) => void) | undefined;
+    const staleRefresh = new Promise<DomainAlertListPage>((resolve) => {
+      releaseStaleRefresh = resolve;
+    });
+    let holdDefaultRefresh = false;
+
+    vi.mocked(alertsCommands.listAlerts).mockImplementation((query) => {
+      if (query?.readState === "unread") {
+        return Promise.resolve(
+          Result.succeed({
+            items: pageOne.items,
+            nextCursor: "cursor-page-2",
+          }),
+        );
+      }
+
+      if (holdDefaultRefresh) {
+        return staleRefresh.then((page) => Result.succeed(page));
+      }
+
+      return Promise.resolve(Result.succeed({ items: pageOne.items, nextCursor: null }));
+    });
+
+    const { result } = renderHook(() => useAlertsController(), {
+      wrapper: AlertsControllerProvider,
+    });
+    await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
+
+    holdDefaultRefresh = true;
+    await act(async () => {
+      void result.current.openLedger();
+      result.current.setReadStateFilter("unread");
+    });
+
+    await waitFor(() => expect(result.current.nextCursor).toBe("cursor-page-2"));
+
+    await act(async () => {
+      releaseStaleRefresh?.({ items: pageOne.items, nextCursor: null });
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(result.current.nextCursor).toBe("cursor-page-2");
+  });
 });

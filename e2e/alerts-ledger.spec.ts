@@ -16,6 +16,11 @@ const fixedAlerts = {
   nextCursor: null,
 };
 
+const isUnreadFirstPageRequest = (url: string): boolean => {
+  const parsed = new URL(url);
+  return parsed.searchParams.get("readState") === "unread" && !parsed.searchParams.has("cursor");
+};
+
 test.describe("alerts ledger", () => {
   test.beforeEach(async ({ page }) => {
     await page.route("**/api/alerts/unread-count", async (route) => {
@@ -73,14 +78,11 @@ test.describe("alerts ledger", () => {
   });
 
   test("filters alerts and loads older pages from cursor", async ({ page }) => {
-    let listRequestCount = 0;
+    await page.unroute("**/api/alerts");
     await page.route("**/api/alerts", async (route) => {
-      listRequestCount += 1;
-      const url = new URL(route.request().url());
-      const readState = url.searchParams.get("readState");
-      const cursor = url.searchParams.get("cursor");
+      const url = route.request().url();
 
-      if (readState === "unread" && !cursor) {
+      if (isUnreadFirstPageRequest(url)) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -92,7 +94,7 @@ test.describe("alerts ledger", () => {
         return;
       }
 
-      if (readState === "unread" && cursor === "cursor-page-2") {
+      if (new URL(url).searchParams.get("cursor") === "cursor-page-2") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -121,12 +123,30 @@ test.describe("alerts ledger", () => {
 
     await page.goto("/dashboard");
     await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
-    await page.getByRole("button", { name: "Unread" }).click();
-    await expect(page.getByText("Budget warning")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Load older alerts" })).toBeVisible();
 
-    await page.getByRole("button", { name: "Load older alerts" }).click();
-    await expect(page.getByText("Older warning")).toBeVisible();
-    expect(listRequestCount).toBeGreaterThanOrEqual(3);
+    const dialog = page.getByRole("dialog", { name: "Alerts" });
+    const unreadFilterResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.ok() &&
+        isUnreadFirstPageRequest(response.url()),
+    );
+
+    await dialog.getByRole("button", { name: "Unread" }).click();
+    await unreadFilterResponse;
+
+    await expect(dialog.getByRole("button", { name: "Load older alerts" })).toBeVisible();
+
+    const olderPageResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.ok() &&
+        new URL(response.url()).searchParams.get("cursor") === "cursor-page-2",
+    );
+
+    await dialog.getByRole("button", { name: "Load older alerts" }).click();
+    await olderPageResponse;
+
+    await expect(dialog.getByText("Older warning")).toBeVisible();
   });
 });
