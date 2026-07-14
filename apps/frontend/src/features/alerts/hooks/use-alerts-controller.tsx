@@ -2,6 +2,7 @@ import { Result } from "@praha/byethrow";
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { listAlerts, markAllAlertsRead, markAlertRead, markAlertUnread } from "../commands/alerts";
 import { buildListAlertsQuery } from "../lib/build-list-query";
+import { activateAlertFromToast } from "../lib/activate-alert-from-toast";
 import { mergeReconciledAlertPage } from "../lib/merge-page";
 import { isUnreadAlert, parseDomainAlert, parseDomainAlertListPage } from "../lib/parse";
 import {
@@ -28,6 +29,7 @@ interface RefreshOptions {
 export function AlertsControllerProvider({ children }: { children: ReactNode }) {
   const bellRef = useRef<HTMLButtonElement>(null);
   const [isLedgerOpen, setIsLedgerOpen] = useState(false);
+  const [ledgerFocusAlertId, setLedgerFocusAlertId] = useState<string | null>(null);
   const [filters, setFilters] = useState<AlertSessionFilters>(getAlertSessionFilters);
   const filtersRef = useRef(filters);
   const listRequestIdRef = useRef(0);
@@ -258,6 +260,7 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
 
   const openLedger = useCallback(() => {
     setIsLedgerOpen(true);
+    setLedgerFocusAlertId(null);
     setDestinationFeedback(null);
     void refresh({ preserveItems: true });
   }, [refresh]);
@@ -272,14 +275,9 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
 
   const refreshPreservingItems = useCallback(() => refresh({ preserveItems: true }), [refresh]);
 
-  useAlertsLiveEvents({
-    onOpenLedger: openLedger,
-    onReconcile: reconcileLiveState,
-    onReady: loadInitialState,
-  });
-
   const closeLedger = useCallback(() => {
     setIsLedgerOpen(false);
+    setLedgerFocusAlertId(null);
     setDestinationFeedback(null);
     bellRef.current?.focus();
   }, []);
@@ -326,6 +324,24 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
     setLifecyclePendingId,
   });
 
+  const activateAlertFromToastHandler = useCallback(
+    async (alert: DomainAlert) =>
+      activateAlertFromToast(alert, {
+        openAlert,
+        refresh,
+        setDestinationFeedback,
+        setIsLedgerOpen,
+        setLedgerFocusAlertId,
+      }),
+    [openAlert, refresh],
+  );
+
+  useAlertsLiveEvents({
+    onActivateAlert: activateAlertFromToastHandler,
+    onReconcile: reconcileLiveState,
+    onReady: loadInitialState,
+  });
+
   const hasActiveFilters = hasActiveAlertFilters(filters);
 
   const value = useMemo(
@@ -338,6 +354,7 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       filters,
       hasActiveFilters,
       isLedgerOpen,
+      ledgerFocusAlertId,
       items,
       lifecycleErrors,
       lifecyclePendingId,
@@ -366,6 +383,7 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       filters,
       hasActiveFilters,
       isLedgerOpen,
+      ledgerFocusAlertId,
       items,
       lifecycleErrors,
       lifecyclePendingId,

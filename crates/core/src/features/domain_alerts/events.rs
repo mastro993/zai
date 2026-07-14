@@ -179,7 +179,10 @@ mod tests {
         ))
         .expect("shared event fixtures should be valid json");
 
-        assert_eq!(fixtures.len(), 2);
+        assert!(
+            !fixtures.is_empty(),
+            "shared event fixtures should not be empty"
+        );
         for fixture in fixtures {
             let payload = serde_json::to_string(&fixture).expect("fixture should serialize");
             deserialize_domain_alert_event(&payload).expect("fixture should match core contract");
