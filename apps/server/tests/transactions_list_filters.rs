@@ -11,7 +11,7 @@ use list_filters::{
 
 #[tokio::test]
 async fn list_transactions_pagination_respects_page_and_per_page() {
-    let (app, _dir) = setup_app("zai-transactions-list").await;
+    let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
     let (status, body) = request_json(
@@ -31,7 +31,7 @@ async fn list_transactions_pagination_respects_page_and_per_page() {
 
 #[tokio::test]
 async fn list_transactions_filters_by_text_search() {
-    let (app, _dir) = setup_app("zai-transactions-list").await;
+    let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
     let (status, body) = request_json(
@@ -51,7 +51,7 @@ async fn list_transactions_filters_by_text_search() {
 
 #[tokio::test]
 async fn list_transactions_filters_by_transaction_type() {
-    let (app, _dir) = setup_app("zai-transactions-list").await;
+    let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
     let (status, body) = request_json(
@@ -70,7 +70,7 @@ async fn list_transactions_filters_by_transaction_type() {
 
 #[tokio::test]
 async fn list_transactions_filters_by_date_range() {
-    let (app, _dir) = setup_app("zai-transactions-list").await;
+    let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
     let (status, body) = request_json(
@@ -90,7 +90,7 @@ async fn list_transactions_filters_by_date_range() {
 
 #[tokio::test]
 async fn list_transactions_filters_by_single_category() {
-    let (app, _dir) = setup_app("zai-transactions-list").await;
+    let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
     let (status, body) = request_json(
@@ -110,7 +110,7 @@ async fn list_transactions_filters_by_single_category() {
 
 #[tokio::test]
 async fn list_transactions_filters_by_multiple_categories() {
-    let (app, _dir) = setup_app("zai-transactions-list").await;
+    let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
     let (status, body) = request_json(
@@ -127,7 +127,7 @@ async fn list_transactions_filters_by_multiple_categories() {
 
 #[tokio::test]
 async fn list_transactions_filters_uncategorized_only() {
-    let (app, _dir) = setup_app("zai-transactions-list").await;
+    let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
     let (status, body) = request_json(
@@ -149,7 +149,7 @@ async fn list_transactions_filters_uncategorized_only() {
 
 #[tokio::test]
 async fn list_transactions_sorts_by_amount_desc() {
-    let (app, _dir) = setup_app("zai-transactions-list").await;
+    let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
     let (status, body) = request_json(
@@ -172,7 +172,7 @@ async fn list_transactions_sorts_by_amount_desc() {
 
 #[tokio::test]
 async fn list_transactions_sorts_by_amount_asc() {
-    let (app, _dir) = setup_app("zai-transactions-list").await;
+    let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
     let (status, body) = request_json(
@@ -195,7 +195,7 @@ async fn list_transactions_sorts_by_amount_asc() {
 
 #[tokio::test]
 async fn list_transactions_sorts_by_date_desc() {
-    let (app, _dir) = setup_app("zai-transactions-list").await;
+    let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
     let (status, body) = request_json(
@@ -221,7 +221,7 @@ async fn list_transactions_sorts_by_date_desc() {
 
 #[tokio::test]
 async fn list_transactions_sorts_by_description_asc() {
-    let (app, _dir) = setup_app("zai-transactions-list").await;
+    let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
     let (status, body) = request_json(
@@ -247,7 +247,7 @@ async fn list_transactions_sorts_by_description_asc() {
 
 #[tokio::test]
 async fn list_transactions_sorts_by_type_desc() {
-    let (app, _dir) = setup_app("zai-transactions-list").await;
+    let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
     let (status, body) = request_json(

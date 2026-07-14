@@ -18,7 +18,7 @@ fn sample_transaction_payload() -> Value {
 
 #[tokio::test]
 async fn list_transactions_returns_paginated_defaults() {
-    let (app, _dir) = setup_app("zai-transactions").await;
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
 
     let (status, body) = request_json(&app, "GET", "/api/cash-flow/transactions", None).await;
 
@@ -30,7 +30,7 @@ async fn list_transactions_returns_paginated_defaults() {
 
 #[tokio::test]
 async fn list_transactions_rejects_uncategorized_with_category_filters() {
-    let (app, _dir) = setup_app("zai-transactions").await;
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
 
     let (status, body) = request_json(
         &app,
@@ -50,7 +50,7 @@ async fn list_transactions_rejects_uncategorized_with_category_filters() {
 
 #[tokio::test]
 async fn create_transaction_with_category_succeeds() {
-    let (app, _dir) = setup_app("zai-transactions").await;
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
 
     let (batch_status, _) = request_json(
         &app,
@@ -90,7 +90,7 @@ async fn create_transaction_with_category_succeeds() {
 
 #[tokio::test]
 async fn create_get_update_delete_transaction_round_trip() {
-    let (app, _dir) = setup_app("zai-transactions").await;
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
 
     let (create_status, created) = request_json(
         &app,
@@ -164,7 +164,7 @@ async fn create_get_update_delete_transaction_round_trip() {
 
 #[tokio::test]
 async fn bulk_delete_transactions_returns_deleted_rows() {
-    let (app, _dir) = setup_app("zai-transactions").await;
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
 
     let mut ids = Vec::new();
     for description in ["One", "Two"] {
@@ -197,7 +197,7 @@ async fn bulk_delete_transactions_returns_deleted_rows() {
 
 #[tokio::test]
 async fn create_transaction_rejects_invalid_type() {
-    let (app, _dir) = setup_app("zai-transactions").await;
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
 
     let (status, body) = request_json(
         &app,
@@ -224,7 +224,7 @@ async fn create_transaction_rejects_invalid_type() {
 
 #[tokio::test]
 async fn create_transaction_returns_conflict_for_missing_category() {
-    let (app, _dir) = setup_app("zai-transactions").await;
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
 
     let (status, body) = request_json(
         &app,
@@ -247,7 +247,7 @@ async fn create_transaction_returns_conflict_for_missing_category() {
 
 #[tokio::test]
 async fn import_transactions_returns_imported_rows() {
-    let (app, _dir) = setup_app("zai-transactions").await;
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
 
     let (status, imported) = request_json(
         &app,
@@ -272,7 +272,7 @@ async fn import_transactions_returns_imported_rows() {
 
 #[tokio::test]
 async fn import_transaction_batch_returns_imported_transactions_only() {
-    let (app, _dir) = setup_app("zai-transactions").await;
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
 
     let (status, imported) = request_json(
         &app,
@@ -304,7 +304,7 @@ async fn import_transaction_batch_returns_imported_transactions_only() {
 
 #[tokio::test]
 async fn malformed_json_returns_bad_request_message_body() {
-    let (app, _dir) = setup_app("zai-transactions").await;
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
 
     let request = axum::http::Request::builder()
         .method("POST")

@@ -14,7 +14,7 @@ fn budget_payload(name: &str) -> Value {
 
 #[tokio::test]
 async fn create_list_and_inspect_budget_round_trip() {
-    let (app, _dir) = setup_app("zai-budgets").await;
+    let (app, _context, _dir) = setup_app("zai-budgets").await;
     let transaction_date = Local::now().format("%Y-%m-%dT12:00:00").to_string();
 
     let (transaction_status, _) = request_json(
@@ -81,7 +81,7 @@ async fn create_list_and_inspect_budget_round_trip() {
 
 #[tokio::test]
 async fn duplicate_active_budget_name_returns_name_conflict() {
-    let (app, _dir) = setup_app("zai-budget-conflict").await;
+    let (app, _context, _dir) = setup_app("zai-budget-conflict").await;
     let (first_status, _) = request_json(
         &app,
         "POST",
@@ -105,7 +105,7 @@ async fn duplicate_active_budget_name_returns_name_conflict() {
 
 #[tokio::test]
 async fn update_budget_replaces_open_configuration_and_rejects_stale_revision() {
-    let (app, _dir) = setup_app("zai-budget-update").await;
+    let (app, _context, _dir) = setup_app("zai-budget-update").await;
     let (_, created) = request_json(
         &app,
         "POST",
@@ -161,7 +161,7 @@ async fn update_budget_replaces_open_configuration_and_rejects_stale_revision() 
 
 #[tokio::test]
 async fn update_budget_rejects_cadence_changes() {
-    let (app, _dir) = setup_app("zai-budget-cadence-lock").await;
+    let (app, _context, _dir) = setup_app("zai-budget-cadence-lock").await;
     let (_, created) = request_json(
         &app,
         "POST",
@@ -194,7 +194,7 @@ async fn update_budget_rejects_cadence_changes() {
 
 #[tokio::test]
 async fn pause_and_resume_keep_budget_history_without_active_list_gaps() {
-    let (app, _dir) = setup_app("zai-budget-lifecycle").await;
+    let (app, _context, _dir) = setup_app("zai-budget-lifecycle").await;
     let (_, created) = request_json(
         &app,
         "POST",
@@ -243,7 +243,7 @@ async fn pause_and_resume_keep_budget_history_without_active_list_gaps() {
 
 #[tokio::test]
 async fn delete_budget_returns_no_content_is_idempotent_and_releases_name() {
-    let (app, _dir) = setup_app("zai-budget-delete").await;
+    let (app, _context, _dir) = setup_app("zai-budget-delete").await;
     let (_, created) = request_json(
         &app,
         "POST",
@@ -300,7 +300,7 @@ async fn delete_budget_returns_no_content_is_idempotent_and_releases_name() {
 
 #[tokio::test]
 async fn delete_budget_rejects_stale_revision() {
-    let (app, _dir) = setup_app("zai-budget-delete-revision").await;
+    let (app, _context, _dir) = setup_app("zai-budget-delete-revision").await;
     let (_, created) = request_json(
         &app,
         "POST",
@@ -324,7 +324,7 @@ async fn delete_budget_rejects_stale_revision() {
 
 #[tokio::test]
 async fn create_budget_accepts_cadence_scope_and_measurement_mode() {
-    let (app, _dir) = setup_app("zai-budget-options").await;
+    let (app, _context, _dir) = setup_app("zai-budget-options").await;
     let (category_status, category) = request_json(
         &app,
         "POST",
@@ -360,7 +360,7 @@ async fn create_budget_accepts_cadence_scope_and_measurement_mode() {
 
 #[tokio::test]
 async fn budget_history_rejects_invalid_page_size() {
-    let (app, _dir) = setup_app("zai-budget-history-validation").await;
+    let (app, _context, _dir) = setup_app("zai-budget-history-validation").await;
     let (_, budget) = request_json(
         &app,
         "POST",
