@@ -60,6 +60,7 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
   const [filters, setFilters] = useState<AlertSessionFilters>(getAlertSessionFilters);
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
+  const listRequestIdRef = useRef(0);
   const [items, setItems] = useState<Array<DomainAlert>>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -72,54 +73,13 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
     return listAlerts(buildListAlertsQuery(queryFilters, cursor ? { cursor } : {}));
   }, []);
 
-  const refresh = useCallback(async () => {
-    setRefreshStatus((status) => (status === "idle" ? "loading" : status));
-    const activeFilters = filtersRef.current;
-    const [listResult, count] = await Promise.all([fetchPage(activeFilters), fetchUnreadCount()]);
-
-    if (Result.isFailure(listResult)) {
-      setRefreshStatus("error");
-      setErrorMessage(listResult.error.message);
-      return;
-    }
-
-    const parsedPage = parseDomainAlertListPage(listResult.value);
-    if (!parsedPage) {
-      setRefreshStatus("error");
-      setErrorMessage("Saved alerts could not be read.");
-      return;
-    }
-
-    setItems(parsedPage.items);
-    setNextCursor(parsedPage.nextCursor ?? null);
-    setRefreshStatus("ready");
-    setErrorMessage(null);
-    setLoadOlderStatus("idle");
-    setLoadOlderError(null);
-
-    if (count !== null) {
-      setUnreadCount(count);
-    }
-  }, [fetchPage]);
-
-  const applyFilters = useCallback(
-    async (nextFilters: AlertSessionFilters) => {
-      setAlertSessionFilters(nextFilters);
-      setFilters(nextFilters);
-      setRefreshStatus((status) => (status === "idle" ? "loading" : status));
-
-      const [listResult, count] = await Promise.all([fetchPage(nextFilters), fetchUnreadCount()]);
-
-      if (Result.isFailure(listResult)) {
-        setRefreshStatus("error");
-        setErrorMessage(listResult.error.message);
-        return;
-      }
-
-      const parsedPage = parseDomainAlertListPage(listResult.value);
-      if (!parsedPage) {
-        setRefreshStatus("error");
-        setErrorMessage("Saved alerts could not be read.");
+  const applyListPage = useCallback(
+    (
+      requestId: number,
+      parsedPage: NonNullable<ReturnType<typeof parseDomainAlertListPage>>,
+      count: number | null,
+    ) => {
+      if (requestId !== listRequestIdRef.current) {
         return;
       }
 
@@ -134,7 +94,64 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
         setUnreadCount(count);
       }
     },
-    [fetchPage],
+    [],
+  );
+
+  const refresh = useCallback(async () => {
+    const requestId = ++listRequestIdRef.current;
+    setRefreshStatus((status) => (status === "idle" ? "loading" : status));
+    const activeFilters = filtersRef.current;
+    const [listResult, count] = await Promise.all([fetchPage(activeFilters), fetchUnreadCount()]);
+
+    if (requestId !== listRequestIdRef.current) {
+      return;
+    }
+
+    if (Result.isFailure(listResult)) {
+      setRefreshStatus("error");
+      setErrorMessage(listResult.error.message);
+      return;
+    }
+
+    const parsedPage = parseDomainAlertListPage(listResult.value);
+    if (!parsedPage) {
+      setRefreshStatus("error");
+      setErrorMessage("Saved alerts could not be read.");
+      return;
+    }
+
+    applyListPage(requestId, parsedPage, count);
+  }, [applyListPage, fetchPage]);
+
+  const applyFilters = useCallback(
+    async (nextFilters: AlertSessionFilters) => {
+      const requestId = ++listRequestIdRef.current;
+      setAlertSessionFilters(nextFilters);
+      setFilters(nextFilters);
+      setRefreshStatus((status) => (status === "idle" ? "loading" : status));
+
+      const [listResult, count] = await Promise.all([fetchPage(nextFilters), fetchUnreadCount()]);
+
+      if (requestId !== listRequestIdRef.current) {
+        return;
+      }
+
+      if (Result.isFailure(listResult)) {
+        setRefreshStatus("error");
+        setErrorMessage(listResult.error.message);
+        return;
+      }
+
+      const parsedPage = parseDomainAlertListPage(listResult.value);
+      if (!parsedPage) {
+        setRefreshStatus("error");
+        setErrorMessage("Saved alerts could not be read.");
+        return;
+      }
+
+      applyListPage(requestId, parsedPage, count);
+    },
+    [applyListPage, fetchPage],
   );
 
   useEffect(() => {

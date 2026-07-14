@@ -2,12 +2,14 @@ mod common;
 
 use axum::http::StatusCode;
 use common::{request_json, setup_app};
-use zai_core::features::domain_alerts::{
-    AlertInsertOutcome, DomainAlertSeverity, NewDomainAlert,
-};
+use zai_core::features::domain_alerts::{AlertInsertOutcome, DomainAlertSeverity, NewDomainAlert};
 use zai_db::connect;
 
-fn sample_alert(occurrence_key: &str, title: &str, severity: DomainAlertSeverity) -> NewDomainAlert {
+fn sample_alert(
+    occurrence_key: &str,
+    title: &str,
+    severity: DomainAlertSeverity,
+) -> NewDomainAlert {
     NewDomainAlert {
         id: None,
         producer_key: "budget.status".to_string(),

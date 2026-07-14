@@ -123,6 +123,7 @@ test.describe("alerts ledger", () => {
     await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
     await page.getByRole("button", { name: "Unread" }).click();
     await expect(page.getByText("Budget warning")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Load older alerts" })).toBeVisible();
 
     await page.getByRole("button", { name: "Load older alerts" }).click();
     await expect(page.getByText("Older warning")).toBeVisible();

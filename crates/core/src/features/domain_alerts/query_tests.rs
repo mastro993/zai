@@ -39,12 +39,16 @@ fn rejects_empty_severity_filter() {
 #[test]
 fn rejects_unknown_cursor_versions() {
     let query = ListDomainAlertsQuery {
-        cursor: Some("v2|2026-07-14T12:00:00.000000000|6ba7b810-9dad-11d1-80b4-00c04fd430c8".to_string()),
+        cursor: Some(
+            "v2|2026-07-14T12:00:00.000000000|6ba7b810-9dad-11d1-80b4-00c04fd430c8".to_string(),
+        ),
         ..Default::default()
     };
 
     assert!(matches!(
-        query.validate().expect_err("unknown cursor version should fail"),
+        query
+            .validate()
+            .expect_err("unknown cursor version should fail"),
         Error::InvalidData(_)
     ));
 }
@@ -79,7 +83,10 @@ fn deserializes_severity_query_params_from_url_encoding() {
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct QueryParams {
-        #[serde(default, deserialize_with = "super::query::deserialize_optional_severities")]
+        #[serde(
+            default,
+            deserialize_with = "super::query::deserialize_optional_severities"
+        )]
         severities: Option<Vec<super::models::DomainAlertSeverity>>,
     }
 

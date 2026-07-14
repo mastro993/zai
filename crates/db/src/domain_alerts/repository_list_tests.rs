@@ -207,21 +207,34 @@ async fn list_filters_by_severity() {
     insert_alert_with_created_at(
         temp_db.path(),
         &repo,
-        sample_alert("budget.status", "b", "Warning", DomainAlertSeverity::Warning),
+        sample_alert(
+            "budget.status",
+            "b",
+            "Warning",
+            DomainAlertSeverity::Warning,
+        ),
         base + chrono::Duration::seconds(1),
     )
     .await;
     insert_alert_with_created_at(
         temp_db.path(),
         &repo,
-        sample_alert("budget.status", "c", "Critical", DomainAlertSeverity::Critical),
+        sample_alert(
+            "budget.status",
+            "c",
+            "Critical",
+            DomainAlertSeverity::Critical,
+        ),
         base + chrono::Duration::seconds(2),
     )
     .await;
 
     let page = repo
         .list_alerts(&ListDomainAlertsQuery {
-            severities: Some(vec![DomainAlertSeverity::Warning, DomainAlertSeverity::Critical]),
+            severities: Some(vec![
+                DomainAlertSeverity::Warning,
+                DomainAlertSeverity::Critical,
+            ]),
             ..Default::default()
         })
         .await
@@ -238,17 +251,32 @@ async fn list_combines_read_state_and_severity_filters() {
     let repo = setup(&temp_db);
     insert_alert(
         &repo,
-        sample_alert("budget.status", "a", "Unread warning", DomainAlertSeverity::Warning),
+        sample_alert(
+            "budget.status",
+            "a",
+            "Unread warning",
+            DomainAlertSeverity::Warning,
+        ),
     )
     .await;
     insert_alert(
         &repo,
-        sample_alert("budget.status", "b", "Unread info", DomainAlertSeverity::Info),
+        sample_alert(
+            "budget.status",
+            "b",
+            "Unread info",
+            DomainAlertSeverity::Info,
+        ),
     )
     .await;
     let read_row = insert_alert(
         &repo,
-        sample_alert("budget.status", "c", "Read warning", DomainAlertSeverity::Warning),
+        sample_alert(
+            "budget.status",
+            "c",
+            "Read warning",
+            DomainAlertSeverity::Warning,
+        ),
     )
     .await;
     let mut conn = SqliteConnection::establish(temp_db.path()).expect("connect");
@@ -407,7 +435,12 @@ async fn list_reflects_lifecycle_changes_on_refresh_without_skipping_rows() {
     insert_alert_with_created_at(
         temp_db.path(),
         &repo,
-        sample_alert("budget.status", "b", "Will read", DomainAlertSeverity::Warning),
+        sample_alert(
+            "budget.status",
+            "b",
+            "Will read",
+            DomainAlertSeverity::Warning,
+        ),
         base + chrono::Duration::seconds(1),
     )
     .await;
