@@ -28,3 +28,5 @@ tower = { version = "0.5", features = ["util"] }
 tokio = { workspace = true, features = ["io-util", "net"] }
 uuid = { workspace = true }
 zai-app = { workspace = true }
+zai-core = { workspace = true }
+zai-db = { workspace = true }

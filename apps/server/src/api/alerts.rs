@@ -3,13 +3,14 @@ use std::sync::Arc;
 use axum::{
     Json, Router,
     extract::rejection::QueryRejection,
-    extract::{Query, State},
-    routing::get,
+    extract::{Path, Query, State},
+    routing::{get, post},
 };
 use serde::Deserialize;
 use zai_app::ServiceContext;
 use zai_core::features::domain_alerts::{
-    DomainAlertListPage, DomainAlertReadState, DomainAlertSeverity, ListDomainAlertsQuery,
+    DomainAlert, DomainAlertListPage, DomainAlertReadState, DomainAlertSeverity,
+    ListDomainAlertsQuery,
 };
 
 use crate::api::error::{bad_request, command_error};
@@ -46,6 +47,8 @@ pub fn router() -> Router<Arc<ServiceContext>> {
     Router::new()
         .route("/alerts", get(list_alerts))
         .route("/alerts/unread-count", get(get_unread_alert_count))
+        .route("/alerts/{alert_id}/read", post(mark_alert_read))
+        .route("/alerts/{alert_id}/unread", post(mark_alert_unread))
 }
 
 async fn list_alerts(
@@ -70,4 +73,28 @@ async fn get_unread_alert_count(
         .await
         .map(Json)
         .map_err(|error| command_error("Failed to load unread alert count", error))
+}
+
+async fn mark_alert_read(
+    State(context): State<Arc<ServiceContext>>,
+    Path(alert_id): Path<String>,
+) -> AlertResult<Json<DomainAlert>> {
+    context
+        .domain_alerts_service()
+        .mark_read(&alert_id)
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to mark alert read", error))
+}
+
+async fn mark_alert_unread(
+    State(context): State<Arc<ServiceContext>>,
+    Path(alert_id): Path<String>,
+) -> AlertResult<Json<DomainAlert>> {
+    context
+        .domain_alerts_service()
+        .mark_unread(&alert_id)
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to mark alert unread", error))
 }

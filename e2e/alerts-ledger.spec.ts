@@ -11,9 +11,18 @@ const fixedAlerts = {
       body: "Spending exceeded 80% of allowance.",
       createdAt: "2026-07-14T10:00:00",
       readAt: null,
+      destination: {
+        type: "budget",
+        budgetId: "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+      },
     },
   ],
   nextCursor: null,
+};
+
+const readAlert = {
+  ...fixedAlerts.items[0],
+  readAt: "2026-07-14T11:00:00",
 };
 
 test.describe("alerts ledger", () => {
@@ -70,5 +79,79 @@ test.describe("alerts ledger", () => {
     const dot = page.locator("button[aria-label='Alerts, 1 unread'] span.bg-primary");
     await expect(dot).toBeVisible();
     await expect(dot).not.toHaveClass(/animate-pulse/);
+  });
+
+  test("exposes labelled mark read action and updates row state", async ({ page }) => {
+    await page.route("**/api/alerts/*/read", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(readAlert),
+      });
+    });
+    await page.route("**/api/alerts/unread-count", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(0),
+      });
+    });
+
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
+
+    const markRead = page.getByRole("button", { name: "Mark read: Budget warning" });
+    await expect(markRead).toBeVisible();
+    await markRead.click();
+
+    await expect(page.getByRole("button", { name: "Mark unread: Budget warning" })).toBeVisible();
+    await expect(page.getByText("Read")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Alerts, 0 unread" })).toBeVisible();
+  });
+
+  test("marks unread alert read before navigating to budget destination", async ({ page }) => {
+    let markedRead = false;
+    await page.route("**/api/alerts/*/read", async (route) => {
+      markedRead = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(readAlert),
+      });
+    });
+    await page.route("**/api/cash-flow/budgets/*", async (route) => {
+      expect(markedRead).toBe(true);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+          name: "Monthly groceries",
+          revision: 1,
+          paused: false,
+          categoryIds: [],
+          cadence: "month",
+          measurementMode: "spending",
+          baseAllowance: 10000,
+          rolloverMode: "off",
+          warningPercentage: 80,
+          currentPeriod: {
+            start: "2026-07-01T00:00:00",
+            end: "2026-08-01T00:00:00",
+            baseAllowance: 10000,
+            effectiveAllowance: 10000,
+            netBudgetSpending: 2500,
+            remainingAllowance: 7500,
+            status: "onTrack",
+          },
+        }),
+      });
+    });
+
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
+    await page.getByRole("button", { name: "Budget warning" }).click();
+
+    await expect(page).toHaveURL(/\/cash-flow\/budgets\/6ba7b811-9dad-11d1-80b4-00c04fd430c8$/);
   });
 });

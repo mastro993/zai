@@ -6941,6 +6941,7 @@ dependencies = [
  "uuid",
  "zai-app",
  "zai-core",
+ "zai-db",
 ]
 
 [[package]]
