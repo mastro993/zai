@@ -98,7 +98,11 @@ test.describe("alerts ledger", () => {
     await markRead.click();
 
     await expect(page.getByRole("button", { name: "Mark unread: Budget warning" })).toBeVisible();
-    await expect(page.getByText("Read")).toBeVisible();
+    await expect(
+      page.getByRole("article", { name: /Warning alert: Budget warning/i }).getByText("Read", {
+        exact: true,
+      }),
+    ).toBeVisible();
     await expect(page.getByRole("button", { name: "Alerts, 0 unread" })).toBeVisible();
   });
 
