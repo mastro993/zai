@@ -9,13 +9,13 @@ mod query;
 mod service;
 mod traits;
 
-pub use cursor::{decode_cursor, encode_cursor, DomainAlertCursor};
+pub use cursor::{DomainAlertCursor, decode_cursor, encode_cursor};
 pub use models::{
     DomainAlert, DomainAlertDestination, DomainAlertRichData, DomainAlertSeverity, NewDomainAlert,
 };
 pub use outcome::{AlertInsertOutcome, CommittedOutcome};
 pub use query::{
-    DomainAlertListPage, DomainAlertReadState, ListDomainAlertsQuery, DEFAULT_LIST_LIMIT,
+    DEFAULT_LIST_LIMIT, DomainAlertListPage, DomainAlertReadState, ListDomainAlertsQuery,
     MAX_LIST_LIMIT, MIN_LIST_LIMIT,
 };
 pub use service::DomainAlertsService;

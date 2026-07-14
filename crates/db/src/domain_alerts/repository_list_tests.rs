@@ -123,12 +123,14 @@ async fn unread_count_returns_exact_unread_total() {
     let read_row = insert_alert(&repo, sample_alert("budget.status", "b", "Read")).await;
     let mut conn = SqliteConnection::establish(temp_db.path()).expect("connect");
     diesel::update(domain_alerts::table.filter(domain_alerts::id.eq(read_row.id)))
-        .set(domain_alerts::read_at.eq(Some(
-            NaiveDate::from_ymd_opt(2026, 7, 14)
-                .unwrap()
-                .and_hms_opt(12, 0, 0)
-                .unwrap(),
-        )))
+        .set(
+            domain_alerts::read_at.eq(Some(
+                NaiveDate::from_ymd_opt(2026, 7, 14)
+                    .unwrap()
+                    .and_hms_opt(12, 0, 0)
+                    .unwrap(),
+            )),
+        )
         .execute(&mut conn)
         .expect("mark read");
 
@@ -143,12 +145,14 @@ async fn list_filters_by_unread_state() {
     let read_row = insert_alert(&repo, sample_alert("budget.status", "b", "Read")).await;
     let mut conn = SqliteConnection::establish(temp_db.path()).expect("connect");
     diesel::update(domain_alerts::table.filter(domain_alerts::id.eq(read_row.id)))
-        .set(domain_alerts::read_at.eq(Some(
-            NaiveDate::from_ymd_opt(2026, 7, 14)
-                .unwrap()
-                .and_hms_opt(12, 0, 0)
-                .unwrap(),
-        )))
+        .set(
+            domain_alerts::read_at.eq(Some(
+                NaiveDate::from_ymd_opt(2026, 7, 14)
+                    .unwrap()
+                    .and_hms_opt(12, 0, 0)
+                    .unwrap(),
+            )),
+        )
         .execute(&mut conn)
         .expect("mark read");
 

@@ -1,7 +1,5 @@
 use super::insert::insert_domain_alert;
-use super::list::{
-    list_domain_alerts_from_pool, unread_domain_alert_count_from_pool,
-};
+use super::list::{list_domain_alerts_from_pool, unread_domain_alert_count_from_pool};
 use crate::connection::DbPool;
 use crate::errors::IntoCore;
 use crate::write_actor::WriteHandle;

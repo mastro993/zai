@@ -6,11 +6,11 @@ use diesel::dsl::count_star;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
-use zai_core::features::domain_alerts::{
-    decode_cursor, encode_cursor, DomainAlertListPage, DomainAlertReadState,
-    DomainAlertSeverity, ListDomainAlertsQuery,
-};
 use zai_core::Result;
+use zai_core::features::domain_alerts::{
+    DomainAlertListPage, DomainAlertReadState, DomainAlertSeverity, ListDomainAlertsQuery,
+    decode_cursor, encode_cursor,
+};
 
 pub fn list_domain_alerts(
     conn: &mut SqliteConnection,

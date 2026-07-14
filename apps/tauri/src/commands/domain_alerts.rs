@@ -21,9 +21,7 @@ pub async fn list_alerts(
 }
 
 #[tauri::command]
-pub async fn get_unread_alert_count(
-    state: State<'_, Arc<ServiceContext>>,
-) -> CommandResult<i64> {
+pub async fn get_unread_alert_count(state: State<'_, Arc<ServiceContext>>) -> CommandResult<i64> {
     debug!("Getting unread alert count...");
     state
         .domain_alerts_service()

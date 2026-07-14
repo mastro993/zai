@@ -1,5 +1,5 @@
-use chrono::NaiveDateTime;
 use crate::{Error, Result};
+use chrono::NaiveDateTime;
 
 const CURSOR_VERSION: &str = "v1";
 const CURSOR_SEPARATOR: char = '|';
@@ -64,8 +64,9 @@ mod tests {
 
     #[test]
     fn rejects_unknown_cursor_versions() {
-        let err = decode_cursor("v2|2026-07-14T12:00:00.000000000|6ba7b810-9dad-11d1-80b4-00c04fd430c8")
-            .expect_err("unknown version should fail");
+        let err =
+            decode_cursor("v2|2026-07-14T12:00:00.000000000|6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+                .expect_err("unknown version should fail");
         assert!(matches!(err, Error::InvalidData(_)));
     }
 }
