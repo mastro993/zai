@@ -1,5 +1,6 @@
 mod budget_contract;
 mod common;
+mod contract_harness;
 
 use axum::http::StatusCode;
 

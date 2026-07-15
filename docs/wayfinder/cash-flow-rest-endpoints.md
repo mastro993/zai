@@ -12,7 +12,7 @@ Add a small JSON API under `/api/cash-flow`, backed by thin Axum handlers that c
 
 Do not add a generic `/commands/:name` endpoint. Use normal resource routes where they stay clear, and use small action routes only for existing command-shaped operations such as bulk delete and import.
 
-Do not add OpenAPI, generated clients, or generated command metadata for the first web mode. The current command surface is small enough for a handwritten, typed command map, and parity tests can keep it honest.
+Do not add OpenAPI, generated clients, or generated command metadata for the first web mode. The command surface now uses feature-owned typed registries, runtime Zod decoding at command boundaries, and behavioral HTTP/Tauri parity tests. Handwritten REST route mapping remains intentional; registries and parity tests keep registrations and response shapes honest.
 
 Do not add event streams or background-job endpoints for the current Cash flow contract. Every current category and transaction command is request/response.
 

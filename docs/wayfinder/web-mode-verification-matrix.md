@@ -12,7 +12,7 @@ Use a small layered matrix instead of a broad end-to-end suite. The minimum proo
 
 - Rust tests prove the Axum server routes, shared service context, error mapping, bind guard, and current Cash flow REST contract.
 - Vitest tests prove build-target transport selection, Tauri IPC invocation, web REST command mapping, web error conversion, and file-capability adapters.
-- One command parity test proves every current Cash flow backend command used by the frontend is registered by both Tauri IPC and the web command map.
+- One command parity test proves every backend command in the typed registry is registered by both Tauri IPC and the web command map, and behavioral parity tests compare HTTP and Tauri service outcomes for budgets, categories, transactions, and alerts.
 - Existing TanStack route generation checks stay in CI and must remain part of the web-mode gate.
 - One Chromium browser smoke test proves the browser can run against a local Axum server and complete a simple Cash flow path through REST and SQLite.
 
@@ -31,7 +31,7 @@ This is enough for first web mode because the command surface is small and alrea
 | Web command result semantics | `CommandResult<T>` is preserved | Vitest | 2xx JSON becomes `Result.succeed`; non-2xx `{ message }`, network failures, and malformed JSON become `Result.fail(new CommandError(...))` |
 | Tauri command transport | Desktop implementation still invokes IPC | Vitest with mocked `@tauri-apps/api/core` | Tauri implementation passes command and args to `invoke`; rejected invocations become `CommandError` |
 | Build-target selection | Wrong runtime cannot be selected silently | Vitest around a small config helper plus Vite build/type checks | `BUILD_TARGET=tauri` resolves the Tauri transport; `BUILD_TARGET=web` resolves the web transport; missing or unknown target fails loudly |
-| Command parity | Frontend, Tauri, and web command registrations stay aligned | Vitest static/registry test | Cash flow command names used by frontend wrappers match Tauri `generate_handler!` registrations and web command-map keys |
+| Command parity | Frontend registry, Tauri, and web command registrations stay aligned | Vitest registry test plus Rust behavioral parity suites | Typed backend command names match Tauri `generate_handler!` registrations and web command-map keys; HTTP and Tauri bodies match for representative success and error cases across financial command families |
 | File capability adapters | CSV import/export stays outside REST | Vitest | Desktop adapter wraps Tauri dialog/fs; web import adapter reads `File.text()` and returns runtime-neutral file metadata; no desktop path is required by shared UI |
 | Route generation | Generated route tree is current | Existing `pnpm --filter frontend check:routes` | `tsr generate` leaves `apps/frontend/src/routeTree.gen.ts` unchanged |
 | Browser smoke | Browser UI reaches REST-backed Cash flow data | Playwright Chromium smoke | Start Axum with a temp SQLite app data dir and Vite with `BUILD_TARGET=web`; visit one Cash flow route, load empty data, create or import one category, and verify it appears |
