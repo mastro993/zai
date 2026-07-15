@@ -1,10 +1,12 @@
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
-use axum::{Json, Router, routing::get};
+use axum::{Json, Router, middleware, routing::get};
 
 use serde::Serialize;
 use thiserror::Error;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
+
+mod mutation_auth;
 use zai_app::{ServiceContext, initialize_context};
 use zai_core::Result as CoreResult;
 
@@ -94,20 +96,7 @@ async fn health() -> Json<HealthResponse> {
 
 pub fn default_cors_layer() -> CorsLayer {
     CorsLayer::new()
-        .allow_origin(AllowOrigin::list([
-            "http://localhost:5173"
-                .parse()
-                .expect("localhost origin should parse"),
-            "http://127.0.0.1:5173"
-                .parse()
-                .expect("loopback origin should parse"),
-            "http://localhost:1420"
-                .parse()
-                .expect("vite dev origin should parse"),
-            "http://127.0.0.1:1420"
-                .parse()
-                .expect("vite loopback dev origin should parse"),
-        ]))
+        .allow_origin(AllowOrigin::list(mutation_auth::allowed_frontend_origins()))
         .allow_methods(AllowMethods::list([
             axum::http::Method::GET,
             axum::http::Method::POST,
@@ -118,6 +107,7 @@ pub fn default_cors_layer() -> CorsLayer {
         .allow_headers(AllowHeaders::list([
             axum::http::header::CONTENT_TYPE,
             axum::http::header::ACCEPT,
+            axum::http::HeaderName::from_static(mutation_auth::ZAI_APP_HEADER),
         ]))
 }
 
@@ -126,6 +116,9 @@ pub fn create_router(context: Arc<ServiceContext>) -> Router {
         .route("/health", get(health))
         .nest("/api/cash-flow", api::cash_flow::router())
         .nest("/api", api::alerts::router())
+        .layer(middleware::from_fn(
+            mutation_auth::require_mutation_authenticity,
+        ))
         .layer(default_cors_layer())
         .with_state(context)
 }

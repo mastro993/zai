@@ -15,6 +15,7 @@ pub enum ErrorCode {
     PeriodAdvanceLimitExceeded,
     ClockRegression,
     CalculationOverflow,
+    Forbidden,
     Internal,
 }
 
