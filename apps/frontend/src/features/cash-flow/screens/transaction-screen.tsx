@@ -129,6 +129,9 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
   const hasSkippedInitialFetch = useRef(false);
+  const listRequestIdRef = useRef(0);
+
+  const isLatestRequest = (requestId: number) => requestId === listRequestIdRef.current;
 
   const activeFilters = useMemo(
     () =>
@@ -170,6 +173,7 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
     categoriesForFilters: Array<TransactionCategory>,
     includeCategories = false,
   ) => {
+    const requestId = ++listRequestIdRef.current;
     setIsLoading(true);
     const transactionsResult = await getTransactions(
       pageToLoad,
@@ -182,6 +186,10 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
         categoriesForFilters,
       ),
     );
+
+    if (!isLatestRequest(requestId)) {
+      return;
+    }
 
     if (Result.isFailure(transactionsResult)) {
       setErrorMessage(transactionsResult.error.message);
@@ -202,6 +210,11 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
 
     if (includeCategories) {
       const categoriesResult = await getTransactionCategories();
+
+      if (!isLatestRequest(requestId)) {
+        return;
+      }
+
       if (Result.isFailure(categoriesResult)) {
         setErrorMessage(categoriesResult.error.message);
       } else {
@@ -224,6 +237,10 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
             ),
           );
 
+          if (!isLatestRequest(requestId)) {
+            return;
+          }
+
           if (Result.isFailure(refetchResult)) {
             setErrorMessage(refetchResult.error.message);
           } else {
@@ -242,6 +259,10 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
           }
         }
       }
+    }
+
+    if (!isLatestRequest(requestId)) {
+      return;
     }
 
     setIsLoading(false);
