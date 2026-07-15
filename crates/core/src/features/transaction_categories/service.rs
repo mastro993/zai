@@ -19,7 +19,7 @@ impl TransactionCategoriesService {
         Self { repository }
     }
 
-    fn prepare_new_category(&self, category: &mut NewTransactionCategory) -> Result<()> {
+    async fn prepare_new_category(&self, category: &mut NewTransactionCategory) -> Result<()> {
         category.name = normalize_category_name(&category.name);
         category.validate()?;
         if category.id.as_deref().is_none_or(|id| id.trim().is_empty()) {
@@ -30,11 +30,16 @@ impl TransactionCategoriesService {
             &mut category.parent_id,
             &mut category.color,
             &mut category.role,
-        )?;
+        )
+        .await?;
         self.ensure_unique_name(category.parent_id.as_deref(), &category.name, None)
+            .await
     }
 
-    fn prepare_category_update(&self, category: &mut TransactionCategoryUpdate) -> Result<()> {
+    async fn prepare_category_update(
+        &self,
+        category: &mut TransactionCategoryUpdate,
+    ) -> Result<()> {
         category.name = normalize_category_name(&category.name);
         category.validate()?;
         self.apply_parent_rules(
@@ -42,15 +47,17 @@ impl TransactionCategoriesService {
             &mut category.parent_id,
             &mut category.color,
             &mut category.role,
-        )?;
+        )
+        .await?;
         self.ensure_unique_name(
             category.parent_id.as_deref(),
             &category.name,
             Some(category.id.as_str()),
         )
+        .await
     }
 
-    fn apply_parent_rules(
+    async fn apply_parent_rules(
         &self,
         category_id: Option<&str>,
         parent_id: &mut Option<String>,
@@ -64,14 +71,14 @@ impl TransactionCategoriesService {
         };
 
         if let Some(id) = category_id
-            && self.repository.category_has_children(id)?
+            && self.repository.category_has_children(id).await?
         {
             return Err(Error::Conflict(
                 "A category with child categories cannot become a child category".to_string(),
             ));
         }
 
-        let parent = self.repository.get_category(pid)?;
+        let parent = self.repository.get_category(pid).await?;
         if parent.parent_id.is_some() {
             return Err(Error::Conflict(
                 "Cannot create categories deeper than 2 levels. The parent category must be a root category."
@@ -85,7 +92,7 @@ impl TransactionCategoriesService {
         Ok(())
     }
 
-    fn ensure_unique_name(
+    async fn ensure_unique_name(
         &self,
         parent_id: Option<&str>,
         name: &str,
@@ -93,7 +100,8 @@ impl TransactionCategoriesService {
     ) -> Result<()> {
         if self
             .repository
-            .sibling_name_exists(parent_id, name, excluded_id)?
+            .sibling_name_exists(parent_id, name, excluded_id)
+            .await?
         {
             return Err(Error::Conflict(
                 "A category with this name already exists at the same level".to_string(),
@@ -105,19 +113,19 @@ impl TransactionCategoriesService {
 
 #[async_trait::async_trait]
 impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
-    fn get_categories(&self, parent_id: Option<&str>) -> Result<Vec<TransactionCategory>> {
-        self.repository.get_categories(parent_id)
+    async fn get_categories(&self, parent_id: Option<&str>) -> Result<Vec<TransactionCategory>> {
+        self.repository.get_categories(parent_id).await
     }
 
-    fn get_category(&self, category_id: &str) -> Result<TransactionCategory> {
-        self.repository.get_category(category_id)
+    async fn get_category(&self, category_id: &str) -> Result<TransactionCategory> {
+        self.repository.get_category(category_id).await
     }
 
     async fn create_category(
         &self,
         mut category: NewTransactionCategory,
     ) -> Result<TransactionCategory> {
-        self.prepare_new_category(&mut category)?;
+        self.prepare_new_category(&mut category).await?;
         self.repository.create_category(category).await
     }
 
@@ -125,7 +133,7 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
         &self,
         mut category: TransactionCategoryUpdate,
     ) -> Result<TransactionCategory> {
-        self.prepare_category_update(&mut category)?;
+        self.prepare_category_update(&mut category).await?;
         self.repository.update_category(category).await
     }
 
@@ -137,7 +145,7 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
     ) -> Result<Vec<TransactionCategory>> {
         if children_strategy == CategoryChildrenDeleteStrategy::Block {
             for category_id in &category_ids {
-                if self.repository.category_has_children(category_id)? {
+                if self.repository.category_has_children(category_id).await? {
                     return Err(Error::Conflict(
                         "Choose whether to delete or promote child categories before deleting this category"
                             .to_string(),
@@ -168,7 +176,7 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
             normalized_categories.push(category);
         }
 
-        let existing_categories = self.repository.get_categories(None)?;
+        let existing_categories = self.repository.get_categories(None).await?;
         let existing_roots = existing_categories
             .iter()
             .filter(|category| category.parent_id.is_none())
@@ -328,7 +336,10 @@ mod tests {
 
     #[async_trait::async_trait]
     impl TransactionCategoriesRepositoryTrait for FakeRepository {
-        fn get_categories(&self, parent_id: Option<&str>) -> Result<Vec<TransactionCategory>> {
+        async fn get_categories(
+            &self,
+            parent_id: Option<&str>,
+        ) -> Result<Vec<TransactionCategory>> {
             let categories = self.categories.lock().unwrap();
             Ok(categories
                 .iter()
@@ -339,7 +350,7 @@ mod tests {
                 .collect())
         }
 
-        fn get_category(&self, id: &str) -> Result<TransactionCategory> {
+        async fn get_category(&self, id: &str) -> Result<TransactionCategory> {
             self.categories
                 .lock()
                 .unwrap()
@@ -349,7 +360,7 @@ mod tests {
                 .ok_or_else(|| Error::NotFound(id.to_string()))
         }
 
-        fn category_has_children(&self, id: &str) -> Result<bool> {
+        async fn category_has_children(&self, id: &str) -> Result<bool> {
             Ok(self
                 .categories
                 .lock()
@@ -358,7 +369,7 @@ mod tests {
                 .any(|category| category.parent_id.as_deref() == Some(id)))
         }
 
-        fn sibling_name_exists(
+        async fn sibling_name_exists(
             &self,
             parent_id: Option<&str>,
             name: &str,

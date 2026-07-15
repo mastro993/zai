@@ -306,6 +306,7 @@ async fn list_transactions(
     context
         .transactions_service()
         .get_transactions(query.page, query.per_page, filters, sort)
+        .await
         .map(Json)
         .map_err(|error| command_error("Failed to load transactions", error))
 }
@@ -331,6 +332,7 @@ async fn get_filtered_transaction_ids(
     context
         .transactions_service()
         .get_filtered_transaction_ids(filters, sort)
+        .await
         .map(Json)
         .map_err(|error| command_error("Failed to load filtered transaction ids", error))
 }
@@ -351,6 +353,7 @@ async fn export_transactions_csv(
     let csv = context
         .transactions_service()
         .export_transactions_csv(filters, payload.transaction_ids)
+        .await
         .map_err(|error| command_error("Failed to export transactions", error))?;
 
     Ok(Json(TransactionCsvExportResponse { csv }))
@@ -365,6 +368,7 @@ async fn find_existing_duplicate_keys(
     context
         .transactions_service()
         .find_existing_duplicate_keys(payload.candidates)
+        .await
         .map(Json)
         .map_err(|error| command_error("Failed to find existing duplicate keys", error))
 }
@@ -376,6 +380,7 @@ async fn get_transaction(
     context
         .transactions_service()
         .get_transaction(&transaction_id)
+        .await
         .map(Json)
         .map_err(|error| command_error("Failed to load transaction", error))
 }

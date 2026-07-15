@@ -70,6 +70,7 @@ pub async fn list_categories(
     context
         .transaction_categories_service()
         .get_categories(query.parent_id.as_deref())
+        .await
         .map(Json)
         .map_err(|error| command_error("Failed to load transaction_categories", error))
 }
@@ -81,6 +82,7 @@ pub async fn get_category(
     context
         .transaction_categories_service()
         .get_category(&category_id)
+        .await
         .map(Json)
         .map_err(|error| {
             command_error(

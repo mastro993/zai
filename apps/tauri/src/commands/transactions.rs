@@ -65,6 +65,7 @@ pub async fn get_filtered_transaction_ids(
     state
         .transactions_service()
         .get_filtered_transaction_ids(filters, sort)
+        .await
         .map_err(|error| command_error("Failed to load filtered transaction ids", error))
 }
 
@@ -81,6 +82,7 @@ pub async fn export_transactions_csv(
     let csv = state
         .transactions_service()
         .export_transactions_csv(filters, request.transaction_ids)
+        .await
         .map_err(|error| command_error("Failed to export transactions", error))?;
 
     Ok(TransactionCsvExportResponse { csv })
@@ -98,6 +100,7 @@ pub async fn find_existing_duplicate_keys(
     state
         .transactions_service()
         .find_existing_duplicate_keys(request.candidates)
+        .await
         .map_err(|error| command_error("Failed to find existing duplicate keys", error))
 }
 
@@ -116,6 +119,7 @@ pub async fn get_transactions(
     state
         .transactions_service()
         .get_transactions(page, per_page, filters, sort)
+        .await
         .map_err(|error| command_error("Failed to load transactions", error))
 }
 
@@ -128,6 +132,7 @@ pub async fn get_transaction(
     state
         .transactions_service()
         .get_transaction(&transaction_id)
+        .await
         .map_err(|error| command_error("Failed to load transaction", error))
 }
 

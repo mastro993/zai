@@ -299,7 +299,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
             tauri_success(
                 context
                     .transaction_categories_service()
-                    .get_categories(parent_id.as_deref()),
+                    .get_categories(parent_id.as_deref())
+                    .await,
                 "Failed to load transaction categories",
             )
         }
@@ -308,7 +309,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
             tauri_success(
                 context
                     .transaction_categories_service()
-                    .get_category(&category_id),
+                    .get_category(&category_id)
+                    .await,
                 "Failed to load transaction category",
             )
         }
@@ -400,7 +402,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
             tauri_success(
                 context
                     .transactions_service()
-                    .get_transactions(page, per_page, None, None),
+                    .get_transactions(page, per_page, None, None)
+                    .await,
                 "Failed to load transactions",
             )
         }
@@ -409,7 +412,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
             tauri_success(
                 context
                     .transactions_service()
-                    .get_transaction(&transaction_id),
+                    .get_transaction(&transaction_id)
+                    .await,
                 "Failed to load transaction",
             )
         }

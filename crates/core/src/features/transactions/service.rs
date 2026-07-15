@@ -25,44 +25,50 @@ impl TransactionsService {
 
 #[async_trait::async_trait]
 impl TransactionsServiceTrait for TransactionsService {
-    fn get_transactions(
+    async fn get_transactions(
         &self,
         page: i64,
         per_page: i64,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>> {
         validate_list_paging(page, per_page)?;
         self.repository
             .get_transactions(page, per_page, filters, sort)
+            .await
     }
 
-    fn get_transaction(&self, id: &str) -> Result<Transaction> {
-        self.repository.get_transaction(id)
+    async fn get_transaction(&self, id: &str) -> Result<Transaction> {
+        self.repository.get_transaction(id).await
     }
 
-    fn get_filtered_transaction_ids(
+    async fn get_filtered_transaction_ids(
         &self,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<Vec<String>> {
-        self.repository.get_filtered_transaction_ids(filters, sort)
+        self.repository
+            .get_filtered_transaction_ids(filters, sort)
+            .await
     }
 
-    fn export_transactions_csv(
+    async fn export_transactions_csv(
         &self,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         transaction_ids: Option<Vec<String>>,
     ) -> Result<String> {
         self.repository
             .export_transactions_csv(filters, transaction_ids)
+            .await
     }
 
-    fn find_existing_duplicate_keys(
+    async fn find_existing_duplicate_keys(
         &self,
         candidates: Vec<DuplicateKeyCandidate>,
     ) -> Result<Vec<String>> {
-        self.repository.find_existing_duplicate_keys(candidates)
+        self.repository
+            .find_existing_duplicate_keys(candidates)
+            .await
     }
 
     async fn create_transaction(&self, mut new_transaction: NewTransaction) -> Result<Transaction> {
@@ -163,38 +169,38 @@ mod tests {
 
     #[async_trait::async_trait]
     impl TransactionsRepositoryTrait for FakeRepository {
-        fn get_transactions(
+        async fn get_transactions(
             &self,
             _page: i64,
             _per_page: i64,
-            _filters: Option<TransactionSearchFilters>,
+            _filters: Option<TransactionSearchFilters<'_>>,
             _sort: Option<Sort>,
         ) -> Result<PaginatedData<Transaction>> {
             *self.list_calls.lock().unwrap() += 1;
             Err(Error::InvalidData("unused in test".to_string()))
         }
 
-        fn get_transaction(&self, _id: &str) -> Result<Transaction> {
+        async fn get_transaction(&self, _id: &str) -> Result<Transaction> {
             Err(Error::InvalidData("unused in test".to_string()))
         }
 
-        fn get_filtered_transaction_ids(
+        async fn get_filtered_transaction_ids(
             &self,
-            _filters: Option<TransactionSearchFilters>,
+            _filters: Option<TransactionSearchFilters<'_>>,
             _sort: Option<Sort>,
         ) -> Result<Vec<String>> {
             Ok(self.filtered_ids.lock().unwrap().clone())
         }
 
-        fn export_transactions_csv(
+        async fn export_transactions_csv(
             &self,
-            _filters: Option<TransactionSearchFilters>,
+            _filters: Option<TransactionSearchFilters<'_>>,
             _transaction_ids: Option<Vec<String>>,
         ) -> Result<String> {
             Ok(self.export_csv.lock().unwrap().clone().unwrap_or_default())
         }
 
-        fn find_existing_duplicate_keys(
+        async fn find_existing_duplicate_keys(
             &self,
             candidates: Vec<DuplicateKeyCandidate>,
         ) -> Result<Vec<String>> {
@@ -354,19 +360,19 @@ mod tests {
         NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S").expect("valid datetime")
     }
 
-    #[test]
-    fn get_transactions_rejects_invalid_paging_before_repository() {
+    #[tokio::test]
+    async fn get_transactions_rejects_invalid_paging_before_repository() {
         let repository = Arc::new(FakeRepository::default());
         let service = TransactionsService::new(repository.clone());
 
-        let result = service.get_transactions(0, 50, None, None);
+        let result = service.get_transactions(0, 50, None, None).await;
 
         assert!(matches!(result, Err(Error::InvalidData(_))));
         assert_eq!(*repository.list_calls.lock().unwrap(), 0);
     }
 
-    #[test]
-    fn get_filtered_transaction_ids_delegates_to_repository() {
+    #[tokio::test]
+    async fn get_filtered_transaction_ids_delegates_to_repository() {
         let repository = Arc::new(FakeRepository::default());
         repository
             .filtered_ids
@@ -377,25 +383,27 @@ mod tests {
 
         let ids = service
             .get_filtered_transaction_ids(None, None)
+            .await
             .expect("filtered ids");
 
         assert_eq!(ids, vec!["a".to_string(), "b".to_string()]);
     }
 
-    #[test]
-    fn find_existing_duplicate_keys_returns_empty_for_empty_candidates() {
+    #[tokio::test]
+    async fn find_existing_duplicate_keys_returns_empty_for_empty_candidates() {
         let repository = Arc::new(FakeRepository::default());
         let service = TransactionsService::new(repository);
 
         let keys = service
             .find_existing_duplicate_keys(Vec::new())
+            .await
             .expect("duplicate keys");
 
         assert!(keys.is_empty());
     }
 
-    #[test]
-    fn find_existing_duplicate_keys_returns_only_existing_keys() {
+    #[tokio::test]
+    async fn find_existing_duplicate_keys_returns_only_existing_keys() {
         let repository = Arc::new(FakeRepository::default());
         repository
             .existing_duplicate_keys
@@ -421,6 +429,7 @@ mod tests {
                     description: Some("Coffee".to_string()),
                 },
             ])
+            .await
             .expect("duplicate keys");
 
         assert_eq!(keys.len(), 1);

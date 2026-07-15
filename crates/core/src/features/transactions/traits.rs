@@ -11,25 +11,25 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait TransactionsRepositoryTrait: Send + Sync {
-    fn get_transactions(
+    async fn get_transactions(
         &self,
         page: i64,
         per_page: i64,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>>;
-    fn get_transaction(&self, id: &str) -> Result<Transaction>;
-    fn get_filtered_transaction_ids(
+    async fn get_transaction(&self, id: &str) -> Result<Transaction>;
+    async fn get_filtered_transaction_ids(
         &self,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<Vec<String>>;
-    fn export_transactions_csv(
+    async fn export_transactions_csv(
         &self,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         transaction_ids: Option<Vec<String>>,
     ) -> Result<String>;
-    fn find_existing_duplicate_keys(
+    async fn find_existing_duplicate_keys(
         &self,
         candidates: Vec<DuplicateKeyCandidate>,
     ) -> Result<Vec<String>>;
@@ -56,25 +56,25 @@ pub trait TransactionsRepositoryTrait: Send + Sync {
 
 #[async_trait]
 pub trait TransactionsServiceTrait: Send + Sync {
-    fn get_transactions(
+    async fn get_transactions(
         &self,
         page: i64,
         per_page: i64,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>>;
-    fn get_transaction(&self, id: &str) -> Result<Transaction>;
-    fn get_filtered_transaction_ids(
+    async fn get_transaction(&self, id: &str) -> Result<Transaction>;
+    async fn get_filtered_transaction_ids(
         &self,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<Vec<String>>;
-    fn export_transactions_csv(
+    async fn export_transactions_csv(
         &self,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         transaction_ids: Option<Vec<String>>,
     ) -> Result<String>;
-    fn find_existing_duplicate_keys(
+    async fn find_existing_duplicate_keys(
         &self,
         candidates: Vec<DuplicateKeyCandidate>,
     ) -> Result<Vec<String>>;

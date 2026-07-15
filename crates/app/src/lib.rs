@@ -114,10 +114,12 @@ mod tests {
         let categories = context
             .transaction_categories_service()
             .get_categories(None)
+            .await
             .expect("categories service should query migrated database");
         let transactions = context
             .transactions_service()
             .get_transactions(1, 20, None, None)
+            .await
             .expect("transactions service should query migrated database");
         let budgets = context
             .budgets_service()

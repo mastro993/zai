@@ -378,6 +378,7 @@ async fn failed_projection_repair_rolls_back_transaction_insert() {
 
     let transactions = transactions
         .get_transactions(1, 50, None, None)
+        .await
         .expect("transactions");
     assert!(transactions.data.is_empty());
 }
