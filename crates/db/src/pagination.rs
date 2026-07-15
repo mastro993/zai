@@ -4,19 +4,20 @@ use diesel::query_builder::*;
 use diesel::query_dsl::methods::LoadQuery;
 use diesel::sql_types::BigInt;
 use diesel::sqlite::Sqlite;
+use zai_core::Error;
 
 pub trait Paginate: Sized {
-    fn paginate(self, page: i64) -> Paginated<Self>;
+    fn paginate(self, page: i64) -> Result<Paginated<Self>, Error>;
 }
 
 impl<T> Paginate for T {
-    fn paginate(self, page: i64) -> Paginated<Self> {
-        Paginated {
+    fn paginate(self, page: i64) -> Result<Paginated<Self>, Error> {
+        Ok(Paginated {
             query: self,
             per_page: DEFAULT_PER_PAGE,
             page,
-            offset: (page - 1) * DEFAULT_PER_PAGE,
-        }
+            offset: compute_offset(page, DEFAULT_PER_PAGE)?,
+        })
     }
 }
 
@@ -31,12 +32,12 @@ pub struct Paginated<T> {
 }
 
 impl<T> Paginated<T> {
-    pub fn per_page(self, per_page: i64) -> Self {
-        Paginated {
+    pub fn per_page(self, per_page: i64) -> Result<Self, Error> {
+        Ok(Paginated {
             per_page,
-            offset: (self.page - 1) * per_page,
+            offset: compute_offset(self.page, per_page)?,
             ..self
-        }
+        })
     }
 
     pub fn load_page<'a, U>(self, conn: &mut DbConnection) -> QueryResult<Vec<U>>
@@ -45,6 +46,18 @@ impl<T> Paginated<T> {
     {
         self.load(conn)
     }
+}
+
+pub fn compute_offset(page: i64, per_page: i64) -> Result<i64, Error> {
+    if page < 1 || per_page < 1 {
+        return Err(Error::InvalidData(
+            "Pagination page and page size must be at least 1".to_string(),
+        ));
+    }
+
+    page.checked_sub(1)
+        .and_then(|value| value.checked_mul(per_page))
+        .ok_or_else(|| Error::InvalidData("Pagination page offset overflow".to_string()))
 }
 
 pub fn total_pages(total: i64, per_page: i64) -> i64 {
@@ -84,7 +97,9 @@ mod tests {
             .filter(transactions::deleted_at.is_null())
             .select(transactions::all_columns)
             .paginate(2)
-            .per_page(10);
+            .expect("valid page")
+            .per_page(10)
+            .expect("valid page size");
 
         let sql = diesel::debug_query::<Sqlite, _>(&query).to_string();
         assert!(
@@ -99,5 +114,18 @@ mod tests {
         assert_eq!(total_pages(1, 10), 1);
         assert_eq!(total_pages(10, 10), 1);
         assert_eq!(total_pages(11, 10), 2);
+    }
+
+    #[test]
+    fn compute_offset_rejects_invalid_values() {
+        assert!(compute_offset(0, 10).is_err());
+        assert!(compute_offset(1, 0).is_err());
+        assert!(compute_offset(-1, 10).is_err());
+        assert!(compute_offset(1, -5).is_err());
+    }
+
+    #[test]
+    fn compute_offset_rejects_overflow() {
+        assert!(compute_offset(i64::MAX, 2).is_err());
     }
 }

@@ -29,6 +29,50 @@ async fn list_transactions_returns_paginated_defaults() {
 }
 
 #[tokio::test]
+async fn list_transactions_rejects_invalid_paging_values() {
+    let (app, _context, _dir) = setup_app("zai-transactions-paging").await;
+
+    for uri in [
+        "/api/cash-flow/transactions?page=0",
+        "/api/cash-flow/transactions?page=-1",
+        "/api/cash-flow/transactions?perPage=0",
+        "/api/cash-flow/transactions?perPage=-5",
+        "/api/cash-flow/transactions?perPage=101",
+        "/api/cash-flow/transactions?page=9223372036854775807&perPage=2",
+    ] {
+        let (status, body) = request_json(&app, "GET", uri, None).await;
+
+        assert_eq!(
+            status,
+            StatusCode::BAD_REQUEST,
+            "expected rejection for {uri}"
+        );
+        assert_eq!(body["code"], "validation");
+        assert!(
+            body["message"]
+                .as_str()
+                .expect("message")
+                .contains("Failed to load transactions")
+        );
+    }
+}
+
+#[tokio::test]
+async fn list_transactions_accepts_boundary_paging_values() {
+    let (app, _context, _dir) = setup_app("zai-transactions-paging-boundary").await;
+
+    for uri in [
+        "/api/cash-flow/transactions?page=1&perPage=1",
+        "/api/cash-flow/transactions?page=1&perPage=100",
+    ] {
+        let (status, body) = request_json(&app, "GET", uri, None).await;
+
+        assert_eq!(status, StatusCode::OK, "expected success for {uri}");
+        assert!(body["data"].is_array());
+    }
+}
+
+#[tokio::test]
 async fn list_transactions_rejects_uncategorized_with_category_filters() {
     let (app, _context, _dir) = setup_app("zai-transactions").await;
 

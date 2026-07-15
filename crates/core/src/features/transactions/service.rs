@@ -4,7 +4,7 @@ use crate::features::transaction_categories::models::{
 };
 use crate::features::transactions::dedup::duplicate_key;
 use crate::features::transactions::models::{
-    NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
+    NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate, validate_list_paging,
 };
 use crate::features::transactions::traits::{
     TransactionsRepositoryTrait, TransactionsServiceTrait,
@@ -33,6 +33,7 @@ impl TransactionsServiceTrait for TransactionsService {
         filters: Option<TransactionSearchFilters>,
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>> {
+        validate_list_paging(page, per_page)?;
         self.repository
             .get_transactions(page, per_page, filters, sort)
     }
@@ -187,6 +188,7 @@ mod tests {
     struct FakeRepository {
         existing_in_range: Mutex<Vec<Transaction>>,
         imported_batches: Mutex<Vec<Vec<NewTransaction>>>,
+        list_calls: Mutex<u32>,
     }
 
     impl FakeRepository {
@@ -194,6 +196,7 @@ mod tests {
             Self {
                 existing_in_range: Mutex::new(existing),
                 imported_batches: Mutex::new(Vec::new()),
+                list_calls: Mutex::new(0),
             }
         }
     }
@@ -207,6 +210,7 @@ mod tests {
             _filters: Option<TransactionSearchFilters>,
             _sort: Option<Sort>,
         ) -> Result<PaginatedData<Transaction>> {
+            *self.list_calls.lock().unwrap() += 1;
             Err(Error::InvalidData("unused in test".to_string()))
         }
 
@@ -332,5 +336,16 @@ mod tests {
 
     fn parse_datetime(value: &str) -> NaiveDateTime {
         NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S").expect("valid datetime")
+    }
+
+    #[test]
+    fn get_transactions_rejects_invalid_paging_before_repository() {
+        let repository = Arc::new(FakeRepository::default());
+        let service = TransactionsService::new(repository.clone());
+
+        let result = service.get_transactions(0, 50, None, None);
+
+        assert!(matches!(result, Err(Error::InvalidData(_))));
+        assert_eq!(*repository.list_calls.lock().unwrap(), 0);
     }
 }
