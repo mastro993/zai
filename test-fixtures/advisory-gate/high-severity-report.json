@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "packages": [
+        {
+          "package": {
+            "name": "rollup"
+          },
+          "vulnerabilities": [
+            {
+              "id": "GHSA-mw96-cpmx-2vgc",
+              "database_specific": {
+                "severity": "HIGH"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
