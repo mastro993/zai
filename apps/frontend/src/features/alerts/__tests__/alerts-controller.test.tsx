@@ -53,6 +53,12 @@ describe("alerts controller filters and pagination", () => {
     vi.spyOn(alertsCommands, "getUnreadAlertCount").mockResolvedValue(Result.succeed(2));
     vi.spyOn(alertsCommands, "listAlerts").mockResolvedValue(Result.succeed(pageOne));
     vi.spyOn(alertsCommands, "markAllAlertsRead").mockResolvedValue(Result.succeed(1));
+    vi.spyOn(alertsCommands, "markAlertRead").mockImplementation(async (id) =>
+      Result.succeed({ ...pageOne.items[0], id, readAt: "2026-07-14T11:00:00" }),
+    );
+    vi.spyOn(alertsCommands, "markAlertUnread").mockImplementation(async (id) =>
+      Result.succeed({ ...pageOne.items[0], id, readAt: null }),
+    );
   });
 
   it("loads the first page on mount and exposes next cursor", async () => {
@@ -167,7 +173,7 @@ describe("alerts controller filters and pagination", () => {
   it("refreshes canonical page and exact unread count after marking all read", async () => {
     setAlertSessionFilters({ readState: "unread", severity: "warning" });
     const refreshedPage: DomainAlertListPage = {
-      items: [{ ...pageOne.items[0], readAt: "2026-07-14T11:00:00" }],
+      items: [],
       nextCursor: null,
     };
     vi.mocked(alertsCommands.listAlerts)
@@ -193,7 +199,7 @@ describe("alerts controller filters and pagination", () => {
     });
     expect(result.current.filters).toEqual({ readState: "unread", severity: "warning" });
     expect(result.current.unreadCount).toBe(0);
-    expect(result.current.items[0].readAt).toBe("2026-07-14T11:00:00");
+    expect(result.current.items).toEqual([]);
   });
 
   it("retains rows when mark-all refresh fails but reconciles unread count", async () => {
@@ -214,7 +220,8 @@ describe("alerts controller filters and pagination", () => {
     });
 
     expect(result.current.refreshStatus).toBe("error");
-    expect(result.current.items).toEqual(pageOne.items);
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.items[0].readAt).not.toBeNull();
     expect(result.current.unreadCount).toBe(0);
   });
 
@@ -236,7 +243,8 @@ describe("alerts controller filters and pagination", () => {
     });
 
     expect(result.current.refreshStatus).toBe("error");
-    expect(result.current.items).toEqual(pageOne.items);
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.items[0].readAt).not.toBeNull();
     expect(result.current.unreadCountKnown).toBe(false);
   });
 
@@ -305,5 +313,103 @@ describe("alerts controller filters and pagination", () => {
 
     expect(result.current.items).toEqual(refreshedPage.items);
     expect(result.current.nextCursor).toBeNull();
+  });
+
+  it("removes a row from unread after marking it read", async () => {
+    setAlertSessionFilters({ readState: "unread", severity: "all" });
+    vi.mocked(alertsCommands.listAlerts)
+      .mockResolvedValueOnce(Result.succeed(pageOne))
+      .mockResolvedValueOnce(Result.succeed({ items: [], nextCursor: null }));
+    vi.mocked(alertsCommands.getUnreadAlertCount)
+      .mockResolvedValueOnce(Result.succeed(1))
+      .mockResolvedValueOnce(Result.succeed(0));
+
+    const { result } = renderHook(() => useAlertsController(), {
+      wrapper: AlertsControllerProvider,
+    });
+    await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
+
+    await act(async () => {
+      await result.current.toggleAlertReadState(pageOne.items[0]);
+    });
+
+    expect(result.current.items).toEqual([]);
+    expect(result.current.unreadCount).toBe(0);
+  });
+
+  it("removes a row from read after marking it unread", async () => {
+    const readPage: DomainAlertListPage = {
+      items: [{ ...pageOne.items[0], readAt: "2026-07-14T11:00:00" }],
+      nextCursor: null,
+    };
+    setAlertSessionFilters({ readState: "read", severity: "all" });
+    vi.mocked(alertsCommands.listAlerts)
+      .mockResolvedValueOnce(Result.succeed(readPage))
+      .mockResolvedValueOnce(Result.succeed({ items: [], nextCursor: null }));
+    vi.mocked(alertsCommands.getUnreadAlertCount)
+      .mockResolvedValueOnce(Result.succeed(0))
+      .mockResolvedValueOnce(Result.succeed(1));
+
+    const { result } = renderHook(() => useAlertsController(), {
+      wrapper: AlertsControllerProvider,
+    });
+    await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
+
+    await act(async () => {
+      await result.current.toggleAlertReadState(readPage.items[0]);
+    });
+
+    expect(result.current.items).toEqual([]);
+    expect(result.current.unreadCount).toBe(1);
+  });
+
+  it("keeps an updated row under the all filter", async () => {
+    const readItem = { ...pageOne.items[0], readAt: "2026-07-14T11:00:00" };
+    vi.mocked(alertsCommands.listAlerts)
+      .mockResolvedValueOnce(Result.succeed(pageOne))
+      .mockResolvedValueOnce(Result.succeed({ items: [readItem], nextCursor: null }));
+    vi.mocked(alertsCommands.getUnreadAlertCount)
+      .mockResolvedValueOnce(Result.succeed(1))
+      .mockResolvedValueOnce(Result.succeed(0));
+
+    const { result } = renderHook(() => useAlertsController(), {
+      wrapper: AlertsControllerProvider,
+    });
+    await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
+
+    await act(async () => {
+      await result.current.toggleAlertReadState(pageOne.items[0]);
+    });
+
+    expect(result.current.items).toEqual([readItem]);
+    expect(result.current.unreadCount).toBe(0);
+  });
+
+  it("keeps loaded older unread rows after marking one read", async () => {
+    setAlertSessionFilters({ readState: "unread", severity: "all" });
+    vi.mocked(alertsCommands.listAlerts)
+      .mockResolvedValueOnce(Result.succeed(pageOne))
+      .mockResolvedValueOnce(Result.succeed(pageTwo))
+      .mockResolvedValueOnce(Result.succeed({ items: [], nextCursor: "cursor-page-2" }));
+    vi.mocked(alertsCommands.getUnreadAlertCount)
+      .mockResolvedValueOnce(Result.succeed(2))
+      .mockResolvedValueOnce(Result.succeed(1));
+
+    const { result } = renderHook(() => useAlertsController(), {
+      wrapper: AlertsControllerProvider,
+    });
+    await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
+
+    await act(async () => {
+      await result.current.loadOlder();
+    });
+    await waitFor(() => expect(result.current.items).toHaveLength(2));
+
+    await act(async () => {
+      await result.current.toggleAlertReadState(pageOne.items[0]);
+    });
+
+    expect(result.current.items).toEqual([pageTwo.items[0]]);
+    expect(result.current.unreadCount).toBe(1);
   });
 });

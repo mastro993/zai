@@ -1,7 +1,7 @@
 mod common;
 
 use axum::http::StatusCode;
-use common::{request_json, setup_app};
+use common::{request_json, request_json_with_headers, setup_app};
 use zai_core::features::domain_alerts::{AlertInsertOutcome, DomainAlertSeverity, NewDomainAlert};
 use zai_db::connect;
 
@@ -224,4 +224,88 @@ async fn mark_all_alerts_read_returns_affected_count_and_is_idempotent() {
     let (status, body) = request_json(&router, "GET", "/api/alerts/unread-count", None).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body.as_i64(), Some(0));
+}
+
+#[tokio::test]
+async fn alert_mutations_reject_disallowed_origin_and_leave_state_unchanged() {
+    let (router, _context, dir) = setup_app("zai-alerts-hostile-origin").await;
+    seed_unread_alerts(dir.path()).await;
+    let alert_id = insert_sample_alert(dir.path()).await;
+
+    let routes = [
+        ("POST", "/api/alerts/mark-all-read".to_string()),
+        ("POST", format!("/api/alerts/{alert_id}/read")),
+        ("POST", format!("/api/alerts/{alert_id}/unread")),
+    ];
+
+    for (method, uri) in routes {
+        let (status, body) =
+            request_json_with_headers(&router, method, &uri, None, Some("https://evil.example"))
+                .await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{method} {uri}");
+        assert_eq!(body["code"].as_str(), Some("forbidden"));
+    }
+
+    let (status, body) = request_json(&router, "GET", "/api/alerts/unread-count", None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body.as_i64(), Some(4));
+}
+
+#[tokio::test]
+async fn alert_mutations_accept_allowed_frontend_origin() {
+    let (router, _context, dir) = setup_app("zai-alerts-allowed-origin").await;
+    let alert_id = insert_sample_alert(dir.path()).await;
+
+    let (status, body) = request_json_with_headers(
+        &router,
+        "POST",
+        &format!("/api/alerts/{alert_id}/read"),
+        None,
+        Some("http://localhost:5173"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body["readAt"].is_string());
+}
+
+#[tokio::test]
+async fn alert_mutations_accept_missing_origin_for_non_browser_clients() {
+    let (router, _context, dir) = setup_app("zai-alerts-no-origin").await;
+    let alert_id = insert_sample_alert(dir.path()).await;
+
+    let (status, body) = request_json(
+        &router,
+        "POST",
+        &format!("/api/alerts/{alert_id}/read"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body["readAt"].is_string());
+}
+
+#[tokio::test]
+async fn alert_mutations_reject_bodyless_simple_posts_without_json_proof() {
+    use tower::ServiceExt;
+
+    let (router, _context, dir) = setup_app("zai-alerts-simple-post").await;
+    let alert_id = insert_sample_alert(dir.path()).await;
+
+    let request = axum::http::Request::builder()
+        .method("POST")
+        .uri(format!("/api/alerts/{alert_id}/read"))
+        .header("Origin", "http://localhost:5173")
+        .body(axum::body::Body::empty())
+        .expect("request should build");
+
+    let response = router
+        .clone()
+        .oneshot(request)
+        .await
+        .expect("request should succeed");
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+    let (status, body) = request_json(&router, "GET", "/api/alerts/unread-count", None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body.as_i64(), Some(1));
 }

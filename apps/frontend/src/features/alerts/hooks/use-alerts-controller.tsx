@@ -110,13 +110,16 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       requestId: number,
       parsedPage: NonNullable<ReturnType<typeof parseDomainAlertListPage>>,
       preserveItems: boolean,
+      activeFilters: AlertSessionFilters,
     ) => {
       if (requestId !== listRequestIdRef.current) {
         return;
       }
 
       setItems((current) =>
-        preserveItems ? mergeReconciledAlertPage(current, parsedPage) : parsedPage.items,
+        preserveItems
+          ? mergeReconciledAlertPage(current, parsedPage, activeFilters)
+          : parsedPage.items,
       );
       setNextCursor(parsedPage.nextCursor ?? null);
       setRefreshStatus("ready");
@@ -157,7 +160,7 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
         return;
       }
 
-      applyListPage(requestId, parsedPage, options.preserveItems === true);
+      applyListPage(requestId, parsedPage, options.preserveItems === true, activeFilters);
     },
     [applyListPage, applyUnreadCount, fetchPage],
   );
@@ -195,7 +198,7 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
         return;
       }
 
-      applyListPage(requestId, parsedPage, false);
+      applyListPage(requestId, parsedPage, false, nextFilters);
     },
     [applyListPage, applyUnreadCount, fetchPage],
   );
@@ -253,7 +256,7 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       return;
     }
 
-    setItems((current) => mergeReconciledAlertPage(current, parsedPage));
+    setItems((current) => mergeReconciledAlertPage(current, parsedPage, filtersRef.current));
     setNextCursor(parsedPage.nextCursor ?? null);
     setLoadOlderStatus("idle");
   }, [fetchPage, loadOlderStatus, nextCursor]);
@@ -312,6 +315,12 @@ export function AlertsControllerProvider({ children }: { children: ReactNode }) 
       return;
     }
 
+    const markedAt = new Date().toISOString();
+    setItems((current) =>
+      current.map((item) =>
+        isUnreadAlert(item) ? { ...item, readAt: item.readAt ?? markedAt } : item,
+      ),
+    );
     await refresh({ preserveItems: true });
     setMarkAllReadPending(false);
   }, [markAllReadPending, refresh, unreadCount, unreadCountKnown]);
