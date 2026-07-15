@@ -1,17 +1,22 @@
-import { type CommandResult, invokeCommand } from "@/commands/shared";
+import { invokeDecodedCommand } from "@/commands/shared";
+import type { CommandResult } from "@/commands/shared";
 
 import type { Budget, BudgetFormValues, BudgetHistory, BudgetListFilter } from "../types/budget";
+import { CASH_FLOW_COMMANDS } from "./registry";
 
 export const getBudgets = (filter: BudgetListFilter = "active"): CommandResult<Array<Budget>> => {
-  return invokeCommand<Array<Budget>>("get_budgets", filter === "active" ? undefined : { filter });
+  return invokeDecodedCommand(
+    CASH_FLOW_COMMANDS.get_budgets,
+    filter === "active" ? undefined : { filter },
+  );
 };
 
 export const getBudget = (budgetId: string): CommandResult<Budget> => {
-  return invokeCommand<Budget>("get_budget", { budgetId });
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.get_budget, { budgetId });
 };
 
 export const createBudget = (values: BudgetFormValues): CommandResult<Budget> => {
-  return invokeCommand<Budget>("create_budget", {
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.create_budget, {
     newBudget: {
       name: values.name,
       baseAllowance: values.baseAllowance,
@@ -29,7 +34,7 @@ export const updateBudget = (
   expectedRevision: number,
   values: BudgetFormValues,
 ): CommandResult<Budget> => {
-  return invokeCommand<Budget>("update_budget", {
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.update_budget, {
     budgetId,
     updatedBudget: {
       expectedRevision,
@@ -45,7 +50,7 @@ export const updateBudget = (
 };
 
 export const deleteBudget = (budgetId: string, expectedRevision: number): CommandResult<void> => {
-  return invokeCommand<void>("delete_budget", { budgetId, expectedRevision });
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.delete_budget, { budgetId, expectedRevision });
 };
 
 export const getBudgetHistory = (
@@ -53,13 +58,13 @@ export const getBudgetHistory = (
   page = 1,
   perPage = 50,
 ): CommandResult<BudgetHistory> => {
-  return invokeCommand<BudgetHistory>("get_budget_history", { budgetId, page, perPage });
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.get_budget_history, { budgetId, page, perPage });
 };
 
 export const pauseBudget = (budgetId: string, expectedRevision: number): CommandResult<Budget> => {
-  return invokeCommand<Budget>("pause_budget", { budgetId, expectedRevision });
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.pause_budget, { budgetId, expectedRevision });
 };
 
 export const resumeBudget = (budgetId: string, expectedRevision: number): CommandResult<Budget> => {
-  return invokeCommand<Budget>("resume_budget", { budgetId, expectedRevision });
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.resume_budget, { budgetId, expectedRevision });
 };

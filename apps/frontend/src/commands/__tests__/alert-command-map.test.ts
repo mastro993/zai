@@ -65,7 +65,7 @@ describe("alerts web command map", () => {
 
   it("keeps bulk alert command registration aligned across transports", () => {
     expect(readRepoFile("apps/frontend/src/features/alerts/commands/alerts.ts")).toContain(
-      'invokeCommand<number>("mark_all_alerts_read")',
+      "invokeDecodedCommand(ALERT_COMMANDS.mark_all_alerts_read)",
     );
     expect(readRepoFile("apps/frontend/src/commands/alerts-web-command-map.ts")).toContain(
       'case "mark_all_alerts_read"',

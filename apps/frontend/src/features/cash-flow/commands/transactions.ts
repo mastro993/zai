@@ -1,10 +1,12 @@
 import { Result } from "@praha/byethrow";
 
-import { type CommandResult, invokeCommand } from "@/commands/shared";
+import { invokeDecodedCommand } from "@/commands/shared";
+import type { CommandResult } from "@/commands/shared";
 
 import type { CategoryImportPayload } from "../lib/category-import";
 import { toBackendDateTime } from "../lib/transaction";
 import type { PaginatedTransactions, Transaction, TransactionFormValues } from "../types/model";
+import { CASH_FLOW_COMMANDS } from "./registry";
 
 type TransactionPayload = {
   description?: string | null;
@@ -47,7 +49,7 @@ export const getTransactions = (
   filters?: TransactionFilters,
   sort?: TransactionSort,
 ): CommandResult<PaginatedTransactions> => {
-  return invokeCommand<PaginatedTransactions>("get_transactions", {
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.get_transactions, {
     page,
     perPage,
     filters: filters ?? null,
@@ -88,7 +90,7 @@ export const getAllTransactions = async (
 };
 
 export const createTransaction = (values: TransactionFormValues): CommandResult<Transaction> => {
-  return invokeCommand<Transaction>("create_transaction", {
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.create_transaction, {
     newTransaction: toTransactionPayload(values),
   });
 };
@@ -97,7 +99,7 @@ export const updateTransaction = (
   id: string,
   values: TransactionFormValues,
 ): CommandResult<Transaction> => {
-  return invokeCommand<Transaction>("update_transaction", {
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.update_transaction, {
     updatedTransaction: {
       id,
       ...toTransactionPayload(values),
@@ -106,7 +108,7 @@ export const updateTransaction = (
 };
 
 export const deleteTransaction = (transactionId: string): CommandResult<Transaction> => {
-  return invokeCommand<Transaction>("delete_transaction", {
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.delete_transaction, {
     transactionId,
   });
 };
@@ -114,7 +116,7 @@ export const deleteTransaction = (transactionId: string): CommandResult<Transact
 export const deleteTransactions = (
   transactionIds: Array<string>,
 ): CommandResult<Array<Transaction>> => {
-  return invokeCommand<Array<Transaction>>("delete_transactions", {
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.delete_transactions, {
     transactionIds,
   });
 };
@@ -122,7 +124,7 @@ export const deleteTransactions = (
 export const importTransactions = (
   transactions: Array<TransactionPayload & { id?: string }>,
 ): CommandResult<Array<Transaction>> => {
-  return invokeCommand<Array<Transaction>>("import_transactions", {
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.import_transactions, {
     transactions,
   });
 };
@@ -131,7 +133,7 @@ export const importTransactionBatch = (
   categories: Array<CategoryImportPayload>,
   transactions: Array<TransactionPayload & { id?: string }>,
 ): CommandResult<Array<Transaction>> => {
-  return invokeCommand<Array<Transaction>>("import_transaction_batch", {
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.import_transaction_batch, {
     categories,
     transactions,
   });

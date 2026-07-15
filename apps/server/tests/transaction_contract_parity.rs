@@ -1,65 +1,103 @@
 mod common;
+mod contract_harness;
 
 use axum::http::StatusCode;
-use common::{request_json, setup_app};
-use serde_json::Value;
 
-async fn tauri_list_transactions(
-    context: &std::sync::Arc<zai_app::ServiceContext>,
-    path: &str,
-) -> Value {
-    let mut page = 1_i64;
-    let mut per_page = 50_i64;
-    if let Some(query) = path.split_once('?').map(|(_, query)| query) {
-        for pair in query.split('&') {
-            let Some((key, value)) = pair.split_once('=') else {
-                continue;
-            };
-            match key {
-                "page" => page = value.parse().unwrap_or(page),
-                "perPage" => per_page = value.parse().unwrap_or(per_page),
-                _ => {}
-            }
-        }
-    }
+use contract_harness::{
+    ContractExpectation, HttpCall, assert_read_parity, seed_transaction, setup_contract,
+};
 
-    match context
-        .transactions_service()
-        .get_transactions(page, per_page, None, None)
-    {
-        Ok(value) => serde_json::to_value(value).expect("serialize success"),
-        Err(error) => serde_json::to_value(error.to_envelope("Failed to load transactions"))
-            .expect("serialize error"),
-    }
+#[tokio::test]
+async fn transaction_contract_list_create_and_detail_match_across_transports() {
+    let harness = setup_contract("zai-transaction-contract-lifecycle").await;
+    let (status, created) = seed_transaction(&harness, "Coffee").await;
+    assert_eq!(status, StatusCode::CREATED);
+    let transaction_id = created["id"].as_str().expect("transaction id");
+
+    assert_read_parity(
+        &harness,
+        ContractExpectation {
+            http: HttpCall {
+                method: "GET",
+                path: "/api/cash-flow/transactions".to_string(),
+                body: None,
+                expected_status: StatusCode::OK,
+            },
+            compare_body: true,
+            expected_error_code: None,
+        },
+    )
+    .await;
+
+    assert_read_parity(
+        &harness,
+        ContractExpectation {
+            http: HttpCall {
+                method: "GET",
+                path: format!("/api/cash-flow/transactions/{transaction_id}"),
+                body: None,
+                expected_status: StatusCode::OK,
+            },
+            compare_body: true,
+            expected_error_code: None,
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn transaction_list_paging_validation_matches_across_transports() {
-    let (router, context, _dir) = setup_app("zai-transaction-contract-paging").await;
-    let path = "/api/cash-flow/transactions?perPage=101";
-
-    let (http_status, http_body) = request_json(&router, "GET", path, None).await;
-    assert_eq!(http_status, StatusCode::BAD_REQUEST);
-    assert_eq!(http_body["code"], "validation");
-
-    let tauri_body = tauri_list_transactions(&context, path).await;
-    assert_eq!(tauri_body["code"], "validation");
-    assert_eq!(
-        tauri_body.get("details"),
-        http_body.get("details"),
-        "transport error details should match"
-    );
+    let harness = setup_contract("zai-transaction-contract-paging").await;
+    assert_read_parity(
+        &harness,
+        ContractExpectation {
+            http: HttpCall {
+                method: "GET",
+                path: "/api/cash-flow/transactions?perPage=101".to_string(),
+                body: None,
+                expected_status: StatusCode::BAD_REQUEST,
+            },
+            compare_body: false,
+            expected_error_code: Some("validation"),
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn transaction_list_paging_overflow_matches_across_transports() {
-    let (router, context, _dir) = setup_app("zai-transaction-contract-overflow").await;
-    let path = "/api/cash-flow/transactions?page=9223372036854775807&perPage=2";
+    let harness = setup_contract("zai-transaction-contract-overflow").await;
+    assert_read_parity(
+        &harness,
+        ContractExpectation {
+            http: HttpCall {
+                method: "GET",
+                path: "/api/cash-flow/transactions?page=9223372036854775807&perPage=2".to_string(),
+                body: None,
+                expected_status: StatusCode::BAD_REQUEST,
+            },
+            compare_body: false,
+            expected_error_code: Some("validation"),
+        },
+    )
+    .await;
+}
 
-    let (http_status, http_body) = request_json(&router, "GET", path, None).await;
-    assert_eq!(http_status, StatusCode::BAD_REQUEST);
-    assert_eq!(http_body["code"], "validation");
-
-    let tauri_body = tauri_list_transactions(&context, path).await;
-    assert_eq!(tauri_body["code"], "validation");
+#[tokio::test]
+async fn transaction_contract_not_found_matches_across_transports() {
+    let harness = setup_contract("zai-transaction-contract-not-found").await;
+    assert_read_parity(
+        &harness,
+        ContractExpectation {
+            http: HttpCall {
+                method: "GET",
+                path: "/api/cash-flow/transactions/missing-transaction".to_string(),
+                body: None,
+                expected_status: StatusCode::NOT_FOUND,
+            },
+            compare_body: false,
+            expected_error_code: Some("notFound"),
+        },
+    )
+    .await;
 }
