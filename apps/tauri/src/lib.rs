@@ -52,10 +52,8 @@ pub fn run() {
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
-        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_shell::init())
         .setup(move |app| {
             let handle = app.handle().clone();
 
@@ -81,15 +79,11 @@ pub fn run() {
                 tauri::Error::Setup(e.into())
             })?;
 
-            let salt_path = app.path().app_local_data_dir()?.join("salt.txt");
-
-            app.handle()
-                .plugin(tauri_plugin_stronghold::Builder::with_argon2(&salt_path).build())?;
             Ok(())
         })
         .plugin(
             tauri_plugin_log::Builder::new()
-                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(10))
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
@@ -106,7 +100,6 @@ pub fn run() {
             commands::domain_alerts::mark_all_alerts_read,
             commands::domain_alerts::mark_alert_read,
             commands::domain_alerts::mark_alert_unread,
-            commands::stronghold::get_stronghold_vault_password,
             commands::transaction_categories::get_transaction_category,
             commands::transaction_categories::get_transaction_categories,
             commands::transaction_categories::create_transaction_category,
