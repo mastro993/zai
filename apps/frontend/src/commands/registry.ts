@@ -3,7 +3,8 @@ import { ALERT_BACKEND_COMMANDS } from "@/features/alerts/commands/registry";
 import { CASH_FLOW_BACKEND_COMMANDS } from "@/features/cash-flow/commands/registry";
 
 export type { CommandDescriptor, CommandTransportClass } from "./command-descriptor";
-export { decodeCommandValue, invokeDecodedCommand } from "./decode-command-result";
+export { decodeCommandValue } from "./decode-command-result";
+export { invokeDecodedCommand } from "./shared";
 
 export const BACKEND_COMMAND_REGISTRY = [
   ...CASH_FLOW_BACKEND_COMMANDS,

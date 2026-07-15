@@ -46,5 +46,12 @@ export const resolveCommandTransport = (
     return targetResult;
   }
 
-  return Result.succeed(selectCommandTransport(targetResult.value, transports));
+  const transport = selectCommandTransport(targetResult.value, transports);
+  if (typeof transport?.invoke !== "function") {
+    return Result.fail(
+      new CommandError(`Command transport is unavailable for target "${targetResult.value}".`),
+    );
+  }
+
+  return Result.succeed(transport);
 };

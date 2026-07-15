@@ -1,6 +1,6 @@
 import { Result } from "@praha/byethrow";
 
-import { invokeDecodedCommand } from "@/commands/decode-command-result";
+import { invokeDecodedCommand } from "@/commands/shared";
 import type { CommandResult } from "@/commands/shared";
 
 import type { CategoryImportPayload } from "../lib/category-import";

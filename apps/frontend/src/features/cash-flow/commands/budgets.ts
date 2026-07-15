@@ -1,4 +1,4 @@
-import { invokeDecodedCommand } from "@/commands/decode-command-result";
+import { invokeDecodedCommand } from "@/commands/shared";
 import type { CommandResult } from "@/commands/shared";
 
 import type { Budget, BudgetFormValues, BudgetHistory, BudgetListFilter } from "../types/budget";

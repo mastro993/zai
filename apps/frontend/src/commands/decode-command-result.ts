@@ -1,7 +1,7 @@
 import { Result } from "@praha/byethrow";
 
-import { CommandError, invokeCommand, type CommandArgs, type CommandResult } from "./shared";
 import type { CommandDescriptor } from "./command-descriptor";
+import { CommandError } from "./errors";
 
 export const decodeCommandValue = <T>(
   command: string,
@@ -22,16 +22,4 @@ export const decodeCommandValue = <T>(
   }
 
   return Result.succeed(parsed.data as T) as Result.Result<T, CommandError>;
-};
-
-export const invokeDecodedCommand = async <T>(
-  descriptor: CommandDescriptor<T>,
-  args?: CommandArgs,
-): CommandResult<T> => {
-  const raw = await invokeCommand<unknown>(descriptor.name, args);
-  if (Result.isFailure(raw)) {
-    return raw;
-  }
-
-  return decodeCommandValue(descriptor.name, raw.value, descriptor.resultSchema);
 };
