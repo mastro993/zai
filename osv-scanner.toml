@@ -1,0 +1,14 @@
+# JavaScript advisory exceptions. pnpm audit is not used: npm retired the legacy
+# audit endpoints (HTTP 410). osv-scanner reads pnpm-lock.yaml against OSV instead.
+#
+# Exception format: id, ignoreUntil (YYYY-MM-DD), reason with owner= and context.
+
+[[IgnoredVulns]]
+id = "GHSA-c2c7-rcm5-vvqj"
+ignoreUntil = 2026-10-15
+reason = "owner=zai-security | Transitive picomatch via tooling; upgrade in separately reviewed dependency change"
+
+[[IgnoredVulns]]
+id = "GHSA-mw96-cpmx-2vgc"
+ignoreUntil = 2026-10-15
+reason = "owner=zai-security | Dev-only rollup bundler; upgrade in separately reviewed dependency change"
