@@ -2,13 +2,14 @@ import { Result } from "@praha/byethrow";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CommandError } from "@/commands/errors";
+import type * as SharedCommands from "@/commands/shared";
 
 import { getAllTransactions } from "../transactions";
 
 const invokeDecodedCommandMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/commands/shared", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/commands/shared")>();
+  const actual = await importOriginal<typeof SharedCommands>();
   return {
     ...actual,
     invokeDecodedCommand: invokeDecodedCommandMock,
