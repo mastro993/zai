@@ -1,7 +1,7 @@
-use super::models::TransactionCategoryRow;
+use super::models::{TransactionCategoryRow, TransactionCategoryRowUpdate};
 use super::validation::{
-    apply_resolved_parent, map_category_unique_violation, validate_category_update,
-    validate_new_category,
+    apply_resolved_parent, apply_resolved_parent_to_changeset, map_category_unique_violation,
+    validate_category_update, validate_new_category,
 };
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_budgets_by_ids};
 use crate::budgets::category_impact::{affected_budgets_for_update, analyze_deletion};
@@ -249,34 +249,36 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<
                     CommittedOutcome<TransactionCategory>,
                 > {
-                    let mut category: TransactionCategoryRow = updated_category.clone().into();
+                    let category_id = updated_category.id.clone();
+                    let mut changeset: TransactionCategoryRowUpdate = updated_category.clone().into();
+                    changeset.updated_at = now;
 
                     let existing = transaction_categories::table
-                        .find(&category.id)
+                        .find(&category_id)
                         .first::<TransactionCategoryRow>(conn)
                         .into_storage()?;
                     let resolved_parent = validate_category_update(
                         conn,
-                        &category.id,
-                        category.parent_id.as_deref(),
-                        &category.name,
+                        &category_id,
+                        changeset.parent_id.as_deref(),
+                        &changeset.name,
                     )?;
-                    apply_resolved_parent(&mut category, resolved_parent);
+                    apply_resolved_parent_to_changeset(&mut changeset, resolved_parent);
                     let structural_change =
-                        existing.parent_id != category.parent_id || existing.role != category.role;
+                        existing.parent_id != changeset.parent_id || existing.role != changeset.role;
                     let affected_budgets = if structural_change {
                         refresh_active_budget_projections(conn, now)?;
                         affected_budgets_for_update(
                             conn,
-                            &category.id,
+                            &category_id,
                             existing.parent_id.as_deref(),
-                            category.parent_id.as_deref(),
+                            changeset.parent_id.as_deref(),
                             existing.role.parse().map_err(|_| {
                                 StorageError::CoreError(Error::Repository(
                                     "Invalid category role".to_string(),
                                 ))
                             })?,
-                            category.role.parse().map_err(|_| {
+                            changeset.role.parse().map_err(|_| {
                                 StorageError::CoreError(Error::Repository(
                                     "Invalid category role".to_string(),
                                 ))
@@ -302,24 +304,21 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .collect::<Vec<_>>();
                     let before = snapshot_budgets_by_ids(conn, &affected_ids, now)?;
 
-                    category.created_at = existing.created_at;
-                    category.updated_at = now;
-
-                    diesel::update(transaction_categories::table.find(&category.id))
-                        .set(&category)
+                    diesel::update(transaction_categories::table.find(&category_id))
+                        .set(&changeset)
                         .execute(conn)
                         .into_storage()
                         .map_err(map_category_unique_violation)?;
 
-                    if category.parent_id.is_none() {
+                    if changeset.parent_id.is_none() {
                         diesel::update(
                             transaction_categories::table
-                                .filter(transaction_categories::parent_id.eq(&category.id))
+                                .filter(transaction_categories::parent_id.eq(&category_id))
                                 .filter(transaction_categories::deleted_at.is_null()),
                         )
                         .set((
-                            transaction_categories::role.eq(&category.role),
-                            transaction_categories::updated_at.eq(category.updated_at),
+                            transaction_categories::role.eq(&changeset.role),
+                            transaction_categories::updated_at.eq(changeset.updated_at),
                         ))
                         .execute(conn)
                         .into_storage()?;
@@ -336,7 +335,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                                     .nullable()),
                             ),
                         )
-                        .filter(transaction_categories::id.eq(&category.id))
+                        .filter(transaction_categories::id.eq(&category_id))
                         .first::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)
                         .into_storage()?;
 
@@ -811,7 +810,86 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_category_clears_description() {
+    async fn update_category_promotes_child_to_root_in_database() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let parent = repo
+            .create_category(NewTransactionCategory {
+                name: "Parent".to_string(),
+                parent_id: None,
+                description: None,
+                color: Some("#D31212".to_string()),
+                role: Some(CategoryRole::Spending),
+                id: Some(Uuid::new_v4().to_string()),
+            })
+            .await
+            .unwrap();
+        let child = repo
+            .create_category(NewTransactionCategory {
+                name: "Child".to_string(),
+                parent_id: Some(parent.id.clone()),
+                description: None,
+                color: Some("#DB1313".to_string()),
+                role: None,
+                id: Some(Uuid::new_v4().to_string()),
+            })
+            .await
+            .unwrap();
+
+        let updated = repo
+            .update_category(TransactionCategoryUpdate {
+                id: child.id.clone(),
+                name: "Promoted Child".to_string(),
+                parent_id: None,
+                description: None,
+                color: Some("#AB63F2".to_string()),
+                role: Some(CategoryRole::Spending),
+                confirm_budget_impact: false,
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(updated.parent_id, None);
+        assert_eq!(repo.get_category(&child.id).unwrap().parent_id, None);
+    }
+
+    #[tokio::test]
+    async fn update_category_clears_root_color_in_database() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let created = repo
+            .create_category(NewTransactionCategory {
+                name: "Original".to_string(),
+                parent_id: None,
+                description: None,
+                color: Some("#D31212".to_string()),
+                role: Some(CategoryRole::Spending),
+                id: Some(Uuid::new_v4().to_string()),
+            })
+            .await
+            .unwrap();
+
+        let updated = repo
+            .update_category(TransactionCategoryUpdate {
+                id: created.id.clone(),
+                name: "Original".to_string(),
+                parent_id: None,
+                description: None,
+                color: None,
+                role: Some(CategoryRole::Spending),
+                confirm_budget_impact: false,
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(updated.color, None);
+        assert_eq!(repo.get_category(&created.id).unwrap().color, None);
+    }
+
+    #[tokio::test]
+    async fn update_category_clears_description_in_database() {
         let temp_db = TempDb::new();
         let repo = setup_test_repo(temp_db.path());
 
@@ -821,26 +899,27 @@ mod tests {
                 parent_id: None,
                 description: Some("Original description".to_string()),
                 color: Some("#D31212".to_string()),
-                role: None,
+                role: Some(CategoryRole::Spending),
                 id: Some(Uuid::new_v4().to_string()),
             })
             .await
             .unwrap();
 
-        let updated_category = repo
+        let updated = repo
             .update_category(TransactionCategoryUpdate {
-                id: created.id,
+                id: created.id.clone(),
                 name: "Original".to_string(),
                 parent_id: None,
                 description: None,
                 color: Some("#D31212".to_string()),
-                role: None,
+                role: Some(CategoryRole::Spending),
                 confirm_budget_impact: false,
             })
             .await
             .unwrap();
 
-        assert_eq!(updated_category.description, None);
+        assert_eq!(updated.description, None);
+        assert_eq!(repo.get_category(&created.id).unwrap().description, None);
     }
 
     #[tokio::test]

@@ -5,7 +5,22 @@ use zai_core::features::transaction_categories::models::{
     CategoryRole, NewTransactionCategory, TransactionCategory, TransactionCategoryUpdate,
 };
 
-#[derive(Queryable, Identifiable, Insertable, AsChangeset, Selectable, PartialEq, Debug, Clone)]
+#[derive(AsChangeset)]
+#[diesel(table_name = transaction_categories)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct TransactionCategoryRowUpdate {
+    #[diesel(treat_none_as_null = true)]
+    pub parent_id: Option<String>,
+    pub name: String,
+    #[diesel(treat_none_as_null = true)]
+    pub description: Option<String>,
+    #[diesel(treat_none_as_null = true)]
+    pub color: Option<String>,
+    pub role: String,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Queryable, Identifiable, Insertable, Selectable, PartialEq, Debug, Clone)]
 #[diesel(table_name = transaction_categories)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 #[diesel(belongs_to(TransactionCategoryRow, foreign_key = parent_id))]
@@ -13,7 +28,6 @@ pub struct TransactionCategoryRow {
     pub id: String,
     pub parent_id: Option<String>,
     pub name: String,
-    #[diesel(treat_none_as_null = true)]
     pub description: Option<String>,
     pub color: Option<String>,
     pub role: String,
@@ -61,19 +75,15 @@ impl From<NewTransactionCategory> for TransactionCategoryRow {
     }
 }
 
-impl From<TransactionCategoryUpdate> for TransactionCategoryRow {
+impl From<TransactionCategoryUpdate> for TransactionCategoryRowUpdate {
     fn from(value: TransactionCategoryUpdate) -> Self {
-        let now = chrono::Utc::now().naive_utc();
         Self {
-            id: value.id,
             parent_id: value.parent_id,
             name: value.name,
             description: value.description,
             color: value.color,
             role: value.role.unwrap_or_default().to_string(),
-            created_at: now,
-            updated_at: now,
-            deleted_at: None,
+            updated_at: chrono::Utc::now().naive_utc(),
         }
     }
 }

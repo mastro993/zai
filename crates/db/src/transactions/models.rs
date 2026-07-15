@@ -3,7 +3,23 @@ use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use zai_core::features::transactions::models::{NewTransaction, Transaction, TransactionUpdate};
 
-#[derive(Queryable, Identifiable, Insertable, AsChangeset, Selectable, PartialEq, Debug, Clone)]
+#[derive(AsChangeset)]
+#[diesel(table_name = transactions)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct TransactionRowUpdate {
+    #[diesel(treat_none_as_null = true)]
+    pub description: Option<String>,
+    pub amount: i32,
+    pub transaction_date: NaiveDateTime,
+    pub transaction_type: String,
+    #[diesel(treat_none_as_null = true)]
+    pub transaction_category_id: Option<String>,
+    #[diesel(treat_none_as_null = true)]
+    pub notes: Option<String>,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Queryable, Identifiable, Insertable, Selectable, PartialEq, Debug, Clone)]
 #[diesel(table_name = transactions)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct TransactionRow {
@@ -53,20 +69,16 @@ impl From<NewTransaction> for TransactionRow {
     }
 }
 
-impl From<TransactionUpdate> for TransactionRow {
+impl From<TransactionUpdate> for TransactionRowUpdate {
     fn from(value: TransactionUpdate) -> Self {
-        let now = chrono::Utc::now().naive_utc();
         Self {
-            id: value.id,
             description: value.description,
             amount: value.amount,
             transaction_date: value.transaction_date,
             transaction_type: value.transaction_type,
             transaction_category_id: value.transaction_category_id,
             notes: value.notes,
-            created_at: now,
-            updated_at: now,
-            deleted_at: None,
+            updated_at: chrono::Utc::now().naive_utc(),
         }
     }
 }

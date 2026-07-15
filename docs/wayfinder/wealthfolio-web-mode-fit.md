@@ -58,6 +58,7 @@ For the first Zai web mode:
 - No-auth local mode is acceptable only on loopback.
 - Any non-loopback bind should require a later authentication decision or an explicit unsafe override.
 - CORS should be narrow in dev and not default to credentialed wildcard behavior.
+- Loopback mutations must reject hostile browser `Origin` values and bodyless simple POSTs. Web mode sends `application/json` (often `{}`) so HTML forms cannot mutate alert state without login.
 
 The full authentication model belongs to [Decide Zai web deployment and data ownership model](https://github.com/mastro993/zai-app/issues/14), but this research resolves that the default posture should be copied from Wealthfolio: local convenience is fine; accidental network exposure is not.
 

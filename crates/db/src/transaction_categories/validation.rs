@@ -1,4 +1,4 @@
-use super::models::TransactionCategoryRow;
+use super::models::{TransactionCategoryRow, TransactionCategoryRowUpdate};
 use crate::errors::{IntoStorage, Result, StorageError};
 use crate::schema::transaction_categories;
 use diesel::prelude::*;
@@ -156,6 +156,21 @@ pub(crate) fn apply_resolved_parent(
         }
         None => {
             category.parent_id = None;
+        }
+    }
+}
+
+pub(crate) fn apply_resolved_parent_to_changeset(
+    changeset: &mut TransactionCategoryRowUpdate,
+    resolved_parent: Option<ResolvedParent>,
+) {
+    match resolved_parent {
+        Some(parent) => {
+            changeset.parent_id = Some(parent.id);
+            changeset.role = parent.role.to_string();
+        }
+        None => {
+            changeset.parent_id = None;
         }
     }
 }
