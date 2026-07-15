@@ -7,9 +7,30 @@ import { getAllTransactions } from "../transactions";
 
 const invokeCommandMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/commands/shared", () => ({
-  invokeCommand: invokeCommandMock,
-}));
+vi.mock("@/commands/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/commands/shared")>();
+  return {
+    ...actual,
+    invokeCommand: invokeCommandMock,
+  };
+});
+
+const transactionPage = (page: number, perPage: number) => ({
+  data: [
+    {
+      id: `transaction-${page}`,
+      description: null,
+      amount: 1000,
+      transactionDate: "2026-01-15T12:00:00",
+      transactionType: "expense",
+      transactionCategoryId: null,
+      notes: null,
+    },
+  ],
+  page,
+  perPage,
+  totalPages: 2,
+});
 
 describe("getAllTransactions", () => {
   beforeEach(() => {
@@ -29,14 +50,7 @@ describe("getAllTransactions", () => {
           );
         }
 
-        return Promise.resolve(
-          Result.succeed({
-            data: [{ id: `transaction-${args.page}` }],
-            page: args.page,
-            perPage: args.perPage,
-            totalPages: 2,
-          }),
-        );
+        return Promise.resolve(Result.succeed(transactionPage(args.page, args.perPage)));
       },
     );
 
