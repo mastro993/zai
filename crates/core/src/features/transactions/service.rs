@@ -2,7 +2,6 @@ use crate::errors::Result;
 use crate::features::transaction_categories::models::{
     NewTransactionCategory, TransactionCategory,
 };
-use crate::features::transactions::dedup::duplicate_key;
 use crate::features::transactions::models::{
     NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate, validate_list_paging,
 };
@@ -10,7 +9,6 @@ use crate::features::transactions::traits::{
     TransactionsRepositoryTrait, TransactionsServiceTrait,
 };
 use crate::query::{PaginatedData, Sort};
-use chrono::NaiveDateTime;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -77,15 +75,7 @@ impl TransactionsServiceTrait for TransactionsService {
             ensure_transaction_id(transaction);
         }
 
-        let filtered_transactions = filter_duplicate_transactions(&self.repository, transactions)?;
-
-        if filtered_transactions.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        self.repository
-            .import_transactions(filtered_transactions)
-            .await
+        self.repository.import_transactions(transactions).await
     }
 
     async fn import_transactions_with_categories(
@@ -98,14 +88,8 @@ impl TransactionsServiceTrait for TransactionsService {
             ensure_transaction_id(transaction);
         }
 
-        let filtered_transactions = filter_duplicate_transactions(&self.repository, transactions)?;
-
-        if filtered_transactions.is_empty() {
-            return Ok((Vec::new(), Vec::new()));
-        }
-
         self.repository
-            .import_transactions_with_categories(categories, filtered_transactions)
+            .import_transactions_with_categories(categories, transactions)
             .await
     }
 }
@@ -120,68 +104,12 @@ fn ensure_transaction_id(transaction: &mut NewTransaction) {
     }
 }
 
-fn filter_duplicate_transactions(
-    repository: &Arc<dyn TransactionsRepositoryTrait>,
-    transactions: Vec<NewTransaction>,
-) -> Result<Vec<NewTransaction>> {
-    if transactions.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let (start_date, end_date) = import_date_range(&transactions);
-    let existing_transactions = repository.find_transactions_in_date_range(start_date, end_date)?;
-
-    let mut existing_keys = existing_transactions
-        .iter()
-        .map(|transaction| {
-            duplicate_key(
-                transaction.transaction_date,
-                transaction.amount,
-                transaction.description.as_deref(),
-            )
-        })
-        .collect::<std::collections::HashSet<String>>();
-
-    let mut filtered_transactions = Vec::with_capacity(transactions.len());
-    for transaction in transactions {
-        let dedup_key = duplicate_key(
-            transaction.transaction_date,
-            transaction.amount,
-            transaction.description.as_deref(),
-        );
-
-        if !existing_keys.contains(&dedup_key) {
-            existing_keys.insert(dedup_key);
-            filtered_transactions.push(transaction);
-        }
-    }
-
-    Ok(filtered_transactions)
-}
-
-fn import_date_range(transactions: &[NewTransaction]) -> (NaiveDateTime, NaiveDateTime) {
-    let mut min_date = transactions[0].transaction_date;
-    let mut max_date = transactions[0].transaction_date;
-
-    for transaction in transactions.iter().skip(1) {
-        if transaction.transaction_date < min_date {
-            min_date = transaction.transaction_date;
-        }
-        if transaction.transaction_date > max_date {
-            max_date = transaction.transaction_date;
-        }
-    }
-
-    let day_start = min_date.date().and_hms_opt(0, 0, 0).unwrap_or(min_date);
-    let day_end = max_date.date().and_hms_opt(23, 59, 59).unwrap_or(max_date);
-
-    (day_start, day_end)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::errors::Error;
+    use crate::features::transactions::dedup::duplicate_key;
+    use chrono::NaiveDateTime;
     use std::sync::Mutex;
 
     #[derive(Default)]
@@ -240,14 +168,6 @@ mod tests {
             Err(Error::InvalidData("unused in test".to_string()))
         }
 
-        fn find_transactions_in_date_range(
-            &self,
-            _start_date: NaiveDateTime,
-            _end_date: NaiveDateTime,
-        ) -> Result<Vec<Transaction>> {
-            Ok(self.existing_in_range.lock().unwrap().clone())
-        }
-
         async fn import_transactions(
             &self,
             transactions: Vec<NewTransaction>,
@@ -256,20 +176,41 @@ mod tests {
                 .lock()
                 .unwrap()
                 .push(transactions.clone());
+
             let mut existing = self.existing_in_range.lock().unwrap();
-            let imported = transactions
-                .into_iter()
-                .map(|transaction| Transaction {
-                    id: transaction.id.unwrap_or_default(),
-                    description: transaction.description,
-                    amount: transaction.amount,
-                    transaction_date: transaction.transaction_date,
-                    transaction_type: transaction.transaction_type,
-                    transaction_category_id: transaction.transaction_category_id,
-                    notes: transaction.notes,
+            let mut seen_keys = existing
+                .iter()
+                .map(|transaction| {
+                    duplicate_key(
+                        transaction.transaction_date,
+                        transaction.amount,
+                        transaction.description.as_deref(),
+                    )
                 })
-                .collect::<Vec<_>>();
-            existing.extend(imported.clone());
+                .collect::<std::collections::HashSet<String>>();
+
+            let mut imported = Vec::new();
+            for transaction in transactions {
+                let key = duplicate_key(
+                    transaction.transaction_date,
+                    transaction.amount,
+                    transaction.description.as_deref(),
+                );
+                if seen_keys.insert(key) {
+                    let row = Transaction {
+                        id: transaction.id.unwrap_or_default(),
+                        description: transaction.description,
+                        amount: transaction.amount,
+                        transaction_date: transaction.transaction_date,
+                        transaction_type: transaction.transaction_type,
+                        transaction_category_id: transaction.transaction_category_id,
+                        notes: transaction.notes,
+                    };
+                    existing.push(row.clone());
+                    imported.push(row);
+                }
+            }
+
             Ok(imported)
         }
 
