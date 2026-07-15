@@ -44,6 +44,42 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn internal_errors_redact_implementation_details() {
+        const SENTINEL_SQL: &str = "SENTINEL_SQL_SELECT * FROM secrets";
+        const SENTINEL_PATH: &str = "/home/user/.secret/zai.db";
+
+        let (status, Json(body)) = command_error(
+            "Failed to load transaction",
+            Error::Database(DatabaseError::QueryFailed(SENTINEL_SQL.to_string())),
+        );
+
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(body.code, ErrorCode::Internal);
+        assert_eq!(
+            body.message,
+            "Failed to load transaction: An internal error occurred"
+        );
+        let serialized = serde_json::to_string(&body).expect("error envelope should serialize");
+        assert!(!serialized.contains(SENTINEL_SQL));
+        assert!(!serialized.contains(SENTINEL_PATH));
+    }
+
+    #[test]
+    fn domain_conflict_details_remain_actionable() {
+        let (status, Json(body)) = command_error(
+            "Failed to update category",
+            Error::RevisionConflict {
+                current_revision: 12,
+            },
+        );
+
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(body.code, ErrorCode::RevisionConflict);
+        assert_eq!(body.details, Some(json!({ "currentRevision": 12 })));
+        assert!(body.message.contains("current revision is 12"));
+    }
+
+    #[test]
     fn command_errors_use_the_shared_envelope() {
         let (status, Json(body)) = command_error(
             "Failed to load transaction",

@@ -19,6 +19,44 @@ mod tests {
     use zai_core::Error;
 
     #[test]
+    fn internal_errors_redact_implementation_details() {
+        use zai_core::{DatabaseError, ErrorCode};
+
+        const SENTINEL_SQL: &str = "SENTINEL_SQL_SELECT * FROM secrets";
+        const SENTINEL_PATH: &str = "/home/user/.secret/zai.db";
+
+        let envelope = command_error(
+            "Failed to load transaction",
+            Error::Database(DatabaseError::ConnectionFailed(SENTINEL_SQL.to_string())),
+        );
+
+        assert_eq!(envelope.code, ErrorCode::Internal);
+        assert_eq!(
+            envelope.message,
+            "Failed to load transaction: An internal error occurred"
+        );
+        let serialized = serde_json::to_string(&envelope).expect("error envelope should serialize");
+        assert!(!serialized.contains(SENTINEL_SQL));
+        assert!(!serialized.contains(SENTINEL_PATH));
+    }
+
+    #[test]
+    fn domain_conflict_details_remain_actionable() {
+        use zai_core::ErrorCode;
+
+        let envelope = command_error(
+            "Failed to update category",
+            Error::RevisionConflict {
+                current_revision: 12,
+            },
+        );
+
+        assert_eq!(envelope.code, ErrorCode::RevisionConflict);
+        assert_eq!(envelope.details, Some(json!({ "currentRevision": 12 })));
+        assert!(envelope.message.contains("current revision is 12"));
+    }
+
+    #[test]
     fn serializes_cash_flow_errors_with_the_shared_envelope() {
         let envelope = command_error(
             "Failed to create transaction",
