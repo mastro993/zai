@@ -1,7 +1,11 @@
 mod connection;
 mod errors;
 #[cfg(test)]
+mod migration_fixture_support;
+#[cfg(test)]
 mod migration_tests;
+#[cfg(test)]
+mod migration_tests_released;
 mod pagination;
 mod schema;
 #[cfg(test)]

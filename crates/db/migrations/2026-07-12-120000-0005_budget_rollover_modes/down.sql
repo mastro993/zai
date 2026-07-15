@@ -47,8 +47,52 @@ CREATE TABLE budget_period_results (
         ON DELETE CASCADE
 );
 
-INSERT INTO budgets SELECT * FROM budgets_old;
-INSERT INTO budget_configurations SELECT * FROM budget_configurations_old;
+INSERT INTO budgets (
+    id,
+    name,
+    cadence,
+    measurement_mode,
+    base_allowance,
+    rollover_mode,
+    warning_percentage,
+    created_at,
+    updated_at,
+    deleted_at
+)
+SELECT
+    id,
+    name,
+    cadence,
+    measurement_mode,
+    base_allowance,
+    'off',
+    warning_percentage,
+    created_at,
+    updated_at,
+    deleted_at
+FROM budgets_old;
+
+INSERT INTO budget_configurations (
+    budget_id,
+    period_start,
+    period_end,
+    category_ids,
+    base_allowance,
+    measurement_mode,
+    rollover_mode,
+    warning_percentage
+)
+SELECT
+    budget_id,
+    period_start,
+    period_end,
+    category_ids,
+    base_allowance,
+    measurement_mode,
+    'off',
+    warning_percentage
+FROM budget_configurations_old;
+
 INSERT INTO budget_period_results SELECT * FROM budget_period_results_old;
 
 DROP TABLE budget_period_results_old;

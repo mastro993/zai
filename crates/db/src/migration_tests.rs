@@ -9,9 +9,9 @@ use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 const TEST_MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
 #[derive(QueryableByName)]
-struct CountRow {
+pub(crate) struct CountRow {
     #[diesel(sql_type = diesel::sql_types::BigInt)]
-    count: i64,
+    pub(crate) count: i64,
 }
 
 #[derive(QueryableByName)]
