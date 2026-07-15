@@ -1,0 +1,45 @@
+name: Question
+description: Ask for help using or contributing to Zai
+title: "[Question]: "
+labels: ["needs-triage", "question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask a focused question. For confirmed bugs or feature ideas, use the Bug or Feature template instead.
+
+  - type: dropdown
+    id: topic
+    attributes:
+      label: Topic
+      options:
+        - Using Zai
+        - Development setup
+        - Architecture / design
+        - Contributing
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What do you want to know?
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What you've already tried
+      description: Docs read, commands run, branches checked, etc.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+    validations:
+      required: false

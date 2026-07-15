@@ -1,0 +1,51 @@
+name: Feature Request
+description: Suggest new functionality or an improvement
+title: "[Feature]: "
+labels: ["needs-triage", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem first, then what you want. Keep Zai local-first: no cloud, no telemetry, no remote data processing unless the user explicitly opts in.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What pain point or gap does this address?
+      placeholder: I'm trying to ... but currently ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What should happen instead? UI flows welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How would we know this is done? Bullet points are fine.
+      placeholder: |
+        - User can ...
+        - Existing ... still works
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+    validations:
+      required: false
