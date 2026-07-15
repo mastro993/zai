@@ -6,6 +6,7 @@ import {
   parseImportAmount,
   parseImportDate,
   parseTransactionCsv,
+  type TransactionImportDateFormat,
   type TransactionImportPreviewOptions,
 } from "../transaction-import";
 import type { Transaction, TransactionCategory } from "../../types/model";
@@ -99,6 +100,85 @@ describe("transaction import", () => {
       ok: true,
       value: "2026-01-15T00:00:00",
     });
+  });
+
+  it("rejects impossible calendar dates without normalization", () => {
+    const invalidDate = { ok: false, message: "Invalid date" };
+
+    const impossibleDates: Array<[string, TransactionImportDateFormat]> = [
+      ["2026-02-30", "YYYY-MM-DD"],
+      ["2026-04-31", "YYYY-MM-DD"],
+      ["2026-02-29", "YYYY-MM-DD"],
+      ["30/02/2028", "DD/MM/YYYY"],
+      ["31/04/2026", "DD/MM/YYYY"],
+      ["02/29/2026", "MM/DD/YYYY"],
+      ["04/31/2026", "MM/DD/YYYY"],
+      ["2026-00-15", "YYYY-MM-DD"],
+      ["2026-13-01", "YYYY-MM-DD"],
+      ["2026-01-00", "YYYY-MM-DD"],
+      ["00/01/2026", "DD/MM/YYYY"],
+      ["15/00/2026", "DD/MM/YYYY"],
+      ["2026-01-15T24:00:00", "ISO"],
+      ["2026-01-15T08:60:00", "ISO"],
+      ["2026-01-15T08:30:60", "ISO"],
+    ];
+
+    for (const [raw, format] of impossibleDates) {
+      expect(parseImportDate(raw, format)).toEqual(invalidDate);
+    }
+  });
+
+  it("accepts valid calendar boundary dates", () => {
+    expect(parseImportDate("2028-02-29", "YYYY-MM-DD")).toEqual({
+      ok: true,
+      value: "2028-02-29T00:00:00",
+    });
+    expect(parseImportDate("2026-04-30", "YYYY-MM-DD")).toEqual({
+      ok: true,
+      value: "2026-04-30T00:00:00",
+    });
+    expect(parseImportDate("29/02/2028", "DD/MM/YYYY")).toEqual({
+      ok: true,
+      value: "2028-02-29T00:00:00",
+    });
+    expect(parseImportDate("02/29/2028", "MM/DD/YYYY")).toEqual({
+      ok: true,
+      value: "2028-02-29T00:00:00",
+    });
+    expect(parseImportDate("2026-01-15T23:59:59", "ISO")).toEqual({
+      ok: true,
+      value: "2026-01-15T23:59:59",
+    });
+  });
+
+  it("produces equivalent canonical output across supported date orderings", () => {
+    const canonical = "2026-01-15T00:00:00";
+
+    expect(parseImportDate("2026-01-15", "YYYY-MM-DD")).toEqual({ ok: true, value: canonical });
+    expect(parseImportDate("15/01/2026", "DD/MM/YYYY")).toEqual({ ok: true, value: canonical });
+    expect(parseImportDate("01/15/2026", "MM/DD/YYYY")).toEqual({ ok: true, value: canonical });
+    expect(parseImportDate("15-01-2026", "DD-MM-YYYY")).toEqual({ ok: true, value: canonical });
+    expect(parseImportDate("15.01.2026", "DD.MM.YYYY")).toEqual({ ok: true, value: canonical });
+  });
+
+  it("marks impossible preview dates as invalid without payload entries", () => {
+    const content = [
+      "date,amount,type,description",
+      "2026-02-30,12.50,expense,Groceries",
+      "2026-01-15,12.50,expense,Valid row",
+    ].join("\n");
+
+    const preview = buildPreview(content);
+
+    expect(preview.summary.importableRows).toBe(1);
+    expect(preview.summary.invalidRows).toBe(1);
+    expect(preview.transactions).toHaveLength(1);
+    expect(preview.rows[0]).toMatchObject({
+      status: "invalid",
+      message: "Invalid date",
+      transactionDate: "2026-02-30",
+    });
+    expect(preview.rows[1]).toMatchObject({ status: "import" });
   });
 
   it("parses dates without leading zeros", () => {
