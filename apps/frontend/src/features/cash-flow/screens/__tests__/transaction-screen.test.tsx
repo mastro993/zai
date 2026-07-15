@@ -264,6 +264,17 @@ const initialData = {
   ],
 };
 
+const typeSearchQuery = (value: string) => {
+  fireEvent.change(screen.getByPlaceholderText("Search description or notes..."), {
+    target: { value },
+  });
+  vi.advanceTimersByTime(250);
+};
+
+const goToNextPage = () => {
+  fireEvent.click(screen.getByLabelText("Go to next page"));
+};
+
 describe("transaction screen request guard", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -294,17 +305,6 @@ describe("transaction screen request guard", () => {
   });
 
   const renderScreen = () => render(<TransactionScreen initialData={initialData} />);
-
-  const typeSearchQuery = (value: string) => {
-    fireEvent.change(screen.getByPlaceholderText("Search description or notes..."), {
-      target: { value },
-    });
-    vi.advanceTimersByTime(250);
-  };
-
-  const goToNextPage = () => {
-    fireEvent.click(screen.getByLabelText("Go to next page"));
-  };
 
   it("ignores older success after a newer success", async () => {
     transactionState.holdStale = true;
