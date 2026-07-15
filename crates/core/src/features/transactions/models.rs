@@ -3,6 +3,20 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 const ALLOWED_TYPES: &[&str] = &["expense", "income"];
+const MAX_LIST_PAGE_SIZE: i64 = 100;
+
+pub fn validate_list_paging(page: i64, per_page: i64) -> crate::Result<()> {
+    if page < 1 || !(1..=MAX_LIST_PAGE_SIZE).contains(&per_page) {
+        return Err(Error::InvalidData(
+            "Transaction list page must be at least 1 and page size must be between 1 and 100"
+                .to_string(),
+        ));
+    }
+    page.checked_sub(1)
+        .and_then(|value| value.checked_mul(per_page))
+        .ok_or_else(|| Error::InvalidData("Transaction list page is too large".to_string()))?;
+    Ok(())
+}
 
 fn validate_transaction_type(value: &str) -> Result<(), Error> {
     let trimmed = value.trim();
@@ -167,5 +181,30 @@ mod tests {
 
             assert!(result.is_err());
         }
+    }
+
+    #[test]
+    fn list_paging_accepts_boundary_values() {
+        validate_list_paging(1, 1).expect("minimum page size");
+        validate_list_paging(1, 100).expect("maximum page size");
+        validate_list_paging(2, 50).expect("valid offset");
+    }
+
+    #[test]
+    fn list_paging_rejects_invalid_page_values() {
+        assert!(validate_list_paging(0, 50).is_err());
+        assert!(validate_list_paging(-1, 50).is_err());
+    }
+
+    #[test]
+    fn list_paging_rejects_invalid_page_size_values() {
+        assert!(validate_list_paging(1, 0).is_err());
+        assert!(validate_list_paging(1, -1).is_err());
+        assert!(validate_list_paging(1, 101).is_err());
+    }
+
+    #[test]
+    fn list_paging_rejects_offset_overflow() {
+        assert!(validate_list_paging(i64::MAX, 2).is_err());
     }
 }

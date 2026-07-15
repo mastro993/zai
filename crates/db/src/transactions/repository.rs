@@ -228,7 +228,9 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         let page_rows = query
             .select(transactions::all_columns)
             .paginate(page)
+            .into_core()?
             .per_page(per_page)
+            .into_core()?
             .load_page::<TransactionRow>(conn)
             .into_core()?;
 
