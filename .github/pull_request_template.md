@@ -1,8 +1,3 @@
----
-name: Feature
-about: New functionality or enhancement
----
-
 ## Summary
 
 <!-- What does this PR do, and why? Keep it brief. -->
@@ -22,4 +17,3 @@ about: New functionality or enhancement
 ## Preview
 
 <!-- Optional: screenshots, screen recordings, or links to demos. Delete this section if not applicable. -->
-
