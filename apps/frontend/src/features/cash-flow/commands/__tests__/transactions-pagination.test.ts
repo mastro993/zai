@@ -53,3 +53,42 @@ describe("getFilteredTransactionIds", () => {
     expect(invokeDecodedCommandMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("bulk transaction commands stay constant-cost", () => {
+  beforeEach(() => {
+    invokeDecodedCommandMock.mockReset();
+  });
+
+  it("export and duplicate-key lookups use one command each regardless of candidate count", async () => {
+    const { exportTransactionsCsv, findExistingDuplicateKeys } = await import("../transactions");
+
+    invokeDecodedCommandMock
+      .mockResolvedValueOnce(Result.succeed({ csv: "date,amount\n" }))
+      .mockResolvedValueOnce(Result.succeed(["2026-01-15\u00001250\u0000rent"]));
+
+    const exportResult = await exportTransactionsCsv({
+      filters: { query: "rent" },
+    });
+    const duplicateResult = await findExistingDuplicateKeys(
+      Array.from({ length: 250 }, (_, index) => ({
+        transactionDate: "2026-01-15T12:00:00",
+        amount: 1000 + index,
+        description: `row-${index}`,
+      })),
+    );
+
+    expect(Result.isSuccess(exportResult)).toBe(true);
+    expect(Result.isSuccess(duplicateResult)).toBe(true);
+    expect(invokeDecodedCommandMock).toHaveBeenCalledTimes(2);
+    expect(invokeDecodedCommandMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ name: "export_transactions_csv" }),
+      expect.anything(),
+    );
+    expect(invokeDecodedCommandMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ name: "find_existing_duplicate_keys" }),
+      expect.anything(),
+    );
+  });
+});
