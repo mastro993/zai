@@ -2,6 +2,7 @@ import { CommandError } from "./errors";
 import type { CommandArgs } from "./types";
 import { joinWebApiUrl, resolveWebApiOrigin } from "./web-api";
 import { ALERT_COMMANDS, buildAlertCommandRequestSpec } from "./alerts-web-command-map";
+import { flattenTransactionFiltersBody } from "./transaction-filter-body";
 
 export const CASH_FLOW_API_PREFIX = "api/cash-flow";
 export const ALERTS_API_PREFIX = "api";
@@ -89,27 +90,18 @@ export const buildTransactionsListQuery = (args: CommandArgs = {}): string => {
   params.set("perPage", String(readNumber(args.perPage, 50)));
 
   const filters = readRecord(args.filters);
-  if (filters?.query && typeof filters.query === "string") {
-    params.set("query", filters.query);
-  }
-  if (filters?.transactionType && typeof filters.transactionType === "string") {
-    params.set("transactionType", filters.transactionType);
-  }
-  if (filters?.startDate && typeof filters.startDate === "string") {
-    params.set("startDate", filters.startDate);
-  }
-  if (filters?.endDate && typeof filters.endDate === "string") {
-    params.set("endDate", filters.endDate);
-  }
-  if (Array.isArray(filters?.categories)) {
-    if (filters.categories.length === 0) {
-      params.set("uncategorized", "true");
-    } else {
-      for (const categoryId of filters.categories) {
+  const flatFilters = flattenTransactionFiltersBody(filters);
+  for (const [key, value] of Object.entries(flatFilters)) {
+    if (key === "categories" && Array.isArray(value)) {
+      for (const categoryId of value) {
         if (typeof categoryId === "string") {
           params.append("categoryId", categoryId);
         }
       }
+      continue;
+    }
+    if (typeof value === "string") {
+      params.set(key, value);
     }
   }
 
@@ -201,6 +193,45 @@ export const buildWebRequestSpec = (command: string, args: CommandArgs = {}): We
       return {
         method: "GET",
         path: search ? `/transactions?${search}` : "/transactions",
+      };
+    }
+    case "get_filtered_transaction_ids": {
+      const filters = flattenTransactionFiltersBody(readRecord(args.filters));
+      const sort = readRecord(args.sort);
+      return {
+        method: "POST",
+        path: "/transactions/ids",
+        body: {
+          ...filters,
+          ...(sort?.field && typeof sort.field === "string"
+            ? { sortField: sort.field, sortDesc: sort.desc === true }
+            : {}),
+        },
+      };
+    }
+    case "export_transactions_csv": {
+      const request = readRecord(args.request) ?? args;
+      const filters = flattenTransactionFiltersBody(readRecord(request.filters));
+      const transactionIds = readStringArray(request.transactionIds);
+      return {
+        method: "POST",
+        path: "/transactions/export",
+        body: {
+          ...filters,
+          ...(transactionIds ? { transactionIds } : {}),
+        },
+      };
+    }
+    case "find_existing_duplicate_keys": {
+      const request = readRecord(args.request) ?? args;
+      const candidates = request.candidates;
+      if (!Array.isArray(candidates)) {
+        throw new CommandError("find_existing_duplicate_keys requires candidates");
+      }
+      return {
+        method: "POST",
+        path: "/transactions/duplicate-keys",
+        body: { candidates },
       };
     }
     case "get_transaction": {

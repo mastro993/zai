@@ -3,7 +3,8 @@ use crate::features::transaction_categories::models::{
     NewTransactionCategory, TransactionCategory,
 };
 use crate::features::transactions::models::{
-    NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate, validate_list_paging,
+    DuplicateKeyCandidate, NewTransaction, Transaction, TransactionSearchFilters,
+    TransactionUpdate, validate_list_paging,
 };
 use crate::features::transactions::traits::{
     TransactionsRepositoryTrait, TransactionsServiceTrait,
@@ -38,6 +39,30 @@ impl TransactionsServiceTrait for TransactionsService {
 
     fn get_transaction(&self, id: &str) -> Result<Transaction> {
         self.repository.get_transaction(id)
+    }
+
+    fn get_filtered_transaction_ids(
+        &self,
+        filters: Option<TransactionSearchFilters>,
+        sort: Option<Sort>,
+    ) -> Result<Vec<String>> {
+        self.repository.get_filtered_transaction_ids(filters, sort)
+    }
+
+    fn export_transactions_csv(
+        &self,
+        filters: Option<TransactionSearchFilters>,
+        transaction_ids: Option<Vec<String>>,
+    ) -> Result<String> {
+        self.repository
+            .export_transactions_csv(filters, transaction_ids)
+    }
+
+    fn find_existing_duplicate_keys(
+        &self,
+        candidates: Vec<DuplicateKeyCandidate>,
+    ) -> Result<Vec<String>> {
+        self.repository.find_existing_duplicate_keys(candidates)
     }
 
     async fn create_transaction(&self, mut new_transaction: NewTransaction) -> Result<Transaction> {
@@ -109,6 +134,7 @@ mod tests {
     use super::*;
     use crate::errors::Error;
     use crate::features::transactions::dedup::duplicate_key;
+    use crate::features::transactions::models::DuplicateKeyCandidate;
     use chrono::NaiveDateTime;
     use std::sync::Mutex;
 
@@ -117,6 +143,9 @@ mod tests {
         existing_in_range: Mutex<Vec<Transaction>>,
         imported_batches: Mutex<Vec<Vec<NewTransaction>>>,
         list_calls: Mutex<u32>,
+        filtered_ids: Mutex<Vec<String>>,
+        export_csv: Mutex<Option<String>>,
+        existing_duplicate_keys: Mutex<Vec<String>>,
     }
 
     impl FakeRepository {
@@ -125,6 +154,9 @@ mod tests {
                 existing_in_range: Mutex::new(existing),
                 imported_batches: Mutex::new(Vec::new()),
                 list_calls: Mutex::new(0),
+                filtered_ids: Mutex::new(Vec::new()),
+                export_csv: Mutex::new(None),
+                existing_duplicate_keys: Mutex::new(Vec::new()),
             }
         }
     }
@@ -144,6 +176,49 @@ mod tests {
 
         fn get_transaction(&self, _id: &str) -> Result<Transaction> {
             Err(Error::InvalidData("unused in test".to_string()))
+        }
+
+        fn get_filtered_transaction_ids(
+            &self,
+            _filters: Option<TransactionSearchFilters>,
+            _sort: Option<Sort>,
+        ) -> Result<Vec<String>> {
+            Ok(self.filtered_ids.lock().unwrap().clone())
+        }
+
+        fn export_transactions_csv(
+            &self,
+            _filters: Option<TransactionSearchFilters>,
+            _transaction_ids: Option<Vec<String>>,
+        ) -> Result<String> {
+            Ok(self.export_csv.lock().unwrap().clone().unwrap_or_default())
+        }
+
+        fn find_existing_duplicate_keys(
+            &self,
+            candidates: Vec<DuplicateKeyCandidate>,
+        ) -> Result<Vec<String>> {
+            if candidates.is_empty() {
+                return Ok(Vec::new());
+            }
+
+            let existing = self.existing_duplicate_keys.lock().unwrap().clone();
+            let existing_set = existing
+                .iter()
+                .cloned()
+                .collect::<std::collections::HashSet<_>>();
+
+            Ok(candidates
+                .into_iter()
+                .filter_map(|candidate| {
+                    let key = duplicate_key(
+                        candidate.transaction_date,
+                        candidate.amount,
+                        candidate.description.as_deref(),
+                    );
+                    existing_set.contains(&key).then_some(key)
+                })
+                .collect())
         }
 
         async fn create_transaction(
@@ -288,5 +363,67 @@ mod tests {
 
         assert!(matches!(result, Err(Error::InvalidData(_))));
         assert_eq!(*repository.list_calls.lock().unwrap(), 0);
+    }
+
+    #[test]
+    fn get_filtered_transaction_ids_delegates_to_repository() {
+        let repository = Arc::new(FakeRepository::default());
+        repository
+            .filtered_ids
+            .lock()
+            .unwrap()
+            .extend(["a".to_string(), "b".to_string()]);
+        let service = TransactionsService::new(repository);
+
+        let ids = service
+            .get_filtered_transaction_ids(None, None)
+            .expect("filtered ids");
+
+        assert_eq!(ids, vec!["a".to_string(), "b".to_string()]);
+    }
+
+    #[test]
+    fn find_existing_duplicate_keys_returns_empty_for_empty_candidates() {
+        let repository = Arc::new(FakeRepository::default());
+        let service = TransactionsService::new(repository);
+
+        let keys = service
+            .find_existing_duplicate_keys(Vec::new())
+            .expect("duplicate keys");
+
+        assert!(keys.is_empty());
+    }
+
+    #[test]
+    fn find_existing_duplicate_keys_returns_only_existing_keys() {
+        let repository = Arc::new(FakeRepository::default());
+        repository
+            .existing_duplicate_keys
+            .lock()
+            .unwrap()
+            .push(duplicate_key(
+                parse_datetime("2026-01-15T08:30:00"),
+                1250,
+                Some("groceries"),
+            ));
+        let service = TransactionsService::new(repository);
+
+        let keys = service
+            .find_existing_duplicate_keys(vec![
+                DuplicateKeyCandidate {
+                    transaction_date: parse_datetime("2026-01-15T20:45:00"),
+                    amount: 1250,
+                    description: Some(" Groceries ".to_string()),
+                },
+                DuplicateKeyCandidate {
+                    transaction_date: parse_datetime("2026-01-16T08:30:00"),
+                    amount: 900,
+                    description: Some("Coffee".to_string()),
+                },
+            ])
+            .expect("duplicate keys");
+
+        assert_eq!(keys.len(), 1);
+        assert_eq!(keys[0], "2026-01-15\u{0000}1250\u{0000}groceries");
     }
 }

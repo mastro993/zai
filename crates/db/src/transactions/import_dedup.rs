@@ -9,15 +9,29 @@ use super::models::TransactionRow;
 pub(crate) fn import_half_open_date_range(
     transactions: &[NewTransaction],
 ) -> (NaiveDateTime, NaiveDateTime) {
-    let mut min_date = transactions[0].transaction_date;
-    let mut max_date = transactions[0].transaction_date;
+    let dates = transactions
+        .iter()
+        .map(|transaction| transaction.transaction_date)
+        .collect::<Vec<_>>();
+    half_open_date_range_from_dates(&dates).expect("non-empty transactions slice")
+}
 
-    for transaction in transactions.iter().skip(1) {
-        if transaction.transaction_date < min_date {
-            min_date = transaction.transaction_date;
+pub(crate) fn half_open_date_range_from_dates(
+    dates: &[NaiveDateTime],
+) -> Option<(NaiveDateTime, NaiveDateTime)> {
+    if dates.is_empty() {
+        return None;
+    }
+
+    let mut min_date = dates[0];
+    let mut max_date = dates[0];
+
+    for transaction_date in dates.iter().skip(1) {
+        if *transaction_date < min_date {
+            min_date = *transaction_date;
         }
-        if transaction.transaction_date > max_date {
-            max_date = transaction.transaction_date;
+        if *transaction_date > max_date {
+            max_date = *transaction_date;
         }
     }
 
@@ -29,7 +43,7 @@ pub(crate) fn import_half_open_date_range(
     let range_end_exclusive =
         next_day.unwrap_or_else(|| max_date.date().and_hms_opt(23, 59, 59).unwrap_or(max_date));
 
-    (range_start, range_end_exclusive)
+    Some((range_start, range_end_exclusive))
 }
 
 pub(crate) fn filter_import_duplicates(

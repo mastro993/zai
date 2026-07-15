@@ -13,7 +13,7 @@ import {
   createTransaction,
   deleteTransaction,
   deleteTransactions,
-  getAllTransactions,
+  getFilteredTransactionIds,
   getTransactions,
   type TransactionFilters,
   updateTransaction,
@@ -337,37 +337,9 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
     setIsExporting(true);
     const isSelectedExport = selectedCount > 0;
 
-    let transactionsToExport: Array<Transaction>;
-
-    if (isSelectedExport) {
-      const allTransactionsResult = await getAllTransactions();
-
-      if (Result.isFailure(allTransactionsResult)) {
-        toast.error("Failed to export selected transactions", {
-          description: allTransactionsResult.error.message,
-        });
-        setIsExporting(false);
-        return;
-      }
-
-      transactionsToExport = allTransactionsResult.value.filter((transaction) =>
-        selectedIds.has(transaction.id),
-      );
-    } else {
-      const filteredTransactionsResult = await getAllTransactions(activeFilters);
-
-      if (Result.isFailure(filteredTransactionsResult)) {
-        toast.error("Failed to export transactions", {
-          description: filteredTransactionsResult.error.message,
-        });
-        setIsExporting(false);
-        return;
-      }
-
-      transactionsToExport = filteredTransactionsResult.value;
-    }
-
-    const result = await exportTransactions(transactionsToExport, categories);
+    const result = isSelectedExport
+      ? await exportTransactions({ transactionIds: [...selectedIds] })
+      : await exportTransactions({ filters: activeFilters });
 
     if (Result.isFailure(result)) {
       toast.error(
@@ -417,17 +389,17 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
   const selectAllMatchingTransactions = async () => {
     setIsSelectingAllMatching(true);
 
-    const transactionsResult = await getAllTransactions(activeFilters);
+    const idsResult = await getFilteredTransactionIds(activeFilters);
 
-    if (Result.isFailure(transactionsResult)) {
+    if (Result.isFailure(idsResult)) {
       toast.error("Failed to select matching transactions", {
-        description: transactionsResult.error.message,
+        description: idsResult.error.message,
       });
       setIsSelectingAllMatching(false);
       return;
     }
 
-    applySelectAllMatching(transactionsResult.value, activeFilters);
+    applySelectAllMatching(idsResult.value, activeFilters);
     setIsSelectingAllMatching(false);
   };
 

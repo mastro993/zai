@@ -9,7 +9,7 @@ import {
   type TransactionImportDateFormat,
   type TransactionImportPreviewOptions,
 } from "../transaction-import";
-import type { Transaction, TransactionCategory } from "../../types/model";
+import type { TransactionCategory } from "../../types/model";
 
 const makeIdFactory = () => {
   let nextId = 1;
@@ -31,7 +31,7 @@ const buildPreview = (content: string, options: Partial<TransactionImportPreview
     expenseTypeValues: "expense, debit",
     incomeTypeValues: "income, credit",
     existingCategories: [],
-    existingTransactions: [],
+    existingDuplicateKeys: [],
     createId: makeIdFactory(),
     ...options,
   });
@@ -208,19 +208,9 @@ describe("transaction import", () => {
     const content = ["date,amount,type,description", "2026-01-15,12.50,expense,Groceries"].join(
       "\n",
     );
-    const existingTransactions: Array<Transaction> = [
-      {
-        id: "existing",
-        description: "Groceries",
-        amount: 1250,
-        transactionDate: "2026-01-15T08:30:00",
-        transactionType: "expense",
-        transactionCategoryId: null,
-        notes: null,
-      },
-    ];
+    const existingDuplicateKeys = ["2026-01-15\u00001250\u0000groceries"];
 
-    const preview = buildPreview(content, { existingTransactions });
+    const preview = buildPreview(content, { existingDuplicateKeys });
 
     expect(preview.summary.duplicateRows).toBe(1);
     expect(preview.transactions).toHaveLength(0);
@@ -234,30 +224,14 @@ describe("transaction import", () => {
       "2026-04-02T09:00:00,-7.00,expense,",
     ].join("\n");
 
-    const existingTransactions: Array<Transaction> = [
-      {
-        id: "existing-1",
-        description: "groceries",
-        amount: 1250,
-        transactionDate: "2026-01-15T00:00:00",
-        transactionType: "expense",
-        transactionCategoryId: null,
-        notes: null,
-      },
-      {
-        id: "existing-2",
-        description: null,
-        amount: 700,
-        transactionDate: "2026-04-02T14:00:00",
-        transactionType: "expense",
-        transactionCategoryId: null,
-        notes: null,
-      },
+    const existingDuplicateKeys = [
+      "2026-01-15\u00001250\u0000groceries",
+      "2026-04-02\u0000700\u0000",
     ];
 
     const preview = buildPreview(content, {
       dateFormat: "ISO",
-      existingTransactions,
+      existingDuplicateKeys,
     });
 
     expect(preview.summary.duplicateRows).toBe(3);

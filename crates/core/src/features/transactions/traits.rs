@@ -2,7 +2,8 @@ use crate::{
     errors::Result,
     features::transaction_categories::models::{NewTransactionCategory, TransactionCategory},
     features::transactions::models::{
-        NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
+        DuplicateKeyCandidate, NewTransaction, Transaction, TransactionSearchFilters,
+        TransactionUpdate,
     },
     query::{PaginatedData, Sort},
 };
@@ -18,6 +19,20 @@ pub trait TransactionsRepositoryTrait: Send + Sync {
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>>;
     fn get_transaction(&self, id: &str) -> Result<Transaction>;
+    fn get_filtered_transaction_ids(
+        &self,
+        filters: Option<TransactionSearchFilters>,
+        sort: Option<Sort>,
+    ) -> Result<Vec<String>>;
+    fn export_transactions_csv(
+        &self,
+        filters: Option<TransactionSearchFilters>,
+        transaction_ids: Option<Vec<String>>,
+    ) -> Result<String>;
+    fn find_existing_duplicate_keys(
+        &self,
+        candidates: Vec<DuplicateKeyCandidate>,
+    ) -> Result<Vec<String>>;
 
     async fn create_transaction(&self, new_transaction: NewTransaction) -> Result<Transaction>;
     async fn update_transaction(
@@ -49,6 +64,20 @@ pub trait TransactionsServiceTrait: Send + Sync {
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>>;
     fn get_transaction(&self, id: &str) -> Result<Transaction>;
+    fn get_filtered_transaction_ids(
+        &self,
+        filters: Option<TransactionSearchFilters>,
+        sort: Option<Sort>,
+    ) -> Result<Vec<String>>;
+    fn export_transactions_csv(
+        &self,
+        filters: Option<TransactionSearchFilters>,
+        transaction_ids: Option<Vec<String>>,
+    ) -> Result<String>;
+    fn find_existing_duplicate_keys(
+        &self,
+        candidates: Vec<DuplicateKeyCandidate>,
+    ) -> Result<Vec<String>>;
 
     async fn create_transaction(&self, new_category: NewTransaction) -> Result<Transaction>;
     async fn update_transaction(&self, category: TransactionUpdate) -> Result<Transaction>;

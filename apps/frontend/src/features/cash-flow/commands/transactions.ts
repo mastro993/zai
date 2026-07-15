@@ -1,5 +1,3 @@
-import { Result } from "@praha/byethrow";
-
 import { invokeDecodedCommand } from "@/commands/shared";
 import type { CommandResult } from "@/commands/shared";
 
@@ -57,36 +55,40 @@ export const getTransactions = (
   });
 };
 
-const IMPORT_DEDUP_PAGE_SIZE = 100;
-
-export const getAllTransactions = async (
+export const getFilteredTransactionIds = (
   filters?: TransactionFilters,
-): CommandResult<Array<Transaction>> => {
-  const firstResult = await getTransactions(1, IMPORT_DEDUP_PAGE_SIZE, filters);
+  sort?: TransactionSort,
+): CommandResult<Array<string>> => {
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.get_filtered_transaction_ids, {
+    filters: filters ?? null,
+    sort: sort ?? null,
+  });
+};
 
-  if (Result.isFailure(firstResult)) {
-    return firstResult;
-  }
+export type DuplicateKeyCandidate = {
+  transactionDate: string;
+  amount: number;
+  description?: string | null;
+};
 
-  const allTransactions = [...firstResult.value.data];
+export const findExistingDuplicateKeys = (
+  candidates: Array<DuplicateKeyCandidate>,
+): CommandResult<Array<string>> => {
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.find_existing_duplicate_keys, {
+    request: { candidates },
+  });
+};
 
-  if (firstResult.value.totalPages > 1) {
-    const pageResults = await Promise.all(
-      Array.from({ length: firstResult.value.totalPages - 1 }, (_, index) =>
-        getTransactions(index + 2, firstResult.value.perPage, filters),
-      ),
-    );
-
-    for (const pageResult of pageResults) {
-      if (Result.isFailure(pageResult)) {
-        return pageResult;
-      }
-
-      allTransactions.push(...pageResult.value.data);
-    }
-  }
-
-  return Result.succeed(allTransactions);
+export const exportTransactionsCsv = (options?: {
+  filters?: TransactionFilters;
+  transactionIds?: Array<string>;
+}): CommandResult<{ csv: string }> => {
+  return invokeDecodedCommand(CASH_FLOW_COMMANDS.export_transactions_csv, {
+    request: {
+      filters: options?.filters ?? null,
+      transactionIds: options?.transactionIds ?? null,
+    },
+  });
 };
 
 export const createTransaction = (values: TransactionFormValues): CommandResult<Transaction> => {

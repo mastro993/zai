@@ -3,7 +3,6 @@ import { useCallback, useState } from "react";
 import type { TransactionFilters } from "../commands/transactions";
 import {
   getPageCheckboxState,
-  idsFromTransactions,
   selectRangeOnPage,
   serializeTransactionFilters,
   togglePageInSelection,
@@ -23,7 +22,7 @@ type UseTransactionSelectionResult = {
   toggleRow: (transaction: Transaction, selected: boolean, shiftKey: boolean) => void;
   togglePage: (transactions: Array<Transaction>, selectAll: boolean) => void;
   applySelectAllMatching: (
-    transactions: Array<Transaction>,
+    transactionIds: Array<string>,
     filters: TransactionFilters | undefined,
   ) => void;
   removeFromSelection: (transactionId: string) => void;
@@ -84,10 +83,10 @@ export function useTransactionSelection(
   }, []);
 
   const applySelectAllMatching = useCallback(
-    (transactions: Array<Transaction>, filters: TransactionFilters | undefined) => {
+    (transactionIds: Array<string>, filters: TransactionFilters | undefined) => {
       const fingerprint = serializeTransactionFilters(filters);
 
-      setSelectedIds(idsFromTransactions(transactions));
+      setSelectedIds(new Set(transactionIds));
       setSelectAllMatching(true);
       setMatchingFingerprint(fingerprint);
       setLastAnchorId(null);

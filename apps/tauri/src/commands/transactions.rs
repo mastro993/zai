@@ -7,7 +7,8 @@ use tauri::State;
 use zai_app::ServiceContext;
 use zai_core::features::transaction_categories::models::NewTransactionCategory;
 use zai_core::features::transactions::models::{
-    NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
+    DuplicateKeyCandidate, NewTransaction, Transaction, TransactionCsvExportResponse,
+    TransactionSearchFilters, TransactionUpdate,
 };
 use zai_core::query::{PaginatedData, Sort};
 
@@ -36,6 +37,68 @@ impl TransactionSearchFiltersDto {
             end_date: self.end_date,
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionCsvExportRequestDto {
+    pub filters: Option<TransactionSearchFiltersDto>,
+    pub transaction_ids: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FindExistingDuplicateKeysRequestDto {
+    pub candidates: Vec<DuplicateKeyCandidate>,
+}
+
+#[tauri::command]
+pub async fn get_filtered_transaction_ids(
+    filters: Option<TransactionSearchFiltersDto>,
+    sort: Option<Sort>,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<Vec<String>> {
+    debug!("Getting filtered transaction ids ...");
+    let filters = filters
+        .as_ref()
+        .map(TransactionSearchFiltersDto::as_filters);
+    state
+        .transactions_service()
+        .get_filtered_transaction_ids(filters, sort)
+        .map_err(|error| command_error("Failed to load filtered transaction ids", error))
+}
+
+#[tauri::command]
+pub async fn export_transactions_csv(
+    request: TransactionCsvExportRequestDto,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<TransactionCsvExportResponse> {
+    debug!("Exporting transactions to CSV ...");
+    let filters = request
+        .filters
+        .as_ref()
+        .map(TransactionSearchFiltersDto::as_filters);
+    let csv = state
+        .transactions_service()
+        .export_transactions_csv(filters, request.transaction_ids)
+        .map_err(|error| command_error("Failed to export transactions", error))?;
+
+    Ok(TransactionCsvExportResponse { csv })
+}
+
+#[tauri::command]
+pub async fn find_existing_duplicate_keys(
+    request: FindExistingDuplicateKeysRequestDto,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<Vec<String>> {
+    debug!(
+        "Finding existing duplicate keys for {} candidates ...",
+        request.candidates.len()
+    );
+    state
+        .transactions_service()
+        .find_existing_duplicate_keys(request.candidates)
+        .map_err(|error| command_error("Failed to find existing duplicate keys", error))
 }
 
 #[tauri::command]

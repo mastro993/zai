@@ -29,7 +29,7 @@ const buildPreview = (content: string, options: Partial<TransactionImportPreview
     expenseTypeValues: "expense, debit",
     incomeTypeValues: "income, credit",
     existingCategories: [],
-    existingTransactions: [],
+    existingDuplicateKeys: [],
     createId: makeIdFactory(),
     ...options,
   });

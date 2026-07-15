@@ -12,7 +12,8 @@ use serde::Deserialize;
 use zai_app::ServiceContext;
 use zai_core::features::transaction_categories::models::NewTransactionCategory;
 use zai_core::features::transactions::models::{
-    NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
+    DuplicateKeyCandidate, NewTransaction, Transaction, TransactionCsvExportResponse,
+    TransactionSearchFilters, TransactionUpdate,
 };
 use zai_core::query::{PaginatedData, Sort};
 
@@ -132,29 +133,61 @@ struct ImportBatchBody {
     transactions: Vec<NewTransaction>,
 }
 
-type TransactionResult<T> = Result<T, (StatusCode, Json<crate::api::error::ApiError>)>;
-
-fn is_uncategorized(value: &Option<String>) -> bool {
-    value.as_deref() == Some("true")
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FilteredTransactionIdsBody {
+    query: Option<String>,
+    categories: Option<Vec<String>>,
+    transaction_type: Option<String>,
+    start_date: Option<NaiveDateTime>,
+    end_date: Option<NaiveDateTime>,
+    uncategorized: Option<String>,
+    sort_field: Option<String>,
+    sort_desc: Option<bool>,
 }
 
-fn list_query_to_filters(
-    query: &ListTransactionsQuery,
-) -> Result<Option<TransactionSearchFilters<'_>>, (StatusCode, Json<crate::api::error::ApiError>)> {
-    let uncategorized = is_uncategorized(&query.uncategorized);
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TransactionCsvExportBody {
+    query: Option<String>,
+    categories: Option<Vec<String>>,
+    transaction_type: Option<String>,
+    start_date: Option<NaiveDateTime>,
+    end_date: Option<NaiveDateTime>,
+    uncategorized: Option<String>,
+    transaction_ids: Option<Vec<String>>,
+}
 
-    if uncategorized && !query.category_ids.is_empty() {
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FindExistingDuplicateKeysBody {
+    candidates: Vec<DuplicateKeyCandidate>,
+}
+
+type TransactionResult<T> = Result<T, (StatusCode, Json<crate::api::error::ApiError>)>;
+
+fn body_to_filters<'a>(
+    query: Option<&'a str>,
+    categories: Option<&'a [String]>,
+    transaction_type: Option<&'a str>,
+    start_date: Option<NaiveDateTime>,
+    end_date: Option<NaiveDateTime>,
+    uncategorized: Option<&'a str>,
+) -> Result<Option<TransactionSearchFilters<'a>>, (StatusCode, Json<crate::api::error::ApiError>)> {
+    let uncategorized = uncategorized == Some("true");
+
+    if uncategorized && categories.is_some_and(|ids| !ids.is_empty()) {
         return Err(bad_request(
             "Choose either category filters or uncategorized only",
         ));
     }
 
-    let has_filter = query.query.is_some()
-        || query.transaction_type.is_some()
-        || query.start_date.is_some()
-        || query.end_date.is_some()
+    let has_filter = query.is_some()
+        || transaction_type.is_some()
+        || start_date.is_some()
+        || end_date.is_some()
         || uncategorized
-        || !query.category_ids.is_empty();
+        || categories.is_some_and(|ids| !ids.is_empty());
 
     if !has_filter {
         return Ok(None);
@@ -162,25 +195,32 @@ fn list_query_to_filters(
 
     let categories = if uncategorized {
         Some(Vec::new())
-    } else if query.category_ids.is_empty() {
+    } else if categories.is_some_and(|ids| ids.is_empty()) {
         None
     } else {
-        Some(
-            query
-                .category_ids
-                .iter()
-                .map(String::as_str)
-                .collect::<Vec<_>>(),
-        )
+        categories.map(|ids| ids.iter().map(String::as_str).collect::<Vec<_>>())
     };
 
     Ok(Some(TransactionSearchFilters {
-        query: query.query.as_deref(),
+        query,
         categories,
-        transaction_type: query.transaction_type.as_deref(),
-        start_date: query.start_date,
-        end_date: query.end_date,
+        transaction_type,
+        start_date,
+        end_date,
     }))
+}
+
+fn list_query_to_filters(
+    query: &ListTransactionsQuery,
+) -> Result<Option<TransactionSearchFilters<'_>>, (StatusCode, Json<crate::api::error::ApiError>)> {
+    body_to_filters(
+        query.query.as_deref(),
+        Some(&query.category_ids),
+        query.transaction_type.as_deref(),
+        query.start_date,
+        query.end_date,
+        query.uncategorized.as_deref(),
+    )
 }
 
 fn list_query_to_sort(query: &ListTransactionsQuery) -> Option<Sort> {
@@ -242,6 +282,9 @@ where
 pub fn router() -> Router<Arc<ServiceContext>> {
     Router::new()
         .route("/", get(list_transactions).post(create_transaction))
+        .route("/ids", post(get_filtered_transaction_ids))
+        .route("/export", post(export_transactions_csv))
+        .route("/duplicate-keys", post(find_existing_duplicate_keys))
         .route("/bulk-delete", post(bulk_delete_transactions))
         .route("/import", post(import_transactions))
         .route("/import-batch", post(import_transaction_batch))
@@ -265,6 +308,65 @@ async fn list_transactions(
         .get_transactions(query.page, query.per_page, filters, sort)
         .map(Json)
         .map_err(|error| command_error("Failed to load transactions", error))
+}
+
+async fn get_filtered_transaction_ids(
+    State(context): State<Arc<ServiceContext>>,
+    body: Result<Json<FilteredTransactionIdsBody>, JsonRejection>,
+) -> TransactionResult<Json<Vec<String>>> {
+    let Json(payload) = parse_json(body)?;
+    let filters = body_to_filters(
+        payload.query.as_deref(),
+        payload.categories.as_deref(),
+        payload.transaction_type.as_deref(),
+        payload.start_date,
+        payload.end_date,
+        payload.uncategorized.as_deref(),
+    )?;
+    let sort = payload.sort_field.as_ref().map(|field| Sort {
+        field: field.clone(),
+        desc: payload.sort_desc.unwrap_or(false),
+    });
+
+    context
+        .transactions_service()
+        .get_filtered_transaction_ids(filters, sort)
+        .map(Json)
+        .map_err(|error| command_error("Failed to load filtered transaction ids", error))
+}
+
+async fn export_transactions_csv(
+    State(context): State<Arc<ServiceContext>>,
+    body: Result<Json<TransactionCsvExportBody>, JsonRejection>,
+) -> TransactionResult<Json<TransactionCsvExportResponse>> {
+    let Json(payload) = parse_json(body)?;
+    let filters = body_to_filters(
+        payload.query.as_deref(),
+        payload.categories.as_deref(),
+        payload.transaction_type.as_deref(),
+        payload.start_date,
+        payload.end_date,
+        payload.uncategorized.as_deref(),
+    )?;
+    let csv = context
+        .transactions_service()
+        .export_transactions_csv(filters, payload.transaction_ids)
+        .map_err(|error| command_error("Failed to export transactions", error))?;
+
+    Ok(Json(TransactionCsvExportResponse { csv }))
+}
+
+async fn find_existing_duplicate_keys(
+    State(context): State<Arc<ServiceContext>>,
+    body: Result<Json<FindExistingDuplicateKeysBody>, JsonRejection>,
+) -> TransactionResult<Json<Vec<String>>> {
+    let Json(payload) = parse_json(body)?;
+
+    context
+        .transactions_service()
+        .find_existing_duplicate_keys(payload.candidates)
+        .map(Json)
+        .map_err(|error| command_error("Failed to find existing duplicate keys", error))
 }
 
 async fn get_transaction(
