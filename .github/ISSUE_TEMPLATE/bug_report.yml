@@ -1,0 +1,71 @@
+name: Bug Report
+description: Report incorrect or broken behavior
+title: "[Bug]: "
+labels: ["needs-triage", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Include enough detail for someone to reproduce it locally.
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: Where does this happen?
+      options:
+        - Desktop (Tauri)
+        - Web (Axum server)
+        - Both
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: App version, git commit, or "main" if unsure.
+      placeholder: e.g. 0.1.0 or abc1234
+    validations:
+      required: false
+
+  - type: textarea
+    id: repro-steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps from a clean start. Include commands when relevant.
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Redact financial data and secrets. Paste errors or attach screenshots.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+    validations:
+      required: false
