@@ -24,20 +24,21 @@ impl TransactionsService {
 
 #[async_trait::async_trait]
 impl TransactionsServiceTrait for TransactionsService {
-    fn get_transactions(
+    async fn get_transactions(
         &self,
         page: i64,
         per_page: i64,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>> {
         validate_list_paging(page, per_page)?;
         self.repository
             .get_transactions(page, per_page, filters, sort)
+            .await
     }
 
-    fn get_transaction(&self, id: &str) -> Result<Transaction> {
-        self.repository.get_transaction(id)
+    async fn get_transaction(&self, id: &str) -> Result<Transaction> {
+        self.repository.get_transaction(id).await
     }
 
     async fn create_transaction(&self, mut new_transaction: NewTransaction) -> Result<Transaction> {
@@ -131,18 +132,18 @@ mod tests {
 
     #[async_trait::async_trait]
     impl TransactionsRepositoryTrait for FakeRepository {
-        fn get_transactions(
+        async fn get_transactions(
             &self,
             _page: i64,
             _per_page: i64,
-            _filters: Option<TransactionSearchFilters>,
+            _filters: Option<TransactionSearchFilters<'_>>,
             _sort: Option<Sort>,
         ) -> Result<PaginatedData<Transaction>> {
             *self.list_calls.lock().unwrap() += 1;
             Err(Error::InvalidData("unused in test".to_string()))
         }
 
-        fn get_transaction(&self, _id: &str) -> Result<Transaction> {
+        async fn get_transaction(&self, _id: &str) -> Result<Transaction> {
             Err(Error::InvalidData("unused in test".to_string()))
         }
 
@@ -279,12 +280,12 @@ mod tests {
         NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S").expect("valid datetime")
     }
 
-    #[test]
-    fn get_transactions_rejects_invalid_paging_before_repository() {
+    #[tokio::test]
+    async fn get_transactions_rejects_invalid_paging_before_repository() {
         let repository = Arc::new(FakeRepository::default());
         let service = TransactionsService::new(repository.clone());
 
-        let result = service.get_transactions(0, 50, None, None);
+        let result = service.get_transactions(0, 50, None, None).await;
 
         assert!(matches!(result, Err(Error::InvalidData(_))));
         assert_eq!(*repository.list_calls.lock().unwrap(), 0);

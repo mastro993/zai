@@ -3,6 +3,7 @@ use super::validation::{
     apply_resolved_parent, apply_resolved_parent_to_changeset, map_category_unique_violation,
     validate_category_update, validate_new_category,
 };
+use crate::blocking::run_blocking;
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_budgets_by_ids};
 use crate::budgets::category_impact::{affected_budgets_for_update, analyze_deletion};
 use crate::budgets::projection::{rebuild_budget_projections, refresh_active_budget_projections};
@@ -96,105 +97,119 @@ impl TransactionCategoriesRepository {
 
 #[async_trait]
 impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
-    fn get_categories(&self, parent_id: Option<&str>) -> Result<Vec<TransactionCategory>> {
-        let conn = &mut get_connection(&self.pool)?;
+    async fn get_categories(&self, parent_id: Option<&str>) -> Result<Vec<TransactionCategory>> {
+        let pool = Arc::clone(&self.pool);
+        let parent_id = parent_id.map(str::to_owned);
+        run_blocking(move || {
+            let conn = &mut get_connection(&pool)?;
 
-        let parent_categories = diesel::alias!(transaction_categories as parent_categories);
-        let mut query = transaction_categories::table
-            .left_join(
-                parent_categories.on(
-                    // Compare the child's parent_id with the aliased parent's id.
-                    // We use .nullable() to match the types, as parent_id is nullable.
-                    transaction_categories::parent_id.eq(parent_categories
+            let parent_categories = diesel::alias!(transaction_categories as parent_categories);
+            let mut query = transaction_categories::table
+                .left_join(
+                    parent_categories.on(transaction_categories::parent_id.eq(parent_categories
                         .field(transaction_categories::id)
-                        .nullable()),
-                ),
-            )
-            .filter(transaction_categories::deleted_at.is_null())
-            .into_boxed();
+                        .nullable())),
+                )
+                .filter(transaction_categories::deleted_at.is_null())
+                .into_boxed();
 
-        if let Some(ref pid) = parent_id {
-            query = query.filter(transaction_categories::parent_id.eq(pid));
-        }
+            if let Some(ref pid) = parent_id {
+                query = query.filter(transaction_categories::parent_id.eq(pid));
+            }
 
-        let results = query
-            .load::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)
-            .into_core()?;
+            let results = query
+                .load::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)
+                .into_core()?;
 
-        let categories = results
-            .into_iter()
-            .map(|(row, parent_row)| category_from_rows(row, parent_row))
-            .collect::<crate::errors::Result<Vec<_>>>()?;
+            let categories = results
+                .into_iter()
+                .map(|(row, parent_row)| category_from_rows(row, parent_row))
+                .collect::<crate::errors::Result<Vec<_>>>()?;
 
-        Ok(categories)
+            Ok(categories)
+        })
+        .await
     }
 
-    fn get_category(&self, id: &str) -> Result<TransactionCategory> {
-        let conn = &mut get_connection(&self.pool)?;
+    async fn get_category(&self, id: &str) -> Result<TransactionCategory> {
+        let pool = Arc::clone(&self.pool);
+        let id = id.to_owned();
+        run_blocking(move || {
+            let conn = &mut get_connection(&pool)?;
 
-        let parent_categories = diesel::alias!(transaction_categories as parent_categories);
+            let parent_categories = diesel::alias!(transaction_categories as parent_categories);
 
-        let (category_row, parent_row) = transaction_categories::table
-            .left_join(
-                parent_categories.on(
-                    // Compare the child's parent_id with the aliased parent's id.
-                    // We use .nullable() to match the types, as parent_id is nullable.
-                    transaction_categories::parent_id.eq(parent_categories
+            let (category_row, parent_row) = transaction_categories::table
+                .left_join(
+                    parent_categories.on(transaction_categories::parent_id.eq(parent_categories
                         .field(transaction_categories::id)
-                        .nullable()),
-                ),
-            )
-            .filter(transaction_categories::id.eq(id))
-            .filter(transaction_categories::deleted_at.is_null())
-            .first::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)
-            .into_core()?;
+                        .nullable())),
+                )
+                .filter(transaction_categories::id.eq(&id))
+                .filter(transaction_categories::deleted_at.is_null())
+                .first::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)
+                .into_core()?;
 
-        category_from_rows(category_row, parent_row).map_err(StorageError::into)
+            category_from_rows(category_row, parent_row).map_err(StorageError::into)
+        })
+        .await
     }
 
-    fn category_has_children(&self, id: &str) -> Result<bool> {
-        let conn = &mut get_connection(&self.pool)?;
+    async fn category_has_children(&self, id: &str) -> Result<bool> {
+        let pool = Arc::clone(&self.pool);
+        let id = id.to_owned();
+        run_blocking(move || {
+            let conn = &mut get_connection(&pool)?;
 
-        let child_count = transaction_categories::table
-            .filter(transaction_categories::parent_id.eq(id))
-            .filter(transaction_categories::deleted_at.is_null())
-            .count()
-            .get_result::<i64>(conn)
-            .into_core()?;
+            let child_count = transaction_categories::table
+                .filter(transaction_categories::parent_id.eq(id))
+                .filter(transaction_categories::deleted_at.is_null())
+                .count()
+                .get_result::<i64>(conn)
+                .into_core()?;
 
-        Ok(child_count > 0)
+            Ok(child_count > 0)
+        })
+        .await
     }
 
-    fn sibling_name_exists(
+    async fn sibling_name_exists(
         &self,
         parent_id: Option<&str>,
         name: &str,
         excluded_id: Option<&str>,
     ) -> Result<bool> {
-        let conn = &mut get_connection(&self.pool)?;
-        let normalized_name = name.trim().to_lowercase();
+        let pool = Arc::clone(&self.pool);
+        let parent_id = parent_id.map(str::to_owned);
+        let name = name.to_owned();
+        let excluded_id = excluded_id.map(str::to_owned);
+        run_blocking(move || {
+            let conn = &mut get_connection(&pool)?;
+            let normalized_name = name.trim().to_lowercase();
 
-        let mut query = transaction_categories::table
-            .filter(transaction_categories::deleted_at.is_null())
-            .into_boxed();
+            let mut query = transaction_categories::table
+                .filter(transaction_categories::deleted_at.is_null())
+                .into_boxed();
 
-        query = match parent_id {
-            Some(parent_id) => query.filter(transaction_categories::parent_id.eq(parent_id)),
-            None => query.filter(transaction_categories::parent_id.is_null()),
-        };
+            query = match parent_id.as_deref() {
+                Some(parent_id) => query.filter(transaction_categories::parent_id.eq(parent_id)),
+                None => query.filter(transaction_categories::parent_id.is_null()),
+            };
 
-        if let Some(excluded_id) = excluded_id {
-            query = query.filter(transaction_categories::id.ne(excluded_id));
-        }
+            if let Some(excluded_id) = excluded_id.as_deref() {
+                query = query.filter(transaction_categories::id.ne(excluded_id));
+            }
 
-        let sibling_names = query
-            .select(transaction_categories::name)
-            .load::<String>(conn)
-            .into_core()?;
+            let sibling_names = query
+                .select(transaction_categories::name)
+                .load::<String>(conn)
+                .into_core()?;
 
-        Ok(sibling_names
-            .iter()
-            .any(|sibling_name| sibling_name.trim().to_lowercase() == normalized_name))
+            Ok(sibling_names
+                .iter()
+                .any(|sibling_name| sibling_name.trim().to_lowercase() == normalized_name))
+        })
+        .await
     }
 
     async fn create_category(
@@ -615,7 +630,7 @@ mod tests {
         .await
         .unwrap();
 
-        let all = repo.get_categories(None).unwrap();
+        let all = repo.get_categories(None).await.unwrap();
         assert!(all.len() == 2);
     }
 
@@ -644,7 +659,7 @@ mod tests {
         };
         let child = repo.create_category(child).await.unwrap();
 
-        let category = repo.get_category(&child.id).unwrap();
+        let category = repo.get_category(&child.id).await.unwrap();
         assert_eq!(category.id, child.id);
         assert_eq!(category.parent.unwrap().id, parent.id);
     }
@@ -701,7 +716,7 @@ mod tests {
         .await
         .unwrap();
 
-        let all = repo.get_categories(Some(&parent.id)).unwrap();
+        let all = repo.get_categories(Some(&parent.id)).await.unwrap();
         assert!(all.len() == 1);
         assert!(all[0].name == "Cat 1");
     }
@@ -804,7 +819,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            repo.get_category(&child.id).unwrap().role,
+            repo.get_category(&child.id).await.unwrap().role,
             CategoryRole::Spending
         );
     }
@@ -851,7 +866,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(updated.parent_id, None);
-        assert_eq!(repo.get_category(&child.id).unwrap().parent_id, None);
+        assert_eq!(repo.get_category(&child.id).await.unwrap().parent_id, None);
     }
 
     #[tokio::test]
@@ -885,7 +900,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(updated.color, None);
-        assert_eq!(repo.get_category(&created.id).unwrap().color, None);
+        assert_eq!(repo.get_category(&created.id).await.unwrap().color, None);
     }
 
     #[tokio::test]
@@ -919,7 +934,10 @@ mod tests {
             .unwrap();
 
         assert_eq!(updated.description, None);
-        assert_eq!(repo.get_category(&created.id).unwrap().description, None);
+        assert_eq!(
+            repo.get_category(&created.id).await.unwrap().description,
+            None
+        );
     }
 
     #[tokio::test]
@@ -1158,6 +1176,7 @@ mod tests {
 
         let exists = repo
             .sibling_name_exists(None, " food ", None)
+            .await
             .expect("check sibling name");
 
         assert!(exists);
@@ -1198,7 +1217,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let promoted = repo.get_category(&child.id).unwrap();
+        let promoted = repo.get_category(&child.id).await.unwrap();
 
         assert!(promoted.parent_id.is_none());
     }
@@ -1317,7 +1336,7 @@ mod tests {
             Error::BudgetImpactConfirmationRequired { .. }
         ));
         assert_eq!(
-            repo.get_category(&category.id).unwrap().role,
+            repo.get_category(&category.id).await.unwrap().role,
             CategoryRole::Spending
         );
 
@@ -1325,7 +1344,7 @@ mod tests {
             .await
             .expect("confirmed role change");
         assert_eq!(
-            repo.get_category(&category.id).unwrap().role,
+            repo.get_category(&category.id).await.unwrap().role,
             CategoryRole::Income
         );
     }
@@ -1360,7 +1379,7 @@ mod tests {
             .await
             .expect_err("direct selection should block deletion");
         assert!(matches!(error, Error::CategoryDeletionBlocked { .. }));
-        assert!(repo.get_category(&category.id).is_ok());
+        assert!(repo.get_category(&category.id).await.is_ok());
     }
 
     #[tokio::test]
@@ -1410,8 +1429,8 @@ mod tests {
         repo.delete_categories(vec![&child.id], CategoryChildrenDeleteStrategy::Block, true)
             .await
             .expect("confirmed deletion");
-        assert!(repo.get_category(&child.id).is_err());
-        assert!(repo.get_category(&root.id).is_ok());
+        assert!(repo.get_category(&child.id).await.is_err());
+        assert!(repo.get_category(&root.id).await.is_ok());
     }
 }
 

@@ -66,16 +66,160 @@ pub(crate) fn spawn_writer(pool: DbPool) -> zai_core::Result<WriteHandle> {
         .map_err(|err| writer_error(&format!("missing Tokio runtime: {err}")))?;
     let (tx, mut rx) = mpsc::channel::<WriterMessage>(1024);
 
-    handle.spawn(async move {
-        while let Some((job, reply_tx)) = rx.recv().await {
-            let result = conn.immediate_transaction(|conn| job(conn));
-            let _ = reply_tx.send(result);
-        }
-    });
+    std::thread::Builder::new()
+        .name("zai-db-writer".into())
+        .spawn(move || {
+            while let Some((job, reply_tx)) = handle.block_on(rx.recv()) {
+                let result = conn.immediate_transaction(|conn| job(conn));
+                let _ = reply_tx.send(result);
+            }
+        })
+        .map_err(|err| writer_error(&format!("failed to spawn database writer: {err}")))?;
 
     Ok(WriteHandle { tx })
 }
 
 fn writer_error(message: &str) -> Error {
     Error::Database(DatabaseError::Internal(message.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::connection::run_migrations;
+    use crate::errors::StorageError;
+    use crate::test_utils::TempDb;
+    use diesel::r2d2::{self, Pool};
+    use diesel::sqlite::SqliteConnection;
+    use std::sync::{Arc, Mutex, mpsc};
+    use std::thread;
+
+    fn setup_writer(temp_db: &TempDb) -> WriteHandle {
+        let manager = r2d2::ConnectionManager::<SqliteConnection>::new(temp_db.path());
+        let pool = Pool::builder().build(manager).expect("pool");
+        run_migrations(&pool).expect("migrations");
+        spawn_writer(pool).expect("writer")
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn writer_executes_jobs_off_runtime_thread() {
+        let temp_db = TempDb::new();
+        let writer = setup_writer(&temp_db);
+        let runtime_tid = thread::current().id();
+        let job_tid = writer
+            .exec(|_conn| Ok(thread::current().id()))
+            .await
+            .expect("write");
+        assert_ne!(job_tid, runtime_tid);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn writer_jobs_do_not_starve_current_thread_runtime() {
+        let temp_db = TempDb::new();
+        let writer = setup_writer(&temp_db);
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (resume_tx, resume_rx) = mpsc::channel::<()>();
+
+        let write = tokio::spawn(async move {
+            writer
+                .exec(move |_conn| {
+                    entered_tx.send(thread::current().id()).expect("entered");
+                    resume_rx.recv().expect("resume");
+                    Ok(42_i32)
+                })
+                .await
+        });
+
+        let job_tid = tokio::task::spawn_blocking(move || entered_rx.recv())
+            .await
+            .expect("join")
+            .expect("entered");
+        assert_ne!(job_tid, thread::current().id());
+
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        tokio::spawn(async move {
+            let _ = tx.send(());
+        });
+        rx.await
+            .expect("runtime should progress while writer job waits");
+
+        resume_tx.send(()).expect("resume");
+        assert_eq!(write.await.expect("join").expect("write"), 42);
+    }
+
+    #[tokio::test]
+    async fn writer_preserves_fifo_order() {
+        let temp_db = TempDb::new();
+        let writer = setup_writer(&temp_db);
+        let seen = Arc::new(Mutex::new(Vec::new()));
+
+        let mut handles = Vec::new();
+        for i in 0..8 {
+            let writer = writer.clone();
+            let seen = Arc::clone(&seen);
+            handles.push(tokio::spawn(async move {
+                writer
+                    .exec(move |_conn| {
+                        seen.lock().expect("seen").push(i);
+                        Ok(())
+                    })
+                    .await
+            }));
+        }
+
+        for handle in handles {
+            handle.await.expect("join").expect("write");
+        }
+
+        assert_eq!(*seen.lock().expect("seen"), (0..8).collect::<Vec<_>>());
+    }
+
+    #[tokio::test]
+    async fn writer_continues_after_failed_job() {
+        let temp_db = TempDb::new();
+        let writer = setup_writer(&temp_db);
+
+        let failed: zai_core::Result<i32> = writer
+            .exec(|_conn| {
+                Err(StorageError::CoreError(Error::InvalidData(
+                    "boom".to_string(),
+                )))
+            })
+            .await;
+        assert!(failed.is_err());
+
+        let ok = writer.exec(|_conn| Ok(7_i32)).await.expect("later job");
+        assert_eq!(ok, 7);
+    }
+
+    #[tokio::test]
+    async fn aborted_caller_does_not_stop_writer() {
+        let temp_db = TempDb::new();
+        let writer = setup_writer(&temp_db);
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (resume_tx, resume_rx) = mpsc::channel::<()>();
+
+        let blocked = {
+            let writer = writer.clone();
+            tokio::spawn(async move {
+                writer
+                    .exec(move |_conn| {
+                        entered_tx.send(()).expect("entered");
+                        resume_rx.recv().expect("resume");
+                        Ok(1_i32)
+                    })
+                    .await
+            })
+        };
+
+        tokio::task::spawn_blocking(move || entered_rx.recv())
+            .await
+            .expect("join")
+            .expect("entered");
+        blocked.abort();
+        resume_tx.send(()).expect("resume");
+
+        let ok = writer.exec(|_conn| Ok(2_i32)).await.expect("later job");
+        assert_eq!(ok, 2);
+    }
 }

@@ -1,4 +1,5 @@
 use super::models::{DomainAlertRow, build_domain_alert};
+use crate::blocking::run_blocking;
 use crate::connection::{DbPool, get_connection};
 use crate::errors::IntoCore;
 use crate::schema::domain_alerts;
@@ -84,20 +85,18 @@ pub async fn list_domain_alerts_from_pool(
 ) -> Result<DomainAlertListPage> {
     let query = query.clone();
     let pool = Arc::clone(pool);
-    tokio::task::spawn_blocking(move || {
+    run_blocking(move || {
         let mut conn = get_connection(&pool)?;
         list_domain_alerts(&mut conn, &query)
     })
     .await
-    .map_err(|_| zai_core::Error::Repository("Alert list task failed".to_string()))?
 }
 
 pub async fn unread_domain_alert_count_from_pool(pool: &Arc<DbPool>) -> Result<i64> {
     let pool = Arc::clone(pool);
-    tokio::task::spawn_blocking(move || {
+    run_blocking(move || {
         let mut conn = get_connection(&pool)?;
         unread_domain_alert_count(&mut conn)
     })
     .await
-    .map_err(|_| zai_core::Error::Repository("Unread alert count task failed".to_string()))?
 }
