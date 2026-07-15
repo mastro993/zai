@@ -1,8 +1,8 @@
 -- Source commit: a05d5b8 (2026-07-15). Synthetic finance rows only.
-INSERT INTO transaction_categories (id, name, role, created_at, updated_at)
+INSERT INTO transaction_categories (id, name, color, role, created_at, updated_at)
 VALUES
-    ('cat-root', 'Household', 'spending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('cat-child', 'Groceries', 'spending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+    ('cat-root', 'Household', 'orange', 'spending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('cat-child', 'Groceries', NULL, 'spending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 UPDATE transaction_categories
 SET parent_id = 'cat-root'

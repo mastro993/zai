@@ -34,7 +34,25 @@ fn released_schema_fixtures_upgrade_to_head() {
             diesel::sql_query("SELECT COUNT(*) AS count FROM __diesel_schema_migrations")
                 .get_result::<CountRow>(&mut connection)
                 .expect("migration history");
-        assert_eq!(migration_count.count, 9, "{}", fixture.name);
+        assert_eq!(migration_count.count, 10, "{}", fixture.name);
+
+        let invalid_category_colors = diesel::sql_query(
+            "SELECT COUNT(*) AS count FROM transaction_categories \
+             WHERE color IS NOT NULL AND (length(color) != 7 OR color NOT GLOB '#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]')",
+        )
+        .get_result::<CountRow>(&mut connection)
+        .expect("valid category colors");
+        assert_eq!(invalid_category_colors.count, 0, "{}", fixture.name);
+
+        if fixture.name == "v0003_category_roles" {
+            let normalized_legacy_color = diesel::sql_query(
+                "SELECT COUNT(*) AS count FROM transaction_categories \
+                 WHERE id = 'cat-root' AND color IS NULL",
+            )
+            .get_result::<CountRow>(&mut connection)
+            .expect("normalized legacy category color");
+            assert_eq!(normalized_legacy_color.count, 1);
+        }
 
         assert_eq!(
             count_rows(&mut connection, "transaction_categories"),

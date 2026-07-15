@@ -53,7 +53,7 @@ fn fresh_database_applies_squashed_budget_migration_with_current_schema() {
     .get_result::<SqlRow>(&mut connection)
     .expect("budget table");
 
-    assert_eq!(migration_count.count, 9);
+    assert_eq!(migration_count.count, 10);
     assert_eq!(table_count.count, 5);
     assert_eq!(role_column_count.count, 1);
     assert_eq!(index_count.count, 8);
@@ -109,6 +109,9 @@ fn baseline_migration_can_be_reverted() {
     run_migrations(&pool).expect("migrations");
     connection
         .revert_last_migration(TEST_MIGRATIONS)
+        .expect("revert category color migration");
+    connection
+        .revert_last_migration(TEST_MIGRATIONS)
         .expect("revert domain alerts migration");
     connection
         .revert_last_migration(TEST_MIGRATIONS)
@@ -145,6 +148,9 @@ fn pre_alert_finance_data_survives_domain_alerts_migration() {
     let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
 
     run_migrations(&pool).expect("migrations");
+    connection
+        .revert_last_migration(TEST_MIGRATIONS)
+        .expect("revert category color migration");
     connection
         .revert_last_migration(TEST_MIGRATIONS)
         .expect("revert domain alerts migration");
