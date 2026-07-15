@@ -68,7 +68,7 @@ describe("category file capability routing", () => {
 
   it("routes category CSV export through the web adapter in web mode", async () => {
     import.meta.env.VITE_ZAI_BUILD_TARGET = "web";
-    webDownloadMock.mockReturnValue("zai_transaction_categories_20260706_162830.csv");
+    webDownloadMock.mockResolvedValue("zai_transaction_categories_20260706_162830.csv");
 
     const result = await downloadTextFile({
       title: "Export categories",

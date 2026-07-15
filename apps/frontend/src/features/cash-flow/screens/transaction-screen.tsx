@@ -514,7 +514,9 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
           </Button>
           <Button
             variant="outline"
-            disabled={isLoading || isExporting}
+            disabled={
+              isLoading || isExporting || (selectedCount === 0 && transactions.length === 0)
+            }
             onClick={exportTransactionCsv}
           >
             {isExporting
