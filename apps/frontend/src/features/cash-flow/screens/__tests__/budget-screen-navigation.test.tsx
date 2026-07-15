@@ -165,6 +165,30 @@ describe("cash-flow budget navigation", () => {
     expect(await screen.findByRole("button", { name: "Delete budget" })).toBeTruthy();
   });
 
+  it("renders Back to budgets as a semantic link without native-button warnings", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ["/cash-flow/budgets"] }),
+    });
+
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(await screen.findByRole("link", { name: budget.name }));
+
+    const control = await screen.findByRole("button", { name: "Back to budgets" });
+    expect(control.tagName).toBe("A");
+    expect(control.getAttribute("href")).toMatch(/\/cash-flow\/budgets\/?$/);
+    expect(
+      consoleError.mock.calls.some((call: Array<unknown>) =>
+        String(call[0]).includes("expected a native <button>"),
+      ),
+    ).toBe(false);
+
+    consoleError.mockRestore();
+  });
+
   it("shows a newly created budget in the active list", async () => {
     const router = createRouter({
       routeTree,

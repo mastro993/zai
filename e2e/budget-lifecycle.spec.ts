@@ -30,7 +30,20 @@ async function openBudgetDetail(page: Page, name: string, reload = false) {
   await expect(page.getByRole("heading", { name })).toBeVisible();
 }
 
+async function clickBackToBudgets(page: Page) {
+  const control = page.getByRole("button", { name: "Back to budgets" });
+  await expect(control).toHaveAttribute("href", /\/cash-flow\/budgets\/?$/);
+  await control.click();
+}
+
 test("web mode completes the budget lifecycle end to end", async ({ page }) => {
+  const nativeButtonWarnings: Array<string> = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && message.text().includes("expected a native <button>")) {
+      nativeButtonWarnings.push(message.text());
+    }
+  });
+
   await page.goto("/cash-flow/budgets");
 
   await expect(
@@ -61,7 +74,7 @@ test("web mode completes the budget lifecycle end to end", async ({ page }) => {
   await page.getByRole("button", { name: "Pause budget" }).click();
   await expect(page.getByText("Paused ·")).toBeVisible();
 
-  await page.getByRole("link", { name: "Back to budgets" }).click();
+  await clickBackToBudgets(page);
   await expect(page.getByText("No active budgets")).toBeVisible();
   await page.getByRole("button", { name: "Paused" }).click();
   await expect(page.getByRole("link", { name: "Updated groceries" })).toBeVisible();
@@ -70,7 +83,7 @@ test("web mode completes the budget lifecycle end to end", async ({ page }) => {
   await page.getByRole("button", { name: "Resume budget" }).click();
   await expect(page.getByText("Active ·")).toBeVisible();
 
-  await page.getByRole("link", { name: "Back to budgets" }).click();
+  await clickBackToBudgets(page);
   await page.getByRole("button", { name: "Active" }).click();
   await expect(page.getByRole("link", { name: "Updated groceries" })).toBeVisible();
 
@@ -86,4 +99,5 @@ test("web mode completes the budget lifecycle end to end", async ({ page }) => {
   await expect(page.getByText("No active budgets")).toBeVisible();
   await page.getByRole("button", { name: "All" }).click();
   await expect(page.getByRole("link", { name: "Updated groceries" })).toHaveCount(0);
+  expect(nativeButtonWarnings).toEqual([]);
 });
