@@ -28,14 +28,17 @@ describe("alerts web command map", () => {
     expect(buildWebRequestSpec("mark_all_alerts_read")).toEqual({
       method: "POST",
       path: "/alerts/mark-all-read",
+      body: {},
     });
     expect(buildWebRequestSpec("mark_alert_read", { alertId: "alert-1" })).toEqual({
       method: "POST",
       path: "/alerts/alert-1/read",
+      body: {},
     });
     expect(buildWebRequestSpec("mark_alert_unread", { alertId: "alert-1" })).toEqual({
       method: "POST",
       path: "/alerts/alert-1/unread",
+      body: {},
     });
   });
 

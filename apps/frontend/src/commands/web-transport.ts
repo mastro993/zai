@@ -49,8 +49,8 @@ export const createWebCommandTransport = (): CommandTransport => ({
       buildWebRequestUrl(resolveWebApiBaseUrlForCommand(command), spec),
       {
         method: spec.method,
-        headers: spec.body ? { "Content-Type": "application/json" } : undefined,
-        body: spec.body ? JSON.stringify(spec.body) : undefined,
+        headers: spec.body !== undefined ? { "Content-Type": "application/json" } : undefined,
+        body: spec.body !== undefined ? JSON.stringify(spec.body) : undefined,
       },
     );
 

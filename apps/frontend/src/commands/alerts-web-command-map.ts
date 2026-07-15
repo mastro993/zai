@@ -21,12 +21,13 @@ export const buildAlertCommandRequestSpec = (
     case "get_unread_alert_count":
       return { method: "GET", path: "/alerts/unread-count" };
     case "mark_all_alerts_read":
-      return { method: "POST", path: "/alerts/mark-all-read" };
+      return { method: "POST", path: "/alerts/mark-all-read", body: {} };
     case "mark_alert_read": {
       const alertId = readString(args.alertId);
       return {
         method: "POST",
         path: alertId ? `/alerts/${alertId}/read` : "/alerts/__missing_alert_id__/read",
+        body: {},
       };
     }
     case "mark_alert_unread": {
@@ -34,6 +35,7 @@ export const buildAlertCommandRequestSpec = (
       return {
         method: "POST",
         path: alertId ? `/alerts/${alertId}/unread` : "/alerts/__missing_alert_id__/unread",
+        body: {},
       };
     }
     default:
