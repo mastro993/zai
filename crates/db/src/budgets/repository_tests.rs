@@ -389,5 +389,8 @@ mod repository_safety_tests;
 #[path = "repository_performance_tests.rs"]
 mod repository_performance_tests;
 
+#[path = "repository_list_set_tests.rs"]
+mod repository_list_set_tests;
+
 #[path = "repository_concurrency_tests.rs"]
 mod repository_concurrency_tests;

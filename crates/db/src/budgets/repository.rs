@@ -7,6 +7,9 @@ use super::calculation::{
 use super::edit::update_budget as update_budget_in_storage;
 use super::history::load_history;
 use super::lifecycle::{delete_budget as delete_budget_in_storage, set_budget_paused};
+use super::list_projection::{
+    ProjectionState, project_budget_list, projected_budget_from_connection,
+};
 use super::models::{BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget};
 use super::projection::materialize_budget;
 use crate::blocking::run_blocking;
@@ -16,9 +19,7 @@ use crate::schema::{budget_configurations, budget_period_results, budgets};
 use crate::write_actor::WriteHandle;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use diesel::OptionalExtension;
 use diesel::prelude::*;
-use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
 use zai_core::features::budgets::alerts::BudgetAlertMode;
 use zai_core::features::budgets::models::{
@@ -99,91 +100,30 @@ impl BudgetsRepository {
     }
 }
 
-pub(super) fn projected_budget_from_connection(
-    conn: &mut SqliteConnection,
-    id: &str,
-    now: NaiveDateTime,
-) -> crate::errors::Result<ProjectionState> {
-    let budget = budgets::table
-        .filter(budgets::id.eq(id))
-        .filter(budgets::deleted_at.is_null())
-        .first::<BudgetRow>(conn)
-        .into_storage()?;
-    let cadence = parse_cadence(&budget).map_err(StorageError::CoreError)?;
-    let (current_start, _) = current_period(now, cadence).map_err(StorageError::CoreError)?;
-    let configuration = budget_configurations::table
-        .filter(budget_configurations::budget_id.eq(id))
-        .order(budget_configurations::period_start.desc())
-        .first::<BudgetConfigurationRow>(conn)
-        .optional()
-        .into_storage()?;
-    let Some(configuration) = configuration else {
-        return Ok(ProjectionState::NeedsMaterialization);
-    };
-    let configuration_count = budget_configurations::table
-        .filter(budget_configurations::budget_id.eq(id))
-        .count()
-        .get_result::<i64>(conn)
-        .into_storage()?;
-    let result_count = budget_period_results::table
-        .filter(budget_period_results::budget_id.eq(id))
-        .count()
-        .get_result::<i64>(conn)
-        .into_storage()?;
-    if configuration_count != result_count {
-        return Ok(ProjectionState::NeedsMaterialization);
-    }
-    if configuration.period_start > current_start {
-        return Err(StorageError::CoreError(Error::ClockRegression(
-            "Budget period is ahead of the local calendar clock".to_string(),
-        )));
-    }
-    let Some(result) = budget_period_results::table
-        .filter(budget_period_results::budget_id.eq(id))
-        .filter(budget_period_results::period_start.eq(configuration.period_start))
-        .first::<BudgetPeriodResultRow>(conn)
-        .optional()
-        .into_storage()?
-    else {
-        return Ok(ProjectionState::NeedsMaterialization);
-    };
-    if configuration.period_start != current_start {
-        return Ok(ProjectionState::NeedsMaterialization);
-    }
-    build_budget(budget, configuration, result)
-        .map(ProjectionState::Current)
-        .map_err(StorageError::CoreError)
-}
-
-pub(super) enum ProjectionState {
-    Current(Budget),
-    NeedsMaterialization,
-}
-
 #[async_trait]
 impl BudgetsRepositoryTrait for BudgetsRepository {
     async fn list_budgets(&self, filter: BudgetListFilter) -> Result<Vec<Budget>> {
         let now = self.clock.sample();
         let pool = Arc::clone(&self.pool);
-        let ids = run_blocking(move || {
-            let query = budgets::table
-                .filter(budgets::deleted_at.is_null())
-                .into_boxed();
-            let query = match filter {
-                BudgetListFilter::Active => query.filter(budgets::paused.eq(false)),
-                BudgetListFilter::Paused => query.filter(budgets::paused.eq(true)),
-                BudgetListFilter::All => query,
-            };
-            query
-                .order((budgets::name.asc(), budgets::id.asc()))
-                .select(budgets::id)
-                .load::<String>(&mut get_connection(&pool)?)
-                .into_core()
+        let projected = run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            project_budget_list(&mut conn, filter, now).into_core()
         })
         .await?;
-        let mut result = Vec::with_capacity(ids.len());
-        for id in ids {
-            result.push(self.get_or_materialize(&id, now).await?);
+
+        let mut result = Vec::with_capacity(projected.len());
+        for (id, state) in projected {
+            match state {
+                ProjectionState::Current(budget) => result.push(budget),
+                ProjectionState::NeedsMaterialization => {
+                    let id = id.clone();
+                    result.push(
+                        self.writer
+                            .exec(move |conn| materialize_budget(conn, &id, now))
+                            .await?,
+                    );
+                }
+            }
         }
         Ok(result)
     }
