@@ -231,6 +231,8 @@ vi.mock("../../commands/transaction-categories", async () => {
   };
 });
 
+import { toast } from "sonner";
+
 import * as transactionCategories from "../../commands/transaction-categories";
 import * as transactions from "../../commands/transactions";
 import { TransactionScreen } from "../transaction-screen";
@@ -422,5 +424,26 @@ describe("transaction screen request guard", () => {
         .mocked(transactions.getTransactions)
         .mock.calls.filter(([, , filters]) => filters?.query === "current"),
     ).toHaveLength(1);
+  });
+
+  it("toasts when a transaction is created", async () => {
+    const { Result: ResultModule } = await import("@praha/byethrow");
+    vi.mocked(transactions.createTransaction).mockResolvedValue(
+      ResultModule.succeed({
+        id: "tx-new",
+        description: null,
+        amount: 0,
+        transactionDate: "2026-07-15T10:00:00",
+        transactionType: "expense",
+        transactionCategoryId: null,
+        notes: null,
+      }),
+    );
+
+    renderScreen();
+    fireEvent.click(screen.getByRole("button", { name: "New transaction" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save transaction" }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Transaction created"));
   });
 });
