@@ -170,7 +170,7 @@ export function BudgetDetailScreen({
           <Button variant="outline" onClick={() => setIsFormOpen(true)}>
             Edit budget
           </Button>
-          <Button variant="outline" render={<Link to="/cash-flow/budgets" />}>
+          <Button variant="outline" nativeButton={false} render={<Link to="/cash-flow/budgets" />}>
             Back to budgets
           </Button>
         </>
