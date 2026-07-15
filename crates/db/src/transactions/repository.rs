@@ -1,3 +1,4 @@
+use super::import_dedup;
 use super::models::TransactionRow;
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budgets};
 use crate::budgets::repair_transaction_budget_projections;
@@ -154,6 +155,33 @@ fn count_transactions(
     apply_transaction_filters(transactions_base_query(), filters)
         .count()
         .get_result(conn)
+}
+
+fn load_existing_in_import_range(
+    conn: &mut SqliteConnection,
+    candidates: &[NewTransaction],
+) -> crate::errors::Result<Vec<TransactionRow>> {
+    if candidates.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let (range_start, range_end_exclusive) = import_dedup::import_half_open_date_range(candidates);
+    transactions::table
+        .filter(transactions::deleted_at.is_null())
+        .filter(transactions::transaction_date.ge(range_start))
+        .filter(transactions::transaction_date.lt(range_end_exclusive))
+        .load::<TransactionRow>(conn)
+        .into_storage()
+}
+
+fn prepare_import_rows(
+    candidates: Vec<NewTransaction>,
+    existing_rows: &[TransactionRow],
+) -> Vec<TransactionRow> {
+    import_dedup::filter_import_duplicates(candidates, existing_rows)
+        .into_iter()
+        .map(Into::into)
+        .collect()
 }
 
 pub struct TransactionsRepository {
@@ -458,22 +486,6 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         Ok(outcome.value)
     }
 
-    fn find_transactions_in_date_range(
-        &self,
-        start_date: chrono::NaiveDateTime,
-        end_date: chrono::NaiveDateTime,
-    ) -> Result<Vec<Transaction>> {
-        let conn = &mut get_connection(&self.pool)?;
-        let rows = transactions::table
-            .filter(transactions::deleted_at.is_null())
-            .filter(transactions::transaction_date.ge(start_date))
-            .filter(transactions::transaction_date.le(end_date))
-            .load::<TransactionRow>(conn)
-            .into_core()?;
-
-        Ok(rows.into_iter().map(Transaction::from).collect())
-    }
-
     async fn import_transactions(
         &self,
         new_transactions: Vec<NewTransaction>,
@@ -490,10 +502,16 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<
                     CommittedOutcome<Vec<Transaction>>,
                 > {
+                    let existing_rows = load_existing_in_import_range(conn, &new_transactions)?;
+                    let transactions_rows =
+                        prepare_import_rows(new_transactions, &existing_rows);
+
+                    if transactions_rows.is_empty() {
+                        return Ok(CommittedOutcome::with_alert_outcomes(Vec::new(), vec![]));
+                    }
+
                     let now = clock.sample();
                     let before = snapshot_active_budgets(conn, now)?;
-                    let transactions_rows: Vec<TransactionRow> =
-                        new_transactions.iter().map(|c| c.clone().into()).collect();
 
                     diesel::insert_into(transactions::table)
                         .values(&transactions_rows)
@@ -502,7 +520,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 
                     let ids = transactions_rows
                         .iter()
-                        .map(|c| c.id.clone())
+                        .map(|transaction| transaction.id.clone())
                         .collect::<Vec<String>>();
 
                     let inserted = transactions::table
@@ -542,12 +560,13 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<
                     CommittedOutcome<(Vec<TransactionCategory>, Vec<Transaction>)>,
                 > {
+                    let existing_rows = load_existing_in_import_range(conn, &new_transactions)?;
+                    let transactions_rows = prepare_import_rows(new_transactions, &existing_rows);
+
                     let now = clock.sample();
                     let before = snapshot_active_budgets(conn, now)?;
                     let categories_rows: Vec<TransactionCategoryRow> =
                         new_categories.into_iter().map(Into::into).collect();
-                    let transactions_rows: Vec<TransactionRow> =
-                        new_transactions.into_iter().map(Into::into).collect();
 
                     if !categories_rows.is_empty() {
                         diesel::insert_into(transaction_categories::table)
@@ -597,7 +616,9 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                             .collect()
                     };
 
-                    repair_transaction_budget_projections(conn, now, &[], &transactions_rows)?;
+                    if !transactions_rows.is_empty() {
+                        repair_transaction_budget_projections(conn, now, &[], &transactions_rows)?;
+                    }
                     let after = snapshot_active_budgets(conn, now)?;
                     let alerts = emit_budget_transition_alerts(
                         conn,
@@ -620,13 +641,20 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::budgets::BudgetsRepository;
     use crate::connection::run_migrations;
     use crate::schema::transaction_categories;
     use crate::test_utils::TempDb;
     use crate::write_actor::spawn_writer;
+    use chrono::NaiveDate;
     use diesel::r2d2::{self, Pool};
     use diesel::sqlite::SqliteConnection;
+    use diesel::{Connection, RunQueryDsl, sql_query};
+    use std::sync::Arc;
     use uuid::Uuid;
+    use zai_core::Error;
+    use zai_core::features::budgets::models::NewBudget;
+    use zai_core::features::budgets::traits::BudgetsRepositoryTrait;
     use zai_core::features::transaction_categories::models::NewTransactionCategory;
 
     fn setup_test_repo(db_path: &str) -> TransactionsRepository {
@@ -639,6 +667,194 @@ mod tests {
 
         let writer = spawn_writer(pool.clone()).expect("failed to spawn writer");
         TransactionsRepository::new(Arc::new(pool), writer)
+    }
+
+    fn parse_datetime(value: &str) -> chrono::NaiveDateTime {
+        chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S").expect("valid datetime")
+    }
+
+    fn import_candidate(description: &str, amount: i32, value: &str) -> NewTransaction {
+        NewTransaction {
+            id: Some(Uuid::new_v4().to_string()),
+            description: Some(description.to_string()),
+            amount,
+            transaction_date: parse_datetime(value),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn concurrent_identical_imports_commit_one_logical_row() {
+        let temp_db = TempDb::new();
+        let repo = Arc::new(setup_test_repo(temp_db.path()));
+
+        let (left, right) = tokio::join!(
+            repo.import_transactions(vec![import_candidate(
+                " Groceries ",
+                1250,
+                "2026-01-15T08:30:00"
+            )]),
+            repo.import_transactions(vec![import_candidate(
+                "groceries",
+                1250,
+                "2026-01-15T20:45:00"
+            )]),
+        );
+
+        let mut imported = left.expect("first import");
+        imported.extend(right.expect("second import"));
+        assert_eq!(imported.len(), 1);
+
+        let persisted = repo
+            .get_transactions(1, 10, None, None)
+            .expect("list transactions");
+        assert_eq!(persisted.data.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn import_skips_existing_transaction_in_fractional_last_second() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let day = NaiveDate::from_ymd_opt(2026, 1, 15).expect("date");
+        let late = day
+            .and_hms_nano_opt(23, 59, 59, 500_000_000)
+            .expect("late timestamp");
+
+        repo.create_transaction(NewTransaction {
+            id: Some(Uuid::new_v4().to_string()),
+            description: Some("groceries".to_string()),
+            amount: 1250,
+            transaction_date: late,
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+        })
+        .await
+        .expect("create existing transaction");
+
+        let imported = repo
+            .import_transactions(vec![import_candidate(
+                " Groceries ",
+                1250,
+                "2026-01-15T08:30:00",
+            )])
+            .await
+            .expect("import duplicate");
+
+        assert!(imported.is_empty());
+    }
+
+    #[tokio::test]
+    async fn import_skips_duplicates_within_single_payload() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let imported = repo
+            .import_transactions(vec![
+                import_candidate(" Groceries ", 1250, "2026-01-15T08:30:00"),
+                import_candidate("groceries", 1250, "2026-01-15T20:45:00"),
+            ])
+            .await
+            .expect("import batch");
+
+        assert_eq!(imported.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn import_keeps_distinct_amounts_and_descriptions() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+
+        let imported = repo
+            .import_transactions(vec![
+                import_candidate("Groceries", 1250, "2026-01-15T08:30:00"),
+                import_candidate("Rent", 1250, "2026-01-15T08:30:00"),
+                import_candidate("Groceries", 1300, "2026-01-15T08:30:00"),
+            ])
+            .await
+            .expect("import distinct rows");
+
+        assert_eq!(imported.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn manual_create_still_allows_duplicate_logical_rows() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let shared = NewTransaction {
+            id: Some(Uuid::new_v4().to_string()),
+            description: Some(" Groceries ".to_string()),
+            amount: 1250,
+            transaction_date: parse_datetime("2026-01-15T08:30:00"),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+        };
+
+        repo.create_transaction(shared.clone())
+            .await
+            .expect("first manual create");
+        repo.create_transaction(NewTransaction {
+            id: Some(Uuid::new_v4().to_string()),
+            ..shared
+        })
+        .await
+        .expect("second manual create");
+
+        let persisted = repo
+            .get_transactions(1, 10, None, None)
+            .expect("list transactions");
+        assert_eq!(persisted.data.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn failed_import_budget_repair_rolls_back_inserted_rows() {
+        let temp_db = TempDb::new();
+        let manager = r2d2::ConnectionManager::<SqliteConnection>::new(temp_db.path());
+        let pool = Pool::builder().build(manager).expect("pool");
+        run_migrations(&pool).expect("migrations");
+        let writer = spawn_writer(pool.clone()).expect("writer");
+        let pool = Arc::new(pool);
+        let budgets = BudgetsRepository::new(Arc::clone(&pool), writer.clone());
+        let transactions = TransactionsRepository::new(Arc::clone(&pool), writer);
+
+        budgets
+            .create_budget(NewBudget {
+                id: Some("import-rollback".to_string()),
+                name: "Import rollback".to_string(),
+                base_allowance: 10_000,
+                cadence: None,
+                category_ids: vec![],
+                measurement_mode: None,
+                rollover_mode: None,
+                warning_percentage: Some(80),
+            })
+            .await
+            .expect("budget");
+
+        let mut conn = SqliteConnection::establish(temp_db.path()).expect("database connection");
+        sql_query(
+            "UPDATE budget_configurations SET category_ids = '[' WHERE budget_id = 'import-rollback'",
+        )
+        .execute(&mut conn)
+        .expect("corrupt configuration");
+
+        let error = transactions
+            .import_transactions(vec![import_candidate(
+                "Broken import",
+                100,
+                "2026-07-15T12:00:00",
+            )])
+            .await
+            .expect_err("import repair should fail");
+        assert!(matches!(error, Error::Repository(_)));
+
+        let persisted = transactions
+            .get_transactions(1, 10, None, None)
+            .expect("list transactions");
+        assert!(persisted.data.is_empty());
     }
 
     #[tokio::test]
