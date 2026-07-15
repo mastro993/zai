@@ -1,4 +1,5 @@
 use super::models::TransactionRow;
+use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budgets};
 use crate::budgets::repair_transaction_budget_projections;
 use crate::connection::{DbPool, get_connection};
 use crate::errors::{IntoCore, IntoStorage, StorageError};
@@ -14,7 +15,11 @@ use diesel::r2d2::{self, Pool};
 use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
 use zai_core::Result;
+use zai_core::features::budgets::alerts::BudgetAlertMode;
 use zai_core::features::budgets::traits::CalendarClock;
+use zai_core::features::domain_alerts::{
+    CommittedOutcome, DomainAlertEventPublisher, publish_created_alerts,
+};
 use zai_core::features::transaction_categories::models::{
     NewTransactionCategory, TransactionCategory,
 };
@@ -155,6 +160,7 @@ pub struct TransactionsRepository {
     pool: Arc<DbPool>,
     writer: WriteHandle,
     clock: Arc<dyn CalendarClock>,
+    alert_publisher: Arc<dyn DomainAlertEventPublisher>,
 }
 
 impl TransactionsRepository {
@@ -163,22 +169,39 @@ impl TransactionsRepository {
         pool: Arc<Pool<r2d2::ConnectionManager<SqliteConnection>>>,
         writer: WriteHandle,
     ) -> Self {
-        Self::new_with_clock(
+        Self::new_with_clock_and_publisher(
             pool,
             writer,
             Arc::new(zai_core::features::budgets::traits::LocalCalendarClock),
+            zai_core::features::domain_alerts::DomainAlertEventBus::new(),
         )
     }
 
+    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn new_with_clock(
         pool: Arc<Pool<r2d2::ConnectionManager<SqliteConnection>>>,
         writer: WriteHandle,
         clock: Arc<dyn CalendarClock>,
     ) -> Self {
+        Self::new_with_clock_and_publisher(
+            pool,
+            writer,
+            clock,
+            zai_core::features::domain_alerts::DomainAlertEventBus::new(),
+        )
+    }
+
+    pub(crate) fn new_with_clock_and_publisher(
+        pool: Arc<Pool<r2d2::ConnectionManager<SqliteConnection>>>,
+        writer: WriteHandle,
+        clock: Arc<dyn CalendarClock>,
+        alert_publisher: Arc<dyn DomainAlertEventPublisher>,
+    ) -> Self {
         Self {
             pool,
             writer,
             clock,
+            alert_publisher,
         }
     }
 }
@@ -233,9 +256,15 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 
     async fn create_transaction(&self, new_transaction: NewTransaction) -> Result<Transaction> {
         let clock = Arc::clone(&self.clock);
-        self.writer
+        let publisher = Arc::clone(&self.alert_publisher);
+        let outcome = self
+            .writer
             .exec(
-                move |conn: &mut SqliteConnection| -> crate::errors::Result<Transaction> {
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<
+                    CommittedOutcome<Transaction>,
+                > {
+                    let now = clock.sample();
+                    let before = snapshot_active_budgets(conn, now)?;
                     let transaction: TransactionRow = new_transaction.into();
                     let transaction_id = transaction.id.clone();
 
@@ -251,15 +280,26 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 
                     repair_transaction_budget_projections(
                         conn,
-                        clock.sample(),
+                        now,
                         &[],
-                        std::slice::from_ref(&transaction),
+                        std::slice::from_ref(&inserted),
                     )?;
-
-                    Ok(inserted.into())
+                    let after = snapshot_active_budgets(conn, now)?;
+                    let alerts = emit_budget_transition_alerts(
+                        conn,
+                        BudgetAlertMode::Transition,
+                        &before,
+                        &after,
+                    )?;
+                    Ok(CommittedOutcome::with_alert_outcomes(
+                        inserted.into(),
+                        alerts,
+                    ))
                 },
             )
-            .await
+            .await?;
+        publish_created_alerts(publisher.as_ref(), &outcome);
+        Ok(outcome.value)
     }
 
     async fn update_transaction(
@@ -267,9 +307,15 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         updated_transaction: TransactionUpdate,
     ) -> Result<Transaction> {
         let clock = Arc::clone(&self.clock);
-        self.writer
+        let publisher = Arc::clone(&self.alert_publisher);
+        let outcome = self
+            .writer
             .exec(
-                move |conn: &mut SqliteConnection| -> crate::errors::Result<Transaction> {
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<
+                    CommittedOutcome<Transaction>,
+                > {
+                    let now = clock.sample();
+                    let before = snapshot_active_budgets(conn, now)?;
                     let mut transaction: TransactionRow = updated_transaction.into();
 
                     let existing = transactions::table
@@ -287,25 +333,39 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 
                     repair_transaction_budget_projections(
                         conn,
-                        clock.sample(),
+                        now,
                         std::slice::from_ref(&existing),
                         std::slice::from_ref(&transaction),
                     )?;
-
-                    Ok(transaction.into())
+                    let after = snapshot_active_budgets(conn, now)?;
+                    let alerts = emit_budget_transition_alerts(
+                        conn,
+                        BudgetAlertMode::Transition,
+                        &before,
+                        &after,
+                    )?;
+                    Ok(CommittedOutcome::with_alert_outcomes(transaction.into(), alerts))
                 },
             )
-            .await
+            .await?;
+        publish_created_alerts(publisher.as_ref(), &outcome);
+        Ok(outcome.value)
     }
 
     async fn delete_transaction(&self, id: &str) -> Result<Transaction> {
         let transaction_id = id.to_owned();
         let clock = Arc::clone(&self.clock);
+        let publisher = Arc::clone(&self.alert_publisher);
 
-        self.writer
+        let outcome = self
+            .writer
             .exec(
-                move |conn: &mut SqliteConnection| -> crate::errors::Result<Transaction> {
-                    let now = Local::now().naive_utc();
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<
+                    CommittedOutcome<Transaction>,
+                > {
+                    let now = clock.sample();
+                    let before = snapshot_active_budgets(conn, now)?;
+                    let deleted_at = Local::now().naive_utc();
 
                     let existing = transactions::table
                         .find(&transaction_id)
@@ -313,7 +373,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         .into_storage()?;
 
                     diesel::update(transactions::table.find(&transaction_id))
-                        .set(transactions::deleted_at.eq(now))
+                        .set(transactions::deleted_at.eq(deleted_at))
                         .execute(conn)
                         .into_storage()?;
 
@@ -325,25 +385,39 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 
                     repair_transaction_budget_projections(
                         conn,
-                        clock.sample(),
+                        now,
                         std::slice::from_ref(&existing),
                         std::slice::from_ref(&deleted),
                     )?;
-
-                    Ok(deleted.into())
+                    let after = snapshot_active_budgets(conn, now)?;
+                    let alerts = emit_budget_transition_alerts(
+                        conn,
+                        BudgetAlertMode::Transition,
+                        &before,
+                        &after,
+                    )?;
+                    Ok(CommittedOutcome::with_alert_outcomes(deleted.into(), alerts))
                 },
             )
-            .await
+            .await?;
+        publish_created_alerts(publisher.as_ref(), &outcome);
+        Ok(outcome.value)
     }
 
     async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<Transaction>> {
         let owned_ids = ids.iter().map(|&s| s.to_string()).collect::<Vec<String>>();
         let clock = Arc::clone(&self.clock);
+        let publisher = Arc::clone(&self.alert_publisher);
 
-        self.writer
+        let outcome = self
+            .writer
             .exec(
-                move |conn: &mut SqliteConnection| -> crate::errors::Result<Vec<Transaction>> {
-                    let now = Local::now().naive_utc();
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<
+                    CommittedOutcome<Vec<Transaction>>,
+                > {
+                    let now = clock.sample();
+                    let before = snapshot_active_budgets(conn, now)?;
+                    let deleted_at = Local::now().naive_utc();
 
                     let existing = transactions::table
                         .filter(transactions::id.eq_any(&owned_ids))
@@ -351,7 +425,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         .into_storage()?;
 
                     diesel::update(transactions::table.filter(transactions::id.eq_any(&owned_ids)))
-                        .set(transactions::deleted_at.eq(now))
+                        .set(transactions::deleted_at.eq(deleted_at))
                         .execute(conn)
                         .into_storage()?;
 
@@ -363,16 +437,23 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
 
                     let deleted_transactions: Vec<Transaction> =
                         deleted.iter().cloned().map(Transaction::from).collect();
-                    repair_transaction_budget_projections(
+                    repair_transaction_budget_projections(conn, now, &existing, &deleted)?;
+                    let after = snapshot_active_budgets(conn, now)?;
+                    let alerts = emit_budget_transition_alerts(
                         conn,
-                        clock.sample(),
-                        &existing,
-                        &deleted,
+                        BudgetAlertMode::Transition,
+                        &before,
+                        &after,
                     )?;
-                    Ok(deleted_transactions)
+                    Ok(CommittedOutcome::with_alert_outcomes(
+                        deleted_transactions,
+                        alerts,
+                    ))
                 },
             )
-            .await
+            .await?;
+        publish_created_alerts(publisher.as_ref(), &outcome);
+        Ok(outcome.value)
     }
 
     fn find_transactions_in_date_range(
@@ -400,9 +481,15 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         }
 
         let clock = Arc::clone(&self.clock);
-        self.writer
+        let publisher = Arc::clone(&self.alert_publisher);
+        let outcome = self
+            .writer
             .exec(
-                move |conn: &mut SqliteConnection| -> crate::errors::Result<Vec<Transaction>> {
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<
+                    CommittedOutcome<Vec<Transaction>>,
+                > {
+                    let now = clock.sample();
+                    let before = snapshot_active_budgets(conn, now)?;
                     let transactions_rows: Vec<TransactionRow> =
                         new_transactions.iter().map(|c| c.clone().into()).collect();
 
@@ -421,17 +508,23 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         .load::<TransactionRow>(conn)
                         .into_storage()?;
 
-                    repair_transaction_budget_projections(
+                    repair_transaction_budget_projections(conn, now, &[], &transactions_rows)?;
+                    let after = snapshot_active_budgets(conn, now)?;
+                    let alerts = emit_budget_transition_alerts(
                         conn,
-                        clock.sample(),
-                        &[],
-                        &transactions_rows,
+                        BudgetAlertMode::Transition,
+                        &before,
+                        &after,
                     )?;
-
-                    Ok(inserted.into_iter().map(Transaction::from).collect())
+                    Ok(CommittedOutcome::with_alert_outcomes(
+                        inserted.into_iter().map(Transaction::from).collect(),
+                        alerts,
+                    ))
                 },
             )
-            .await
+            .await?;
+        publish_created_alerts(publisher.as_ref(), &outcome);
+        Ok(outcome.value)
     }
 
     async fn import_transactions_with_categories(
@@ -440,9 +533,15 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         new_transactions: Vec<NewTransaction>,
     ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)> {
         let clock = Arc::clone(&self.clock);
-        self.writer
+        let publisher = Arc::clone(&self.alert_publisher);
+        let outcome = self
+            .writer
             .exec(
-                move |conn: &mut SqliteConnection| -> crate::errors::Result<_> {
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<
+                    CommittedOutcome<(Vec<TransactionCategory>, Vec<Transaction>)>,
+                > {
+                    let now = clock.sample();
+                    let before = snapshot_active_budgets(conn, now)?;
                     let categories_rows: Vec<TransactionCategoryRow> =
                         new_categories.into_iter().map(Into::into).collect();
                     let transactions_rows: Vec<TransactionRow> =
@@ -496,17 +595,23 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                             .collect()
                     };
 
-                    repair_transaction_budget_projections(
+                    repair_transaction_budget_projections(conn, now, &[], &transactions_rows)?;
+                    let after = snapshot_active_budgets(conn, now)?;
+                    let alerts = emit_budget_transition_alerts(
                         conn,
-                        clock.sample(),
-                        &[],
-                        &transactions_rows,
+                        BudgetAlertMode::Transition,
+                        &before,
+                        &after,
                     )?;
-
-                    Ok((inserted_categories, inserted_transactions))
+                    Ok(CommittedOutcome::with_alert_outcomes(
+                        (inserted_categories, inserted_transactions),
+                        alerts,
+                    ))
                 },
             )
-            .await
+            .await?;
+        publish_created_alerts(publisher.as_ref(), &outcome);
+        Ok(outcome.value)
     }
 }
 

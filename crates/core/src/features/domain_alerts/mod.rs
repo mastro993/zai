@@ -21,7 +21,9 @@ pub use events::{
 pub use models::{
     DomainAlert, DomainAlertDestination, DomainAlertRichData, DomainAlertSeverity, NewDomainAlert,
 };
-pub use outcome::{AlertInsertOutcome, CommittedOutcome, DomainAlertLifecycleOutcome};
+pub use outcome::{
+    AlertInsertOutcome, CommittedOutcome, DomainAlertLifecycleOutcome, publish_created_alerts,
+};
 pub use query::{
     DEFAULT_LIST_LIMIT, DomainAlertListPage, DomainAlertReadState, ListDomainAlertsQuery,
     MAX_LIST_LIMIT, MIN_LIST_LIMIT, deserialize_optional_severities,

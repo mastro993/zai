@@ -1,3 +1,6 @@
+use super::alerts::{
+    emit_budget_transition_alerts, emit_resume_budget_alert, snapshot_budgets_by_ids,
+};
 use super::calculation::{
     calculate_spending, load_category_hierarchy, map_budget_insert_error, status_string,
 };
@@ -16,39 +19,61 @@ use diesel::OptionalExtension;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
+use zai_core::features::budgets::alerts::BudgetAlertMode;
 use zai_core::features::budgets::models::{
     Budget, BudgetCadence, BudgetLifecycleUpdate, BudgetListFilter, BudgetPeriodHistory,
     BudgetUpdate, NewBudget, calculate_period_with_rollover, canonicalize_category_ids,
     current_period, expand_category_scope,
 };
 use zai_core::features::budgets::traits::{BudgetsRepositoryTrait, CalendarClock};
+use zai_core::features::domain_alerts::{
+    CommittedOutcome, DomainAlertEventPublisher, publish_created_alerts,
+};
 use zai_core::{Error, Result};
 
 pub struct BudgetsRepository {
     pool: Arc<DbPool>,
     writer: WriteHandle,
     clock: Arc<dyn CalendarClock>,
+    alert_publisher: Arc<dyn DomainAlertEventPublisher>,
 }
 
 impl BudgetsRepository {
     #[cfg(test)]
     pub(crate) fn new(pool: Arc<DbPool>, writer: WriteHandle) -> Self {
-        Self::new_with_clock(
+        Self::new_with_clock_and_publisher(
             pool,
             writer,
             Arc::new(zai_core::features::budgets::traits::LocalCalendarClock),
+            zai_core::features::domain_alerts::DomainAlertEventBus::new(),
         )
     }
 
+    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn new_with_clock(
         pool: Arc<DbPool>,
         writer: WriteHandle,
         clock: Arc<dyn CalendarClock>,
     ) -> Self {
+        Self::new_with_clock_and_publisher(
+            pool,
+            writer,
+            clock,
+            zai_core::features::domain_alerts::DomainAlertEventBus::new(),
+        )
+    }
+
+    pub(crate) fn new_with_clock_and_publisher(
+        pool: Arc<DbPool>,
+        writer: WriteHandle,
+        clock: Arc<dyn CalendarClock>,
+        alert_publisher: Arc<dyn DomainAlertEventPublisher>,
+    ) -> Self {
         Self {
             pool,
             writer,
             clock,
+            alert_publisher,
         }
     }
 
@@ -269,10 +294,25 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
 
     async fn update_budget(&self, id: &str, update: BudgetUpdate) -> Result<Budget> {
         let now = self.clock.sample();
-        let id = id.to_string();
-        self.writer
-            .exec(move |conn| update_budget_in_storage(conn, &id, update, now))
-            .await
+        let budget_id = id.to_string();
+        let publisher = Arc::clone(&self.alert_publisher);
+        let outcome = self
+            .writer
+            .exec(move |conn| {
+                let before = snapshot_budgets_by_ids(conn, std::slice::from_ref(&budget_id), now)?;
+                let budget = update_budget_in_storage(conn, &budget_id, update, now)?;
+                let after = snapshot_budgets_by_ids(conn, &[budget_id], now)?;
+                let alerts = emit_budget_transition_alerts(
+                    conn,
+                    BudgetAlertMode::Transition,
+                    &before,
+                    &after,
+                )?;
+                Ok(CommittedOutcome::with_alert_outcomes(budget, alerts))
+            })
+            .await?;
+        publish_created_alerts(publisher.as_ref(), &outcome);
+        Ok(outcome.value)
     }
 
     async fn pause_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<Budget> {
@@ -285,10 +325,18 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
 
     async fn resume_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<Budget> {
         let now = self.clock.sample();
-        let id = id.to_string();
-        self.writer
-            .exec(move |conn| set_budget_paused(conn, &id, update, false, now))
-            .await
+        let budget_id = id.to_string();
+        let publisher = Arc::clone(&self.alert_publisher);
+        let outcome = self
+            .writer
+            .exec(move |conn| {
+                let budget = set_budget_paused(conn, &budget_id, update, false, now)?;
+                let alerts = emit_resume_budget_alert(conn, &budget)?;
+                Ok(CommittedOutcome::with_alert_outcomes(budget, alerts))
+            })
+            .await?;
+        publish_created_alerts(publisher.as_ref(), &outcome);
+        Ok(outcome.value)
     }
 
     async fn delete_budget(&self, id: &str, update: BudgetLifecycleUpdate) -> Result<()> {

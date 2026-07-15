@@ -1,3 +1,4 @@
+pub(crate) mod alerts;
 mod calculation;
 pub(crate) mod category_impact;
 mod edit;
@@ -8,6 +9,8 @@ pub(crate) mod projection;
 mod projection_persistence;
 mod repair;
 mod repository;
+#[cfg(test)]
+mod repository_alert_tests;
 #[cfg(test)]
 mod repository_delete_tests;
 #[cfg(test)]

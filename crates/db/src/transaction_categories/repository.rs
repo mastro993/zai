@@ -1,4 +1,5 @@
 use super::models::TransactionCategoryRow;
+use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_budgets_by_ids};
 use crate::budgets::category_impact::{affected_budgets_for_update, analyze_deletion};
 use crate::budgets::projection::{rebuild_budget_projections, refresh_active_budget_projections};
 use crate::connection::{DbPool, get_connection};
@@ -10,7 +11,11 @@ use diesel::prelude::*;
 use diesel::r2d2::{self, Pool};
 use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
+use zai_core::features::budgets::alerts::BudgetAlertMode;
 use zai_core::features::budgets::traits::CalendarClock;
+use zai_core::features::domain_alerts::{
+    CommittedOutcome, DomainAlertEventPublisher, publish_created_alerts,
+};
 use zai_core::features::transaction_categories::models::{
     CategoryChildrenDeleteStrategy, NewTransactionCategory, TransactionCategory,
     TransactionCategoryUpdate,
@@ -39,6 +44,7 @@ pub struct TransactionCategoriesRepository {
     pool: Arc<DbPool>,
     writer: WriteHandle,
     clock: Arc<dyn CalendarClock>,
+    alert_publisher: Arc<dyn DomainAlertEventPublisher>,
 }
 
 impl TransactionCategoriesRepository {
@@ -47,22 +53,39 @@ impl TransactionCategoriesRepository {
         pool: Arc<Pool<r2d2::ConnectionManager<SqliteConnection>>>,
         writer: WriteHandle,
     ) -> Self {
-        Self::new_with_clock(
+        Self::new_with_clock_and_publisher(
             pool,
             writer,
             Arc::new(zai_core::features::budgets::traits::LocalCalendarClock),
+            zai_core::features::domain_alerts::DomainAlertEventBus::new(),
         )
     }
 
+    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn new_with_clock(
         pool: Arc<Pool<r2d2::ConnectionManager<SqliteConnection>>>,
         writer: WriteHandle,
         clock: Arc<dyn CalendarClock>,
     ) -> Self {
+        Self::new_with_clock_and_publisher(
+            pool,
+            writer,
+            clock,
+            zai_core::features::domain_alerts::DomainAlertEventBus::new(),
+        )
+    }
+
+    pub(crate) fn new_with_clock_and_publisher(
+        pool: Arc<Pool<r2d2::ConnectionManager<SqliteConnection>>>,
+        writer: WriteHandle,
+        clock: Arc<dyn CalendarClock>,
+        alert_publisher: Arc<dyn DomainAlertEventPublisher>,
+    ) -> Self {
         Self {
             pool,
             writer,
             clock,
+            alert_publisher,
         }
     }
 }
@@ -212,9 +235,13 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         updated_category: TransactionCategoryUpdate,
     ) -> Result<TransactionCategory> {
         let now = self.clock.sample();
-        self.writer
+        let publisher = Arc::clone(&self.alert_publisher);
+        let outcome = self
+            .writer
             .exec(
-                move |conn: &mut SqliteConnection| -> crate::errors::Result<TransactionCategory> {
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<
+                    CommittedOutcome<TransactionCategory>,
+                > {
                     let mut category: TransactionCategoryRow = updated_category.clone().into();
 
                     let existing = transaction_categories::table
@@ -255,6 +282,12 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         ));
                     }
 
+                    let affected_ids = affected_budgets
+                        .iter()
+                        .map(|budget| budget.id.clone())
+                        .collect::<Vec<_>>();
+                    let before = snapshot_budgets_by_ids(conn, &affected_ids, now)?;
+
                     category.created_at = existing.created_at;
                     category.updated_at = now;
 
@@ -283,8 +316,6 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                     let (category_row, parent_row) = transaction_categories::table
                         .left_join(
                             parent_categories.on(
-                                // Compare the child's parent_id with the aliased parent's id.
-                                // We use .nullable() to match the types, as parent_id is nullable.
                                 transaction_categories::parent_id.eq(parent_categories
                                     .field(transaction_categories::id)
                                     .nullable()),
@@ -296,16 +327,25 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
 
                     let category = category_from_rows(category_row, parent_row)?;
                     if structural_change {
-                        let affected_ids = affected_budgets
-                            .iter()
-                            .map(|budget| budget.id.clone())
-                            .collect::<Vec<_>>();
                         rebuild_budget_projections(conn, &affected_ids)?;
                     }
-                    Ok(category)
+                    let after = snapshot_budgets_by_ids(conn, &affected_ids, now)?;
+                    let alerts = if structural_change {
+                        emit_budget_transition_alerts(
+                            conn,
+                            BudgetAlertMode::Transition,
+                            &before,
+                            &after,
+                        )?
+                    } else {
+                        Vec::new()
+                    };
+                    Ok(CommittedOutcome::with_alert_outcomes(category, alerts))
                 },
             )
-            .await
+            .await?;
+        publish_created_alerts(publisher.as_ref(), &outcome);
+        Ok(outcome.value)
     }
 
     async fn delete_categories(
@@ -316,9 +356,13 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
     ) -> Result<Vec<TransactionCategory>> {
         let owned_ids = ids.iter().map(|&s| s.to_string()).collect::<Vec<String>>();
         let now = self.clock.sample();
-        self.writer
+        let publisher = Arc::clone(&self.alert_publisher);
+        let outcome = self
+            .writer
             .exec(
-                move |conn: &mut SqliteConnection| -> crate::errors::Result<Vec<TransactionCategory>> {
+                move |conn: &mut SqliteConnection| -> crate::errors::Result<
+                    CommittedOutcome<Vec<TransactionCategory>>,
+                > {
                     refresh_active_budget_projections(conn, now)?;
                     let impact = analyze_deletion(
                         conn,
@@ -344,6 +388,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .iter()
                         .map(|budget| budget.id.clone())
                         .collect::<Vec<_>>();
+                    let before = snapshot_budgets_by_ids(conn, &affected_ids, now)?;
                     let ids_to_delete = impact.ids_to_delete;
 
                     if children_strategy == CategoryChildrenDeleteStrategy::Promote {
@@ -391,10 +436,19 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .map(category_from_row)
                         .collect::<crate::errors::Result<Vec<_>>>()?;
                     rebuild_budget_projections(conn, &affected_ids)?;
-                    Ok(categories)
+                    let after = snapshot_budgets_by_ids(conn, &affected_ids, now)?;
+                    let alerts = emit_budget_transition_alerts(
+                        conn,
+                        BudgetAlertMode::Transition,
+                        &before,
+                        &after,
+                    )?;
+                    Ok(CommittedOutcome::with_alert_outcomes(categories, alerts))
                 },
             )
-            .await
+            .await?;
+        publish_created_alerts(publisher.as_ref(), &outcome);
+        Ok(outcome.value)
     }
 
     async fn import_categories(

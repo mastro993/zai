@@ -39,26 +39,31 @@ impl Database {
     }
 
     pub fn transaction_categories_repository(&self) -> Arc<TransactionCategoriesRepository> {
-        Arc::new(TransactionCategoriesRepository::new_with_clock(
-            Arc::clone(&self.pool),
-            self.writer.clone(),
-            Arc::clone(&self.clock),
-        ))
+        Arc::new(
+            TransactionCategoriesRepository::new_with_clock_and_publisher(
+                Arc::clone(&self.pool),
+                self.writer.clone(),
+                Arc::clone(&self.clock),
+                self.domain_alert_event_bus.clone(),
+            ),
+        )
     }
 
     pub fn transactions_repository(&self) -> Arc<TransactionsRepository> {
-        Arc::new(TransactionsRepository::new_with_clock(
+        Arc::new(TransactionsRepository::new_with_clock_and_publisher(
             Arc::clone(&self.pool),
             self.writer.clone(),
             Arc::clone(&self.clock),
+            self.domain_alert_event_bus.clone(),
         ))
     }
 
     pub fn budgets_repository(&self) -> Arc<BudgetsRepository> {
-        Arc::new(BudgetsRepository::new_with_clock(
+        Arc::new(BudgetsRepository::new_with_clock_and_publisher(
             Arc::clone(&self.pool),
             self.writer.clone(),
             Arc::clone(&self.clock),
+            self.domain_alert_event_bus.clone(),
         ))
     }
 
