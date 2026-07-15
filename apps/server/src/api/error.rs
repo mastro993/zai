@@ -15,6 +15,13 @@ pub fn bad_request(message: impl Into<String>) -> (StatusCode, Json<ApiError>) {
     )
 }
 
+pub fn forbidden(message: impl Into<String>) -> (StatusCode, Json<ApiError>) {
+    (
+        StatusCode::FORBIDDEN,
+        Json(ErrorEnvelope::new(ErrorCode::Forbidden, message)),
+    )
+}
+
 fn status_for_error(error: &Error) -> StatusCode {
     match error {
         Error::InvalidData(_) => StatusCode::BAD_REQUEST,

@@ -8,7 +8,7 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use serde_json::Value;
+use serde_json::{Value, json};
 use tower::ServiceExt;
 use uuid::Uuid;
 use zai_app::initialize_context;
@@ -52,7 +52,28 @@ pub async fn request_json(
     uri: &str,
     body: Option<Value>,
 ) -> (StatusCode, Value) {
-    let request_builder = Request::builder().method(method).uri(uri);
+    request_json_with_headers(app, method, uri, body, None).await
+}
+
+pub async fn request_json_with_headers(
+    app: &axum::Router,
+    method: &str,
+    uri: &str,
+    body: Option<Value>,
+    origin: Option<&str>,
+) -> (StatusCode, Value) {
+    let is_mutation = matches!(method, "POST" | "PUT" | "PATCH" | "DELETE");
+    let body = if is_mutation {
+        Some(body.unwrap_or_else(|| json!({})))
+    } else {
+        body
+    };
+
+    let mut request_builder = Request::builder().method(method).uri(uri);
+
+    if let Some(origin) = origin {
+        request_builder = request_builder.header("Origin", origin);
+    }
 
     let request = if let Some(body) = body {
         request_builder
