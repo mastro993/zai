@@ -1,9 +1,15 @@
 {
   "version": 1,
   "hooks": {
-    "stop": [
+    "afterFileEdit": [
       {
         "command": ".cursor/hooks/format.sh",
+        "timeout": 120
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/check.sh",
         "timeout": 120
       }
     ]
