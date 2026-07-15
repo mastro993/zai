@@ -117,6 +117,7 @@ export function TransactionCategoryFilter({
                 <Button
                   variant="link"
                   className="h-auto p-0 text-sm"
+                  nativeButton={false}
                   render={<Link to="/cash-flow/categories" />}
                   onClick={() => {
                     setOpen(false);
