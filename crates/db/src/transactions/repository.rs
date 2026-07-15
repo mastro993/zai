@@ -1,4 +1,4 @@
-use super::models::TransactionRow;
+use super::models::{TransactionRow, TransactionRowUpdate};
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budgets};
 use crate::budgets::repair_transaction_budget_projections;
 use crate::connection::{DbPool, get_connection};
@@ -318,26 +318,31 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                 > {
                     let now = clock.sample();
                     let before = snapshot_active_budgets(conn, now)?;
-                    let mut transaction: TransactionRow = updated_transaction.into();
+                    let transaction_id = updated_transaction.id.clone();
+                    let mut changeset: TransactionRowUpdate = updated_transaction.into();
+                    changeset.updated_at = now;
 
                     let existing = transactions::table
-                        .find(&transaction.id)
+                        .find(&transaction_id)
                         .first::<TransactionRow>(conn)
                         .into_storage()?;
 
-                    transaction.created_at = existing.created_at;
-                    transaction.updated_at = chrono::Utc::now().naive_utc();
-
-                    diesel::update(transactions::table.find(&transaction.id))
-                        .set(&transaction)
+                    diesel::update(transactions::table.find(&transaction_id))
+                        .set(&changeset)
                         .execute(conn)
+                        .into_storage()?;
+
+                    let persisted = transactions::table
+                        .find(&transaction_id)
+                        .filter(transactions::deleted_at.is_null())
+                        .first::<TransactionRow>(conn)
                         .into_storage()?;
 
                     repair_transaction_budget_projections(
                         conn,
                         now,
                         std::slice::from_ref(&existing),
-                        std::slice::from_ref(&transaction),
+                        std::slice::from_ref(&persisted),
                     )?;
                     let after = snapshot_active_budgets(conn, now)?;
                     let alerts = emit_budget_transition_alerts(
@@ -346,7 +351,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                         &before,
                         &after,
                     )?;
-                    Ok(CommittedOutcome::with_alert_outcomes(transaction.into(), alerts))
+                    Ok(CommittedOutcome::with_alert_outcomes(persisted.into(), alerts))
                 },
             )
             .await?;
@@ -702,6 +707,158 @@ mod tests {
             transaction_category_id: None,
             notes: None,
         }
+    }
+
+    fn populated_transaction(category_id: Option<String>) -> NewTransaction {
+        NewTransaction {
+            id: Some(Uuid::new_v4().to_string()),
+            description: Some("Lunch".to_string()),
+            amount: 1200,
+            transaction_date: chrono::Utc::now().naive_utc(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: category_id,
+            notes: Some("with friends".to_string()),
+        }
+    }
+
+    fn update_transaction(
+        created: &Transaction,
+        description: Option<String>,
+        transaction_category_id: Option<String>,
+        notes: Option<String>,
+    ) -> TransactionUpdate {
+        TransactionUpdate {
+            id: created.id.clone(),
+            description,
+            amount: created.amount,
+            transaction_date: created.transaction_date,
+            transaction_type: created.transaction_type.clone(),
+            transaction_category_id,
+            notes,
+        }
+    }
+
+    #[tokio::test]
+    async fn update_transaction_clears_description_in_database() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let created = repo
+            .create_transaction(populated_transaction(None))
+            .await
+            .expect("create transaction");
+
+        let updated = repo
+            .update_transaction(update_transaction(
+                &created,
+                None,
+                None,
+                Some("with friends".to_string()),
+            ))
+            .await
+            .expect("update transaction");
+
+        assert_eq!(updated.description, None);
+        assert_eq!(repo.get_transaction(&created.id).unwrap().description, None);
+    }
+
+    #[tokio::test]
+    async fn update_transaction_clears_notes_in_database() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let created = repo
+            .create_transaction(populated_transaction(None))
+            .await
+            .expect("create transaction");
+
+        let updated = repo
+            .update_transaction(update_transaction(
+                &created,
+                Some("Lunch".to_string()),
+                None,
+                None,
+            ))
+            .await
+            .expect("update transaction");
+
+        assert_eq!(updated.notes, None);
+        assert_eq!(repo.get_transaction(&created.id).unwrap().notes, None);
+    }
+
+    #[tokio::test]
+    async fn update_transaction_clears_category_in_database() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let category_id = Uuid::new_v4().to_string();
+        let created = repo
+            .create_transaction(populated_transaction(Some(category_id.clone())))
+            .await
+            .expect("create transaction");
+
+        let updated = repo
+            .update_transaction(update_transaction(
+                &created,
+                Some("Lunch".to_string()),
+                None,
+                Some("with friends".to_string()),
+            ))
+            .await
+            .expect("update transaction");
+
+        assert_eq!(updated.transaction_category_id, None);
+        assert_eq!(
+            repo.get_transaction(&created.id)
+                .unwrap()
+                .transaction_category_id,
+            None
+        );
+    }
+
+    #[tokio::test]
+    async fn update_transaction_clears_all_nullable_fields_in_database() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let category_id = Uuid::new_v4().to_string();
+        let created = repo
+            .create_transaction(populated_transaction(Some(category_id)))
+            .await
+            .expect("create transaction");
+
+        let updated = repo
+            .update_transaction(update_transaction(&created, None, None, None))
+            .await
+            .expect("update transaction");
+
+        assert_eq!(updated.description, None);
+        assert_eq!(updated.transaction_category_id, None);
+        assert_eq!(updated.notes, None);
+
+        let reread = repo.get_transaction(&created.id).unwrap();
+        assert_eq!(reread.description, None);
+        assert_eq!(reread.transaction_category_id, None);
+        assert_eq!(reread.notes, None);
+    }
+
+    #[tokio::test]
+    async fn update_transaction_leaves_deleted_at_null_for_active_rows() {
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let created = repo
+            .create_transaction(populated_transaction(None))
+            .await
+            .expect("create transaction");
+
+        repo.update_transaction(update_transaction(&created, None, None, None))
+            .await
+            .expect("update transaction");
+
+        let conn = &mut get_connection(&repo.pool).expect("connection");
+        let deleted_at = transactions::table
+            .find(&created.id)
+            .select(transactions::deleted_at)
+            .first::<Option<chrono::NaiveDateTime>>(conn)
+            .expect("deleted_at");
+
+        assert!(deleted_at.is_none());
     }
 
     #[tokio::test]
