@@ -263,6 +263,7 @@ async fn list_transactions(
     context
         .transactions_service()
         .get_transactions(query.page, query.per_page, filters, sort)
+        .await
         .map(Json)
         .map_err(|error| command_error("Failed to load transactions", error))
 }
@@ -274,6 +275,7 @@ async fn get_transaction(
     context
         .transactions_service()
         .get_transaction(&transaction_id)
+        .await
         .map(Json)
         .map_err(|error| command_error("Failed to load transaction", error))
 }

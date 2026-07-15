@@ -1,3 +1,4 @@
+mod blocking;
 mod connection;
 mod errors;
 #[cfg(test)]

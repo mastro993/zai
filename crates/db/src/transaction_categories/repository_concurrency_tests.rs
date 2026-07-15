@@ -85,8 +85,8 @@ async fn concurrent_root_updates_cannot_create_cycle() {
     assert_eq!(successes, 1);
     assert_eq!(conflicts, 1);
 
-    let alpha = repo.get_category(&left_id).expect("alpha");
-    let beta = repo.get_category(&right_id).expect("beta");
+    let alpha = repo.get_category(&left_id).await.expect("alpha");
+    let beta = repo.get_category(&right_id).await.expect("beta");
     let parent_child_pairs = [
         alpha.parent_id.as_deref() == Some(right_id.as_str()),
         beta.parent_id.as_deref() == Some(left_id.as_str()),
@@ -153,8 +153,8 @@ async fn concurrent_updates_cannot_create_depth_three() {
     assert!(matches!(parent_result, Err(Error::Conflict(_))));
     assert!(child_result.is_ok());
 
-    let parent = repo.get_category(&parent_id).expect("parent");
-    let child = repo.get_category(&child_id).expect("child");
+    let parent = repo.get_category(&parent_id).await.expect("parent");
+    let child = repo.get_category(&child_id).await.expect("child");
     assert!(parent.parent_id.is_none());
     assert_eq!(child.parent_id.as_deref(), Some(parent_id.as_str()));
     assert_eq!(child.name, "Child renamed");
@@ -261,6 +261,9 @@ async fn unrelated_concurrent_updates_both_succeed() {
     let (first, second) = tokio::try_join!(first, second).expect("join");
     assert!(first.is_ok());
     assert!(second.is_ok());
-    assert_eq!(repo.get_category(&first_id).unwrap().name, "Groceries");
-    assert_eq!(repo.get_category(&second_id).unwrap().name, "Flights");
+    assert_eq!(
+        repo.get_category(&first_id).await.unwrap().name,
+        "Groceries"
+    );
+    assert_eq!(repo.get_category(&second_id).await.unwrap().name, "Flights");
 }

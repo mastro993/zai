@@ -19,6 +19,7 @@ pub async fn get_transaction_category(
     state
         .transaction_categories_service()
         .get_category(&category_id)
+        .await
         .map_err(|error| {
             command_error(
                 format!("Failed to get transaction category {category_id}"),
@@ -36,6 +37,7 @@ pub async fn get_transaction_categories(
     state
         .transaction_categories_service()
         .get_categories(parent_id.as_deref())
+        .await
         .map_err(|error| command_error("Failed to load transaction_categories", error))
 }
 

@@ -9,6 +9,7 @@ use super::history::load_history;
 use super::lifecycle::{delete_budget as delete_budget_in_storage, set_budget_paused};
 use super::models::{BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget};
 use super::projection::materialize_budget;
+use crate::blocking::run_blocking;
 use crate::connection::{DbPool, get_connection};
 use crate::errors::{IntoCore, IntoStorage, StorageError};
 use crate::schema::{budget_configurations, budget_period_results, budgets};
@@ -77,29 +78,16 @@ impl BudgetsRepository {
         }
     }
 
-    fn budget_ids(&self, filter: BudgetListFilter) -> Result<Vec<String>> {
-        let query = budgets::table
-            .filter(budgets::deleted_at.is_null())
-            .into_boxed();
-        let query = match filter {
-            BudgetListFilter::Active => query.filter(budgets::paused.eq(false)),
-            BudgetListFilter::Paused => query.filter(budgets::paused.eq(true)),
-            BudgetListFilter::All => query,
-        };
-        query
-            .order((budgets::name.asc(), budgets::id.asc()))
-            .select(budgets::id)
-            .load::<String>(&mut get_connection(&self.pool)?)
-            .into_core()
-    }
-
-    fn projected_budget(&self, id: &str, now: NaiveDateTime) -> Result<ProjectionState> {
-        let mut conn = get_connection(&self.pool)?;
-        projected_budget_from_connection(&mut conn, id, now).into_core()
-    }
-
     async fn get_or_materialize(&self, id: &str, now: NaiveDateTime) -> Result<Budget> {
-        match self.projected_budget(id, now)? {
+        let pool = Arc::clone(&self.pool);
+        let id_owned = id.to_owned();
+        let state = run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            projected_budget_from_connection(&mut conn, &id_owned, now).into_core()
+        })
+        .await?;
+
+        match state {
             ProjectionState::Current(budget) => Ok(budget),
             ProjectionState::NeedsMaterialization => {
                 let id = id.to_string();
@@ -176,7 +164,23 @@ pub(super) enum ProjectionState {
 impl BudgetsRepositoryTrait for BudgetsRepository {
     async fn list_budgets(&self, filter: BudgetListFilter) -> Result<Vec<Budget>> {
         let now = self.clock.sample();
-        let ids = self.budget_ids(filter)?;
+        let pool = Arc::clone(&self.pool);
+        let ids = run_blocking(move || {
+            let query = budgets::table
+                .filter(budgets::deleted_at.is_null())
+                .into_boxed();
+            let query = match filter {
+                BudgetListFilter::Active => query.filter(budgets::paused.eq(false)),
+                BudgetListFilter::Paused => query.filter(budgets::paused.eq(true)),
+                BudgetListFilter::All => query,
+            };
+            query
+                .order((budgets::name.asc(), budgets::id.asc()))
+                .select(budgets::id)
+                .load::<String>(&mut get_connection(&pool)?)
+                .into_core()
+        })
+        .await?;
         let mut result = Vec::with_capacity(ids.len());
         for id in ids {
             result.push(self.get_or_materialize(&id, now).await?);
@@ -197,8 +201,13 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
         zai_core::features::budgets::models::validate_history_paging(page, per_page)?;
         let now = self.clock.sample();
         self.get_or_materialize(id, now).await?;
-        let mut conn = get_connection(&self.pool)?;
-        load_history(&mut conn, id, page, per_page)
+        let pool = Arc::clone(&self.pool);
+        let id = id.to_owned();
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            load_history(&mut conn, &id, page, per_page)
+        })
+        .await
     }
 
     async fn create_budget(&self, budget: NewBudget) -> Result<Budget> {

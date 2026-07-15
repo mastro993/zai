@@ -1,5 +1,6 @@
 use super::import_dedup;
 use super::models::{TransactionRow, TransactionRowUpdate};
+use crate::blocking::run_blocking;
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budgets};
 use crate::budgets::repair_transaction_budget_projections;
 use crate::connection::{DbPool, get_connection};
@@ -236,52 +237,89 @@ impl TransactionsRepository {
 
 #[async_trait]
 impl TransactionsRepositoryTrait for TransactionsRepository {
-    fn get_transactions(
+    async fn get_transactions(
         &self,
         page: i64,
         per_page: i64,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>> {
-        let conn = &mut get_connection(&self.pool)?;
+        let pool = Arc::clone(&self.pool);
+        let owned_query = filters.as_ref().and_then(|f| f.query.map(str::to_owned));
+        let owned_categories =
+            filters
+                .as_ref()
+                .and_then(|f| f.categories.as_ref())
+                .map(|categories| {
+                    categories
+                        .iter()
+                        .map(|value| (*value).to_owned())
+                        .collect::<Vec<_>>()
+                });
+        let owned_transaction_type = filters
+            .as_ref()
+            .and_then(|f| f.transaction_type.map(str::to_owned));
+        let start_date = filters.as_ref().and_then(|f| f.start_date);
+        let end_date = filters.as_ref().and_then(|f| f.end_date);
+        let has_filters = filters.is_some();
 
-        let total = count_transactions(conn, filters.as_ref()).into_core()?;
-        let total_pages = total_pages(total, per_page);
+        run_blocking(move || {
+            let category_refs = owned_categories
+                .as_ref()
+                .map(|categories| categories.iter().map(String::as_str).collect::<Vec<_>>());
+            let filters = has_filters.then_some(TransactionSearchFilters {
+                query: owned_query.as_deref(),
+                categories: category_refs,
+                transaction_type: owned_transaction_type.as_deref(),
+                start_date,
+                end_date,
+            });
+            let conn = &mut get_connection(&pool)?;
 
-        let query = apply_transaction_sort(
-            apply_transaction_filters(transactions_base_query(), filters.as_ref()),
-            sort.as_ref(),
-        );
+            let total = count_transactions(conn, filters.as_ref()).into_core()?;
+            let total_pages = total_pages(total, per_page);
 
-        let page_rows = query
-            .select(transactions::all_columns)
-            .paginate(page)
-            .into_core()?
-            .per_page(per_page)
-            .into_core()?
-            .load_page::<TransactionRow>(conn)
-            .into_core()?;
+            let query = apply_transaction_sort(
+                apply_transaction_filters(transactions_base_query(), filters.as_ref()),
+                sort.as_ref(),
+            );
 
-        let data = page_rows.into_iter().map(Transaction::from).collect();
+            let page_rows = query
+                .select(transactions::all_columns)
+                .paginate(page)
+                .into_core()?
+                .per_page(per_page)
+                .into_core()?
+                .load_page::<TransactionRow>(conn)
+                .into_core()?;
 
-        Ok(PaginatedData {
-            data,
-            page,
-            per_page,
-            total_pages,
+            let data = page_rows.into_iter().map(Transaction::from).collect();
+
+            Ok(PaginatedData {
+                data,
+                page,
+                per_page,
+                total_pages,
+            })
         })
+        .await
     }
 
-    fn get_transaction(&self, id: &str) -> Result<Transaction> {
-        let mut conn = get_connection(&self.pool)?;
+    async fn get_transaction(&self, id: &str) -> Result<Transaction> {
+        let pool = Arc::clone(&self.pool);
+        let id = id.to_owned();
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
 
-        let result = transactions::table
-            .filter(transactions::deleted_at.is_null())
-            .find(id)
-            .first::<TransactionRow>(&mut conn)
-            .into_core()?;
+            let result = transactions::table
+                .filter(transactions::deleted_at.is_null())
+                .find(id)
+                .first::<TransactionRow>(&mut conn)
+                .into_core()?;
 
-        Ok(result.into())
+            Ok(result.into())
+        })
+        .await
     }
 
     async fn create_transaction(&self, new_transaction: NewTransaction) -> Result<Transaction> {
@@ -714,6 +752,7 @@ mod tests {
 
         let persisted = repo
             .get_transactions(1, 10, None, None)
+            .await
             .expect("list transactions");
         assert_eq!(persisted.data.len(), 1);
     }
@@ -810,6 +849,7 @@ mod tests {
 
         let persisted = repo
             .get_transactions(1, 10, None, None)
+            .await
             .expect("list transactions");
         assert_eq!(persisted.data.len(), 2);
     }
@@ -858,6 +898,7 @@ mod tests {
 
         let persisted = transactions
             .get_transactions(1, 10, None, None)
+            .await
             .expect("list transactions");
         assert!(persisted.data.is_empty());
     }
@@ -974,7 +1015,10 @@ mod tests {
             .expect("update transaction");
 
         assert_eq!(updated.description, None);
-        assert_eq!(repo.get_transaction(&created.id).unwrap().description, None);
+        assert_eq!(
+            repo.get_transaction(&created.id).await.unwrap().description,
+            None
+        );
     }
 
     #[tokio::test]
@@ -997,7 +1041,7 @@ mod tests {
             .expect("update transaction");
 
         assert_eq!(updated.notes, None);
-        assert_eq!(repo.get_transaction(&created.id).unwrap().notes, None);
+        assert_eq!(repo.get_transaction(&created.id).await.unwrap().notes, None);
     }
 
     #[tokio::test]
@@ -1023,6 +1067,7 @@ mod tests {
         assert_eq!(updated.transaction_category_id, None);
         assert_eq!(
             repo.get_transaction(&created.id)
+                .await
                 .unwrap()
                 .transaction_category_id,
             None
@@ -1048,7 +1093,7 @@ mod tests {
         assert_eq!(updated.transaction_category_id, None);
         assert_eq!(updated.notes, None);
 
-        let reread = repo.get_transaction(&created.id).unwrap();
+        let reread = repo.get_transaction(&created.id).await.unwrap();
         assert_eq!(reread.description, None);
         assert_eq!(reread.transaction_category_id, None);
         assert_eq!(reread.notes, None);
@@ -1099,6 +1144,7 @@ mod tests {
 
         let result = repo
             .get_transactions(1, 10, Some(filters), None)
+            .await
             .expect("search transactions");
 
         assert_eq!(result.data.len(), 1);
@@ -1167,6 +1213,7 @@ mod tests {
 
         let result = repo
             .get_transactions(1, 10, Some(filters), None)
+            .await
             .expect("search transactions");
 
         assert_eq!(result.data.len(), 1);
@@ -1174,5 +1221,51 @@ mod tests {
             result.data[0].description.as_deref(),
             Some("foo_bar purchase")
         );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn pooled_transaction_read_does_not_starve_current_thread_runtime() {
+        use crate::blocking::run_blocking;
+        use std::sync::mpsc;
+        use std::thread;
+
+        let temp_db = TempDb::new();
+        let repo = setup_test_repo(temp_db.path());
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (resume_tx, resume_rx) = mpsc::channel::<()>();
+
+        let blocker = tokio::spawn(async move {
+            run_blocking(move || {
+                entered_tx.send(thread::current().id()).expect("entered");
+                resume_rx.recv().expect("resume");
+                Ok(())
+            })
+            .await
+        });
+
+        let blocker_tid = tokio::task::spawn_blocking(move || entered_rx.recv())
+            .await
+            .expect("join")
+            .expect("entered");
+        assert_ne!(blocker_tid, thread::current().id());
+
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        tokio::spawn(async move {
+            let _ = tx.send(());
+        });
+        rx.await
+            .expect("runtime should progress while blocking work waits");
+
+        let page = repo
+            .get_transactions(1, 10, None, None)
+            .await
+            .expect("pooled read");
+        assert!(page.data.is_empty());
+
+        resume_tx.send(()).expect("resume");
+        blocker
+            .await
+            .expect("join")
+            .expect("blocking work should complete");
     }
 }

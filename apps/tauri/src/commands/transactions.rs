@@ -53,6 +53,7 @@ pub async fn get_transactions(
     state
         .transactions_service()
         .get_transactions(page, per_page, filters, sort)
+        .await
         .map_err(|error| command_error("Failed to load transactions", error))
 }
 
@@ -65,6 +66,7 @@ pub async fn get_transaction(
     state
         .transactions_service()
         .get_transaction(&transaction_id)
+        .await
         .map_err(|error| command_error("Failed to load transaction", error))
 }
 

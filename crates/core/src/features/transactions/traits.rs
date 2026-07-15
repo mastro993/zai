@@ -10,14 +10,14 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait TransactionsRepositoryTrait: Send + Sync {
-    fn get_transactions(
+    async fn get_transactions(
         &self,
         page: i64,
         per_page: i64,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>>;
-    fn get_transaction(&self, id: &str) -> Result<Transaction>;
+    async fn get_transaction(&self, id: &str) -> Result<Transaction>;
 
     async fn create_transaction(&self, new_transaction: NewTransaction) -> Result<Transaction>;
     async fn update_transaction(
@@ -41,14 +41,14 @@ pub trait TransactionsRepositoryTrait: Send + Sync {
 
 #[async_trait]
 pub trait TransactionsServiceTrait: Send + Sync {
-    fn get_transactions(
+    async fn get_transactions(
         &self,
         page: i64,
         per_page: i64,
-        filters: Option<TransactionSearchFilters>,
+        filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>>;
-    fn get_transaction(&self, id: &str) -> Result<Transaction>;
+    async fn get_transaction(&self, id: &str) -> Result<Transaction>;
 
     async fn create_transaction(&self, new_category: NewTransaction) -> Result<Transaction>;
     async fn update_transaction(&self, category: TransactionUpdate) -> Result<Transaction>;
