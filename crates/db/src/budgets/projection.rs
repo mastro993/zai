@@ -16,7 +16,17 @@ use diesel::sqlite::SqliteConnection;
 use std::collections::HashMap;
 use zai_core::Error;
 use zai_core::features::budgets::alerts::BudgetAlertMode;
-use zai_core::features::budgets::models::{Budget, current_period};
+use zai_core::features::budgets::models::{Budget, BudgetCadence, current_period};
+
+struct MaterializeBudgetInput {
+    id: String,
+    now: NaiveDateTime,
+    budget: BudgetRow,
+    cadence: BudgetCadence,
+    current_start: NaiveDateTime,
+    existing_configurations: Vec<BudgetConfigurationRow>,
+    repair_all: bool,
+}
 
 pub(crate) fn materialize_budget(
     conn: &mut SqliteConnection,
@@ -78,14 +88,15 @@ fn materialize_budget_with_options(
     };
     let budget = materialize_budget_inner(
         conn,
-        id,
-        now,
-        budget_row,
-        cadence,
-        current_start,
-        existing_configurations,
-        result_count,
-        repair_all,
+        MaterializeBudgetInput {
+            id: id.to_string(),
+            now,
+            budget: budget_row,
+            cadence,
+            current_start,
+            existing_configurations,
+            repair_all,
+        },
     )?;
     if alert_mode == BudgetAlertMode::Transition && !budget.paused {
         let after = BudgetAlertSnapshot {
@@ -131,15 +142,17 @@ fn projected_before_snapshot(
 
 fn materialize_budget_inner(
     conn: &mut SqliteConnection,
-    id: &str,
-    now: NaiveDateTime,
-    budget: BudgetRow,
-    cadence: zai_core::features::budgets::models::BudgetCadence,
-    current_start: NaiveDateTime,
-    existing_configurations: Vec<BudgetConfigurationRow>,
-    _result_count: i64,
-    repair_all: bool,
+    input: MaterializeBudgetInput,
 ) -> crate::errors::Result<Budget> {
+    let MaterializeBudgetInput {
+        id,
+        now,
+        budget,
+        cadence,
+        current_start,
+        existing_configurations,
+        repair_all,
+    } = input;
     let mut configuration = if repair_all {
         existing_configurations
             .first()
@@ -150,7 +163,7 @@ fn materialize_budget_inner(
     } else {
         let (_, period_end) = current_period(now, cadence).map_err(StorageError::CoreError)?;
         let configuration = BudgetConfigurationRow {
-            budget_id: id.to_string(),
+            budget_id: id.clone(),
             period_start: current_start,
             period_end,
             category_ids: "[]".to_string(),
@@ -174,7 +187,7 @@ fn materialize_budget_inner(
     validate_period_boundaries(&configuration, cadence)?;
     let missing_periods = count_missing_periods(&configuration, current_start, cadence)?;
     let categories = load_category_hierarchy(conn)?;
-    let mut previous_period = load_previous_period(conn, id, configuration.period_start)?;
+    let mut previous_period = load_previous_period(conn, &id, configuration.period_start)?;
     let mut current_result = None;
 
     for index in 0..=missing_periods {
@@ -189,7 +202,7 @@ fn materialize_budget_inner(
                 })
                 .flatten();
             configuration = existing.unwrap_or_else(|| BudgetConfigurationRow {
-                budget_id: id.to_string(),
+                budget_id: id.clone(),
                 period_start,
                 period_end,
                 category_ids: configuration.category_ids.clone(),
@@ -213,7 +226,7 @@ fn materialize_budget_inner(
 
         let period =
             calculate_configuration(conn, &configuration, &categories, previous_period.as_ref())?;
-        let result = result_row(id, &period);
+        let result = result_row(&id, &period);
         upsert_period_result(conn, &result)?;
         previous_period = Some(period);
 

@@ -177,6 +177,7 @@ impl TransactionsRepository {
         )
     }
 
+    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn new_with_clock(
         pool: Arc<Pool<r2d2::ConnectionManager<SqliteConnection>>>,
         writer: WriteHandle,

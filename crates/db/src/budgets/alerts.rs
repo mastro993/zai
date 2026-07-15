@@ -13,7 +13,7 @@ use zai_core::features::budgets::alerts::{
     alerts_for_scenario, status_from_occurrence_suffix,
 };
 use zai_core::features::budgets::models::{Budget, BudgetPeriod, BudgetStatus};
-use zai_core::features::domain_alerts::{AlertInsertOutcome, NewDomainAlert};
+use zai_core::features::domain_alerts::AlertInsertOutcome;
 
 #[derive(Debug, Clone)]
 pub(crate) struct BudgetAlertSnapshot {

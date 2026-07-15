@@ -49,6 +49,7 @@ impl BudgetsRepository {
         )
     }
 
+    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn new_with_clock(
         pool: Arc<DbPool>,
         writer: WriteHandle,
@@ -298,7 +299,7 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
         let outcome = self
             .writer
             .exec(move |conn| {
-                let before = snapshot_budgets_by_ids(conn, &[budget_id.clone()], now)?;
+                let before = snapshot_budgets_by_ids(conn, std::slice::from_ref(&budget_id), now)?;
                 let budget = update_budget_in_storage(conn, &budget_id, update, now)?;
                 let after = snapshot_budgets_by_ids(conn, &[budget_id], now)?;
                 let alerts = emit_budget_transition_alerts(
