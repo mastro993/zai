@@ -57,7 +57,7 @@ export const getTransactions = (
   });
 };
 
-const IMPORT_DEDUP_PAGE_SIZE = 500;
+const IMPORT_DEDUP_PAGE_SIZE = 100;
 
 export const getAllTransactions = async (
   filters?: TransactionFilters,

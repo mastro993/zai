@@ -115,6 +115,37 @@ const DATE_FORMAT_PATTERNS: Record<
 
 const padDatePart = (value: string) => value.padStart(2, "0");
 
+const isLeapYear = (year: number) => year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+
+const daysInMonth = (year: number, month: number) => {
+  if (month === 2) {
+    return isLeapYear(year) ? 29 : 28;
+  }
+
+  if (month === 4 || month === 6 || month === 9 || month === 11) {
+    return 30;
+  }
+
+  return 31;
+};
+
+const isValidCalendarDate = (year: number, month: number, day: number) => {
+  if (month < 1 || month > 12) {
+    return false;
+  }
+
+  if (day < 1 || day > daysInMonth(year, month)) {
+    return false;
+  }
+
+  return true;
+};
+
+const isValidTime = (hour: number, minute: number, second: number) =>
+  hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 && second >= 0 && second <= 59;
+
+const parseNumericPart = (value: string) => Number.parseInt(value, 10);
+
 const DEFAULT_EXPENSE_TYPE_VALUES = "expense, debit, out";
 const DEFAULT_INCOME_TYPE_VALUES = "income, credit, in";
 
@@ -209,12 +240,22 @@ export const parseImportDate = (
     }
 
     const [, year, month, day, hour, minute, second = "00"] = match;
-    const isoDate = `${year}-${month}-${day}`;
-    const isoDateTime = `${isoDate}T${hour}:${minute}:${second}`;
+    const yearNumber = parseNumericPart(year);
+    const monthNumber = parseNumericPart(month);
+    const dayNumber = parseNumericPart(day);
+    const hourNumber = parseNumericPart(hour);
+    const minuteNumber = parseNumericPart(minute);
+    const secondNumber = parseNumericPart(second);
 
-    if (Number.isNaN(Date.parse(isoDateTime))) {
+    if (
+      !isValidCalendarDate(yearNumber, monthNumber, dayNumber) ||
+      !isValidTime(hourNumber, minuteNumber, secondNumber)
+    ) {
       return { ok: false, message: "Invalid date" };
     }
+
+    const isoDate = `${year}-${month}-${day}`;
+    const isoDateTime = `${isoDate}T${hour}:${minute}:${second}`;
 
     return { ok: true, value: isoDateTime };
   }
@@ -236,11 +277,15 @@ export const parseImportDate = (
     [, parts.month, parts.day, parts.year] = match;
   }
 
-  const isoDate = `${parts.year}-${padDatePart(parts.month)}-${padDatePart(parts.day)}`;
+  const yearNumber = parseNumericPart(parts.year);
+  const monthNumber = parseNumericPart(parts.month);
+  const dayNumber = parseNumericPart(parts.day);
 
-  if (Number.isNaN(Date.parse(`${isoDate}T00:00:00`))) {
+  if (!isValidCalendarDate(yearNumber, monthNumber, dayNumber)) {
     return { ok: false, message: "Invalid date" };
   }
+
+  const isoDate = `${parts.year}-${padDatePart(parts.month)}-${padDatePart(parts.day)}`;
 
   return { ok: true, value: `${isoDate}T00:00:00` };
 };

@@ -35,6 +35,10 @@ const isDefaultListRequest = (url: string): boolean => {
   return !parsed.searchParams.has("readState") && !parsed.searchParams.has("cursor");
 };
 
+const parsedHasCursor = (url: string): boolean => new URL(url).searchParams.has("cursor");
+
+const isAlertListRequest = (url: string): boolean => new URL(url).pathname.endsWith("/alerts");
+
 test.describe("alerts ledger", () => {
   test.beforeEach(async ({ page }) => {
     await page.route("**/api/alerts/unread-count", async (route) => {
@@ -104,7 +108,21 @@ test.describe("alerts ledger", () => {
         body: JSON.stringify(currentUnreadCount),
       });
     });
-    await page.route("**/api/alerts", async (route) => {
+    await page.route((url) => isAlertListRequest(url.href), async (route) => {
+      const url = route.request().url();
+      if (isUnreadFirstPageRequest(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(
+            currentUnreadCount > 0
+              ? currentAlerts
+              : { items: [], nextCursor: null },
+          ),
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -131,18 +149,23 @@ test.describe("alerts ledger", () => {
     await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
     await listRefresh;
 
+    const dialog = page.getByRole("dialog", { name: "Alerts" });
+    const unreadFilterResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.ok() &&
+        isUnreadFirstPageRequest(response.url()),
+    );
+    await dialog.getByRole("button", { name: "Unread" }).click();
+    await unreadFilterResponse;
+
     const markRead = page.getByRole("button", { name: "Mark read: Budget warning" });
     await expect(markRead).toBeVisible();
     const markReadResponse = page.waitForResponse((response) => response.url().includes("/read"));
     await markRead.click();
     await markReadResponse;
 
-    await expect(page.getByRole("button", { name: "Mark unread: Budget warning" })).toBeVisible();
-    await expect(
-      page.getByRole("article", { name: /Warning alert: Budget warning/i }).getByText("Read", {
-        exact: true,
-      }),
-    ).toBeVisible();
+    await expect(page.getByText("Budget warning")).toBeHidden();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("button", { name: "Alerts, 0 unread" })).toBeVisible();
   });
@@ -160,7 +183,19 @@ test.describe("alerts ledger", () => {
         body: JSON.stringify(allRead ? 0 : 1),
       });
     });
-    await page.route("**/api/alerts", async (route) => {
+    await page.route((url) => isAlertListRequest(url.href), async (route) => {
+      const url = route.request().url();
+      if (isUnreadFirstPageRequest(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(
+            allRead ? { items: [], nextCursor: null } : fixedAlerts,
+          ),
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -180,14 +215,91 @@ test.describe("alerts ledger", () => {
     await page.getByRole("button", { name: "Alerts, 1 unread" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Alerts" });
+    const unreadFilterResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.ok() &&
+        isUnreadFirstPageRequest(response.url()),
+    );
+    await dialog.getByRole("button", { name: "Unread" }).click();
+    await unreadFilterResponse;
+
     const markAllRead = dialog.getByRole("button", { name: "Mark all read" });
     await expect(markAllRead).toBeEnabled();
     await markAllRead.click();
 
-    await expect(dialog.getByText("Read", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Budget warning")).toBeHidden();
     await expect(markAllRead).toBeDisabled();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("button", { name: "Alerts, 0 unread" })).toBeVisible();
+  });
+
+  test("removes a read alert from the read filter after marking it unread", async ({ page }) => {
+    const readAlerts = { ...fixedAlerts, items: [readAlert] };
+    let currentUnreadCount = 0;
+
+    await page.unroute("**/api/alerts/unread-count");
+    await page.unroute("**/api/alerts");
+    await page.route("**/api/alerts/unread-count", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(currentUnreadCount),
+      });
+    });
+    await page.route((url) => isAlertListRequest(url.href), async (route) => {
+      const url = route.request().url();
+      if (new URL(url).searchParams.get("readState") === "read" && !parsedHasCursor(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(
+            currentUnreadCount > 0 ? { items: [], nextCursor: null } : readAlerts,
+          ),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(readAlerts),
+      });
+    });
+    await page.route("**/api/alerts/*/unread", async (route) => {
+      currentUnreadCount = 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(fixedAlerts.items[0]),
+      });
+    });
+
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Alerts, 0 unread" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Alerts" });
+    const readFilterResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.ok() &&
+        new URL(response.url()).searchParams.get("readState") === "read" &&
+        !parsedHasCursor(response.url()),
+    );
+    await dialog.getByRole("button", { name: "Read", exact: true }).click();
+    await readFilterResponse;
+
+    const markUnread = page.getByRole("button", { name: "Mark unread: Budget warning" });
+    await expect(markUnread).toBeVisible();
+    const markUnreadResponse = page.waitForResponse((response) =>
+      response.url().includes("/unread"),
+    );
+    await markUnread.click();
+    await markUnreadResponse;
+
+    await expect(dialog.getByText("Budget warning")).toBeHidden();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Alerts, 1 unread" })).toBeVisible();
   });
 
   test("marks unread alert read before navigating to budget destination", async ({ page }) => {
