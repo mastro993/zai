@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { domainAlertSeverityLabel, formatAlertCreatedAt } from "../lib/format";
 import { isNavigableAlertDestination, isUnreadAlert } from "../lib/parse";
 import type { DomainAlert, DomainAlertSeverity } from "../types/domain-alert";
+import { BudgetStatusAlertSnapshot } from "./budget-status-alert-snapshot";
 
 const severityIcon = (severity: DomainAlertSeverity) => {
   switch (severity) {
@@ -122,6 +123,7 @@ export function AlertRow({
         </Button>
       </div>
       <p className="text-xs/relaxed text-foreground">{alert.body}</p>
+      {alert.data ? <BudgetStatusAlertSnapshot data={alert.data} /> : null}
       {lifecycleError ? (
         <p className="text-xs text-destructive" role="alert">
           {lifecycleError}

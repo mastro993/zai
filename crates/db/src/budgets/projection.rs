@@ -1,3 +1,4 @@
+use super::alerts::{BudgetAlertSnapshot, emit_budget_transition_alerts};
 use super::calculation::{
     calculate_configuration, count_missing_periods, invalid_budget, load_category_hierarchy,
     next_period, parse_cadence, validate_period_boundaries,
@@ -12,7 +13,9 @@ use chrono::NaiveDateTime;
 use diesel::OptionalExtension;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
+use std::collections::HashMap;
 use zai_core::Error;
+use zai_core::features::budgets::alerts::BudgetAlertMode;
 use zai_core::features::budgets::models::{Budget, current_period};
 
 pub(crate) fn materialize_budget(
@@ -20,12 +23,29 @@ pub(crate) fn materialize_budget(
     id: &str,
     now: NaiveDateTime,
 ) -> crate::errors::Result<Budget> {
-    let budget = budgets::table
+    materialize_budget_with_options(conn, id, now, false)
+}
+
+pub(crate) fn materialize_budget_silent(
+    conn: &mut SqliteConnection,
+    id: &str,
+    now: NaiveDateTime,
+) -> crate::errors::Result<Budget> {
+    materialize_budget_with_options(conn, id, now, true)
+}
+
+fn materialize_budget_with_options(
+    conn: &mut SqliteConnection,
+    id: &str,
+    now: NaiveDateTime,
+    suppress_alerts: bool,
+) -> crate::errors::Result<Budget> {
+    let budget_row = budgets::table
         .filter(budgets::id.eq(id))
         .filter(budgets::deleted_at.is_null())
         .first::<BudgetRow>(conn)
         .into_storage()?;
-    let cadence = parse_cadence(&budget)?;
+    let cadence = parse_cadence(&budget_row)?;
     let (current_start, _) = current_period(now, cadence).map_err(StorageError::CoreError)?;
     let existing_configurations = all_configurations(conn, id)?;
     let result_count = budget_period_results::table
@@ -35,6 +55,91 @@ pub(crate) fn materialize_budget(
         .into_storage()?;
     let repair_all =
         !existing_configurations.is_empty() && result_count != existing_configurations.len() as i64;
+    let missing_periods = existing_configurations
+        .last()
+        .map(|configuration| {
+            count_missing_periods(configuration, current_start, cadence).unwrap_or(0)
+        })
+        .unwrap_or(0);
+    let alert_mode = if suppress_alerts
+        || budget_row.paused
+        || repair_all
+        || existing_configurations.is_empty()
+        || missing_periods == 0
+    {
+        BudgetAlertMode::Silent
+    } else {
+        BudgetAlertMode::Transition
+    };
+    let before = if alert_mode == BudgetAlertMode::Transition {
+        projected_before_snapshot(conn, id, &budget_row, &existing_configurations)
+    } else {
+        None
+    };
+    let budget = materialize_budget_inner(
+        conn,
+        id,
+        now,
+        budget_row,
+        cadence,
+        current_start,
+        existing_configurations,
+        result_count,
+        repair_all,
+    )?;
+    if alert_mode == BudgetAlertMode::Transition && !budget.paused {
+        let after = BudgetAlertSnapshot {
+            id: budget.id.clone(),
+            name: budget.name.clone(),
+            paused: budget.paused,
+            period_start: budget.current_period.start,
+            period: budget.current_period.clone(),
+        };
+        let before_map = before
+            .map(|snapshot| [(snapshot.id.clone(), snapshot)])
+            .into_iter()
+            .flatten()
+            .collect::<HashMap<_, _>>();
+        let after_map = HashMap::from([(after.id.clone(), after)]);
+        emit_budget_transition_alerts(conn, alert_mode, &before_map, &after_map)?;
+    }
+    Ok(budget)
+}
+
+fn projected_before_snapshot(
+    conn: &mut SqliteConnection,
+    id: &str,
+    budget_row: &BudgetRow,
+    configurations: &[BudgetConfigurationRow],
+) -> Option<BudgetAlertSnapshot> {
+    let configuration = configurations.last()?;
+    let result = budget_period_results::table
+        .filter(budget_period_results::budget_id.eq(id))
+        .filter(budget_period_results::period_start.eq(configuration.period_start))
+        .first::<super::models::BudgetPeriodResultRow>(conn)
+        .optional()
+        .ok()??;
+    let budget = build_budget(budget_row.clone(), configuration.clone(), result).ok()?;
+    Some(BudgetAlertSnapshot {
+        id: budget.id,
+        name: budget.name,
+        paused: budget.paused,
+        period_start: budget.current_period.start,
+        period: budget.current_period,
+    })
+}
+
+fn materialize_budget_inner(
+    conn: &mut SqliteConnection,
+    id: &str,
+    now: NaiveDateTime,
+    budget: BudgetRow,
+    cadence: zai_core::features::budgets::models::BudgetCadence,
+    current_start: NaiveDateTime,
+    existing_configurations: Vec<BudgetConfigurationRow>,
+    _result_count: i64,
+    repair_all: bool,
+) -> crate::errors::Result<Budget> {
     let mut configuration = if repair_all {
         existing_configurations
             .first()
