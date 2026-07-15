@@ -19,25 +19,15 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tauri-plugin-shell = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
-tauri-plugin-stronghold = "2"
-argon2 = "0.5.3"
-tauri-plugin-store = "2"
 dotenvy = { workspace = true }
-specta = "2.0.0-rc.22"
-specta-typescript = "0.0.9"
-tauri-specta = { version = "2.0.0-rc.21", features = ["typescript", "derive"] }
 zai-app = { workspace = true }
 zai-core = { workspace = true }
 log = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 chrono = { workspace = true }
-keyring = "3"
-rand = "0.9"
-base64 = "0.22"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

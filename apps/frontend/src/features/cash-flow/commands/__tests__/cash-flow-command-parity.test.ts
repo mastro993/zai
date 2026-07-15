@@ -6,8 +6,6 @@ import { describe, expect, it } from "vitest";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../../..");
 
-const DESKTOP_ONLY_COMMANDS = new Set(["get_stronghold_vault_password"]);
-
 const FRONTEND_WRAPPER_FILES = [
   "apps/frontend/src/features/cash-flow/commands/budgets.ts",
   "apps/frontend/src/features/cash-flow/commands/transaction-categories.ts",
@@ -46,10 +44,6 @@ const readTauriCommands = (): Set<string> | null => {
   const commands = new Set<string>();
   for (const match of handlerBlock.matchAll(/commands::\w+::(\w+)/g)) {
     commands.add(match[1]);
-  }
-
-  for (const command of DESKTOP_ONLY_COMMANDS) {
-    commands.delete(command);
   }
 
   return commands;
@@ -98,12 +92,5 @@ describe("cash flow command parity", () => {
       expect(tauriCommands.has(command), `missing Tauri registration for ${command}`).toBe(true);
       expect(webCommands.has(command), `missing web command map entry for ${command}`).toBe(true);
     }
-  });
-
-  it("excludes desktop-only secret commands from parity expectations", () => {
-    const tauriSource = readFile("apps/tauri/src/lib.rs");
-
-    expect(tauriSource).toContain("get_stronghold_vault_password");
-    expect(readWebCommands().has("get_stronghold_vault_password")).toBe(false);
   });
 });
