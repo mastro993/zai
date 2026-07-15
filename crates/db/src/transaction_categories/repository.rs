@@ -1,4 +1,8 @@
 use super::models::TransactionCategoryRow;
+use super::validation::{
+    apply_resolved_parent, map_category_unique_violation, validate_category_update,
+    validate_new_category,
+};
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_budgets_by_ids};
 use crate::budgets::category_impact::{affected_budgets_for_update, analyze_deletion};
 use crate::budgets::projection::{rebuild_budget_projections, refresh_active_budget_projections};
@@ -200,13 +204,16 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         self.writer
             .exec(
                 move |conn: &mut SqliteConnection| -> crate::errors::Result<TransactionCategory> {
-                    let category: TransactionCategoryRow = new_category.into();
-                    let category_id = category.id.clone();
+                    let mut category: TransactionCategoryRow = new_category.into();
+                    let resolved_parent =
+                        validate_new_category(conn, category.parent_id.as_deref(), &category.name)?;
+                    apply_resolved_parent(&mut category, resolved_parent);
 
                     diesel::insert_into(transaction_categories::table)
                         .values(&category)
                         .execute(conn)
-                        .into_storage()?;
+                        .into_storage()
+                        .map_err(map_category_unique_violation)?;
 
                     let parent_categories =
                         diesel::alias!(transaction_categories as parent_categories);
@@ -219,7 +226,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                                     .nullable(),
                             )),
                         )
-                        .filter(transaction_categories::id.eq(&category_id))
+                        .filter(transaction_categories::id.eq(&category.id))
                         .first::<(TransactionCategoryRow, Option<TransactionCategoryRow>)>(conn)
                         .into_storage()?;
 
@@ -248,6 +255,13 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                         .find(&category.id)
                         .first::<TransactionCategoryRow>(conn)
                         .into_storage()?;
+                    let resolved_parent = validate_category_update(
+                        conn,
+                        &category.id,
+                        category.parent_id.as_deref(),
+                        &category.name,
+                    )?;
+                    apply_resolved_parent(&mut category, resolved_parent);
                     let structural_change =
                         existing.parent_id != category.parent_id || existing.role != category.role;
                     let affected_budgets = if structural_change {
@@ -294,7 +308,8 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
                     diesel::update(transaction_categories::table.find(&category.id))
                         .set(&category)
                         .execute(conn)
-                        .into_storage()?;
+                        .into_storage()
+                        .map_err(map_category_unique_violation)?;
 
                     if category.parent_id.is_none() {
                         diesel::update(
@@ -1320,3 +1335,7 @@ mod tests {
         assert!(repo.get_category(&root.id).is_ok());
     }
 }
+
+#[cfg(test)]
+#[path = "repository_concurrency_tests.rs"]
+mod repository_concurrency_tests;
