@@ -6,15 +6,23 @@ import { CommandError, getAffectedBudgets } from "../errors";
 import { invokeCommand } from "../shared";
 
 const invokeMock = vi.hoisted(() => vi.fn());
+const isTauriMock = vi.hoisted(() => vi.fn(() => true));
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: invokeMock,
+  isTauri: isTauriMock,
 }));
 
 describe("desktop command transport", () => {
   beforeEach(() => {
     invokeMock.mockReset();
-    vi.stubGlobal("window", {});
+    isTauriMock.mockReset();
+    isTauriMock.mockReturnValue(true);
+    vi.stubGlobal("window", {
+      __TAURI_INTERNALS__: {
+        invoke: invokeMock,
+      },
+    });
   });
 
   afterEach(() => {
@@ -37,6 +45,20 @@ describe("desktop command transport", () => {
       return;
     }
     expect(result.value).toEqual(value);
+  });
+
+  it("fails clearly when the page is outside the Tauri webview", async () => {
+    isTauriMock.mockReturnValue(false);
+    vi.stubGlobal("window", {});
+
+    const result = await invokeCommand("get_transaction_categories");
+
+    expect(Result.isFailure(result)).toBe(true);
+    if (Result.isSuccess(result)) {
+      return;
+    }
+    expect(result.error.message).toContain("Zai desktop window");
+    expect(invokeMock).not.toHaveBeenCalled();
   });
 
   it("maps rejected desktop invocations into failed command results", async () => {
