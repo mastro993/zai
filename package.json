@@ -24,6 +24,10 @@
     "check:frontend": "pnpm --filter frontend check",
     "check:backend": "mkdir -p dist && printf '<!doctype html><html><body></body></html>' > dist/index.html && cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace",
     "check": "pnpm check:frontend && pnpm check:backend",
+    "audit:frontend": "node scripts/check-advisory-exceptions.mjs && node scripts/osv-audit.mjs --min-severity high pnpm-lock.yaml",
+    "audit:backend": "node scripts/check-advisory-exceptions.mjs && cargo deny check advisories",
+    "audit": "pnpm audit:frontend && pnpm audit:backend",
+    "test:advisory-gate": "bash scripts/test-advisory-gate.sh",
     "test:e2e:web": "playwright test"
   },
   "devDependencies": {
