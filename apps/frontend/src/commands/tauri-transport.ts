@@ -10,7 +10,7 @@ export const createTauriCommandTransport = (): CommandTransport => ({
     const core = await import("@tauri-apps/api/core");
     const invoke = core.invoke;
 
-    if (typeof invoke !== "function") {
+    if (typeof core.isTauri !== "function" || !core.isTauri() || typeof invoke !== "function") {
       return Promise.reject(new CommandError("Tauri IPC is not available in this runtime"));
     }
 
