@@ -1,5 +1,3 @@
-import { Result } from "@praha/byethrow";
-import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ScreenBase } from "@/components/screen-base";
@@ -7,545 +5,111 @@ import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 
-import { exportTransactions } from "../commands/transaction-export";
-import { getTransactionCategories } from "../commands/transaction-categories";
-import {
-  createTransaction,
-  deleteTransaction,
-  deleteTransactions,
-  getFilteredTransactionIds,
-  getTransactions,
-  type TransactionFilters,
-  updateTransaction,
-} from "../commands/transactions";
 import { TransactionBulkDeleteDialog } from "../components/transaction-bulk-delete-dialog";
 import { TransactionCategoryFilter } from "../components/transaction-category-filter";
 import { TransactionDateFilter } from "../components/transaction-date-filter";
-import { TransactionTypeFilter } from "../components/transaction-type-filter";
 import { TransactionDeleteConfirmationDialog } from "../components/transaction-delete-confirmation-dialog";
-import { TransactionSelectionBar } from "../components/transaction-selection-bar";
 import { TransactionFormDrawer } from "../components/transaction-form-drawer";
 import { TransactionImportDialog } from "../components/transaction-import-dialog";
 import { TransactionPagination } from "../components/transaction-pagination";
+import { TransactionSelectionBar } from "../components/transaction-selection-bar";
 import { TransactionTable } from "../components/transaction-table";
-import { type TransactionRowsPerPage } from "../lib/pagination";
+import { TransactionTypeFilter } from "../components/transaction-type-filter";
+import { useTransactionActions } from "../hooks/use-transaction-actions";
 import {
-  DEFAULT_DATE_SELECTION,
-  isActiveSelection,
-  resolveSelection,
-  type DateRangeSelection,
-} from "../lib/date-range";
-import {
-  DEFAULT_CATEGORY_FILTER_SELECTION,
-  expandCategoryIdsForApi,
-  isActiveCategoryFilter,
-  type CategoryFilterSelection,
-} from "../lib/transaction-category-filter";
-import {
-  DEFAULT_TYPE_FILTER_SELECTION,
-  isActiveTypeFilter,
-  type TypeFilterSelection,
-} from "../lib/transaction-type-filter";
-import type {
-  PaginatedTransactions,
-  Transaction,
-  TransactionCategory,
-  TransactionFormValues,
-} from "../types/model";
-import { useTransactionSelection } from "../hooks/use-transaction-selection";
-import type { TransactionFormMode } from "../types/transaction-types";
+  useTransactionListController,
+  type TransactionScreenInitialData,
+} from "../hooks/use-transaction-list-controller";
 
-type TransactionScreenInitialData = {
-  transactions: PaginatedTransactions;
-  categories: Array<TransactionCategory>;
-};
-
-type TransactionScreenProps = {
+interface TransactionScreenProps {
   initialData: TransactionScreenInitialData;
-};
-
-const buildTransactionFilters = (
-  searchQuery: string,
-  dateSelection: DateRangeSelection,
-  typeSelection: TypeFilterSelection,
-  categorySelection: CategoryFilterSelection,
-  categories: Array<TransactionCategory>,
-): TransactionFilters | undefined => {
-  const range = resolveSelection(dateSelection);
-  const filters: TransactionFilters = {};
-
-  if (searchQuery.length > 0) {
-    filters.query = searchQuery;
-  }
-  if (range.startDate) {
-    filters.startDate = range.startDate;
-  }
-  if (range.endDate) {
-    filters.endDate = range.endDate;
-  }
-  if (typeSelection) {
-    filters.transactionType = typeSelection;
-  }
-
-  if (categorySelection.includeUncategorized) {
-    filters.categories = [];
-  } else {
-    const expandedCategories = expandCategoryIdsForApi(categorySelection.categoryIds, categories);
-    if (expandedCategories.length > 0) {
-      filters.categories = expandedCategories;
-    }
-  }
-
-  return Object.keys(filters).length > 0 ? filters : undefined;
-};
+}
 
 export function TransactionScreen({ initialData }: TransactionScreenProps) {
-  const [transactions, setTransactions] = useState(initialData.transactions.data);
-  const [page, setPage] = useState(initialData.transactions.page);
-  const [perPage, setPerPage] = useState<TransactionRowsPerPage>(
-    initialData.transactions.perPage as TransactionRowsPerPage,
-  );
-  const [totalPages, setTotalPages] = useState(Math.max(initialData.transactions.totalPages, 1));
-  const [categories, setCategories] = useState(initialData.categories);
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [dateSelection, setDateSelection] = useState<DateRangeSelection>(DEFAULT_DATE_SELECTION);
-  const [categorySelection, setCategorySelection] = useState<CategoryFilterSelection>(
-    DEFAULT_CATEGORY_FILTER_SELECTION,
-  );
-  const [typeSelection, setTypeSelection] = useState<TypeFilterSelection>(
-    DEFAULT_TYPE_FILTER_SELECTION,
-  );
-  const [formMode, setFormMode] = useState<TransactionFormMode | null>(null);
-  const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
-  const hasSkippedInitialFetch = useRef(false);
-  const listRequestIdRef = useRef(0);
-
-  const isLatestRequest = (requestId: number) => requestId === listRequestIdRef.current;
-
-  const activeFilters = useMemo(
-    () =>
-      buildTransactionFilters(
-        debouncedQuery,
-        dateSelection,
-        typeSelection,
-        categorySelection,
-        categories,
-      ),
-    [debouncedQuery, dateSelection, typeSelection, categorySelection, categories],
-  );
-
-  const {
-    selectedIds,
-    selectedCount,
-    selectAllMatching,
-    pageCheckboxState,
-    clearSelection,
-    syncFilterFingerprint,
-    toggleRow,
-    togglePage,
-    applySelectAllMatching,
-    removeFromSelection,
-  } = useTransactionSelection(transactions);
-
-  const categoryById = useMemo(
-    () => new Map(categories.map((category) => [category.id, category] as const)),
-    [categories],
-  );
-
-  const loadData = async (
-    searchQuery: string,
-    pageToLoad: number,
-    rowsPerPage: TransactionRowsPerPage,
-    nextDateSelection: DateRangeSelection,
-    nextTypeSelection: TypeFilterSelection,
-    nextCategorySelection: CategoryFilterSelection,
-    categoriesForFilters: Array<TransactionCategory>,
-    includeCategories = false,
-  ) => {
-    const requestId = ++listRequestIdRef.current;
-    setIsLoading(true);
-    const transactionsResult = await getTransactions(
-      pageToLoad,
-      rowsPerPage,
-      buildTransactionFilters(
-        searchQuery,
-        nextDateSelection,
-        nextTypeSelection,
-        nextCategorySelection,
-        categoriesForFilters,
-      ),
-    );
-
-    if (!isLatestRequest(requestId)) {
-      return;
-    }
-
-    if (Result.isFailure(transactionsResult)) {
-      setErrorMessage(transactionsResult.error.message);
-    } else {
-      const { data, page: loadedPage, totalPages: loadedTotalPages } = transactionsResult.value;
-
-      if (data.length === 0 && loadedPage > 1) {
-        setPage(loadedPage - 1);
-        setIsLoading(false);
-        return;
-      }
-
-      setTransactions(data);
-      setPage(loadedPage);
-      setTotalPages(Math.max(loadedTotalPages, 1));
-      setErrorMessage(null);
-    }
-
-    if (includeCategories) {
-      const categoriesResult = await getTransactionCategories();
-
-      if (!isLatestRequest(requestId)) {
-        return;
-      }
-
-      if (Result.isFailure(categoriesResult)) {
-        setErrorMessage(categoriesResult.error.message);
-      } else {
-        const loadedCategories = categoriesResult.value;
-        setCategories(loadedCategories);
-        if (Result.isSuccess(transactionsResult)) {
-          setErrorMessage(null);
-        }
-
-        if (isActiveCategoryFilter(nextCategorySelection)) {
-          const refetchResult = await getTransactions(
-            pageToLoad,
-            rowsPerPage,
-            buildTransactionFilters(
-              searchQuery,
-              nextDateSelection,
-              nextTypeSelection,
-              nextCategorySelection,
-              loadedCategories,
-            ),
-          );
-
-          if (!isLatestRequest(requestId)) {
-            return;
-          }
-
-          if (Result.isFailure(refetchResult)) {
-            setErrorMessage(refetchResult.error.message);
-          } else {
-            const { data, page: loadedPage, totalPages: loadedTotalPages } = refetchResult.value;
-
-            if (data.length === 0 && loadedPage > 1) {
-              setPage(loadedPage - 1);
-              setIsLoading(false);
-              return;
-            }
-
-            setTransactions(data);
-            setPage(loadedPage);
-            setTotalPages(Math.max(loadedTotalPages, 1));
-            setErrorMessage(null);
-          }
-        }
-      }
-    }
-
-    if (!isLatestRequest(requestId)) {
-      return;
-    }
-
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setDebouncedQuery(query.trim());
-      setPage(1);
-    }, 250);
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [query]);
-
-  useEffect(() => {
-    syncFilterFingerprint(activeFilters);
-  }, [activeFilters, syncFilterFingerprint]);
-
-  useEffect(() => {
-    if (!hasSkippedInitialFetch.current) {
-      hasSkippedInitialFetch.current = true;
-      return;
-    }
-
-    void loadData(
-      debouncedQuery,
-      page,
-      perPage,
-      dateSelection,
-      typeSelection,
-      categorySelection,
-      categories,
-    );
-  }, [debouncedQuery, page, perPage, dateSelection, typeSelection, categorySelection, categories]);
-
-  const openFormDrawer = (mode: TransactionFormMode) => {
-    setFormMode(mode);
-    setIsFormDrawerOpen(true);
-  };
-
-  const openDeleteDialog = (transaction: Transaction) => {
-    setPendingDelete(transaction);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const submitTransaction = async (values: TransactionFormValues) => {
-    const editingId = formMode?.type === "edit" ? formMode.transaction.id : null;
-    const result = editingId
-      ? await updateTransaction(editingId, values)
-      : await createTransaction(values);
-
-    if (Result.isFailure(result)) {
-      toast.error(editingId ? "Failed to update transaction" : "Failed to create transaction", {
-        description: result.error.message,
-      });
-      return;
-    }
-
-    setIsFormDrawerOpen(false);
-    await loadData(
-      debouncedQuery,
-      page,
-      perPage,
-      dateSelection,
-      typeSelection,
-      categorySelection,
-      categories,
-    );
-    toast.success(editingId ? "Transaction updated" : "Transaction created");
-  };
-
-  const exportTransactionCsv = async () => {
-    setIsExporting(true);
-    const isSelectedExport = selectedCount > 0;
-
-    const result = isSelectedExport
-      ? await exportTransactions({ transactionIds: [...selectedIds] })
-      : await exportTransactions({ filters: activeFilters });
-
-    if (Result.isFailure(result)) {
-      toast.error(
-        isSelectedExport
-          ? "Failed to export selected transactions"
-          : "Failed to export transactions",
-        { description: result.error.message },
-      );
-    } else if (result.value) {
-      toast.success(isSelectedExport ? "Selected transactions exported" : "Transactions exported", {
-        description: result.value,
-      });
-    } else {
-      toast.info(
-        isSelectedExport ? "Selected transaction export canceled" : "Transaction export canceled",
-      );
-    }
-
-    setIsExporting(false);
-  };
-
-  const removeTransaction = async (transaction: Transaction) => {
-    setIsDeleting(true);
-    const result = await deleteTransaction(transaction.id);
-
-    if (Result.isFailure(result)) {
-      setErrorMessage(result.error.message);
-      setIsDeleteDialogOpen(false);
-      setIsDeleting(false);
-      return;
-    }
-
-    removeFromSelection(transaction.id);
-    setIsDeleteDialogOpen(false);
-    await loadData(
-      debouncedQuery,
-      page,
-      perPage,
-      dateSelection,
-      typeSelection,
-      categorySelection,
-      categories,
-    );
-    setIsDeleting(false);
-  };
-
-  const selectAllMatchingTransactions = async () => {
-    setIsSelectingAllMatching(true);
-
-    const idsResult = await getFilteredTransactionIds(activeFilters);
-
-    if (Result.isFailure(idsResult)) {
-      toast.error("Failed to select matching transactions", {
-        description: idsResult.error.message,
-      });
-      setIsSelectingAllMatching(false);
-      return;
-    }
-
-    applySelectAllMatching(idsResult.value, activeFilters);
-    setIsSelectingAllMatching(false);
-  };
-
-  const removeSelectedTransactions = async () => {
-    const transactionIds = [...selectedIds];
-
-    if (transactionIds.length === 0) {
-      return;
-    }
-
-    setIsBulkDeleting(true);
-    const result = await deleteTransactions(transactionIds);
-
-    if (Result.isFailure(result)) {
-      setErrorMessage(result.error.message);
-      setIsBulkDeleteDialogOpen(false);
-      setIsBulkDeleting(false);
-      return;
-    }
-
-    const deletedCount = result.value.length;
-
-    clearSelection();
-    setIsBulkDeleteDialogOpen(false);
-    await loadData(
-      debouncedQuery,
-      page,
-      perPage,
-      dateSelection,
-      typeSelection,
-      categorySelection,
-      categories,
-    );
-    setIsBulkDeleting(false);
-    toast.success(
-      deletedCount === 1 ? "Deleted 1 transaction" : `Deleted ${deletedCount} transactions`,
-    );
-  };
-
-  const changeRowsPerPage = (nextPerPage: TransactionRowsPerPage) => {
-    setPerPage(nextPerPage);
-    setPage(1);
-  };
-
-  const changeDateSelection = (selection: DateRangeSelection) => {
-    setDateSelection(selection);
-    setPage(1);
-  };
-
-  const changeCategorySelection = (selection: CategoryFilterSelection) => {
-    setCategorySelection(selection);
-    setPage(1);
-  };
-
-  const changeTypeSelection = (selection: TypeFilterSelection) => {
-    setTypeSelection(selection);
-    setPage(1);
-  };
-
-  const clearFilters = () => {
-    setQuery("");
-    setDebouncedQuery("");
-    setDateSelection(DEFAULT_DATE_SELECTION);
-    setTypeSelection(DEFAULT_TYPE_FILTER_SELECTION);
-    setCategorySelection(DEFAULT_CATEGORY_FILTER_SELECTION);
-    setPage(1);
-  };
-
-  const hasActiveFilters =
-    debouncedQuery.length > 0 ||
-    isActiveSelection(dateSelection) ||
-    isActiveTypeFilter(typeSelection) ||
-    isActiveCategoryFilter(categorySelection);
+  const controller = useTransactionListController(initialData);
+  const actions = useTransactionActions(controller);
 
   return (
     <ScreenBase
       actions={
         <>
-          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+          <Button variant="outline" onClick={() => actions.setIsImportDialogOpen(true)}>
             Import transactions
           </Button>
           <Button
             variant="outline"
             disabled={
-              isLoading || isExporting || (selectedCount === 0 && transactions.length === 0)
+              controller.isLoading ||
+              actions.isExporting ||
+              (actions.selectedCount === 0 && controller.transactions.length === 0)
             }
-            onClick={exportTransactionCsv}
+            onClick={actions.exportTransactionCsv}
           >
-            {isExporting
-              ? selectedCount > 0
+            {actions.isExporting
+              ? actions.selectedCount > 0
                 ? "Exporting selected..."
                 : "Exporting..."
-              : selectedCount > 0
+              : actions.selectedCount > 0
                 ? "Export selected transactions"
                 : "Export transactions"}
           </Button>
-          <Button onClick={() => openFormDrawer({ type: "create" })}>New transaction</Button>
+          <Button onClick={() => actions.openFormDrawer({ type: "create" })}>
+            New transaction
+          </Button>
         </>
       }
     >
       <div className="flex flex-wrap items-center justify-end gap-2">
         <TransactionSelectionBar
-          selectedCount={selectedCount}
-          isDeleting={isBulkDeleting}
-          onDelete={() => setIsBulkDeleteDialogOpen(true)}
-          onClearSelection={clearSelection}
+          selectedCount={actions.selectedCount}
+          isDeleting={actions.isBulkDeleting}
+          onDelete={() => actions.setIsBulkDeleteDialogOpen(true)}
+          onClearSelection={actions.clearSelection}
         />
         <Input
           type="search"
           placeholder="Search description or notes..."
-          value={query}
+          value={controller.query}
           className="w-72"
           onChange={(event) => {
-            setQuery(event.target.value);
+            controller.setQuery(event.target.value);
           }}
         />
-        <TransactionDateFilter selection={dateSelection} onSelectionChange={changeDateSelection} />
-        <TransactionTypeFilter selection={typeSelection} onSelectionChange={changeTypeSelection} />
+        <TransactionDateFilter
+          selection={controller.dateSelection}
+          onSelectionChange={controller.changeDateSelection}
+        />
+        <TransactionTypeFilter
+          selection={controller.typeSelection}
+          onSelectionChange={controller.changeTypeSelection}
+        />
         <TransactionCategoryFilter
-          categories={categories}
-          selection={categorySelection}
-          isLoading={isLoading && categories.length === 0}
-          onSelectionChange={changeCategorySelection}
+          categories={controller.categories}
+          selection={controller.categorySelection}
+          isLoading={controller.isLoading && controller.categories.length === 0}
+          onSelectionChange={controller.changeCategorySelection}
         />
       </div>
 
-      {errorMessage ? (
+      {controller.errorMessage ? (
         <div className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          {errorMessage}
+          {controller.errorMessage}
         </div>
       ) : null}
 
-      {isSelectingAllMatching ? (
+      {actions.isSelectingAllMatching ? (
         <p className="text-sm text-muted-foreground">Selecting matching transactions...</p>
       ) : null}
 
-      {isLoading ? <p className="text-sm text-muted-foreground">Loading transactions...</p> : null}
+      {controller.isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading transactions...</p>
+      ) : null}
 
-      {!isLoading && transactions.length === 0 ? (
-        hasActiveFilters ? (
+      {!controller.isLoading && controller.transactions.length === 0 ? (
+        controller.hasActiveFilters ? (
           <div className="flex flex-col items-start gap-3 border border-dashed p-6">
             <p className="text-sm text-muted-foreground">No transactions match your filters.</p>
-            <Button variant="outline" size="sm" onClick={clearFilters}>
+            <Button variant="outline" size="sm" onClick={controller.clearFilters}>
               Clear filters
             </Button>
           </div>
@@ -556,79 +120,70 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
         )
       ) : null}
 
-      {transactions.length > 0 ? (
+      {controller.transactions.length > 0 ? (
         <div className="flex flex-col gap-0">
           <TransactionTable
-            transactions={transactions}
-            categoryById={categoryById}
-            selectedIds={selectedIds}
-            pageCheckboxState={pageCheckboxState}
-            selectAllMatching={selectAllMatching}
-            page={page}
-            perPage={perPage}
-            totalPages={totalPages}
-            onToggleRow={toggleRow}
+            transactions={controller.transactions}
+            categoryById={controller.categoryById}
+            selectedIds={actions.selectedIds}
+            pageCheckboxState={actions.pageCheckboxState}
+            selectAllMatching={actions.selectAllMatching}
+            page={controller.page}
+            perPage={controller.perPage}
+            totalPages={controller.totalPages}
+            onToggleRow={actions.toggleRow}
             onTogglePage={(selectAll) => {
-              togglePage(transactions, selectAll);
+              actions.togglePage(controller.transactions, selectAll);
             }}
-            onSelectAllMatching={selectAllMatchingTransactions}
-            onEdit={openFormDrawer}
-            onDelete={openDeleteDialog}
+            onSelectAllMatching={actions.selectAllMatchingTransactions}
+            onEdit={actions.openFormDrawer}
+            onDelete={actions.openDeleteDialog}
           />
           <TransactionPagination
-            page={page}
-            perPage={perPage}
-            totalPages={totalPages}
-            visibleCount={transactions.length}
-            onPageChange={setPage}
-            onPerPageChange={changeRowsPerPage}
+            page={controller.page}
+            perPage={controller.perPage}
+            totalPages={controller.totalPages}
+            visibleCount={controller.transactions.length}
+            onPageChange={controller.setPage}
+            onPerPageChange={controller.changeRowsPerPage}
           />
         </div>
       ) : null}
 
       <TransactionDeleteConfirmationDialog
-        transaction={pendingDelete}
-        open={isDeleteDialogOpen}
-        isDeleting={isDeleting}
-        onOpenChange={setIsDeleteDialogOpen}
+        transaction={actions.pendingDelete}
+        open={actions.isDeleteDialogOpen}
+        isDeleting={actions.isDeleting}
+        onOpenChange={actions.setIsDeleteDialogOpen}
         onOpenChangeComplete={(open) => {
           if (!open) {
-            setPendingDelete(null);
+            actions.setPendingDelete(null);
           }
         }}
         onDelete={() => {
-          if (pendingDelete) {
-            void removeTransaction(pendingDelete);
+          if (actions.pendingDelete) {
+            void actions.removeTransaction(actions.pendingDelete);
           }
         }}
       />
 
       <TransactionBulkDeleteDialog
-        selectedCount={selectedCount}
-        open={isBulkDeleteDialogOpen}
-        isDeleting={isBulkDeleting}
-        onOpenChange={setIsBulkDeleteDialogOpen}
+        selectedCount={actions.selectedCount}
+        open={actions.isBulkDeleteDialogOpen}
+        isDeleting={actions.isBulkDeleting}
+        onOpenChange={actions.setIsBulkDeleteDialogOpen}
         onOpenChangeComplete={() => undefined}
         onDelete={() => {
-          void removeSelectedTransactions();
+          void actions.removeSelectedTransactions();
         }}
       />
 
       <TransactionImportDialog
-        open={isImportDialogOpen}
-        categories={categories}
-        onOpenChange={setIsImportDialogOpen}
+        open={actions.isImportDialogOpen}
+        categories={controller.categories}
+        onOpenChange={actions.setIsImportDialogOpen}
         onImported={async (createdCount, skippedRows) => {
-          await loadData(
-            debouncedQuery,
-            page,
-            perPage,
-            dateSelection,
-            typeSelection,
-            categorySelection,
-            categories,
-            true,
-          );
+          await actions.refreshList(true);
           toast.success(`Imported ${createdCount} transactions`, {
             description:
               skippedRows > 0 ? `${skippedRows} rows were skipped during preview.` : undefined,
@@ -637,21 +192,21 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
       />
 
       <Drawer
-        open={isFormDrawerOpen}
-        onOpenChange={setIsFormDrawerOpen}
+        open={actions.isFormDrawerOpen}
+        onOpenChange={actions.setIsFormDrawerOpen}
         onOpenChangeComplete={(open) => {
           if (!open) {
-            setFormMode(null);
+            actions.setFormMode(null);
           }
         }}
         swipeDirection="right"
       >
-        {formMode ? (
+        {actions.formMode ? (
           <TransactionFormDrawer
-            key={formMode.type === "edit" ? formMode.transaction.id : "create"}
-            mode={formMode}
-            categories={categories}
-            onSubmit={submitTransaction}
+            key={actions.formMode.type === "edit" ? actions.formMode.transaction.id : "create"}
+            mode={actions.formMode}
+            categories={controller.categories}
+            onSubmit={actions.submitTransaction}
           />
         ) : null}
       </Drawer>
