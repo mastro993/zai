@@ -31,6 +31,9 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Enforce production file-size boundary
+        run: pnpm check:file-size
+
       - name: Run frontend checks
         run: pnpm check:frontend
 
