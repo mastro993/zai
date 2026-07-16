@@ -1,6 +1,6 @@
+use super::list_projection::{ProjectionState, projected_budget_from_connection};
 use super::models::BudgetRow;
 use super::projection::materialize_budget_silent;
-use super::repository::{ProjectionState, projected_budget_from_connection};
 use crate::domain_alerts::insert_domain_alert;
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{budgets, domain_alerts};

@@ -311,13 +311,15 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
   };
 
   const submitTransaction = async (values: TransactionFormValues) => {
-    const result =
-      formMode?.type === "edit"
-        ? await updateTransaction(formMode.transaction.id, values)
-        : await createTransaction(values);
+    const editingId = formMode?.type === "edit" ? formMode.transaction.id : null;
+    const result = editingId
+      ? await updateTransaction(editingId, values)
+      : await createTransaction(values);
 
     if (Result.isFailure(result)) {
-      setErrorMessage(result.error.message);
+      toast.error(editingId ? "Failed to update transaction" : "Failed to create transaction", {
+        description: result.error.message,
+      });
       return;
     }
 
@@ -331,6 +333,7 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
       categorySelection,
       categories,
     );
+    toast.success(editingId ? "Transaction updated" : "Transaction created");
   };
 
   const exportTransactionCsv = async () => {

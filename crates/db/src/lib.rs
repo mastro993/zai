@@ -10,6 +10,8 @@ mod migration_tests_released;
 mod pagination;
 mod schema;
 #[cfg(test)]
+mod sql_statement_counter;
+#[cfg(test)]
 mod test_utils;
 pub mod transaction_categories;
 pub mod transactions;
