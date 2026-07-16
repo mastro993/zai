@@ -4,6 +4,7 @@ pub(crate) mod category_impact;
 mod edit;
 mod history;
 mod lifecycle;
+mod list_projection;
 mod models;
 pub(crate) mod projection;
 mod projection_persistence;
