@@ -6,14 +6,17 @@ import { CommandError, getAffectedBudgets } from "../errors";
 import { invokeCommand } from "../shared";
 
 const invokeMock = vi.hoisted(() => vi.fn());
+const isTauriMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: invokeMock,
+  isTauri: isTauriMock,
 }));
 
 describe("desktop command transport", () => {
   beforeEach(() => {
     invokeMock.mockReset();
+    isTauriMock.mockReset().mockReturnValue(true);
     vi.stubGlobal("window", {});
   });
 
@@ -37,6 +40,21 @@ describe("desktop command transport", () => {
       return;
     }
     expect(result.value).toEqual(value);
+  });
+
+  it("rejects desktop commands when Tauri IPC is unavailable", async () => {
+    isTauriMock.mockReturnValue(false);
+
+    const result = await invokeCommand("get_transaction_categories", {
+      parentId: null,
+    });
+
+    expect(Result.isFailure(result)).toBe(true);
+    if (Result.isSuccess(result)) {
+      return;
+    }
+    expect(result.error).toEqual(new CommandError("Tauri IPC is not available in this runtime"));
+    expect(invokeMock).not.toHaveBeenCalled();
   });
 
   it("maps rejected desktop invocations into failed command results", async () => {
