@@ -241,7 +241,11 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
           >
             Import categories
           </Button>
-          <Button variant="outline" disabled={isLoading || isExporting} onClick={exportCategoryCsv}>
+          <Button
+            variant="outline"
+            disabled={isLoading || isExporting || categoriesInScreenOrder.length === 0}
+            onClick={exportCategoryCsv}
+          >
             {isExporting ? "Exporting..." : "Export categories"}
           </Button>
           <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
