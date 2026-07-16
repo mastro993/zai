@@ -14,7 +14,7 @@ async function fillBudgetForm(
 ) {
   const dialog = page.getByRole("dialog", { name: dialogName });
   await dialog.getByLabel("Name").fill(values.name);
-  await dialog.getByLabel("Monthly allowance").fill(values.allowance);
+  await dialog.getByLabel("Allowance").fill(values.allowance);
 }
 
 async function openBudgetDetail(page: Page, name: string, reload = false) {
