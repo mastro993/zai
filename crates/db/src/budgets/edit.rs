@@ -28,9 +28,10 @@ pub(super) fn update_budget(
         )));
     }
 
-    let mut budget = match super::repository::projected_budget_from_connection(conn, id, now)? {
-        super::repository::ProjectionState::Current(budget) => budget,
-        super::repository::ProjectionState::NeedsMaterialization => {
+    let mut budget = match super::list_projection::projected_budget_from_connection(conn, id, now)?
+    {
+        super::list_projection::ProjectionState::Current(budget) => budget,
+        super::list_projection::ProjectionState::NeedsMaterialization => {
             super::projection::materialize_budget(conn, id, now)?
         }
     };
