@@ -79,6 +79,82 @@ category belongs to the budget scope. An uncategorized transaction matches only
 an all-categories scope. Measurement mode, category role, and transaction type
 determine its contribution; a transaction may match while contributing nothing.
 
+**Recurring transaction**:
+A retained schedule and transaction template that produces linked transactions
+on due occurrences through its lifecycle.
+_Avoid_: Recurrent transaction, scheduled transaction
+
+**Catch-up generation**:
+The creation of every due, not-yet-created recurring transaction occurrence after
+Zai becomes able to process schedules again. Generated transactions retain their
+originally scheduled dates regardless of what initiates processing.
+
+**Scheduled occurrence**:
+A single due instance identified by its scheduled local date and time plus the
+time zone captured by its recurring transaction. Its transaction date remains
+that scheduled time even when catch-up generation creates it later.
+
+**Interval recurrence**:
+A recurring transaction rule that schedules an occurrence every fixed number of
+calendar days, weeks, months, or years from its first scheduled occurrence.
+
+**Monthly-day recurrence**:
+A recurring transaction rule that schedules one occurrence on a selected day
+number of every month, independently of when the rule was created.
+
+**Calendar-clamped occurrence**:
+An occurrence whose anchored day does not exist in its target month or year and
+therefore falls on that period's last valid day. Later occurrences continue from
+the original anchor rather than from the clamped date.
+
+**Recurring transaction lifecycle**:
+The retained state of a recurring transaction: active, paused, stopped,
+completed, or tombstoned. No lifecycle transition hard-deletes the recurring
+transaction or its links to generated transactions.
+
+**Paused recurring transaction**:
+A recurring transaction that temporarily suppresses due occurrences. Occurrences
+due while paused are skipped without moving the calendar anchor or consuming a
+finite recurrence's remaining count, and are not generated after resumption.
+
+**Stopped recurring transaction**:
+A user-ended recurring transaction that can no longer generate occurrences or
+resume, while remaining visible as history.
+
+**Completed recurring transaction**:
+A finite recurring transaction that fulfilled its configured total and can no
+longer generate occurrences or resume, while remaining visible as history.
+
+**Tombstoned recurring transaction**:
+A soft-deleted recurring transaction hidden from every user-facing view. Its
+record and occurrence links remain only for data integrity and duplicate
+prevention; it can never generate occurrences or resume.
+
+**Recurring transaction template**:
+The transaction payload copied into future generated transactions. Template
+changes affect only future occurrences; each generated transaction remains an
+independently editable snapshot linked to its recurring transaction.
+
+**Fulfilled occurrence**:
+A scheduled occurrence linked to exactly one transaction, either by automatic
+generation or by adopting an existing transaction. It remains fulfilled if that
+transaction is later edited or tombstoned, so processors cannot recreate it.
+
+**Adopted occurrence**:
+A fulfilled occurrence whose transaction existed before the recurring transaction
+was created. It counts toward a finite total but emits no recurring occurrence
+alert because no transaction was automatically inserted.
+
+**Projected occurrence**:
+A future occurrence computed from an active recurring transaction for forecasting.
+It may contribute to a budget projection but does not affect actual transactions,
+budget results, statuses, rollover, or alerts until it becomes due and fulfilled.
+
+**Recurring occurrence alert**:
+The durable domain alert created with one automatically generated occurrence. It
+identifies the generated transaction and recurring transaction; finite recurrences
+also report the generated position, total, and remaining count.
+
 **Rollover mode**:
 A budget's rule for carrying a remaining allowance or overspending between
 periods. Off carries nothing. Previous-period-only adds the immediately
