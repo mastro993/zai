@@ -1,5 +1,5 @@
 import { readFile, readdir } from "node:fs/promises";
-import { extname, join, relative, sep } from "node:path";
+import { extname, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const MAX_LINES = 400;
@@ -8,6 +8,14 @@ const SOURCE_EXTENSIONS = new Set([".js", ".mjs", ".rs", ".ts", ".tsx"]);
 const IGNORED_DIRECTORIES = new Set(["dist", "node_modules", "target"]);
 
 const normalizePath = (path) => path.split(sep).join("/");
+
+const countLines = (content) => {
+  if (content.length === 0) {
+    return 0;
+  }
+
+  return content.replace(/\r?\n$/, "").split(/\r?\n/).length;
+};
 
 const isProductionFile = (path) => {
   if (!SOURCE_EXTENSIONS.has(extname(path))) {
@@ -61,7 +69,7 @@ export const findOversizedProductionFiles = async ({ root, exceptions }) => {
       continue;
     }
 
-    const lineCount = (await readFile(file, "utf8")).split(/\r?\n/).length;
+    const lineCount = countLines(await readFile(file, "utf8"));
     if (lineCount > MAX_LINES) {
       violations.push({ lineCount, path });
     }
@@ -71,7 +79,12 @@ export const findOversizedProductionFiles = async ({ root, exceptions }) => {
 };
 
 const run = async () => {
-  const root = process.cwd();
+  const rootArgumentIndex = process.argv.indexOf("--root");
+  const rootArgument = rootArgumentIndex === -1 ? undefined : process.argv[rootArgumentIndex + 1];
+  if (rootArgumentIndex !== -1 && !rootArgument) {
+    throw new Error("--root requires a path");
+  }
+  const root = rootArgument ? resolve(rootArgument) : process.cwd();
   const exceptions = JSON.parse(
     await readFile(join(root, "scripts/file-size-exceptions.json"), "utf8"),
   );

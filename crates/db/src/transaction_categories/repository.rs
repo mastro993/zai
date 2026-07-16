@@ -121,7 +121,7 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
 }
 
 #[cfg(test)]
-#[path = "repository_tests.rs"]
+#[path = "repository_tests/mod.rs"]
 mod tests;
 
 #[cfg(test)]

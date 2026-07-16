@@ -8,14 +8,21 @@ import {
   deleteTransaction,
   deleteTransactions,
   getFilteredTransactionIds,
+  type TransactionFilters,
   updateTransaction,
 } from "../commands/transactions";
 import type { Transaction, TransactionFormValues } from "../types/model";
 import type { TransactionFormMode } from "../types/transaction-types";
-import type { TransactionListController } from "./use-transaction-list-controller";
 import { useTransactionSelection } from "./use-transaction-selection";
 
-export function useTransactionActions(controller: TransactionListController) {
+interface TransactionActionsController {
+  activeFilters: TransactionFilters | undefined;
+  refreshList: (includeCategories?: boolean) => Promise<void>;
+  setErrorMessage: (message: string | null) => void;
+  transactions: Array<Transaction>;
+}
+
+export function useTransactionActions(controller: TransactionActionsController) {
   const [formMode, setFormMode] = useState<TransactionFormMode | null>(null);
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
@@ -33,18 +40,6 @@ export function useTransactionActions(controller: TransactionListController) {
   useEffect(() => {
     syncFilterFingerprint(controller.activeFilters);
   }, [controller.activeFilters, syncFilterFingerprint]);
-
-  const refreshList = (includeCategories = false) =>
-    controller.loadData(
-      controller.debouncedQuery,
-      controller.page,
-      controller.perPage,
-      controller.dateSelection,
-      controller.typeSelection,
-      controller.categorySelection,
-      controller.categories,
-      includeCategories,
-    );
 
   const openFormDrawer = (mode: TransactionFormMode) => {
     setFormMode(mode);
@@ -70,7 +65,7 @@ export function useTransactionActions(controller: TransactionListController) {
     }
 
     setIsFormDrawerOpen(false);
-    await refreshList();
+    await controller.refreshList();
     toast.success(editingId ? "Transaction updated" : "Transaction created");
   };
 
@@ -115,7 +110,7 @@ export function useTransactionActions(controller: TransactionListController) {
 
     selection.removeFromSelection(transaction.id);
     setIsDeleteDialogOpen(false);
-    await refreshList();
+    await controller.refreshList();
     setIsDeleting(false);
   };
 
@@ -155,7 +150,7 @@ export function useTransactionActions(controller: TransactionListController) {
     const deletedCount = result.value.length;
     selection.clearSelection();
     setIsBulkDeleteDialogOpen(false);
-    await refreshList();
+    await controller.refreshList();
     setIsBulkDeleting(false);
     toast.success(
       deletedCount === 1 ? "Deleted 1 transaction" : `Deleted ${deletedCount} transactions`,
@@ -177,7 +172,7 @@ export function useTransactionActions(controller: TransactionListController) {
     openDeleteDialog,
     openFormDrawer,
     pendingDelete,
-    refreshList,
+    refreshList: controller.refreshList,
     removeSelectedTransactions,
     removeTransaction,
     selectAllMatchingTransactions,

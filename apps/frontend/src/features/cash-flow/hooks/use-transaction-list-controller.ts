@@ -274,6 +274,30 @@ export function useTransactionListController(initialData: TransactionScreenIniti
     setPage(1);
   };
 
+  const refreshList = useCallback(
+    (includeCategories = false) =>
+      loadData(
+        debouncedQuery,
+        page,
+        perPage,
+        dateSelection,
+        typeSelection,
+        categorySelection,
+        categories,
+        includeCategories,
+      ),
+    [
+      categories,
+      categorySelection,
+      dateSelection,
+      debouncedQuery,
+      loadData,
+      page,
+      perPage,
+      typeSelection,
+    ],
+  );
+
   const hasActiveFilters =
     debouncedQuery.length > 0 ||
     isActiveSelection(dateSelection) ||
@@ -299,6 +323,7 @@ export function useTransactionListController(initialData: TransactionScreenIniti
     page,
     perPage,
     query,
+    refreshList,
     setErrorMessage,
     setPage,
     setQuery,
@@ -307,5 +332,3 @@ export function useTransactionListController(initialData: TransactionScreenIniti
     typeSelection,
   };
 }
-
-export type TransactionListController = ReturnType<typeof useTransactionListController>;

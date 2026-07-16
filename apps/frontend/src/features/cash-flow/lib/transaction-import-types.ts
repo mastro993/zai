@@ -13,7 +13,7 @@ export type TransactionImportDateFormat =
   | "DD-MM-YYYY"
   | "DD.MM.YYYY";
 
-export interface TransactionImportColumnMapping {
+export type TransactionImportColumnMapping = {
   amount: number | null;
   transactionDate: number | null;
   transactionType: number | null;
@@ -21,9 +21,9 @@ export interface TransactionImportColumnMapping {
   notes: number | null;
   categoryName: number | null;
   categoryParent: number | null;
-}
+};
 
-export interface TransactionImportPayload {
+export type TransactionImportPayload = {
   id?: string;
   description?: string | null;
   amount: number;
@@ -31,9 +31,9 @@ export interface TransactionImportPayload {
   transactionType: string;
   transactionCategoryId?: string | null;
   notes?: string | null;
-}
+};
 
-export interface TransactionImportPreviewRow {
+export type TransactionImportPreviewRow = {
   rowNumber: number;
   transactionDate: string;
   amount: string;
@@ -43,9 +43,9 @@ export interface TransactionImportPreviewRow {
   category: string;
   status: TransactionImportPreviewStatus;
   message: string;
-}
+};
 
-export interface TransactionImportPreview {
+export type TransactionImportPreview = {
   headers: Array<string>;
   rows: Array<TransactionImportPreviewRow>;
   transactions: Array<TransactionImportPayload>;
@@ -58,9 +58,9 @@ export interface TransactionImportPreview {
     emptyRows: number;
     categoriesToCreate: number;
   };
-}
+};
 
-export interface TransactionImportPreviewOptions {
+export type TransactionImportPreviewOptions = {
   headerRowIndex: number;
   mapping: TransactionImportColumnMapping;
   amountMode: TransactionImportAmountMode;
@@ -73,10 +73,10 @@ export interface TransactionImportPreviewOptions {
   existingCategories: Array<TransactionCategory>;
   existingDuplicateKeys: Array<string>;
   createId?: () => string;
-}
+};
 
-export interface ImportDuplicateCandidate {
+export type ImportDuplicateCandidate = {
   transactionDate: string;
   amount: number;
   description: string | null;
-}
+};
