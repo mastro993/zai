@@ -102,6 +102,20 @@ pub struct TransactionsSearchResponse {
     pub total_row_count: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DuplicateKeyCandidate {
+    pub transaction_date: NaiveDateTime,
+    pub amount: i32,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionCsvExportResponse {
+    pub csv: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

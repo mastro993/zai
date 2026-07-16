@@ -1,17 +1,20 @@
+use super::bulk_ops;
 use super::import_dedup;
 use super::models::{TransactionRow, TransactionRowUpdate};
+use super::query::{
+    apply_transaction_filters, apply_transaction_sort, count_transactions, transactions_base_query,
+};
 use crate::blocking::run_blocking;
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budgets};
 use crate::budgets::repair_transaction_budget_projections;
 use crate::connection::{DbPool, get_connection};
 use crate::errors::{IntoCore, IntoStorage, StorageError};
 use crate::pagination::{Paginate, total_pages};
-use crate::schema::{self, transaction_categories, transactions};
+use crate::schema::{transaction_categories, transactions};
 use crate::transaction_categories::models::TransactionCategoryRow;
 use crate::write_actor::WriteHandle;
 use async_trait::async_trait;
 use chrono::Local;
-use diesel::expression_methods::EscapeExpressionMethods;
 use diesel::prelude::*;
 use diesel::r2d2::{self, Pool};
 use diesel::sqlite::SqliteConnection;
@@ -26,137 +29,10 @@ use zai_core::features::transaction_categories::models::{
     NewTransactionCategory, TransactionCategory,
 };
 use zai_core::features::transactions::models::{
-    NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
+    DuplicateKeyCandidate, NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
 };
 use zai_core::features::transactions::traits::TransactionsRepositoryTrait;
 use zai_core::query::{PaginatedData, Sort};
-
-const LIKE_ESCAPE: char = '\\';
-
-fn escape_like(input: &str) -> String {
-    input
-        .replace('\\', "\\\\")
-        .replace('%', "\\%")
-        .replace('_', "\\_")
-}
-
-type TransactionBoxedQuery = diesel::helper_types::IntoBoxed<
-    'static,
-    diesel::helper_types::Filter<
-        schema::transactions::table,
-        diesel::dsl::IsNull<schema::transactions::columns::deleted_at>,
-    >,
-    diesel::sqlite::Sqlite,
->;
-
-fn transactions_base_query() -> TransactionBoxedQuery {
-    transactions::table
-        .filter(transactions::deleted_at.is_null())
-        .into_boxed()
-}
-
-fn apply_transaction_filters(
-    mut query: TransactionBoxedQuery,
-    filters: Option<&TransactionSearchFilters>,
-) -> TransactionBoxedQuery {
-    if let Some(filters) = filters {
-        if let Some(query_filter) = &filters.query {
-            let query_pattern = format!("%{}%", escape_like(query_filter));
-            query = query.filter(
-                transactions::description
-                    .like(query_pattern.clone())
-                    .escape(LIKE_ESCAPE)
-                    .or(transactions::notes.like(query_pattern).escape(LIKE_ESCAPE)),
-            );
-        }
-        if let Some(categories_filter) = &filters.categories {
-            if categories_filter.is_empty() {
-                query = query.filter(transactions::transaction_category_id.is_null());
-            } else {
-                let category_ids = categories_filter
-                    .iter()
-                    .map(|category_id| (*category_id).to_string())
-                    .collect::<Vec<_>>();
-                query = query.filter(transactions::transaction_category_id.eq_any(category_ids));
-            }
-        }
-        if let Some(type_filter) = filters.transaction_type {
-            query = query.filter(transactions::transaction_type.eq(type_filter.to_string()));
-        }
-        if let Some(start_date_filter) = filters.start_date {
-            query = query.filter(transactions::transaction_date.ge(start_date_filter));
-        }
-        if let Some(end_date_filter) = filters.end_date {
-            query = query.filter(transactions::transaction_date.le(end_date_filter));
-        }
-    }
-    query
-}
-
-fn apply_transaction_sort(
-    mut query: TransactionBoxedQuery,
-    sort: Option<&Sort>,
-) -> TransactionBoxedQuery {
-    if let Some(sort) = sort {
-        match sort.field.as_str() {
-            "description" => {
-                if sort.desc {
-                    query = query.order((transactions::description.desc(),));
-                } else {
-                    query = query.order((transactions::description.asc(),));
-                }
-            }
-            "type" => {
-                if sort.desc {
-                    query = query.order((transactions::transaction_type.desc(),));
-                } else {
-                    query = query.order((transactions::transaction_type.asc(),));
-                }
-            }
-            "amount" => {
-                if sort.desc {
-                    query = query.order((transactions::amount.desc(),));
-                } else {
-                    query = query.order((transactions::amount.asc(),));
-                }
-            }
-            "date" => {
-                if sort.desc {
-                    query = query.order((
-                        transactions::transaction_date.desc(),
-                        transactions::created_at.asc(),
-                    ));
-                } else {
-                    query = query.order((
-                        transactions::transaction_date.asc(),
-                        transactions::created_at.asc(),
-                    ));
-                }
-            }
-            _ => {
-                query = query.order((
-                    transactions::transaction_date.desc(),
-                    transactions::created_at.asc(),
-                ))
-            }
-        }
-    } else {
-        query = query.order((
-            transactions::transaction_date.desc(),
-            transactions::created_at.asc(),
-        ));
-    }
-    query
-}
-
-fn count_transactions(
-    conn: &mut diesel::SqliteConnection,
-    filters: Option<&TransactionSearchFilters>,
-) -> diesel::QueryResult<i64> {
-    apply_transaction_filters(transactions_base_query(), filters)
-        .count()
-        .get_result(conn)
-}
 
 fn load_existing_in_import_range(
     conn: &mut SqliteConnection,
@@ -318,6 +194,100 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
                 .into_core()?;
 
             Ok(result.into())
+        })
+        .await
+    }
+
+    async fn get_filtered_transaction_ids(
+        &self,
+        filters: Option<TransactionSearchFilters<'_>>,
+        sort: Option<Sort>,
+    ) -> Result<Vec<String>> {
+        let pool = Arc::clone(&self.pool);
+        let owned_query = filters.as_ref().and_then(|f| f.query.map(str::to_owned));
+        let owned_categories =
+            filters
+                .as_ref()
+                .and_then(|f| f.categories.as_ref())
+                .map(|categories| {
+                    categories
+                        .iter()
+                        .map(|value| (*value).to_owned())
+                        .collect::<Vec<_>>()
+                });
+        let owned_transaction_type = filters
+            .as_ref()
+            .and_then(|f| f.transaction_type.map(str::to_owned));
+        let start_date = filters.as_ref().and_then(|f| f.start_date);
+        let end_date = filters.as_ref().and_then(|f| f.end_date);
+        let has_filters = filters.is_some();
+
+        run_blocking(move || {
+            let category_refs = owned_categories
+                .as_ref()
+                .map(|categories| categories.iter().map(String::as_str).collect::<Vec<_>>());
+            let filters = has_filters.then_some(TransactionSearchFilters {
+                query: owned_query.as_deref(),
+                categories: category_refs,
+                transaction_type: owned_transaction_type.as_deref(),
+                start_date,
+                end_date,
+            });
+            let conn = &mut get_connection(&pool)?;
+            bulk_ops::get_filtered_transaction_ids(conn, filters.as_ref(), sort.as_ref())
+        })
+        .await
+    }
+
+    async fn export_transactions_csv(
+        &self,
+        filters: Option<TransactionSearchFilters<'_>>,
+        transaction_ids: Option<Vec<String>>,
+    ) -> Result<String> {
+        let pool = Arc::clone(&self.pool);
+        let owned_query = filters.as_ref().and_then(|f| f.query.map(str::to_owned));
+        let owned_categories =
+            filters
+                .as_ref()
+                .and_then(|f| f.categories.as_ref())
+                .map(|categories| {
+                    categories
+                        .iter()
+                        .map(|value| (*value).to_owned())
+                        .collect::<Vec<_>>()
+                });
+        let owned_transaction_type = filters
+            .as_ref()
+            .and_then(|f| f.transaction_type.map(str::to_owned));
+        let start_date = filters.as_ref().and_then(|f| f.start_date);
+        let end_date = filters.as_ref().and_then(|f| f.end_date);
+        let has_filters = filters.is_some();
+
+        run_blocking(move || {
+            let category_refs = owned_categories
+                .as_ref()
+                .map(|categories| categories.iter().map(String::as_str).collect::<Vec<_>>());
+            let filters = has_filters.then_some(TransactionSearchFilters {
+                query: owned_query.as_deref(),
+                categories: category_refs,
+                transaction_type: owned_transaction_type.as_deref(),
+                start_date,
+                end_date,
+            });
+            let conn = &mut get_connection(&pool)?;
+            bulk_ops::export_transactions_csv(conn, filters.as_ref(), transaction_ids.as_deref())
+        })
+        .await
+    }
+
+    async fn find_existing_duplicate_keys(
+        &self,
+        candidates: Vec<DuplicateKeyCandidate>,
+    ) -> Result<Vec<String>> {
+        let pool = Arc::clone(&self.pool);
+        run_blocking(move || {
+            let conn = &mut get_connection(&pool)?;
+            bulk_ops::find_existing_duplicate_keys(conn, &candidates)
         })
         .await
     }

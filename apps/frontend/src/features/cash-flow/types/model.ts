@@ -26,10 +26,20 @@ export const TRANSACTION_TYPES = ["expense", "income"] as const;
 export const CATEGORY_ROLES = ["spending", "income"] as const;
 
 const nullableStringSchema = z.string().nullable().optional();
-const categoryColorSchema = z
-  .string()
-  .regex(/^#[0-9A-Fa-f]{6}$/, "Select a valid category color")
-  .transform((value) => value.toUpperCase());
+
+// Wire decode: tolerate legacy named colors (e.g. "orange") so one bad row
+// cannot take down get_transaction_categories.
+const categoryColorWireSchema = z.union([z.string(), z.null()]).transform((value) => {
+  if (value == null || value === "") {
+    return null;
+  }
+
+  if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+    return value.toUpperCase();
+  }
+
+  return null;
+});
 
 export const categoryRoleSchema = z.enum(CATEGORY_ROLES);
 
@@ -65,7 +75,7 @@ const categoryBaseSchema = z.object({
   parentId: nullableStringSchema,
   name: z.string().min(1),
   description: nullableStringSchema,
-  color: categoryColorSchema.nullable().optional(),
+  color: categoryColorWireSchema.optional(),
   role: categoryRoleSchema,
 });
 

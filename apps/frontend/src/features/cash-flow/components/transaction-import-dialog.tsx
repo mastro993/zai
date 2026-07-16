@@ -6,16 +6,17 @@ import {
   openTransactionImportFile,
   type TransactionImportFile,
 } from "../commands/transaction-import";
-import { getAllTransactions, importTransactionBatch } from "../commands/transactions";
+import { findExistingDuplicateKeys, importTransactionBatch } from "../commands/transactions";
 import type { ImportPreviewRowFilter } from "../lib/import-preview-filter";
 import {
   buildTransactionImportPreview,
+  collectImportDuplicateCandidates,
   getDefaultTransactionImportMapping,
   getDefaultTypeValueInputs,
   parseTransactionCsv,
   type TransactionImportColumnMapping,
 } from "../lib/transaction-import";
-import type { Transaction, TransactionCategory } from "../types/model";
+import type { TransactionCategory } from "../types/model";
 import { ImportWizardDialog } from "./import-wizard-dialog";
 import type { ImportStep } from "./import-stepper";
 import { TransactionImportMappingStep, type ImportConfig } from "./transaction-import-mapping-step";
@@ -61,8 +62,8 @@ function TransactionImportDialog({
   onImported,
 }: TransactionImportDialogProps) {
   const [file, setFile] = useState<TransactionImportFile | null>(null);
-  const [existingTransactions, setExistingTransactions] = useState<Array<Transaction>>([]);
-  const [isLoadingExistingTransactions, setIsLoadingExistingTransactions] = useState(false);
+  const [existingDuplicateKeys, setExistingDuplicateKeys] = useState<Array<string>>([]);
+  const [isLoadingDuplicateKeys, setIsLoadingDuplicateKeys] = useState(false);
   const [mapping, setMapping] = useState<TransactionImportColumnMapping>(EMPTY_MAPPING);
   const [config, setConfig] = useState<ImportConfig>(createDefaultConfig);
   const [step, setStep] = useState<ImportStep>(0);
@@ -77,35 +78,53 @@ function TransactionImportDialog({
     }
   }, [open]);
 
+  const mappingReady =
+    mapping.amount !== null &&
+    mapping.transactionDate !== null &&
+    (config.amountMode !== "column-type" || mapping.transactionType !== null);
+
   useEffect(() => {
-    if (!open) {
+    if (!open || !file || !mappingReady) {
       return;
     }
 
     let isActive = true;
-    setIsLoadingExistingTransactions(true);
+    setIsLoadingDuplicateKeys(true);
 
-    void getAllTransactions().then((result) => {
+    const candidates = collectImportDuplicateCandidates(file.content, {
+      headerRowIndex: config.headerRowIndex,
+      mapping,
+      amountMode: config.amountMode,
+      dateFormat: config.dateFormat,
+      categoryLinkMode: config.categoryLinkMode,
+      categorySeparator: config.categorySeparator,
+      missingCategoryMode: config.missingCategoryMode,
+      expenseTypeValues: config.expenseTypeValues,
+      incomeTypeValues: config.incomeTypeValues,
+      existingCategories: categories,
+    });
+
+    void findExistingDuplicateKeys(candidates).then((result) => {
       if (!isActive) {
         return;
       }
 
       if (Result.isFailure(result)) {
-        toast.error("Failed to load existing transactions", {
+        toast.error("Failed to check existing transactions", {
           description: result.error.message,
         });
-        setExistingTransactions([]);
+        setExistingDuplicateKeys([]);
       } else {
-        setExistingTransactions(result.value);
+        setExistingDuplicateKeys(result.value);
       }
 
-      setIsLoadingExistingTransactions(false);
+      setIsLoadingDuplicateKeys(false);
     });
 
     return () => {
       isActive = false;
     };
-  }, [open]);
+  }, [open, file, mappingReady, mapping, config, categories]);
 
   const rowCount = useMemo(() => (file ? parseTransactionCsv(file.content).length : 0), [file]);
 
@@ -130,21 +149,12 @@ function TransactionImportDialog({
       expenseTypeValues: config.expenseTypeValues,
       incomeTypeValues: config.incomeTypeValues,
       existingCategories: categories,
-      existingTransactions,
+      existingDuplicateKeys,
     });
-  }, [file, config, mapping, categories, existingTransactions]);
-
-  const mappingReady =
-    mapping.amount !== null &&
-    mapping.transactionDate !== null &&
-    (config.amountMode !== "column-type" || mapping.transactionType !== null);
+  }, [file, config, mapping, categories, existingDuplicateKeys]);
 
   const canAdvance =
-    step === 0
-      ? file !== null
-      : step === 1
-        ? mappingReady && !isLoadingExistingTransactions
-        : false;
+    step === 0 ? file !== null : step === 1 ? mappingReady && !isLoadingDuplicateKeys : false;
 
   const updateConfig = (patch: Partial<ImportConfig>) => {
     setConfig((current) => ({ ...current, ...patch }));
@@ -172,6 +182,7 @@ function TransactionImportDialog({
     setFile(result.value);
     setConfig((current) => ({ ...current, headerRowIndex: 0 }));
     setMapping(getDefaultTransactionImportMapping(nextHeaders));
+    setExistingDuplicateKeys([]);
   };
 
   const changeHeaderRow = (value: string) => {
@@ -214,42 +225,9 @@ function TransactionImportDialog({
 
     setIsImporting(true);
 
-    const latestTransactionsResult = await getAllTransactions();
-    if (Result.isFailure(latestTransactionsResult)) {
-      setIsImporting(false);
-      toast.error("Failed to refresh duplicate check", {
-        description: latestTransactionsResult.error.message,
-      });
-      return;
-    }
-
-    const refreshedPreview = buildTransactionImportPreview(file.content, {
-      headerRowIndex: config.headerRowIndex,
-      mapping,
-      amountMode: config.amountMode,
-      dateFormat: config.dateFormat,
-      categoryLinkMode: config.categoryLinkMode,
-      categorySeparator: config.categorySeparator,
-      missingCategoryMode: config.missingCategoryMode,
-      expenseTypeValues: config.expenseTypeValues,
-      incomeTypeValues: config.incomeTypeValues,
-      existingCategories: categories,
-      existingTransactions: latestTransactionsResult.value,
-    });
-
-    setExistingTransactions(latestTransactionsResult.value);
-
-    if (refreshedPreview.transactions.length === 0) {
-      setIsImporting(false);
-      toast.info("No new transactions to import", {
-        description: "All rows are duplicates or invalid after refresh.",
-      });
-      return;
-    }
-
     const transactionsResult = await importTransactionBatch(
-      refreshedPreview.categories,
-      refreshedPreview.transactions,
+      preview.categories,
+      preview.transactions,
     );
     setIsImporting(false);
 
@@ -261,13 +239,12 @@ function TransactionImportDialog({
     }
 
     onOpenChange(false);
-    const serverSkippedRows =
-      refreshedPreview.transactions.length - transactionsResult.value.length;
+    const serverSkippedRows = preview.transactions.length - transactionsResult.value.length;
     await onImported(
       transactionsResult.value.length,
-      refreshedPreview.summary.invalidRows +
-        refreshedPreview.summary.emptyRows +
-        refreshedPreview.summary.duplicateRows +
+      preview.summary.invalidRows +
+        preview.summary.emptyRows +
+        preview.summary.duplicateRows +
         serverSkippedRows,
     );
   };
@@ -283,8 +260,8 @@ function TransactionImportDialog({
         ? `${rowCount.toLocaleString()} rows detected`
         : "Select a CSV file to begin"
       : step === 1
-        ? isLoadingExistingTransactions
-          ? "Loading existing transactions for duplicate check…"
+        ? isLoadingDuplicateKeys
+          ? "Checking for duplicate transactions…"
           : mappingReady
             ? "Columns mapped — ready to preview"
             : "Map the required columns to continue"

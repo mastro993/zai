@@ -67,7 +67,9 @@ vi.mock("../../commands/transactions", async () => {
     createTransaction: vi.fn(),
     deleteTransaction: vi.fn(),
     deleteTransactions: vi.fn(),
-    getAllTransactions: vi.fn(),
+    getFilteredTransactionIds: vi.fn(),
+    exportTransactionsCsv: vi.fn(),
+    findExistingDuplicateKeys: vi.fn(),
     getTransactions: vi.fn((page, perPage, filters) => {
       const query = filters?.query ?? "";
 

@@ -1,7 +1,7 @@
 import { parseCategoryCsv } from "./category-csv";
 import type { CategoryImportPayload } from "./category-import";
 import { parseImportAmount } from "./parse-import-amount";
-import type { Transaction, TransactionCategory, TransactionType } from "../types/model";
+import type { TransactionCategory, TransactionType } from "../types/model";
 
 export { parseCategoryCsv as parseTransactionCsv } from "./category-csv";
 export { parseImportAmount } from "./parse-import-amount";
@@ -76,8 +76,14 @@ export type TransactionImportPreviewOptions = {
   expenseTypeValues: string;
   incomeTypeValues: string;
   existingCategories: Array<TransactionCategory>;
-  existingTransactions: Array<Transaction>;
+  existingDuplicateKeys: Array<string>;
   createId?: () => string;
+};
+
+export type ImportDuplicateCandidate = {
+  transactionDate: string;
+  amount: number;
+  description: string | null;
 };
 
 type ParsedCategoryPath = {
@@ -412,15 +418,7 @@ export const buildTransactionImportPreview = (
   const incomeValues = parseTypeValueList(options.incomeTypeValues);
   const { rootIdByKey: existingRootIdByKey, childIdByPath: existingChildIdByPath } =
     buildCategoryLookups(options.existingCategories);
-  const existingDuplicateKeys = new Set(
-    options.existingTransactions.map((transaction) =>
-      transactionDuplicateKey(
-        transaction.transactionDate,
-        transaction.amount,
-        transaction.description ?? "",
-      ),
-    ),
-  );
+  const existingDuplicateKeys = new Set(options.existingDuplicateKeys);
   const importedDuplicateKeys = new Set<string>();
   const previewRows: Array<TransactionImportPreviewRow> = [];
   const transactions: Array<TransactionImportPayload> = [];
@@ -652,4 +650,20 @@ export const buildTransactionImportPreview = (
       categoriesToCreate: categories.length,
     },
   };
+};
+
+export const collectImportDuplicateCandidates = (
+  content: string,
+  options: Omit<TransactionImportPreviewOptions, "existingDuplicateKeys">,
+): Array<ImportDuplicateCandidate> => {
+  const preview = buildTransactionImportPreview(content, {
+    ...options,
+    existingDuplicateKeys: [],
+  });
+
+  return preview.transactions.map((transaction) => ({
+    transactionDate: transaction.transactionDate,
+    amount: transaction.amount,
+    description: transaction.description ?? null,
+  }));
 };

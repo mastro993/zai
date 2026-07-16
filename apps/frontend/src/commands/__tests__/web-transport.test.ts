@@ -129,6 +129,63 @@ describe("web command map", () => {
     });
   });
 
+  it("maps get_filtered_transaction_ids to POST /transactions/ids", () => {
+    expect(
+      buildWebRequestSpec("get_filtered_transaction_ids", {
+        filters: { query: "rent", categories: [], transactionType: "expense" },
+        sort: { field: "date", desc: true },
+      }),
+    ).toEqual({
+      method: "POST",
+      path: "/transactions/ids",
+      body: {
+        query: "rent",
+        uncategorized: "true",
+        transactionType: "expense",
+        sortField: "date",
+        sortDesc: true,
+      },
+    });
+  });
+
+  it("maps export_transactions_csv to POST /transactions/export", () => {
+    expect(
+      buildWebRequestSpec("export_transactions_csv", {
+        request: {
+          filters: { query: "coffee" },
+          transactionIds: ["txn-1", "txn-2"],
+        },
+      }),
+    ).toEqual({
+      method: "POST",
+      path: "/transactions/export",
+      body: {
+        query: "coffee",
+        transactionIds: ["txn-1", "txn-2"],
+      },
+    });
+  });
+
+  it("maps find_existing_duplicate_keys to POST /transactions/duplicate-keys", () => {
+    const candidates = [
+      {
+        transactionDate: "2026-01-15T08:30:00",
+        amount: 1250,
+        description: "Groceries",
+      },
+    ];
+
+    expect(
+      buildWebRequestSpec("find_existing_duplicate_keys", {
+        request: { candidates },
+      }),
+    ).toEqual({
+      method: "POST",
+      path: "/transactions/duplicate-keys",
+      body: { candidates },
+    });
+  });
+
   it("maps create_transaction to POST /transactions", () => {
     const newTransaction = {
       description: "Coffee",
