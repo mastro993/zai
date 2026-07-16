@@ -3,7 +3,7 @@ use crate::connection::run_migrations;
 use crate::test_utils::TempDb;
 use crate::transaction_categories::TransactionCategoriesRepository;
 use crate::transactions::TransactionsRepository;
-use crate::write_actor::{reset_writer_exec_count, spawn_writer, writer_exec_count};
+use crate::write_actor::{WriteHandle, spawn_writer};
 use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime};
 use diesel::prelude::*;
 use diesel::r2d2::{self, Pool};
@@ -45,6 +45,7 @@ fn setup_with_clock(
     BudgetsRepository,
     TransactionsRepository,
     TransactionCategoriesRepository,
+    WriteHandle,
 ) {
     let manager = r2d2::ConnectionManager::<diesel::sqlite::SqliteConnection>::new(temp_db.path());
     let pool = Pool::builder().build(manager).expect("pool");
@@ -58,7 +59,8 @@ fn setup_with_clock(
             writer.clone(),
             Arc::clone(&clock),
         ),
-        TransactionCategoriesRepository::new_with_clock(pool, writer, clock),
+        TransactionCategoriesRepository::new_with_clock(pool, writer.clone(), clock),
+        writer,
     )
 }
 
@@ -156,26 +158,26 @@ async fn list_and_detail_reads_avoid_transaction_scans_and_writer_for_current_bu
     let clock = Arc::new(ManualClock {
         now: Mutex::new(anchor),
     });
-    let (budgets, _, _) = setup_with_clock(&temp_db, clock);
+    let (budgets, _, _, writer) = setup_with_clock(&temp_db, clock);
     let first_id = seed_performance_fixture(&temp_db, &budgets).await;
 
-    reset_writer_exec_count();
+    writer.reset_exec_count();
     let listed = budgets
         .list_budgets(BudgetListFilter::Active)
         .await
         .expect("list budgets");
     assert_eq!(listed.len(), 50);
     assert_eq!(
-        writer_exec_count(),
+        writer.exec_count(),
         0,
         "current list reads should not acquire writer"
     );
 
-    reset_writer_exec_count();
+    writer.reset_exec_count();
     let detail = budgets.get_budget(&first_id).await.expect("get budget");
     assert_eq!(detail.id, first_id);
     assert_eq!(
-        writer_exec_count(),
+        writer.exec_count(),
         0,
         "current detail reads should not acquire writer"
     );
@@ -209,7 +211,7 @@ async fn transaction_matching_uses_range_index_and_staleness_detection_is_set_ba
     let clock = Arc::new(ManualClock {
         now: Mutex::new(anchor),
     });
-    let (budgets, _, _) = setup_with_clock(&temp_db, clock);
+    let (budgets, _, _, _) = setup_with_clock(&temp_db, clock);
     seed_performance_fixture(&temp_db, &budgets).await;
 
     let mut conn = diesel::SqliteConnection::establish(temp_db.path()).expect("connection");
@@ -261,7 +263,7 @@ async fn two_thousand_period_catch_up_remains_bounded_and_batched() {
     let clock = Arc::new(ManualClock {
         now: Mutex::new(start),
     });
-    let (budgets, _, _) = setup_with_clock(&temp_db, clock.clone());
+    let (budgets, _, _, _) = setup_with_clock(&temp_db, clock.clone());
     budgets
         .create_budget(NewBudget {
             id: Some("perf-advance-limit".to_string()),

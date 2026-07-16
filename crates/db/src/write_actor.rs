@@ -3,22 +3,12 @@ use crate::errors::{IntoCore, Result};
 use diesel::SqliteConnection;
 use std::any::Any;
 #[cfg(test)]
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
 use tokio::sync::{mpsc, oneshot};
 use zai_core::{DatabaseError, Error};
-
-#[cfg(test)]
-static WRITER_EXEC_COUNT: AtomicUsize = AtomicUsize::new(0);
-
-#[cfg(test)]
-pub(crate) fn reset_writer_exec_count() {
-    WRITER_EXEC_COUNT.store(0, Ordering::SeqCst);
-}
-
-#[cfg(test)]
-pub(crate) fn writer_exec_count() -> usize {
-    WRITER_EXEC_COUNT.load(Ordering::SeqCst)
-}
 
 type Job<T> = Box<dyn FnOnce(&mut SqliteConnection) -> Result<T> + Send + 'static>;
 type BoxedValue = Box<dyn Any + Send + 'static>;
@@ -27,9 +17,21 @@ type WriterMessage = (Job<BoxedValue>, oneshot::Sender<Result<BoxedValue>>);
 #[derive(Clone)]
 pub(crate) struct WriteHandle {
     tx: mpsc::Sender<WriterMessage>,
+    #[cfg(test)]
+    exec_count: Arc<AtomicUsize>,
 }
 
 impl WriteHandle {
+    #[cfg(test)]
+    pub(crate) fn reset_exec_count(&self) {
+        self.exec_count.store(0, Ordering::SeqCst);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn exec_count(&self) -> usize {
+        self.exec_count.load(Ordering::SeqCst)
+    }
+
     pub async fn exec<F, T>(&self, job: F) -> zai_core::Result<T>
     where
         F: FnOnce(&mut SqliteConnection) -> Result<T> + Send + 'static,
@@ -38,7 +40,7 @@ impl WriteHandle {
         let (ret_tx, ret_rx) = oneshot::channel();
 
         #[cfg(test)]
-        WRITER_EXEC_COUNT.fetch_add(1, Ordering::SeqCst);
+        self.exec_count.fetch_add(1, Ordering::SeqCst);
 
         self.tx
             .send((
@@ -76,7 +78,11 @@ pub(crate) fn spawn_writer(pool: DbPool) -> zai_core::Result<WriteHandle> {
         })
         .map_err(|err| writer_error(&format!("failed to spawn database writer: {err}")))?;
 
-    Ok(WriteHandle { tx })
+    Ok(WriteHandle {
+        tx,
+        #[cfg(test)]
+        exec_count: Arc::new(AtomicUsize::new(0)),
+    })
 }
 
 fn writer_error(message: &str) -> Error {
@@ -190,6 +196,20 @@ mod tests {
 
         let ok = writer.exec(|_conn| Ok(7_i32)).await.expect("later job");
         assert_eq!(ok, 7);
+    }
+
+    #[tokio::test]
+    async fn writer_exec_count_is_scoped_to_each_handle() {
+        let first_db = TempDb::new();
+        let second_db = TempDb::new();
+        let first = setup_writer(&first_db);
+        let second = setup_writer(&second_db);
+
+        first.reset_exec_count();
+        second.reset_exec_count();
+        first.exec(|_conn| Ok(())).await.expect("first write");
+
+        assert_eq!(second.exec_count(), 0);
     }
 
     #[tokio::test]
