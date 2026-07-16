@@ -124,6 +124,17 @@
   body {
     @apply bg-background text-foreground;
   }
+  [data-sonner-toaster] {
+    --width: 356px;
+    font-family: inherit;
+  }
+  [data-sonner-toast] {
+    --border-radius: 0;
+    box-shadow: none;
+  }
+  [data-sonner-toast][data-expanded="false"][data-front="false"] > * {
+    opacity: 0;
+  }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;

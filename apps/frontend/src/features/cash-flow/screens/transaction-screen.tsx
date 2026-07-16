@@ -1,4 +1,4 @@
-import { toast } from "sonner";
+import { toast } from "@/components/toaster/toast";
 
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";

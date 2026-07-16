@@ -1,6 +1,6 @@
 import { Result } from "@praha/byethrow";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/toaster/toast";
 
 import { getAffectedBudgets, type BudgetImpact } from "@/commands/errors";
 import { ScreenBase } from "@/components/screen-base";

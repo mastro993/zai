@@ -12,7 +12,7 @@ vi.mock("@/components/screen-base", () => ({
   ),
 }));
 
-vi.mock("sonner", () => ({
+vi.mock("@/components/toaster/toast", () => ({
   toast: {
     error: vi.fn(),
     info: vi.fn(),
@@ -233,7 +233,7 @@ vi.mock("../../commands/transaction-categories", async () => {
   };
 });
 
-import { toast } from "sonner";
+import { toast } from "@/components/toaster/toast";
 
 import * as transactionCategories from "../../commands/transaction-categories";
 import * as transactions from "../../commands/transactions";
