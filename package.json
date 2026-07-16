@@ -42,7 +42,13 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
+      "lefthook",
       "lightningcss"
+    ],
+    "ignoredBuiltDependencies": [
+      "@tailwindcss/oxide",
+      "esbuild",
+      "sqlite3"
     ]
   },
   "dependencies": {
