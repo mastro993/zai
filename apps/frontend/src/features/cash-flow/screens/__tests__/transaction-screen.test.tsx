@@ -425,4 +425,19 @@ describe("transaction screen request guard", () => {
         .mock.calls.filter(([, , filters]) => filters?.query === "current"),
     ).toHaveLength(1);
   });
+
+  it("disables export when there are no transactions to export", () => {
+    render(
+      <TransactionScreen
+        initialData={{
+          transactions: { data: [], page: 1, perPage: 50, totalPages: 1 },
+          categories: [],
+        }}
+      />,
+    );
+
+    expect(
+      (screen.getByRole("button", { name: "Export transactions" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
 });

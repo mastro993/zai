@@ -6,7 +6,7 @@ import { CommandError, getAffectedBudgets } from "../errors";
 import { invokeCommand } from "../shared";
 
 const invokeMock = vi.hoisted(() => vi.fn());
-const isTauriMock = vi.hoisted(() => vi.fn(() => true));
+const isTauriMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: invokeMock,
@@ -16,13 +16,8 @@ vi.mock("@tauri-apps/api/core", () => ({
 describe("desktop command transport", () => {
   beforeEach(() => {
     invokeMock.mockReset();
-    isTauriMock.mockReset();
-    isTauriMock.mockReturnValue(true);
-    vi.stubGlobal("window", {
-      __TAURI_INTERNALS__: {
-        invoke: invokeMock,
-      },
-    });
+    isTauriMock.mockReset().mockReturnValue(true);
+    vi.stubGlobal("window", {});
   });
 
   afterEach(() => {
@@ -47,17 +42,18 @@ describe("desktop command transport", () => {
     expect(result.value).toEqual(value);
   });
 
-  it("fails clearly when the page is outside the Tauri webview", async () => {
+  it("rejects desktop commands when Tauri IPC is unavailable", async () => {
     isTauriMock.mockReturnValue(false);
-    vi.stubGlobal("window", {});
 
-    const result = await invokeCommand("get_transaction_categories");
+    const result = await invokeCommand("get_transaction_categories", {
+      parentId: null,
+    });
 
     expect(Result.isFailure(result)).toBe(true);
     if (Result.isSuccess(result)) {
       return;
     }
-    expect(result.error.message).toContain("Zai desktop window");
+    expect(result.error).toEqual(new CommandError("Tauri IPC is not available in this runtime"));
     expect(invokeMock).not.toHaveBeenCalled();
   });
 

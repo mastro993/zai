@@ -34,7 +34,7 @@
     "@playwright/test": "^1.55.0",
     "@praha/byethrow-docs": "^0.12.0",
     "@praha/byethrow-oxlint": "^0.12.0",
-    "@tauri-apps/cli": "^2.10.1",
+    "@tauri-apps/cli": "~2.11.4",
     "lefthook": "^1.11.13",
     "typescript": "~5.6.2"
   },

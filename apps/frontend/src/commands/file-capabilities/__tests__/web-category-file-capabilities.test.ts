@@ -74,12 +74,83 @@ describe("web category file capabilities", () => {
     expect(result).toBeNull();
   });
 
-  it("downloads category CSV content with the requested filename", () => {
+  it("waits for the save file picker before reporting export success", async () => {
+    let resolvePicker:
+      | ((handle: {
+          name: string;
+          createWritable: () => Promise<{
+            write: (data: string) => Promise<void>;
+            close: () => Promise<void>;
+          }>;
+        }) => void)
+      | undefined;
+    const write = vi.fn().mockResolvedValue(undefined);
+    const close = vi.fn().mockResolvedValue(undefined);
+    const showSaveFilePicker = vi.fn(
+      () =>
+        new Promise<Parameters<NonNullable<typeof resolvePicker>>[0]>((resolve) => {
+          resolvePicker = resolve;
+        }),
+    );
+
+    Object.defineProperty(window, "showSaveFilePicker", {
+      configurable: true,
+      value: showSaveFilePicker,
+    });
+
+    const exportPromise = webDownloadTextFile({
+      title: "Export categories",
+      filename: "zai_transaction_categories_20260706_162830.csv",
+      content: "name,parent_name,color,description",
+    });
+
+    expect(showSaveFilePicker).toHaveBeenCalled();
+    await Promise.resolve();
+    let settled = false;
+    void exportPromise.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    resolvePicker?.({
+      name: "zai_transaction_categories_20260706_162830.csv",
+      createWritable: async () => ({ write, close }),
+    });
+
+    await expect(exportPromise).resolves.toBe("zai_transaction_categories_20260706_162830.csv");
+    expect(write).toHaveBeenCalledWith("name,parent_name,color,description");
+    expect(close).toHaveBeenCalled();
+  });
+
+  it("returns null when the save file picker is canceled", async () => {
+    Object.defineProperty(window, "showSaveFilePicker", {
+      configurable: true,
+      value: vi
+        .fn()
+        .mockRejectedValue(new DOMException("The user aborted a request.", "AbortError")),
+    });
+
+    const filename = await webDownloadTextFile({
+      title: "Export categories",
+      filename: "zai_transaction_categories_20260706_162830.csv",
+      content: "name,parent_name,color,description",
+    });
+
+    expect(filename).toBeNull();
+  });
+
+  it("falls back to anchor download when save file picker is unavailable", async () => {
+    Object.defineProperty(window, "showSaveFilePicker", {
+      configurable: true,
+      value: undefined,
+    });
+
     const click = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => undefined);
 
-    const filename = webDownloadTextFile({
+    const filename = await webDownloadTextFile({
       title: "Export categories",
       filename: "zai_transaction_categories_20260706_162830.csv",
       content: "name,parent_name,color,description",
