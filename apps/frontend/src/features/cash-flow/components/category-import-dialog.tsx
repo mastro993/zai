@@ -1,6 +1,6 @@
 import { Result } from "@praha/byethrow";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/toaster/toast";
 
 import { openCategoryImportFile, type CategoryImportFile } from "../commands/category-import";
 import { importTransactionCategories } from "../commands/transaction-categories";

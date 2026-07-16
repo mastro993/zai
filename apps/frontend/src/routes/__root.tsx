@@ -24,7 +24,7 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@/components/toaster/toaster";
 import { navigationItems, settingsItem } from "@/lib/navigation";
 
 export const Route = createRootRoute({
@@ -39,7 +39,7 @@ function AppLayout() {
         <SidebarInset className="min-h-0 overflow-hidden">
           <Outlet />
         </SidebarInset>
-        <Toaster position="bottom-right" />
+        <Toaster />
         <TanStackDevtools
           config={{ position: "bottom-right" }}
           plugins={[

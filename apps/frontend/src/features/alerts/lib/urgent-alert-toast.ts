@@ -1,4 +1,4 @@
-import { toast } from "sonner";
+import { toast } from "@/components/toaster/toast";
 
 import type { DomainAlert } from "../types/domain-alert";
 import type { DomainAlertEvent } from "../types/domain-alert-event";
