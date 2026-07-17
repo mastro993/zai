@@ -86,26 +86,33 @@ describe("BudgetFormDrawer", () => {
     );
   });
 
-  it("shows measurement and rollover selects with selected explanations", () => {
+  it("opens measurement and rollover option drawers with explanations", () => {
     renderBudgetForm();
-
-    expect(screen.getByText(budgetMeasurementDescription.spending)).toBeTruthy();
-    expect(screen.getByText(budgetRolloverDescription.off)).toBeTruthy();
-    expect(budgetMeasurementDescription.netCashFlow).toContain("matching income");
-    expect(budgetRolloverDescription.cumulative).toContain("accumulate");
 
     fireEvent.click(screen.getByLabelText("Budget measurement"));
-    expect(screen.getByRole("option", { name: "Spending" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Net cash flow" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Measurement" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Spending/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Net cash flow/ })).toBeTruthy();
+    expect(screen.getByText(budgetMeasurementDescription.spending)).toBeTruthy();
+    expect(screen.getByText(budgetMeasurementDescription.netCashFlow)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to budget" }));
+    fireEvent.click(screen.getByLabelText("Budget rollover"));
+    expect(screen.getByRole("heading", { name: "Rollover" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /No rollover/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Previous period only/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Cumulative/ })).toBeTruthy();
+    expect(screen.getByText(budgetRolloverDescription.off)).toBeTruthy();
+    expect(screen.getByText(budgetRolloverDescription.cumulative)).toBeTruthy();
   });
 
-  it("lists rollover options in a select", () => {
+  it("updates measurement from the option drawer", () => {
     renderBudgetForm();
 
-    fireEvent.click(screen.getByLabelText("Budget rollover"));
-    expect(screen.getByRole("option", { name: "No rollover" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Previous period only" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Cumulative" })).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Budget measurement"));
+    fireEvent.click(screen.getByRole("option", { name: /Net cash flow/ }));
+
+    expect(screen.getByLabelText("Budget measurement").textContent).toContain("Net cash flow");
   });
 
   it("filters and canonicalizes category selections", async () => {

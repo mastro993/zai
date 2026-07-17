@@ -284,7 +284,7 @@ function BudgetFormDrawer({
 
           <FieldSet>
             <FieldLegend>Advanced rules</FieldLegend>
-            <BudgetFormRulesFields control={form.control} />
+            <BudgetFormRulesFields control={form.control} formOpen={open} />
           </FieldSet>
         </FieldGroup>
 
