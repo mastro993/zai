@@ -207,7 +207,7 @@ function BudgetCategorySelectionDrawer({
         </DrawerClose>
         <div className="flex min-w-0 flex-col gap-0.5">
           <DrawerTitle>Select categories</DrawerTitle>
-          <DrawerDescription>Choose which transactions count toward this budget.</DrawerDescription>
+          <DrawerDescription>Only selected categories count toward this budget.</DrawerDescription>
         </div>
       </DrawerHeader>
 
@@ -360,7 +360,7 @@ function BudgetCategorySelectionDrawer({
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="text-xs text-muted-foreground" aria-live="polite">
             {selectionCount === 0
-              ? "All categories"
+              ? "None selected"
               : `${selectionCount} ${selectionCount === 1 ? "category" : "categories"}`}
           </span>
           {selectionCount > 0 ? (

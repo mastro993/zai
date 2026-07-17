@@ -67,7 +67,9 @@ describe("BudgetFormDrawer", () => {
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Monthly spending" } });
     fireEvent.change(screen.getByLabelText("Allowance"), { target: { value: "100" } });
-    fireEvent.change(screen.getByLabelText("Warning threshold"), { target: { value: "65" } });
+    fireEvent.click(screen.getByRole("button", { name: "Advanced rules" }));
+    fireEvent.change(screen.getByLabelText("Warning percentage"), { target: { value: "65" } });
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     fireEvent.click(screen.getByRole("button", { name: "Create budget" }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
@@ -75,7 +77,9 @@ describe("BudgetFormDrawer", () => {
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Monthly spending" } });
     fireEvent.change(screen.getByLabelText("Allowance"), { target: { value: "100" } });
-    fireEvent.click(screen.getByRole("checkbox", { name: "Warn me at" }));
+    fireEvent.click(screen.getByRole("button", { name: "Advanced rules" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Warn at" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     fireEvent.click(screen.getByRole("button", { name: "Create budget" }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
@@ -111,7 +115,7 @@ describe("BudgetFormDrawer", () => {
     const onSubmit = createSubmitMock();
     renderBudgetForm({ categories, onSubmit });
 
-    fireEvent.click(screen.getByRole("button", { name: "Choose categories" }));
+    fireEvent.click(screen.getByRole("button", { name: "Specific" }));
     fireEvent.change(screen.getByLabelText("Search categories"), { target: { value: "rent" } });
 
     expect(screen.getByRole("checkbox", { name: "Food" })).toBeTruthy();
@@ -154,7 +158,7 @@ describe("BudgetFormDrawer", () => {
     const onSubmit = createSubmitMock();
     renderBudgetForm({ categories: [food, groceries, restaurants], onSubmit });
 
-    fireEvent.click(screen.getByRole("button", { name: "Choose categories" }));
+    fireEvent.click(screen.getByRole("button", { name: "Specific" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Food" }));
     fireEvent.click(screen.getByRole("button", { name: "Expand Food" }));
 
@@ -171,7 +175,7 @@ describe("BudgetFormDrawer", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
 
-    let trigger = screen.getByRole("button", { name: "Choose categories" });
+    let trigger = screen.getByRole("button", { name: /Choose categories/ });
     expect(within(trigger).queryByText("Food")).toBeNull();
     expect(within(trigger).getByText("Restaurants")).toBeTruthy();
 
@@ -179,7 +183,7 @@ describe("BudgetFormDrawer", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Groceries" }));
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
 
-    trigger = screen.getByRole("button", { name: "Choose categories" });
+    trigger = screen.getByRole("button", { name: /Choose categories/ });
     expect(within(trigger).getByText("Food")).toBeTruthy();
     expect(within(trigger).queryByText("Groceries")).toBeNull();
     expect(within(trigger).queryByText("Restaurants")).toBeNull();

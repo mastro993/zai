@@ -1,18 +1,21 @@
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Result } from "@praha/byethrow";
-import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Drawer,
   DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
+  DrawerTrigger,
 } from "@/components/ui/drawer";
 import {
   Field,
@@ -38,8 +41,6 @@ import { budgetMeasurementLabel, budgetRolloverOptionLabel } from "../lib/budget
 import { formatAmountFromMinor } from "../lib/transaction";
 import {
   BUDGET_CADENCES,
-  BUDGET_MEASUREMENT_MODES,
-  BUDGET_ROLLOVER_MODES,
   budgetFormSchema,
   type Budget,
   type BudgetFormInput,
@@ -47,6 +48,7 @@ import {
 } from "../types/budget";
 import type { TransactionCategory } from "../types/model";
 import { BudgetCategoryScopeField } from "./budget-category-scope-field";
+import { BudgetFormRulesDrawer } from "./budget-form-rules-drawer";
 
 interface BudgetFormDrawerProps {
   open: boolean;
@@ -64,22 +66,44 @@ const cadenceToggleLabel = {
   year: "Year",
 } as const;
 
-const rolloverToggleLabel = {
-  off: "Off",
-  previousPeriodOnly: "Previous",
-  cumulative: "Cumulative",
-} as const;
-
 const getDefaultValues = (budget?: Budget): BudgetFormInput => ({
   name: budget?.name ?? "",
   baseAllowance: budget ? formatAmountFromMinor(budget.baseAllowance) : "",
   cadence: budget?.cadence ?? "month",
+  categoryScope: budget && budget.categoryIds.length > 0 ? "specific" : "all",
   categoryIds: budget?.categoryIds ?? [],
   measurementMode: budget?.measurementMode ?? "spending",
   rolloverMode: budget?.rolloverMode ?? "off",
   warningPercentage:
     budget?.warningPercentage === null ? "disabled" : String(budget?.warningPercentage ?? 80),
 });
+
+const getFormCopy = (isEdit: boolean) =>
+  isEdit
+    ? {
+        title: "Edit budget",
+        description: "Update the current period configuration. Closed periods stay unchanged.",
+        submit: "Save budget",
+        submitting: "Saving...",
+      }
+    : {
+        title: "New budget",
+        description: "Set allowance, period, and which categories count.",
+        submit: "Create budget",
+        submitting: "Creating...",
+      };
+
+function rulesSummary(
+  measurementMode: BudgetFormInput["measurementMode"],
+  rolloverMode: BudgetFormInput["rolloverMode"],
+  warningPercentage: BudgetFormInput["warningPercentage"],
+) {
+  const warning =
+    warningPercentage === "disabled" || warningPercentage === ""
+      ? "No warning"
+      : `Warn at ${warningPercentage}%`;
+  return `${budgetMeasurementLabel[measurementMode ?? "spending"]} · ${budgetRolloverOptionLabel[rolloverMode ?? "off"]} · ${warning}`;
+}
 
 function BudgetFormDrawer({
   open,
@@ -90,15 +114,29 @@ function BudgetFormDrawer({
   mode = "create",
 }: BudgetFormDrawerProps) {
   const isEdit = mode === "edit";
+  const { title, description, submit: submitLabel, submitting } = getFormCopy(isEdit);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const form = useForm<BudgetFormInput, unknown, BudgetFormValues>({
     resolver: zodResolver(budgetFormSchema),
     defaultValues: getDefaultValues(isEdit ? budget : undefined),
   });
   const { reset } = form;
   const { errors, isSubmitting } = form.formState;
+  const measurementMode = useWatch({ control: form.control, name: "measurementMode" });
+  const rolloverMode = useWatch({ control: form.control, name: "rolloverMode" });
+  const warningPercentage = useWatch({ control: form.control, name: "warningPercentage" });
+  const nameErrorId = "budget-name-error";
+  const allowanceErrorId = "budget-allowance-error";
+  const cadenceDescriptionId = "budget-cadence-description";
+  const serverErrorId = "budget-server-error";
+  const rulesSummaryId = "budget-rules-summary";
 
   useEffect(() => {
-    if (open) reset(getDefaultValues(isEdit ? budget : undefined));
+    if (!open) {
+      setRulesOpen(false);
+      return;
+    }
+    reset(getDefaultValues(isEdit ? budget : undefined));
   }, [budget, isEdit, open, reset]);
 
   const submit = async (values: BudgetFormValues) => {
@@ -126,12 +164,8 @@ function BudgetFormDrawer({
   return (
     <DrawerContent className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem] data-[swipe-axis=x]:w-[calc(100%-2rem)] sm:data-[swipe-axis=x]:w-96">
       <DrawerHeader>
-        <DrawerTitle>{isEdit ? "Edit budget" : "New budget"}</DrawerTitle>
-        <DrawerDescription>
-          {isEdit
-            ? "Update the current period configuration. Closed periods remain unchanged."
-            : "Set an allowance, period, rules, and transaction scope."}
-        </DrawerDescription>
+        <DrawerTitle>{title}</DrawerTitle>
+        <DrawerDescription>{description}</DrawerDescription>
       </DrawerHeader>
       <form
         className="flex min-h-0 flex-1 flex-col"
@@ -148,12 +182,11 @@ function BudgetFormDrawer({
                   autoFocus
                   placeholder="Monthly spending"
                   aria-invalid={Boolean(errors.name)}
+                  aria-describedby={errors.name ? nameErrorId : undefined}
                   {...form.register("name")}
                 />
-                <FieldDescription>
-                  Use a unique name you can recognize in the list.
-                </FieldDescription>
-                <FieldError errors={[errors.name]} />
+                <FieldDescription>Must be unique among your budgets.</FieldDescription>
+                <FieldError id={nameErrorId} errors={[errors.name]} />
               </Field>
               <Field data-invalid={Boolean(errors.baseAllowance)}>
                 <FieldLabel htmlFor="budget-allowance">Allowance</FieldLabel>
@@ -164,14 +197,15 @@ function BudgetFormDrawer({
                     inputMode="decimal"
                     placeholder="1000.00"
                     aria-invalid={Boolean(errors.baseAllowance)}
+                    aria-describedby={errors.baseAllowance ? allowanceErrorId : undefined}
                     {...form.register("baseAllowance")}
                   />
                   <InputGroupAddon align="inline-end">
                     <InputGroupText>EUR</InputGroupText>
                   </InputGroupAddon>
                 </InputGroup>
-                <FieldDescription>Amount available in each budget period.</FieldDescription>
-                <FieldError>{errors.baseAllowance?.message}</FieldError>
+                <FieldDescription>Amount available each period.</FieldDescription>
+                <FieldError id={allowanceErrorId}>{errors.baseAllowance?.message}</FieldError>
               </Field>
               <Field>
                 <FieldLabel>Cadence</FieldLabel>
@@ -181,6 +215,7 @@ function BudgetFormDrawer({
                   render={({ field }) => (
                     <ToggleGroup
                       aria-label="Budget cadence"
+                      aria-describedby={cadenceDescriptionId}
                       className="w-full"
                       disabled={isEdit}
                       spacing={0}
@@ -206,7 +241,7 @@ function BudgetFormDrawer({
                     </ToggleGroup>
                   )}
                 />
-                <FieldDescription>
+                <FieldDescription id={cadenceDescriptionId}>
                   {isEdit
                     ? "Cadence is fixed after creation."
                     : "Periods follow local calendar boundaries."}
@@ -217,153 +252,53 @@ function BudgetFormDrawer({
 
           <FieldSeparator />
 
-          <FieldSet>
-            <FieldLegend>Budget rules</FieldLegend>
-            <FieldGroup>
-              <Field>
-                <FieldLabel>Measurement</FieldLabel>
-                <Controller
-                  control={form.control}
-                  name="measurementMode"
-                  render={({ field }) => (
-                    <ToggleGroup
-                      aria-label="Budget measurement"
-                      className="w-full"
-                      spacing={0}
-                      variant="outline"
-                      value={field.value ? [field.value] : []}
-                      onValueChange={(values) => {
-                        const value = values.at(-1);
-                        if (value === "spending" || value === "netCashFlow") {
-                          field.onChange(value);
-                        }
-                      }}
-                    >
-                      {BUDGET_MEASUREMENT_MODES.map((value) => (
-                        <ToggleGroupItem key={value} value={value} className="flex-1">
-                          {budgetMeasurementLabel[value]}
-                        </ToggleGroupItem>
-                      ))}
-                    </ToggleGroup>
-                  )}
-                />
-                <FieldDescription>
-                  Net cash flow subtracts matching income from spending.
-                </FieldDescription>
-              </Field>
-              <Field>
-                <FieldLabel>Rollover</FieldLabel>
-                <Controller
-                  control={form.control}
-                  name="rolloverMode"
-                  render={({ field }) => (
-                    <ToggleGroup
-                      aria-label="Budget rollover"
-                      className="w-full"
-                      spacing={0}
-                      variant="outline"
-                      value={field.value ? [field.value] : []}
-                      onValueChange={(values) => {
-                        const value = values.at(-1);
-                        if (
-                          value === "off" ||
-                          value === "previousPeriodOnly" ||
-                          value === "cumulative"
-                        ) {
-                          field.onChange(value);
-                        }
-                      }}
-                    >
-                      {BUDGET_ROLLOVER_MODES.map((value) => (
-                        <ToggleGroupItem
-                          key={value}
-                          value={value}
-                          className="min-w-0 flex-1 px-1"
-                          title={budgetRolloverOptionLabel[value]}
-                        >
-                          {rolloverToggleLabel[value]}
-                        </ToggleGroupItem>
-                      ))}
-                    </ToggleGroup>
-                  )}
-                />
-                <FieldDescription>
-                  Carry unused allowance or overspending into later periods.
-                </FieldDescription>
-              </Field>
-              <Field data-invalid={Boolean(errors.warningPercentage)}>
-                <FieldLabel>Warning</FieldLabel>
-                <Controller
-                  control={form.control}
-                  name="warningPercentage"
-                  render={({ field }) => {
-                    const enabled = field.value !== "disabled";
-                    return (
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="budget-warning-enabled"
-                          checked={enabled}
-                          onCheckedChange={(checked) =>
-                            field.onChange(checked === true ? "80" : "disabled")
-                          }
-                        />
-                        <FieldLabel
-                          htmlFor="budget-warning-enabled"
-                          className="shrink-0 font-normal"
-                        >
-                          Warn me at
-                        </FieldLabel>
-                        <InputGroup className="w-24">
-                          <InputGroupInput
-                            id="budget-warning"
-                            type="number"
-                            min={1}
-                            max={100}
-                            step={1}
-                            disabled={!enabled}
-                            value={enabled ? field.value : ""}
-                            onBlur={field.onBlur}
-                            onChange={(event) => field.onChange(event.target.value)}
-                            name={field.name}
-                            ref={field.ref}
-                            aria-label="Warning threshold"
-                            aria-invalid={Boolean(errors.warningPercentage)}
-                          />
-                          <InputGroupAddon align="inline-end">
-                            <InputGroupText>%</InputGroupText>
-                          </InputGroupAddon>
-                        </InputGroup>
-                      </div>
-                    );
-                  }}
-                />
-                <FieldDescription>
-                  Disable this when you do not want an early spending warning.
-                </FieldDescription>
-                <FieldError errors={[errors.warningPercentage]} />
-              </Field>
-            </FieldGroup>
-          </FieldSet>
-
-          <FieldSeparator />
-
           <BudgetCategoryScopeField
             categories={categories}
             control={form.control}
             formOpen={open}
+            error={errors.categoryIds}
           />
+
+          <FieldSeparator />
+
+          <FieldSet>
+            <FieldLegend>Advanced rules</FieldLegend>
+            <Field>
+              <Drawer open={rulesOpen} onOpenChange={setRulesOpen} swipeDirection="right">
+                <DrawerTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-auto min-h-8 w-full min-w-0 justify-between gap-2 overflow-hidden py-1.5 font-normal"
+                      aria-label="Advanced rules"
+                      aria-describedby={rulesSummaryId}
+                    />
+                  }
+                >
+                  <span
+                    id={rulesSummaryId}
+                    className="min-w-0 flex-1 truncate text-left text-xs text-muted-foreground"
+                  >
+                    {rulesSummary(measurementMode, rolloverMode, warningPercentage)}
+                  </span>
+                  <HugeiconsIcon
+                    icon={ArrowRight01Icon}
+                    className="shrink-0"
+                    data-icon="inline-end"
+                    aria-hidden="true"
+                  />
+                </DrawerTrigger>
+                <BudgetFormRulesDrawer control={form.control} errors={errors} />
+              </Drawer>
+            </Field>
+          </FieldSet>
         </FieldGroup>
 
-        <FieldError className="px-4" errors={[errors.root?.server]} />
+        <FieldError id={serverErrorId} className="px-4" errors={[errors.root?.server]} />
         <DrawerFooter>
           <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
-            {isSubmitting
-              ? isEdit
-                ? "Saving budget..."
-                : "Creating budget..."
-              : isEdit
-                ? "Save budget"
-                : "Create budget"}
+            {isSubmitting ? submitting : submitLabel}
           </Button>
           <DrawerClose render={<Button type="button" variant="outline" disabled={isSubmitting} />}>
             Cancel

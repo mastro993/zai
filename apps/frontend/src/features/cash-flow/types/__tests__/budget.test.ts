@@ -72,6 +72,31 @@ describe("budgetFormSchema", () => {
     }
   });
 
+  it("rejects specific scope with no categories", () => {
+    const result = budgetFormSchema.safeParse({
+      name: "Scoped",
+      baseAllowance: "100",
+      categoryScope: "specific",
+      categoryIds: [],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("clears category ids when scope is all", () => {
+    const result = budgetFormSchema.safeParse({
+      name: "All scope",
+      baseAllowance: "100",
+      categoryScope: "all",
+      categoryIds: ["food"],
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.categoryIds).toEqual([]);
+    }
+  });
+
   it("rejects empty names, malformed allowances, and invalid warning percentages", () => {
     const result = budgetFormSchema.safeParse({
       name: " ",
