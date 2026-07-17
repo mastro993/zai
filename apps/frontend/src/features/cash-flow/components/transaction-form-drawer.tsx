@@ -21,18 +21,9 @@ import {
   InputGroupText,
 } from "@/components/ui/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-import { getCategoryDisplayColor } from "../lib/category";
 import {
   combineDateTime,
   formatAmountFromMinor,
@@ -50,6 +41,7 @@ import {
   type TransactionType,
 } from "../types/model";
 import type { TransactionFormMode } from "../types/transaction-types";
+import { CategoryDrawerSelect } from "./category-drawer-select";
 
 const getLocalDateTimeInputValue = () => {
   const date = new Date();
@@ -101,20 +93,16 @@ const formatDateLabel = (dateValue: string) => {
   return format(parseISO(dateValue), "MMM d, yyyy");
 };
 
-function CategoryDot({ color }: { color: string }) {
-  return (
-    <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-  );
-}
-
 function TransactionFormDrawer({
   mode,
   categories,
   onSubmit,
+  open = true,
 }: {
   mode: TransactionFormMode;
   categories: Array<TransactionCategory>;
   onSubmit: (values: TransactionFormValues) => Promise<void>;
+  open?: boolean;
 }) {
   const form = useForm<TransactionFormInput, unknown, TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
@@ -122,17 +110,7 @@ function TransactionFormDrawer({
   });
   const { title, description } = getFormCopy(mode);
   const isCreate = mode.type === "create";
-  const rootCategories = categories.filter((category) => !category.parentId);
-  const childCategories = categories.filter((category) => category.parentId);
-  const categoryById = new Map(categories.map((category) => [category.id, category] as const));
-  const parentCategoryItems = [
-    { label: "Uncategorized", value: null, color: null },
-    ...rootCategories.map((category) => ({
-      label: category.name,
-      value: category.id,
-      color: getCategoryDisplayColor(category),
-    })),
-  ];
+  const hasCategories = categories.length > 0;
   const { errors, isSubmitting } = form.formState;
   const amountErrorId = "transaction-amount-error";
   const dateErrorId = "transaction-date-error";
@@ -283,82 +261,36 @@ function TransactionFormDrawer({
             <FieldError id={dateErrorId}>{errors.transactionDate?.message}</FieldError>
           </Field>
 
-          <Controller
-            control={form.control}
-            name="transactionCategoryId"
-            render={({ field }) => {
-              const selectedCategory = field.value ? categoryById.get(field.value) : undefined;
-              const selectedParentId = selectedCategory?.parentId ?? selectedCategory?.id ?? "";
-              const selectedChildId = selectedCategory?.parentId ? selectedCategory.id : "";
-              const selectedChildren = childCategories.filter(
-                (category) => category.parentId === selectedParentId,
-              );
-              const childCategoryItems = [
-                { label: "Other", value: null },
-                ...selectedChildren.map((category) => ({
-                  label: category.name,
-                  value: category.id,
-                })),
-              ];
-
-              return (
-                <Field>
-                  <FieldLabel>Category</FieldLabel>
-                  <div className="flex flex-col gap-2">
-                    <Select
-                      items={parentCategoryItems}
-                      value={selectedParentId || null}
-                      onValueChange={(value) => field.onChange(value ?? "")}
-                    >
-                      <SelectTrigger className="w-full" aria-label="Parent category">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent alignItemWithTrigger={false}>
-                        <SelectGroup>
-                          {parentCategoryItems.map((item) => (
-                            <SelectItem key={item.value ?? "uncategorized"} value={item.value}>
-                              <span className="flex items-center gap-2">
-                                {item.color ? <CategoryDot color={item.color} /> : null}
-                                {item.label}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-
-                    {selectedChildren.length > 0 ? (
-                      <div className="border-l border-border pl-3">
-                        <Select
-                          items={childCategoryItems}
-                          value={selectedChildId || null}
-                          onValueChange={(value) => field.onChange(value ?? selectedParentId)}
-                        >
-                          <SelectTrigger className="min-w-0 w-full" aria-label="Child category">
-                            <SelectValue placeholder="Other" />
-                          </SelectTrigger>
-                          <SelectContent alignItemWithTrigger={false}>
-                            <SelectGroup>
-                              {childCategoryItems.map((item) => (
-                                <SelectItem key={item.value ?? "other"} value={item.value}>
-                                  {item.label}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ) : null}
-                  </div>
-                  <FieldDescription>
-                    {rootCategories.length > 0
-                      ? "Optional. Pick a root category, then refine with a subcategory when available."
-                      : "Optional. Create categories under Cash flow → Categories to group transactions."}
-                  </FieldDescription>
-                </Field>
-              );
-            }}
-          />
+          <Field>
+            <FieldLabel htmlFor="transaction-category-trigger">Category</FieldLabel>
+            <Controller
+              control={form.control}
+              name="transactionCategoryId"
+              render={({ field }) => (
+                <CategoryDrawerSelect
+                  id="transaction-category-trigger"
+                  mode="single"
+                  categories={categories}
+                  value={field.value ? field.value : null}
+                  onChange={(next) => field.onChange(next ?? "")}
+                  onBlur={field.onBlur}
+                  parentOpen={open}
+                  clearable
+                  placeholder="Uncategorized"
+                  ariaLabel="Choose category"
+                  drawerTitle="Select category"
+                  drawerDescription="Optional. Pick a category for this transaction."
+                  backAriaLabel="Back to transaction"
+                  emptyListMessage="No categories yet. Create some under Cash flow → Categories."
+                />
+              )}
+            />
+            <FieldDescription>
+              {hasCategories
+                ? "Optional. Leave empty for uncategorized."
+                : "Optional. Create categories under Cash flow → Categories to group transactions."}
+            </FieldDescription>
+          </Field>
 
           <Field>
             <FieldLabel htmlFor="transaction-description">Description</FieldLabel>

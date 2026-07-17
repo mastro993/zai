@@ -43,8 +43,8 @@ import {
   type BudgetFormValues,
 } from "../types/budget";
 import type { TransactionCategory } from "../types/model";
-import { BudgetCategoryScopeField } from "./budget-category-scope-field";
 import { BudgetFormRulesFields } from "./budget-form-rules-fields";
+import { CategoryDrawerSelect } from "./category-drawer-select";
 
 interface BudgetFormDrawerProps {
   open: boolean;
@@ -231,12 +231,41 @@ function BudgetFormDrawer({
                   <FieldError id={warningErrorId} errors={[errors.warningPercentage]} />
                 </Field>
               </div>
-              <BudgetCategoryScopeField
-                categories={categories}
-                control={form.control}
-                formOpen={open}
-                error={errors.categoryIds}
-              />
+              <Field data-invalid={Boolean(errors.categoryIds)} className="min-w-0">
+                <FieldLabel htmlFor="budget-categories-trigger">Categories</FieldLabel>
+                <Controller
+                  control={form.control}
+                  name="categoryIds"
+                  render={({ field }) => {
+                    const selectedIds = field.value ?? [];
+                    return (
+                      <CategoryDrawerSelect
+                        id="budget-categories-trigger"
+                        mode="multiple"
+                        categories={categories}
+                        value={selectedIds}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        parentOpen={open}
+                        placeholder="All categories"
+                        ariaLabel={
+                          selectedIds.length === 0
+                            ? "Choose categories, all categories"
+                            : `Choose categories, ${selectedIds.length} selected`
+                        }
+                        drawerTitle="Select categories"
+                        drawerDescription="Only selected categories count toward this budget."
+                        backAriaLabel="Back to budget"
+                        emptyListMessage="No categories yet. This budget will include all transactions."
+                      />
+                    );
+                  }}
+                />
+                <FieldDescription>
+                  Empty includes all transactions. Roots include their subcategories.
+                </FieldDescription>
+                <FieldError errors={[errors.categoryIds]} />
+              </Field>
               <Field>
                 <FieldLabel>Cadence</FieldLabel>
                 <Controller
