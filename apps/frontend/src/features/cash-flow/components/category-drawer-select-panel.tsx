@@ -190,7 +190,7 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
                   <div key={root.id} className="border-b last:border-b-0">
                     <div
                       className={cn(
-                        "flex min-w-0 items-center",
+                        "flex min-w-0 cursor-pointer items-center",
                         selected
                           ? "bg-primary/5 hover:bg-primary/5 focus-within:bg-primary/5"
                           : "hover:bg-muted/40 focus-within:bg-muted/40",
@@ -242,7 +242,7 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
 
               return (
                 <div key={root.id} className="border-b last:border-b-0">
-                  <div className="flex min-w-0 items-center">
+                  <div className="flex min-w-0 cursor-pointer items-center hover:bg-muted/40">
                     <ExpandControl
                       root={root}
                       childrenCount={children.length}
@@ -264,7 +264,7 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
                       />
                       <FieldLabel
                         htmlFor={`${searchInputId}-${root.id}`}
-                        className="min-w-0 flex-1 font-normal"
+                        className="min-w-0 flex-1 cursor-pointer font-normal"
                       >
                         <CategoryBadge color={getCategoryDisplayColor(root)}>
                           {root.name}

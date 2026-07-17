@@ -13,14 +13,6 @@ import {
 } from "@/components/ui/drawer";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 import { getCategoryDisplayColor, getCategoryRoleLabel, isCategoryColor } from "../lib/category";
@@ -34,6 +26,7 @@ import {
 } from "../types/model";
 import { CategoryBadge } from "./category-badge";
 import { CategoryColorPicker } from "./category-color-picker";
+import { CategoryDrawerSelect } from "./category-drawer-select";
 import { CATEGORY_ROLE_OPTIONS } from "./category-role-options";
 
 const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
@@ -146,13 +139,6 @@ function CategoryFormDrawer({
   const rootOptions = categories.filter(
     (category) => !category.parentId && (mode.type !== "edit" || category.id !== mode.category.id),
   );
-  const parentItems = [
-    { label: "None", value: null },
-    ...rootOptions.map((category) => ({
-      label: category.name,
-      value: category.id,
-    })),
-  ];
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
     defaultValues: getFormDefaults(mode),
@@ -222,17 +208,27 @@ function CategoryFormDrawer({
             </Field>
           ) : canChooseParent ? (
             <Field>
-              <FieldLabel>Parent category</FieldLabel>
+              <FieldLabel htmlFor="category-parent-trigger">Parent category</FieldLabel>
               <Controller
                 control={form.control}
                 name="parentId"
                 render={({ field }) => (
-                  <Select
-                    items={parentItems}
-                    value={field.value || null}
-                    onValueChange={(value) => {
-                      const nextParentId = value ?? "";
-                      field.onChange(nextParentId);
+                  <CategoryDrawerSelect
+                    id="category-parent-trigger"
+                    mode="single"
+                    categories={rootOptions}
+                    value={field.value ? field.value : null}
+                    clearable
+                    parentOpen={open}
+                    placeholder="None"
+                    ariaLabel="Parent category"
+                    drawerTitle="Select parent"
+                    drawerDescription="Leave empty for a root category, or nest under an existing root."
+                    backAriaLabel="Back to category"
+                    emptyListMessage="No root categories yet."
+                    onBlur={field.onBlur}
+                    onChange={(nextParentId) => {
+                      field.onChange(nextParentId ?? "");
 
                       if (nextParentId) {
                         form.setValue("role", undefined, {
@@ -260,20 +256,7 @@ function CategoryFormDrawer({
                         });
                       }
                     }}
-                  >
-                    <SelectTrigger className="w-full" aria-label="Parent category">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent alignItemWithTrigger={false}>
-                      <SelectGroup>
-                        {parentItems.map((item) => (
-                          <SelectItem key={item.value ?? "none"} value={item.value}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                  />
                 )}
               />
               <FieldDescription>

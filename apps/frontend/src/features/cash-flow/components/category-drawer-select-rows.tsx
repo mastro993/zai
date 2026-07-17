@@ -28,10 +28,13 @@ function CategoryCheckboxRow({
   return (
     <Field
       orientation="horizontal"
-      className={cn("min-w-0 gap-2 px-3 py-2.5", nested ? "pl-11" : null)}
+      className={cn(
+        "min-w-0 cursor-pointer gap-2 px-3 py-2.5 hover:bg-muted/40",
+        nested ? "pl-11" : null,
+      )}
     >
       <Checkbox id={inputId} checked={checked} onCheckedChange={onCheckedChange} />
-      <FieldLabel htmlFor={inputId} className="min-w-0 flex-1 font-normal">
+      <FieldLabel htmlFor={inputId} className="min-w-0 flex-1 cursor-pointer font-normal">
         <CategoryBadge color={getCategoryDisplayColor(category)}>{category.name}</CategoryBadge>
       </FieldLabel>
     </Field>
@@ -60,7 +63,7 @@ function CategoryOptionRow({
       role="option"
       aria-selected={selected}
       className={cn(
-        "flex w-full min-w-0 items-center gap-2 px-3 py-2.5 text-left focus-visible:outline-none",
+        "flex w-full min-w-0 cursor-pointer items-center gap-2 px-3 py-2.5 text-left focus-visible:outline-none",
         nested ? "pl-11" : null,
         embedded
           ? null
@@ -100,7 +103,7 @@ function ExpandControl({
   onToggle: () => void;
 }) {
   if (childrenCount === 0) {
-    return <span className="ml-1 size-6" aria-hidden="true" />;
+    return null;
   }
 
   if (deferredQuery.length > 0) {
