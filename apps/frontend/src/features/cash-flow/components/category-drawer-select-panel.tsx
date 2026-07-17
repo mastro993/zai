@@ -203,7 +203,7 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
                           onSelect={() => props.onSelect(root.id)}
                         />
                       </div>
-                      {children.length > 0 ? (
+                      {children.length > 0 && !showChildren ? (
                         <span
                           className="mr-3 shrink-0 text-xs tabular-nums text-muted-foreground"
                           aria-hidden="true"
@@ -259,16 +259,16 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
                         <CategoryBadge color={getCategoryDisplayColor(root)}>
                           {root.name}
                         </CategoryBadge>
-                        {children.length > 0 ? (
-                          <span
-                            className="shrink-0 text-xs tabular-nums text-muted-foreground"
-                            aria-hidden="true"
-                          >
-                            +{children.length}
-                          </span>
-                        ) : null}
                       </FieldLabel>
                     </Field>
+                    {children.length > 0 && !showChildren ? (
+                      <span
+                        className="mr-3 shrink-0 text-xs tabular-nums text-muted-foreground"
+                        aria-hidden="true"
+                      >
+                        +{children.length}
+                      </span>
+                    ) : null}
                   </div>
                   {showChildren
                     ? visibleChildren.map((category) => (
