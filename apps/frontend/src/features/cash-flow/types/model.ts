@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { prepareAmountForValidation } from "../lib/transaction";
+import {
+  MAX_TRANSACTION_AMOUNT_MINOR,
+  prepareAmountForValidation,
+} from "../lib/transaction";
 
 const CATEGORY_COLOR_PAIRS = [
   ["#951818", "#F6CACA"],
@@ -100,6 +103,12 @@ const amountInputSchema = z
         return Number.isFinite(parsed) && parsed >= 0;
       }, "Amount must be zero or greater")
       .transform((value) => Math.round(Number(value) * 100)),
+  )
+  .pipe(
+    z
+      .number()
+      .int()
+      .max(MAX_TRANSACTION_AMOUNT_MINOR, "Amount exceeds supported maximum"),
   );
 
 export const transactionFormSchema = z.object({

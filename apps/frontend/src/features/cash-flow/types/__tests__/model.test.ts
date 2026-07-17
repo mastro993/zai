@@ -21,6 +21,23 @@ describe("transactionFormSchema", () => {
       }
     }
   });
+
+  it("enforces the backend minor-unit boundary", () => {
+    const input = {
+      description: "",
+      transactionDate: "2026-07-09T12:00",
+      transactionType: "expense",
+      transactionCategoryId: "",
+      notes: "",
+    };
+
+    expect(transactionFormSchema.safeParse({ ...input, amount: "21474836.47" }).success).toBe(
+      true,
+    );
+    expect(transactionFormSchema.safeParse({ ...input, amount: "21474836.48" }).success).toBe(
+      false,
+    );
+  });
 });
 
 describe("categoryFormSchema", () => {

@@ -27,4 +27,22 @@ describe("parseImportAmount", () => {
     expect(parseImportAmount("0")).toEqual({ ok: true, cents: 0, signed: 0 });
     expect(parseImportAmount("0,00")).toEqual({ ok: true, cents: 0, signed: 0 });
   });
+
+  it("enforces the backend minor-unit boundary", () => {
+    expect(parseImportAmount("21474836.47")).toEqual({
+      ok: true,
+      cents: 2147483647,
+      signed: 21474836.47,
+    });
+    expect(parseImportAmount("21474836.48")).toEqual({
+      ok: false,
+      message: "Amount exceeds supported maximum",
+    });
+  });
+
+  it("rejects unbalanced accounting parentheses", () => {
+    for (const amount of ["(12.50", "12.50)"]) {
+      expect(parseImportAmount(amount)).toEqual({ ok: false, message: "Invalid amount" });
+    }
+  });
 });

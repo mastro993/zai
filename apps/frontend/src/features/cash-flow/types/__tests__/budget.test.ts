@@ -81,6 +81,21 @@ describe("budgetFormSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("enforces the safe integer minor-unit boundary", () => {
+    expect(
+      budgetFormSchema.safeParse({
+        name: "Maximum safe allowance",
+        baseAllowance: "90071992547409.91",
+      }).success,
+    ).toBe(true);
+    expect(
+      budgetFormSchema.safeParse({
+        name: "Unsafe allowance",
+        baseAllowance: "90071992547409.92",
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe("budgetSchema", () => {

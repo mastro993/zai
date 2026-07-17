@@ -219,6 +219,16 @@ fn checked_arithmetic_overflow_returns_structured_error() {
 }
 
 #[test]
+fn warning_threshold_handles_maximum_allowance_without_false_overflow() {
+    let (start, end) = sample_period();
+
+    let period = calculate_period(start, end, i64::MAX, i64::MAX - 1, Some(100))
+        .expect("maximum allowance should remain calculable");
+
+    assert_eq!(period.status, BudgetStatus::OnTrack);
+}
+
+#[test]
 fn category_scope_canonicalizes_redundant_ancestors_and_expands_descendants() {
     let categories = vec![
         CategoryHierarchy {

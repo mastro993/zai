@@ -35,9 +35,10 @@ fn percent_decode(input: &str) -> String {
     while index < bytes.len() {
         if bytes[index] == b'%'
             && index + 2 < bytes.len()
-            && let Ok(byte) = u8::from_str_radix(&input[index + 1..index + 3], 16)
+            && let (Some(high), Some(low)) =
+                (hex_value(bytes[index + 1]), hex_value(bytes[index + 2]))
         {
-            out.push(byte);
+            out.push(high * 16 + low);
             index += 3;
             continue;
         }
@@ -47,6 +48,15 @@ fn percent_decode(input: &str) -> String {
     }
 
     String::from_utf8(out).unwrap_or_else(|_| input.to_string())
+}
+
+fn hex_value(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
+        _ => None,
+    }
 }
 
 fn category_ids_from_query(query: &str) -> Vec<String> {
@@ -69,6 +79,16 @@ fn query_without_category_ids(query: &str) -> String {
         .filter(|segment| !segment.starts_with("categoryId="))
         .collect::<Vec<_>>()
         .join("&")
+}
+
+#[cfg(test)]
+mod query_parsing_tests {
+    use super::percent_decode;
+
+    #[test]
+    fn malformed_percent_escape_before_unicode_is_preserved() {
+        assert_eq!(percent_decode("%aé"), "%aé");
+    }
 }
 
 #[derive(Debug, Deserialize)]

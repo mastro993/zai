@@ -61,7 +61,7 @@ pub fn compute_offset(page: i64, per_page: i64) -> Result<i64, Error> {
 }
 
 pub fn total_pages(total: i64, per_page: i64) -> i64 {
-    (total as f64 / per_page as f64).ceil() as i64
+    total / per_page + i64::from(total % per_page != 0)
 }
 
 impl<T: Query> Query for Paginated<T> {
@@ -114,6 +114,11 @@ mod tests {
         assert_eq!(total_pages(1, 10), 1);
         assert_eq!(total_pages(10, 10), 1);
         assert_eq!(total_pages(11, 10), 2);
+    }
+
+    #[test]
+    fn total_pages_remains_exact_at_i64_boundary() {
+        assert_eq!(total_pages(i64::MAX, 100), 92_233_720_368_547_759);
     }
 
     #[test]

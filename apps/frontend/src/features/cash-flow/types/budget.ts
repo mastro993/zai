@@ -18,6 +18,12 @@ const allowanceInputSchema = z
       .min(1, "Allowance is required")
       .refine((value) => /^\d+(\.\d{1,2})?$/.test(value), "Enter a valid allowance")
       .transform((value) => Math.round(Number(value) * 100)),
+  )
+  .pipe(
+    z
+      .number()
+      .int()
+      .max(Number.MAX_SAFE_INTEGER, "Allowance exceeds supported maximum"),
   );
 
 const warningPercentageSchema = z
