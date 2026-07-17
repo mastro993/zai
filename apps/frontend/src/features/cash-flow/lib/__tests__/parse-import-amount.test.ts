@@ -19,6 +19,16 @@ describe("parseImportAmount", () => {
     expect(parseImportAmount("-1.200,50")).toEqual({ ok: true, cents: 120050, signed: -1200.5 });
   });
 
+  it("parses a negative sign after a currency symbol", () => {
+    expect(parseImportAmount("€-12,50")).toEqual({ ok: true, cents: 1250, signed: -12.5 });
+    expect(parseImportAmount("$ -1,200.50")).toEqual({
+      ok: true,
+      cents: 120050,
+      signed: -1200.5,
+    });
+    expect(parseImportAmount("€(12,50)")).toEqual({ ok: true, cents: 1250, signed: -12.5 });
+  });
+
   it("parses plain decimal amounts", () => {
     expect(parseImportAmount("12.50")).toEqual({ ok: true, cents: 1250, signed: 12.5 });
   });

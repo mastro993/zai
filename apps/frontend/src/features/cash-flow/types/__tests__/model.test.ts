@@ -31,9 +31,7 @@ describe("transactionFormSchema", () => {
       notes: "",
     };
 
-    expect(transactionFormSchema.safeParse({ ...input, amount: "21474836.47" }).success).toBe(
-      true,
-    );
+    expect(transactionFormSchema.safeParse({ ...input, amount: "21474836.47" }).success).toBe(true);
     expect(transactionFormSchema.safeParse({ ...input, amount: "21474836.48" }).success).toBe(
       false,
     );

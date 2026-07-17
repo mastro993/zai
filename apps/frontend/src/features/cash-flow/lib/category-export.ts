@@ -1,4 +1,5 @@
 import type { TransactionCategory } from "../types/model";
+import { escapeCsvValue } from "./csv";
 
 const CATEGORY_EXPORT_HEADERS = ["name", "parent_name", "color", "description"] as const;
 
@@ -16,12 +17,6 @@ const toLocalTimestamp = (date: Date) => {
   const second = padDatePart(date.getSeconds());
 
   return `${year}${month}${day}_${hour}${minute}${second}`;
-};
-
-const escapeCsvValue = (value: string) => {
-  const escaped = value.replaceAll('"', '""');
-
-  return /[",\r\n]/.test(escaped) ? `"${escaped}"` : escaped;
 };
 
 const toCategoryExportRow = (

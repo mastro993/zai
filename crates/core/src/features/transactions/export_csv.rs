@@ -27,8 +27,19 @@ fn format_date(datetime: NaiveDateTime) -> String {
 }
 
 fn escape_csv_value(value: &str) -> String {
-    let escaped = value.replace('"', "\"\"");
-    if escaped.contains(['"', ',', '\r', '\n']) {
+    let needs_formula_protection = value.chars().next().is_some_and(|character| {
+        matches!(
+            character,
+            '=' | '+' | '-' | '@' | '\t' | '\r' | '\n' | '＝' | '＋' | '－' | '＠'
+        )
+    });
+    let protected = if needs_formula_protection {
+        format!("\t{value}")
+    } else {
+        value.to_string()
+    };
+    let escaped = protected.replace('"', "\"\"");
+    if needs_formula_protection || escaped.contains(['"', ',', '\r', '\n']) {
         format!("\"{escaped}\"")
     } else {
         escaped
@@ -105,5 +116,13 @@ mod tests {
             ]
             .join("\n")
         );
+    }
+
+    #[test]
+    fn neutralizes_spreadsheet_formula_prefixes() {
+        for prefix in ["=", "+", "-", "@", "\t", "\r", "\n", "＝", "＋", "－", "＠"] {
+            let value = format!("{prefix}1+1");
+            assert_eq!(escape_csv_value(&value), format!("\"\t{value}\""));
+        }
     }
 }

@@ -1,4 +1,5 @@
 import { formatAmountFromMinor, toBackendDateTime } from "./transaction";
+import { escapeCsvValue } from "./csv";
 import type { Transaction, TransactionCategory } from "../types/model";
 
 const TRANSACTION_EXPORT_HEADERS = [
@@ -25,12 +26,6 @@ const toLocalTimestamp = (date: Date) => {
   const second = padDatePart(date.getSeconds());
 
   return `${year}${month}${day}_${hour}${minute}${second}`;
-};
-
-const escapeCsvValue = (value: string) => {
-  const escaped = value.replaceAll('"', '""');
-
-  return /[",\r\n]/.test(escaped) ? `"${escaped}"` : escaped;
 };
 
 const buildCategoryById = (categories: Array<TransactionCategory>) =>

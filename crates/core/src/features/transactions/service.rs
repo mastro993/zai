@@ -2,6 +2,7 @@ use crate::errors::Result;
 use crate::features::transaction_categories::models::{
     NewTransactionCategory, TransactionCategory,
 };
+use crate::features::transaction_categories::service::normalize_import_categories;
 use crate::features::transactions::models::{
     DuplicateKeyCandidate, NewTransaction, Transaction, TransactionSearchFilters,
     TransactionUpdate, validate_list_paging,
@@ -114,6 +115,12 @@ impl TransactionsServiceTrait for TransactionsService {
         categories: Vec<NewTransactionCategory>,
         mut transactions: Vec<NewTransaction>,
     ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)> {
+        let mut categories = normalize_import_categories(categories)?;
+        for category in &mut categories {
+            if category.id.as_deref().is_none_or(|id| id.trim().is_empty()) {
+                category.id = Some(Uuid::new_v4().to_string());
+            }
+        }
         for transaction in &mut transactions {
             transaction.validate()?;
             ensure_transaction_id(transaction);

@@ -111,6 +111,24 @@ impl TransactionCategoriesService {
     }
 }
 
+pub(crate) fn normalize_import_categories(
+    categories: Vec<NewTransactionCategory>,
+) -> Result<Vec<NewTransactionCategory>> {
+    categories
+        .into_iter()
+        .map(|mut category| {
+            category.name = normalize_category_name(&category.name);
+            if is_root_category(&category) {
+                category.parent_id = None;
+                category.role.get_or_insert_default();
+            }
+            category.validate()?;
+            category.color = normalize_optional_color(category.color.as_deref())?;
+            Ok(category)
+        })
+        .collect()
+}
+
 #[async_trait::async_trait]
 impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
     async fn get_categories(&self, parent_id: Option<&str>) -> Result<Vec<TransactionCategory>> {
@@ -163,18 +181,7 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
         &self,
         categories: Vec<NewTransactionCategory>,
     ) -> Result<Vec<TransactionCategory>> {
-        let mut normalized_categories = Vec::with_capacity(categories.len());
-
-        for mut category in categories {
-            category.name = normalize_category_name(&category.name);
-            if is_root_category(&category) {
-                category.parent_id = None;
-                category.role.get_or_insert_default();
-            }
-            category.validate()?;
-            category.color = normalize_optional_color(category.color.as_deref())?;
-            normalized_categories.push(category);
-        }
+        let normalized_categories = normalize_import_categories(categories)?;
 
         let existing_categories = self.repository.get_categories(None).await?;
         let existing_roots = existing_categories
@@ -196,7 +203,10 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
             Vec::with_capacity(normalized_categories.len());
         let mut root_id_by_original_id = HashMap::<String, String>::new();
         let mut imported_root_keys = HashMap::<String, String>::new();
-        let mut root_role_by_resolved_id = HashMap::<String, CategoryRole>::new();
+        let mut root_role_by_resolved_id = existing_roots
+            .values()
+            .map(|category| (category.id.clone(), category.role))
+            .collect::<HashMap<String, CategoryRole>>();
 
         for root_category in normalized_categories
             .iter()
@@ -272,6 +282,12 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
             }
 
             imported_child_paths.insert(child_path);
+            let resolved_parent_role = root_role_by_resolved_id
+                .get(&resolved_parent_id)
+                .copied()
+                .ok_or_else(|| {
+                Error::Repository("Resolved root category role is missing".to_string())
+            })?;
 
             let mut owned_child = child;
             owned_child.id = Some(
@@ -283,14 +299,7 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
             );
             owned_child.parent_id = Some(resolved_parent_id);
             owned_child.color = None;
-            owned_child.role = root_role_by_resolved_id
-                .get(&original_parent_id)
-                .copied()
-                .or_else(|| {
-                    root_role_by_resolved_id
-                        .get(owned_child.parent_id.as_deref().unwrap_or_default())
-                        .copied()
-                });
+            owned_child.role = Some(resolved_parent_role);
             categories_to_import.push(owned_child);
         }
 
@@ -603,6 +612,86 @@ mod tests {
         assert_eq!(imported[0].name, "Restaurants");
         assert_eq!(imported[0].parent_id.as_deref(), Some("existing-root"));
         assert_eq!(imported[0].color, None);
+    }
+
+    #[tokio::test]
+    async fn import_child_for_existing_income_root_inherits_parent_role() {
+        let repository = Arc::new(FakeRepository::with_categories(vec![TransactionCategory {
+            id: "existing-income-root".to_string(),
+            parent_id: None,
+            name: "Income".to_string(),
+            description: None,
+            color: None,
+            role: CategoryRole::Income,
+            parent: None,
+        }]));
+        let service = TransactionCategoriesService::new(repository);
+
+        let imported = service
+            .import_categories(vec![NewTransactionCategory {
+                id: Some("incoming-child".to_string()),
+                name: "Bonus".to_string(),
+                parent_id: Some("existing-income-root".to_string()),
+                description: None,
+                color: None,
+                role: None,
+            }])
+            .await
+            .expect("child import should succeed");
+
+        assert_eq!(imported.len(), 1);
+        assert_eq!(imported[0].role, CategoryRole::Income);
+    }
+
+    #[tokio::test]
+    async fn import_child_uses_resolved_parent_role_when_root_alias_collides() {
+        let repository = Arc::new(FakeRepository::with_categories(vec![
+            TransactionCategory {
+                id: "income-root".to_string(),
+                parent_id: None,
+                name: "Income".to_string(),
+                description: None,
+                color: None,
+                role: CategoryRole::Income,
+                parent: None,
+            },
+            TransactionCategory {
+                id: "spending-root".to_string(),
+                parent_id: None,
+                name: "Spending".to_string(),
+                description: None,
+                color: None,
+                role: CategoryRole::Spending,
+                parent: None,
+            },
+        ]));
+        let service = TransactionCategoriesService::new(repository);
+
+        let imported = service
+            .import_categories(vec![
+                NewTransactionCategory {
+                    id: Some("spending-root".to_string()),
+                    name: "Income".to_string(),
+                    parent_id: None,
+                    description: None,
+                    color: None,
+                    role: Some(CategoryRole::Income),
+                },
+                NewTransactionCategory {
+                    id: Some("incoming-child".to_string()),
+                    name: "Bonus".to_string(),
+                    parent_id: Some("spending-root".to_string()),
+                    description: None,
+                    color: None,
+                    role: None,
+                },
+            ])
+            .await
+            .expect("child import should succeed");
+
+        assert_eq!(imported.len(), 1);
+        assert_eq!(imported[0].parent_id.as_deref(), Some("income-root"));
+        assert_eq!(imported[0].role, CategoryRole::Income);
     }
 
     #[tokio::test]
