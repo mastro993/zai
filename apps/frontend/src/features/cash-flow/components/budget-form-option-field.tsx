@@ -138,8 +138,10 @@ function BudgetFormOptionField<T extends string>({
                     aria-selected={selectedOption}
                     className={cn(
                       "flex w-full items-start gap-3 border-b px-3 py-3 text-left last:border-b-0",
-                      "hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none",
-                      selectedOption && "bg-primary/5",
+                      "focus-visible:outline-none",
+                      selectedOption
+                        ? "bg-primary/5 hover:bg-primary/5 focus-visible:bg-primary/5"
+                        : "hover:bg-muted/40 focus-visible:bg-muted/40",
                     )}
                     onClick={() => selectOption(option.value)}
                   >
