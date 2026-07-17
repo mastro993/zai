@@ -85,7 +85,7 @@ describe("BudgetFormDrawer", () => {
     );
   });
 
-  it("filters and submits category selections", async () => {
+  it("filters and canonicalizes category selections", async () => {
     const food = {
       id: "food",
       parentId: null,
@@ -111,6 +111,7 @@ describe("BudgetFormDrawer", () => {
     const onSubmit = createSubmitMock();
     renderBudgetForm({ categories, onSubmit });
 
+    fireEvent.click(screen.getByRole("button", { name: "Choose categories" }));
     fireEvent.change(screen.getByLabelText("Search categories"), { target: { value: "rent" } });
 
     expect(screen.getByRole("checkbox", { name: "Food" })).toBeTruthy();
@@ -118,12 +119,77 @@ describe("BudgetFormDrawer", () => {
     expect(screen.queryByRole("checkbox", { name: "Income" })).toBeNull();
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Rent" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Rent budget" } });
     fireEvent.change(screen.getByLabelText("Allowance"), { target: { value: "800" } });
     fireEvent.click(screen.getByRole("button", { name: "Create budget" }));
 
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ categoryIds: ["rent"] })),
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ categoryIds: ["food"] })),
+    );
+  });
+
+  it("selects descendants with a root and keeps the saved scope canonical", async () => {
+    const food = {
+      id: "food",
+      parentId: null,
+      name: "Food",
+      color: "#147B1E",
+      role: "spending",
+    } as TransactionCategory;
+    const groceries = {
+      id: "groceries",
+      parentId: "food",
+      name: "Groceries",
+      role: "spending",
+      parent: food,
+    } as TransactionCategory;
+    const restaurants = {
+      id: "restaurants",
+      parentId: "food",
+      name: "Restaurants",
+      role: "spending",
+      parent: food,
+    } as TransactionCategory;
+    const onSubmit = createSubmitMock();
+    renderBudgetForm({ categories: [food, groceries, restaurants], onSubmit });
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose categories" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Food" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand Food" }));
+
+    expect(screen.getByRole("checkbox", { name: "Groceries" }).getAttribute("aria-checked")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("checkbox", { name: "Restaurants" }).getAttribute("aria-checked")).toBe(
+      "true",
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Groceries" }));
+    expect(screen.getByRole("checkbox", { name: "Food" }).getAttribute("aria-checked")).toBe(
+      "mixed",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+
+    let trigger = screen.getByRole("button", { name: "Choose categories" });
+    expect(within(trigger).queryByText("Food")).toBeNull();
+    expect(within(trigger).getByText("Restaurants")).toBeTruthy();
+
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Groceries" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+
+    trigger = screen.getByRole("button", { name: "Choose categories" });
+    expect(within(trigger).getByText("Food")).toBeTruthy();
+    expect(within(trigger).queryByText("Groceries")).toBeNull();
+    expect(within(trigger).queryByText("Restaurants")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Food budget" } });
+    fireEvent.change(screen.getByLabelText("Allowance"), { target: { value: "500" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create budget" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ categoryIds: ["food"] })),
     );
   });
 

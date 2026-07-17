@@ -1,192 +1,98 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { useEffect, useMemo, useState } from "react";
 import { type Control, useController } from "react-hook-form";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { Drawer, DrawerTrigger } from "@/components/ui/drawer";
+import { Field, FieldDescription, FieldLegend, FieldSet } from "@/components/ui/field";
 
+import { getCategoryDisplayColor } from "../lib/category";
 import type { BudgetFormInput, BudgetFormValues } from "../types/budget";
 import type { TransactionCategory } from "../types/model";
-
-interface CategoryGroup {
-  root: TransactionCategory | null;
-  children: Array<TransactionCategory>;
-}
+import { CategoryBadge } from "./category-badge";
+import {
+  BudgetCategorySelectionDrawer,
+  getCategorySelectionItems,
+} from "./budget-category-selection-drawer";
 
 interface BudgetCategoryScopeFieldProps {
   categories: Array<TransactionCategory>;
   control: Control<BudgetFormInput, unknown, BudgetFormValues>;
+  formOpen: boolean;
 }
 
 const EMPTY_CATEGORY_IDS: Array<string> = [];
 
-const matchesQuery = (category: TransactionCategory, query: string) =>
-  category.name.toLocaleLowerCase().includes(query);
-
-function groupCategories(
-  categories: Array<TransactionCategory>,
-  query: string,
-): Array<CategoryGroup> {
-  const roots = categories.filter((category) => !category.parentId);
-  const rootIds = new Set(roots.map((category) => category.id));
-  const childrenByParent = new Map<string, Array<TransactionCategory>>();
-
-  for (const category of categories) {
-    if (!category.parentId) continue;
-    const siblings = childrenByParent.get(category.parentId) ?? [];
-    siblings.push(category);
-    childrenByParent.set(category.parentId, siblings);
-  }
-
-  const groups = roots.flatMap((root) => {
-    const children = childrenByParent.get(root.id) ?? [];
-    const rootMatches = matchesQuery(root, query);
-    const visibleChildren = rootMatches
-      ? children
-      : children.filter((category) => matchesQuery(category, query));
-
-    return rootMatches || visibleChildren.length > 0 || query.length === 0
-      ? [{ root, children: visibleChildren }]
-      : [];
-  });
-  const orphanedChildren = categories.filter(
-    (category) =>
-      category.parentId && !rootIds.has(category.parentId) && matchesQuery(category, query),
-  );
-
-  return orphanedChildren.length > 0
-    ? [...groups, { root: null, children: orphanedChildren }]
-    : groups;
-}
-
-function CategoryCheckboxRow({
-  category,
-  checked,
-  nested = false,
-  onCheckedChange,
-}: {
-  category: TransactionCategory;
-  checked: boolean;
-  nested?: boolean;
-  onCheckedChange: (checked: boolean) => void;
-}) {
-  const inputId = `budget-category-${category.id}`;
-
-  return (
-    <Field
-      orientation="horizontal"
-      className={nested ? "min-w-0 gap-2 px-2.5 py-1.5 pl-7" : "min-w-0 gap-2 px-2.5 py-2"}
-    >
-      <Checkbox
-        id={inputId}
-        checked={checked}
-        onCheckedChange={(value) => onCheckedChange(value === true)}
-      />
-      <FieldLabel htmlFor={inputId} className="min-w-0 flex-1 font-normal">
-        <span className="truncate" title={category.name}>
-          {category.name}
-        </span>
-      </FieldLabel>
-    </Field>
-  );
-}
-
-function BudgetCategoryScopeField({ categories, control }: BudgetCategoryScopeFieldProps) {
-  const [query, setQuery] = useState("");
-  const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase());
+function BudgetCategoryScopeField({
+  categories,
+  control,
+  formOpen,
+}: BudgetCategoryScopeFieldProps) {
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { field } = useController({ control, name: "categoryIds" });
   const selectedIds = field.value ?? EMPTY_CATEGORY_IDS;
-  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const groups = useMemo(
-    () => groupCategories(categories, deferredQuery),
-    [categories, deferredQuery],
+  const selectionItems = useMemo(
+    () => getCategorySelectionItems(categories, selectedIds),
+    [categories, selectedIds],
   );
+  const visibleItems = selectionItems.slice(0, 2);
+  const hiddenItemCount = selectionItems.length - visibleItems.length;
 
-  const toggleCategory = (categoryId: string, checked: boolean) => {
-    field.onChange(
-      checked
-        ? [...selectedIds, categoryId]
-        : selectedIds.filter((selectedId) => selectedId !== categoryId),
-    );
+  useEffect(() => {
+    if (!formOpen) setIsDrawerOpen(false);
+  }, [formOpen]);
+
+  const handleOpenChange = (open: boolean) => {
+    setIsDrawerOpen(open);
+    if (!open) field.onBlur();
   };
 
   return (
     <FieldSet>
-      <div className="flex items-center justify-between gap-2">
-        <FieldLegend className="mb-0">Category scope</FieldLegend>
-        <div className="flex items-center gap-1.5">
-          <Badge variant="secondary" aria-live="polite">
-            {selectedIds.length} selected
-          </Badge>
-          {selectedIds.length > 0 ? (
-            <Button type="button" size="xs" variant="ghost" onClick={() => field.onChange([])}>
-              Clear
-            </Button>
-          ) : null}
-        </div>
-      </div>
+      <FieldLegend>Category scope</FieldLegend>
       <FieldDescription>
         Leave empty to include all transactions. Root categories include their subcategories.
       </FieldDescription>
-      <FieldGroup className="gap-2">
-        <Field>
-          <FieldLabel htmlFor="budget-category-search" className="sr-only">
-            Search categories
-          </FieldLabel>
-          <Input
-            id="budget-category-search"
-            type="search"
-            placeholder="Search categories"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
+      <Field>
+        <Drawer open={isDrawerOpen} onOpenChange={handleOpenChange} swipeDirection="right">
+          <DrawerTrigger
+            render={
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto min-h-8 w-full justify-between overflow-hidden py-1.5 font-normal"
+                aria-label="Choose categories"
+                aria-describedby="budget-category-selection-summary"
+              />
+            }
+          >
+            <span
+              id="budget-category-selection-summary"
+              className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden"
+            >
+              {selectionItems.length === 0 ? (
+                <span className="truncate text-muted-foreground">All categories</span>
+              ) : (
+                visibleItems.map((category) => (
+                  <CategoryBadge key={category.id} color={getCategoryDisplayColor(category)}>
+                    {category.name}
+                  </CategoryBadge>
+                ))
+              )}
+              {hiddenItemCount > 0 ? <Badge variant="secondary">+{hiddenItemCount}</Badge> : null}
+            </span>
+            <HugeiconsIcon icon={ArrowRight01Icon} data-icon="inline-end" aria-hidden="true" />
+          </DrawerTrigger>
+          <BudgetCategorySelectionDrawer
+            open={isDrawerOpen}
+            categories={categories}
+            selectedIds={selectedIds}
+            onSelectedIdsChange={field.onChange}
           />
-        </Field>
-        <div
-          role="group"
-          aria-label="Budget categories"
-          className="max-h-56 overflow-y-auto border"
-        >
-          {categories.length === 0 ? (
-            <FieldDescription className="px-3 py-6 text-center">
-              No categories yet. This budget will include all transactions.
-            </FieldDescription>
-          ) : groups.length === 0 ? (
-            <FieldDescription className="px-3 py-6 text-center">
-              No categories match “{query.trim()}”.
-            </FieldDescription>
-          ) : (
-            groups.map(({ root, children }) => (
-              <div key={root?.id ?? "other"} className="border-b last:border-b-0">
-                {root ? (
-                  <CategoryCheckboxRow
-                    category={root}
-                    checked={selectedIdSet.has(root.id)}
-                    onCheckedChange={(checked) => toggleCategory(root.id, checked)}
-                  />
-                ) : null}
-                {children.map((category) => (
-                  <CategoryCheckboxRow
-                    key={category.id}
-                    category={category}
-                    nested={Boolean(root)}
-                    checked={selectedIdSet.has(category.id)}
-                    onCheckedChange={(checked) => toggleCategory(category.id, checked)}
-                  />
-                ))}
-              </div>
-            ))
-          )}
-        </div>
-      </FieldGroup>
+        </Drawer>
+      </Field>
     </FieldSet>
   );
 }

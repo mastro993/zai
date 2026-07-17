@@ -347,7 +347,11 @@ function BudgetFormDrawer({
 
           <FieldSeparator />
 
-          <BudgetCategoryScopeField categories={categories} control={form.control} />
+          <BudgetCategoryScopeField
+            categories={categories}
+            control={form.control}
+            formOpen={open}
+          />
         </FieldGroup>
 
         <FieldError className="px-4" errors={[errors.root?.server]} />
