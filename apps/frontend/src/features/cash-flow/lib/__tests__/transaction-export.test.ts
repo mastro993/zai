@@ -93,6 +93,33 @@ describe("transaction export", () => {
     );
   });
 
+  it("neutralizes spreadsheet formula prefixes", () => {
+    const transaction: Transaction = {
+      id: "tx-formula",
+      description: "=1+1",
+      amount: 100,
+      transactionDate: "2026-01-15T08:30:00",
+      transactionType: "expense",
+      transactionCategoryId: null,
+      notes: "@SUM(A1)",
+    };
+
+    const csv = toTransactionExportCsv([transaction], []);
+
+    expect(csv).toBe(
+      [
+        "date,amount,type,description,notes,parent_category,category",
+        '2026-01-15T08:30:00,1.00,expense,"\t=1+1","\t@SUM(A1)",,',
+      ].join("\n"),
+    );
+
+    const preview = buildPreview(csv, { dateFormat: "ISO" });
+    expect(preview.transactions[0]).toMatchObject({
+      description: "=1+1",
+      notes: "@SUM(A1)",
+    });
+  });
+
   it("round-trips exported CSV through the import preview", () => {
     const root: TransactionCategory = {
       id: "root",

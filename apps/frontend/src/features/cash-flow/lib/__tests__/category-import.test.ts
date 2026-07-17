@@ -70,6 +70,25 @@ describe("category import", () => {
     ]);
   });
 
+  it("round-trips formula-protected category fields", () => {
+    const root: TransactionCategory = {
+      id: "root",
+      parentId: null,
+      name: "=1+1",
+      description: "@SUM(A1)",
+      color: "#C92A2A",
+      role: "spending",
+      parent: null,
+    };
+
+    const preview = buildPreview(toCategoryExportCsv([root]));
+
+    expect(preview.categories[0]).toMatchObject({
+      name: "=1+1",
+      description: "@SUM(A1)",
+    });
+  });
+
   it("uses the selected header row and auto-creates missing parents", () => {
     const content = ["skip me", "name,parent_name", "Groceries,Food"].join("\n");
     const headers = parseCategoryCsv(content)[1] ?? [];

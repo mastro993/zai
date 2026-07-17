@@ -1,3 +1,5 @@
+import { MAX_TRANSACTION_AMOUNT_MINOR } from "./transaction";
+
 const CURRENCY_AND_SPACE_PATTERN = /[€$£¥₹\s]/g;
 
 const normalizeLocalizedAmount = (value: string): string | null => {
@@ -41,12 +43,16 @@ export const parseImportAmount = (
     return { ok: false, message: "Amount is required" };
   }
 
-  const isNegative = trimmed.startsWith("-") || (trimmed.startsWith("(") && trimmed.endsWith(")"));
-  const stripped = trimmed
-    .replace(CURRENCY_AND_SPACE_PATTERN, "")
-    .replace(/^\(/, "")
-    .replace(/\)$/, "")
-    .replace(/^[-+]/, "");
+  const compact = trimmed.replace(CURRENCY_AND_SPACE_PATTERN, "");
+  const hasOpeningParenthesis = compact.startsWith("(");
+  const hasClosingParenthesis = compact.endsWith(")");
+  if (hasOpeningParenthesis !== hasClosingParenthesis) {
+    return { ok: false, message: "Invalid amount" };
+  }
+
+  const unwrapped = compact.replace(/^\(/, "").replace(/\)$/, "");
+  const isNegative = unwrapped.startsWith("-") || hasOpeningParenthesis;
+  const stripped = unwrapped.replace(/^[-+]/, "");
 
   const normalized = normalizeLocalizedAmount(stripped);
 
@@ -61,10 +67,15 @@ export const parseImportAmount = (
   }
 
   const signed = isNegative ? -absoluteValue : absoluteValue;
+  const cents = Math.round(Math.abs(signed) * 100);
+
+  if (!Number.isSafeInteger(cents) || cents > MAX_TRANSACTION_AMOUNT_MINOR) {
+    return { ok: false, message: "Amount exceeds supported maximum" };
+  }
 
   return {
     ok: true,
-    cents: Math.round(Math.abs(signed) * 100),
+    cents,
     signed,
   };
 };

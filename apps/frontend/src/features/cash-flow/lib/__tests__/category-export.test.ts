@@ -40,4 +40,20 @@ describe("category export", () => {
       ].join("\n"),
     );
   });
+
+  it("neutralizes spreadsheet formula prefixes", () => {
+    const root: TransactionCategory = {
+      id: "formula-root",
+      parentId: null,
+      name: "=1+1",
+      description: "@SUM(A1)",
+      color: "#C92A2A",
+      role: "spending",
+      parent: null,
+    };
+
+    expect(toCategoryExportCsv([root])).toBe(
+      ["name,parent_name,color,description", '"\t=1+1",,#C92A2A,"\t@SUM(A1)"'].join("\n"),
+    );
+  });
 });

@@ -25,6 +25,8 @@ export const combineDateTime = (date: string, time: string) => {
 const partialAmountInputPattern = /^\d*[.,]?\d{0,2}$/;
 const completeAmountPattern = /^\d+(\.\d{1,2})?$/;
 
+export const MAX_TRANSACTION_AMOUNT_MINOR = 2_147_483_647;
+
 export const formatAmountFromMinor = (minorUnits: number) => {
   return (minorUnits / 100).toFixed(2);
 };

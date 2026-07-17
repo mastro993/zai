@@ -63,7 +63,7 @@ describe("transaction import", () => {
   it("infers type from signed amounts", () => {
     const content = [
       "date,amount,description",
-      "2026-01-15,-12.50,Groceries",
+      "2026-01-15,€-12.50,Groceries",
       "2026-01-16,8,income",
     ].join("\n");
     const headers = parseTransactionCsv(content)[0] ?? [];

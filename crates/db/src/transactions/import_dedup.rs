@@ -6,9 +6,13 @@ use zai_core::features::transactions::models::NewTransaction;
 
 use super::models::TransactionRow;
 
-pub(crate) fn import_half_open_date_range(
-    transactions: &[NewTransaction],
-) -> (NaiveDateTime, NaiveDateTime) {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ImportDateRange {
+    pub start: NaiveDateTime,
+    pub end_exclusive: Option<NaiveDateTime>,
+}
+
+pub(crate) fn import_half_open_date_range(transactions: &[NewTransaction]) -> ImportDateRange {
     let dates = transactions
         .iter()
         .map(|transaction| transaction.transaction_date)
@@ -16,9 +20,7 @@ pub(crate) fn import_half_open_date_range(
     half_open_date_range_from_dates(&dates).expect("non-empty transactions slice")
 }
 
-pub(crate) fn half_open_date_range_from_dates(
-    dates: &[NaiveDateTime],
-) -> Option<(NaiveDateTime, NaiveDateTime)> {
+pub(crate) fn half_open_date_range_from_dates(dates: &[NaiveDateTime]) -> Option<ImportDateRange> {
     if dates.is_empty() {
         return None;
     }
@@ -40,10 +42,10 @@ pub(crate) fn half_open_date_range_from_dates(
         .date()
         .succ_opt()
         .and_then(|day| day.and_hms_opt(0, 0, 0));
-    let range_end_exclusive =
-        next_day.unwrap_or_else(|| max_date.date().and_hms_opt(23, 59, 59).unwrap_or(max_date));
-
-    Some((range_start, range_end_exclusive))
+    Some(ImportDateRange {
+        start: range_start,
+        end_exclusive: next_day,
+    })
 }
 
 pub(crate) fn filter_import_duplicates(
@@ -120,10 +122,10 @@ mod tests {
             candidate("evening", 200, "2026-01-17T20:45:00"),
         ];
 
-        let (start, end_exclusive) = import_half_open_date_range(&transactions);
+        let range = import_half_open_date_range(&transactions);
 
-        assert_eq!(start, datetime("2026-01-15T00:00:00"));
-        assert_eq!(end_exclusive, datetime("2026-01-18T00:00:00"));
+        assert_eq!(range.start, datetime("2026-01-15T00:00:00"));
+        assert_eq!(range.end_exclusive, Some(datetime("2026-01-18T00:00:00")));
     }
 
     #[test]
@@ -152,9 +154,21 @@ mod tests {
             ..candidate("late", 100, "2026-01-15T08:00:00")
         }];
 
-        let (_, end_exclusive) = import_half_open_date_range(&transactions);
+        let range = import_half_open_date_range(&transactions);
 
-        assert!(late < end_exclusive);
-        assert_eq!(end_exclusive, datetime("2026-01-16T00:00:00"));
+        assert!(range.end_exclusive.is_some_and(|end| late < end));
+        assert_eq!(range.end_exclusive, Some(datetime("2026-01-16T00:00:00")));
+    }
+
+    #[test]
+    fn import_half_open_date_range_covers_maximum_datetime() {
+        let transactions = vec![NewTransaction {
+            transaction_date: NaiveDateTime::MAX,
+            ..candidate("last instant", 100, "2026-01-15T08:00:00")
+        }];
+
+        let range = import_half_open_date_range(&transactions);
+
+        assert_eq!(range.end_exclusive, None);
     }
 }

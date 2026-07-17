@@ -96,6 +96,26 @@ async fn alerts_list_applies_severity_filter() {
 }
 
 #[tokio::test]
+async fn alerts_list_accepts_repeated_severity_filters() {
+    let (router, _context, dir) = setup_app("zai-alerts-api-multiple-severities").await;
+    seed_unread_alerts(dir.path()).await;
+
+    let (status, body) = request_json(
+        &router,
+        "GET",
+        "/api/alerts?severities=warning&severities=critical",
+        None,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    let items = body["items"].as_array().expect("items array");
+    assert_eq!(items.len(), 2);
+    assert!(items.iter().any(|item| item["severity"] == "warning"));
+    assert!(items.iter().any(|item| item["severity"] == "critical"));
+}
+
+#[tokio::test]
 async fn alerts_list_applies_read_state_filter() {
     let (router, _context, dir) = setup_app("zai-alerts-api-read-state").await;
     seed_unread_alerts(dir.path()).await;

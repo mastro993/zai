@@ -251,10 +251,12 @@ fn half_open_date_range_from_dates_matches_import_range() {
         .expect("late timestamp");
     let dates = vec![parse_datetime("2026-01-15T08:30:00"), late];
 
-    let (start, end_exclusive) =
-        import_dedup::half_open_date_range_from_dates(&dates).expect("range");
+    let range = import_dedup::half_open_date_range_from_dates(&dates).expect("range");
 
-    assert_eq!(start, parse_datetime("2026-01-15T00:00:00"));
-    assert_eq!(end_exclusive, parse_datetime("2026-01-16T00:00:00"));
-    assert!(late < end_exclusive);
+    assert_eq!(range.start, parse_datetime("2026-01-15T00:00:00"));
+    assert_eq!(
+        range.end_exclusive,
+        Some(parse_datetime("2026-01-16T00:00:00"))
+    );
+    assert!(range.end_exclusive.is_some_and(|end| late < end));
 }

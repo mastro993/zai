@@ -17,7 +17,7 @@ use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budg
 use crate::budgets::repair_transaction_budget_projections;
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{transaction_categories, transactions};
-use crate::transaction_categories::models::TransactionCategoryRow;
+use crate::transaction_categories::{insert_import_categories, models::TransactionCategoryRow};
 
 fn load_existing_in_import_range(
     conn: &mut SqliteConnection,
@@ -27,13 +27,15 @@ fn load_existing_in_import_range(
         return Ok(Vec::new());
     }
 
-    let (range_start, range_end_exclusive) = import_dedup::import_half_open_date_range(candidates);
-    transactions::table
+    let range = import_dedup::import_half_open_date_range(candidates);
+    let mut query = transactions::table
         .filter(transactions::deleted_at.is_null())
-        .filter(transactions::transaction_date.ge(range_start))
-        .filter(transactions::transaction_date.lt(range_end_exclusive))
-        .load::<TransactionRow>(conn)
-        .into_storage()
+        .filter(transactions::transaction_date.ge(range.start))
+        .into_boxed();
+    if let Some(end_exclusive) = range.end_exclusive {
+        query = query.filter(transactions::transaction_date.lt(end_exclusive));
+    }
+    query.load::<TransactionRow>(conn).into_storage()
 }
 
 fn prepare_import_rows(
@@ -125,15 +127,7 @@ pub(super) async fn import_transactions_with_categories(
 
                 let now = clock.sample();
                 let before = snapshot_active_budgets(conn, now)?;
-                let categories_rows: Vec<TransactionCategoryRow> =
-                    new_categories.into_iter().map(Into::into).collect();
-
-                if !categories_rows.is_empty() {
-                    diesel::insert_into(transaction_categories::table)
-                        .values(&categories_rows)
-                        .execute(conn)
-                        .into_storage()?;
-                }
+                let categories_rows = insert_import_categories(conn, new_categories)?;
 
                 if !transactions_rows.is_empty() {
                     diesel::insert_into(transactions::table)

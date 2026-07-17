@@ -13,6 +13,7 @@ use zai_core::{DatabaseError, Error};
 type Job<T> = Box<dyn FnOnce(&mut SqliteConnection) -> Result<T> + Send + 'static>;
 type BoxedValue = Box<dyn Any + Send + 'static>;
 type WriterMessage = (Job<BoxedValue>, oneshot::Sender<Result<BoxedValue>>);
+const WRITE_QUEUE_CAPACITY: usize = 1024;
 
 #[derive(Clone)]
 pub(crate) struct WriteHandle {
@@ -63,10 +64,17 @@ impl WriteHandle {
 }
 
 pub(crate) fn spawn_writer(pool: DbPool) -> zai_core::Result<WriteHandle> {
+    spawn_writer_with_capacity(pool, WRITE_QUEUE_CAPACITY)
+}
+
+fn spawn_writer_with_capacity(
+    pool: DbPool,
+    queue_capacity: usize,
+) -> zai_core::Result<WriteHandle> {
     let mut conn = pool.get().into_core()?;
     let handle = tokio::runtime::Handle::try_current()
         .map_err(|err| writer_error(&format!("missing Tokio runtime: {err}")))?;
-    let (tx, mut rx) = mpsc::channel::<WriterMessage>(1024);
+    let (tx, mut rx) = mpsc::channel::<WriterMessage>(queue_capacity);
 
     std::thread::Builder::new()
         .name("zai-db-writer".into())
@@ -101,10 +109,14 @@ mod tests {
     use std::thread;
 
     fn setup_writer(temp_db: &TempDb) -> WriteHandle {
+        setup_writer_with_capacity(temp_db, WRITE_QUEUE_CAPACITY)
+    }
+
+    fn setup_writer_with_capacity(temp_db: &TempDb, queue_capacity: usize) -> WriteHandle {
         let manager = r2d2::ConnectionManager::<SqliteConnection>::new(temp_db.path());
         let pool = Pool::builder().build(manager).expect("pool");
         run_migrations(&pool).expect("migrations");
-        spawn_writer(pool).expect("writer")
+        spawn_writer_with_capacity(pool, queue_capacity).expect("writer")
     }
 
     #[tokio::test(flavor = "current_thread")]
@@ -241,5 +253,56 @@ mod tests {
 
         let ok = writer.exec(|_conn| Ok(2_i32)).await.expect("later job");
         assert_eq!(ok, 2);
+    }
+
+    #[tokio::test]
+    async fn writer_queue_rejects_work_beyond_capacity() {
+        let temp_db = TempDb::new();
+        let writer = setup_writer_with_capacity(&temp_db, 1);
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (resume_tx, resume_rx) = mpsc::channel::<()>();
+
+        let blocked = {
+            let writer = writer.clone();
+            tokio::spawn(async move {
+                writer
+                    .exec(move |_conn| {
+                        entered_tx.send(()).expect("entered");
+                        resume_rx.recv().expect("resume");
+                        Ok(())
+                    })
+                    .await
+            })
+        };
+        tokio::task::spawn_blocking(move || entered_rx.recv())
+            .await
+            .expect("join")
+            .expect("entered");
+
+        let (queued_reply_tx, queued_reply_rx) = oneshot::channel();
+        writer
+            .tx
+            .try_send((
+                Box::new(|_conn| Ok(Box::new(()) as BoxedValue)),
+                queued_reply_tx,
+            ))
+            .expect("one queued job should fit");
+        let (overflow_reply_tx, _overflow_reply_rx) = oneshot::channel();
+        let overflow = writer.tx.try_send((
+            Box::new(|_conn| Ok(Box::new(()) as BoxedValue)),
+            overflow_reply_tx,
+        ));
+
+        assert!(matches!(
+            overflow,
+            Err(tokio::sync::mpsc::error::TrySendError::Full(_))
+        ));
+
+        resume_tx.send(()).expect("resume");
+        blocked.await.expect("join").expect("blocked write");
+        queued_reply_rx
+            .await
+            .expect("queued reply")
+            .expect("queued write");
     }
 }

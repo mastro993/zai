@@ -360,10 +360,17 @@ pub fn calculate_period_with_rollover(
     } else if let Some(percentage) = warning_percentage
         && effective_allowance > 0
     {
-        let threshold = effective_allowance
-            .checked_mul(i64::from(percentage))
+        let percentage = i64::from(percentage);
+        let whole = (effective_allowance / 100)
+            .checked_mul(percentage)
+            .ok_or_else(|| Error::CalculationOverflow("Budget calculation overflow".to_string()))?;
+        let fractional = (effective_allowance % 100)
+            .checked_mul(percentage)
             .and_then(|value| value.checked_add(99))
             .map(|value| value / 100)
+            .ok_or_else(|| Error::CalculationOverflow("Budget calculation overflow".to_string()))?;
+        let threshold = whole
+            .checked_add(fractional)
             .ok_or_else(|| Error::CalculationOverflow("Budget calculation overflow".to_string()))?;
         if net_budget_spending >= threshold {
             BudgetStatus::Warning

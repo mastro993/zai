@@ -78,15 +78,17 @@ pub(crate) fn find_existing_duplicate_keys(
         .iter()
         .map(|candidate| candidate.transaction_date)
         .collect::<Vec<_>>();
-    let (range_start, range_end_exclusive) =
+    let range =
         import_dedup::half_open_date_range_from_dates(&dates).expect("non-empty candidates");
 
-    let existing_rows = transactions::table
+    let mut query = transactions::table
         .filter(transactions::deleted_at.is_null())
-        .filter(transactions::transaction_date.ge(range_start))
-        .filter(transactions::transaction_date.lt(range_end_exclusive))
-        .load::<TransactionRow>(conn)
-        .into_storage()?;
+        .filter(transactions::transaction_date.ge(range.start))
+        .into_boxed();
+    if let Some(end_exclusive) = range.end_exclusive {
+        query = query.filter(transactions::transaction_date.lt(end_exclusive));
+    }
+    let existing_rows = query.load::<TransactionRow>(conn).into_storage()?;
 
     let existing_keys = existing_rows
         .iter()

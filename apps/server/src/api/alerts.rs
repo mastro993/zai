@@ -2,13 +2,11 @@ use std::{convert::Infallible, sync::Arc, time::Duration};
 
 use axum::{
     Json, Router,
-    extract::rejection::QueryRejection,
-    extract::{Path, Query, State},
+    extract::{Path, RawQuery, State},
     response::sse::{Event, KeepAlive, Sse},
     routing::{get, post},
 };
 use futures_util::{Stream, StreamExt, stream::unfold};
-use serde::Deserialize;
 use zai_app::ServiceContext;
 use zai_core::features::domain_alerts::{
     DomainAlert, DomainAlertEvent, DomainAlertListPage, DomainAlertReadState, DomainAlertSeverity,
@@ -19,34 +17,58 @@ use crate::api::error::{bad_request, command_error};
 
 type AlertResult<T> = Result<T, (axum::http::StatusCode, Json<crate::api::error::ApiError>)>;
 
-fn default_limit() -> i64 {
-    zai_core::features::domain_alerts::DEFAULT_LIST_LIMIT
+fn duplicate_query_parameter(name: &str) -> String {
+    format!("Query parameter {name} must appear at most once")
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ListAlertsQuery {
-    cursor: Option<String>,
-    #[serde(default = "default_limit")]
-    limit: i64,
-    #[serde(default)]
-    read_state: DomainAlertReadState,
-    #[serde(
-        default,
-        deserialize_with = "zai_core::features::domain_alerts::deserialize_optional_severities"
-    )]
-    severities: Option<Vec<DomainAlertSeverity>>,
-}
+fn parse_list_alerts_query(raw_query: Option<&str>) -> Result<ListDomainAlertsQuery, String> {
+    let mut query = ListDomainAlertsQuery::default();
+    let mut severities = Vec::new();
 
-impl From<ListAlertsQuery> for ListDomainAlertsQuery {
-    fn from(value: ListAlertsQuery) -> Self {
-        Self {
-            cursor: value.cursor,
-            limit: Some(value.limit),
-            read_state: Some(value.read_state),
-            severities: value.severities,
+    for (key, value) in form_urlencoded::parse(raw_query.unwrap_or_default().as_bytes()) {
+        match key.as_ref() {
+            "cursor" => {
+                if query.cursor.replace(value.into_owned()).is_some() {
+                    return Err(duplicate_query_parameter("cursor"));
+                }
+            }
+            "limit" => {
+                if query.limit.is_some() {
+                    return Err(duplicate_query_parameter("limit"));
+                }
+                query.limit = Some(
+                    value
+                        .parse::<i64>()
+                        .map_err(|_| "Alert list limit must be an integer".to_string())?,
+                );
+            }
+            "readState" => {
+                if query.read_state.is_some() {
+                    return Err(duplicate_query_parameter("readState"));
+                }
+                query.read_state = Some(match value.as_ref() {
+                    "all" => DomainAlertReadState::All,
+                    "read" => DomainAlertReadState::Read,
+                    "unread" => DomainAlertReadState::Unread,
+                    _ => return Err("Invalid alert read state".to_string()),
+                });
+            }
+            "severities" => {
+                let severity = value
+                    .parse::<DomainAlertSeverity>()
+                    .map_err(|_| "Invalid alert severity".to_string())?;
+                if !severities.contains(&severity) {
+                    severities.push(severity);
+                }
+            }
+            _ => {}
         }
     }
+
+    if !severities.is_empty() {
+        query.severities = Some(severities);
+    }
+    Ok(query)
 }
 
 pub fn router() -> Router<Arc<ServiceContext>> {
@@ -89,12 +111,12 @@ fn alert_event_stream(
 
 async fn list_alerts(
     State(context): State<Arc<ServiceContext>>,
-    query: Result<Query<ListAlertsQuery>, QueryRejection>,
+    RawQuery(raw_query): RawQuery,
 ) -> AlertResult<Json<DomainAlertListPage>> {
-    let Query(query) = query.map_err(|rejection| bad_request(rejection.body_text()))?;
+    let query = parse_list_alerts_query(raw_query.as_deref()).map_err(bad_request)?;
     context
         .domain_alerts_service()
-        .list_alerts(query.into())
+        .list_alerts(query)
         .await
         .map(Json)
         .map_err(|error| command_error("Failed to load alerts", error))

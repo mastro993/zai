@@ -1,4 +1,5 @@
 use super::*;
+use crate::sql_statement_counter::ConnectionStatementCounter;
 
 #[tokio::test]
 async fn test_import_categories() {
@@ -42,5 +43,31 @@ async fn test_import_categories() {
         created
             .iter()
             .any(|category| category.color.as_deref() == Some("#DB1313"))
+    );
+}
+
+#[tokio::test]
+async fn import_category_validation_avoids_per_row_statements() {
+    let temp_db = TempDb::new();
+    let _repo = setup_test_repo(temp_db.path());
+    let mut conn = SqliteConnection::establish(temp_db.path()).expect("database connection");
+    let counter = ConnectionStatementCounter::install(&mut conn);
+    let categories = (0..200)
+        .map(|index| NewTransactionCategory {
+            id: Some(format!("category-{index}")),
+            name: format!("Category {index}"),
+            parent_id: None,
+            description: None,
+            color: None,
+            role: Some(CategoryRole::Spending),
+        })
+        .collect();
+
+    crate::transaction_categories::insert_import_categories(&mut conn, categories).unwrap();
+
+    assert!(
+        counter.count() <= 4,
+        "category import executed {} statements",
+        counter.count()
     );
 }

@@ -63,6 +63,39 @@ async fn import_skips_existing_transaction_in_fractional_last_second() {
 }
 
 #[tokio::test]
+async fn import_skips_existing_transaction_at_maximum_datetime() {
+    let temp_db = TempDb::new();
+    let repo = setup_test_repo(temp_db.path());
+
+    repo.create_transaction(NewTransaction {
+        id: Some(Uuid::new_v4().to_string()),
+        description: Some("groceries".to_string()),
+        amount: 1250,
+        transaction_date: chrono::NaiveDateTime::MAX,
+        transaction_type: "expense".to_string(),
+        transaction_category_id: None,
+        notes: None,
+    })
+    .await
+    .expect("create existing transaction");
+
+    let imported = repo
+        .import_transactions(vec![NewTransaction {
+            id: Some(Uuid::new_v4().to_string()),
+            description: Some(" Groceries ".to_string()),
+            amount: 1250,
+            transaction_date: chrono::NaiveDateTime::MAX,
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+        }])
+        .await
+        .expect("import duplicate");
+
+    assert!(imported.is_empty());
+}
+
+#[tokio::test]
 async fn import_skips_duplicates_within_single_payload() {
     let temp_db = TempDb::new();
     let repo = setup_test_repo(temp_db.path());

@@ -19,14 +19,22 @@ pub fn validate_list_paging(page: i64, per_page: i64) -> crate::Result<()> {
 }
 
 fn validate_transaction_type(value: &str) -> Result<(), Error> {
-    let trimmed = value.trim();
-    if ALLOWED_TYPES.contains(&trimmed) {
+    if ALLOWED_TYPES.contains(&value) {
         Ok(())
     } else {
         Err(Error::InvalidData(format!(
-            "Invalid transaction type: {trimmed}"
+            "Invalid transaction type: {value}"
         )))
     }
+}
+
+fn validate_amount(amount: i32) -> Result<(), Error> {
+    if amount < 0 {
+        return Err(Error::InvalidData(
+            "Transaction amount cannot be negative".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -68,6 +76,7 @@ pub struct NewTransaction {
 
 impl NewTransaction {
     pub fn validate(&self) -> Result<(), Error> {
+        validate_amount(self.amount)?;
         validate_transaction_type(&self.transaction_type)
     }
 }
@@ -91,6 +100,7 @@ impl TransactionUpdate {
                 "Transaction id is required for updates".to_string(),
             ));
         }
+        validate_amount(self.amount)?;
         validate_transaction_type(&self.transaction_type)
     }
 }
@@ -125,8 +135,8 @@ mod tests {
             .expect("sample date")
     }
 
-    #[tokio::test]
-    async fn test_new_transaction_validation_accepts_allowed_types() {
+    #[test]
+    fn new_transaction_validation_accepts_allowed_types() {
         for transaction_type in ["expense", "income"] {
             let transaction = NewTransaction {
                 id: None,
@@ -142,9 +152,9 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn test_new_transaction_validation_rejects_invalid_types() {
-        for transaction_type in ["", "transfer", "EXPENSE"] {
+    #[test]
+    fn new_transaction_validation_rejects_invalid_types() {
+        for transaction_type in ["", "transfer", "EXPENSE", " expense "] {
             let transaction = NewTransaction {
                 id: None,
                 description: Some("Lunch".to_string()),
@@ -157,12 +167,15 @@ mod tests {
 
             let result = transaction.validate();
 
-            assert!(result.is_err());
+            assert!(
+                result.is_err(),
+                "transaction type {transaction_type:?} must be rejected"
+            );
         }
     }
 
-    #[tokio::test]
-    async fn test_transaction_update_validation_accepts_allowed_types() {
+    #[test]
+    fn transaction_update_validation_accepts_allowed_types() {
         for transaction_type in ["expense", "income"] {
             let transaction = TransactionUpdate {
                 id: "txn-1".to_string(),
@@ -178,9 +191,9 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn test_transaction_update_validation_rejects_invalid_types() {
-        for transaction_type in ["", "transfer", "EXPENSE"] {
+    #[test]
+    fn transaction_update_validation_rejects_invalid_types() {
+        for transaction_type in ["", "transfer", "EXPENSE", " expense "] {
             let transaction = TransactionUpdate {
                 id: "txn-1".to_string(),
                 description: Some("Salary".to_string()),
@@ -193,8 +206,41 @@ mod tests {
 
             let result = transaction.validate();
 
-            assert!(result.is_err());
+            assert!(
+                result.is_err(),
+                "transaction type {transaction_type:?} must be rejected"
+            );
         }
+    }
+
+    #[test]
+    fn new_transaction_validation_rejects_negative_amounts() {
+        let transaction = NewTransaction {
+            id: None,
+            description: None,
+            amount: -1,
+            transaction_date: sample_date(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+        };
+
+        assert!(transaction.validate().is_err());
+    }
+
+    #[test]
+    fn transaction_update_validation_rejects_negative_amounts() {
+        let transaction = TransactionUpdate {
+            id: "txn-1".to_string(),
+            description: None,
+            amount: -1,
+            transaction_date: sample_date(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+        };
+
+        assert!(transaction.validate().is_err());
     }
 
     #[test]
