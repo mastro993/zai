@@ -201,7 +201,7 @@ describe("cash-flow budget navigation", () => {
     fireEvent.change(await screen.findByLabelText("Name"), {
       target: { value: "New monthly budget" },
     });
-    fireEvent.change(screen.getByLabelText("Monthly allowance"), {
+    fireEvent.change(screen.getByLabelText("Allowance"), {
       target: { value: "100" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create budget" }));
@@ -225,7 +225,7 @@ describe("cash-flow budget navigation", () => {
     fireEvent.change(await screen.findByLabelText("Name"), {
       target: { value: "New monthly budget" },
     });
-    fireEvent.change(screen.getByLabelText("Monthly allowance"), {
+    fireEvent.change(screen.getByLabelText("Allowance"), {
       target: { value: "100" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create budget" }));

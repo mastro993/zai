@@ -84,15 +84,22 @@ A retained schedule and transaction template that produces linked transactions
 on due occurrences through its lifecycle.
 _Avoid_: Recurrent transaction, scheduled transaction
 
+**Recurring transaction name**:
+The required, trimmed, case-insensitively unique name among non-tombstoned
+recurring transactions, independent from the optional description copied into
+generated transactions. A tombstone releases the name; stopped and completed
+history retains it.
+
 **Catch-up generation**:
 The creation of every due, not-yet-created recurring transaction occurrence after
 Zai becomes able to process schedules again. Generated transactions retain their
 originally scheduled dates regardless of what initiates processing.
 
 **Scheduled occurrence**:
-A single due instance identified by its scheduled local date and time plus the
-time zone captured by its recurring transaction. Its transaction date remains
-that scheduled time even when catch-up generation creates it later.
+A single due instance identified by its intended local date and time plus the
+time zone captured by its recurring transaction. It resolves to a UTC instant,
+shifting through a daylight-saving gap or choosing the earlier repeated instant;
+its generated transaction retains that resolved instant after catch-up.
 
 **Interval recurrence**:
 A recurring transaction rule that schedules an occurrence every fixed number of

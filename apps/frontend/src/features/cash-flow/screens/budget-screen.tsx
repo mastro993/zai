@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Drawer } from "@/components/ui/drawer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -32,7 +33,7 @@ import {
   type BudgetListFilter,
 } from "../types/budget";
 import type { TransactionCategory } from "../types/model";
-import { BudgetFormDialog } from "../components/budget-form-dialog";
+import { BudgetFormDrawer } from "../components/budget-form-drawer";
 
 interface BudgetScreenProps {
   initialBudgets: Array<Budget>;
@@ -198,12 +199,14 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
           <BudgetRows budgets={budgets} />
         </div>
       )}
-      <BudgetFormDialog
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        onSubmit={submitBudget}
-        categories={categories}
-      />
+      <Drawer open={isFormOpen} onOpenChange={setIsFormOpen} swipeDirection="right">
+        <BudgetFormDrawer
+          open={isFormOpen}
+          onOpenChange={setIsFormOpen}
+          onSubmit={submitBudget}
+          categories={categories}
+        />
+      </Drawer>
     </ScreenBase>
   );
 }

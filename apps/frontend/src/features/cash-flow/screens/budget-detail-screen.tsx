@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Drawer } from "@/components/ui/drawer";
 import {
   Table,
   TableBody,
@@ -23,7 +24,7 @@ import {
   updateBudget,
 } from "../commands/budgets";
 import { BudgetDeleteConfirmationDialog } from "../components/budget-delete-confirmation-dialog";
-import { BudgetFormDialog } from "../components/budget-form-dialog";
+import { BudgetFormDrawer } from "../components/budget-form-drawer";
 import {
   budgetCadenceLabel,
   budgetMeasurementLabel,
@@ -298,14 +299,16 @@ export function BudgetDetailScreen({
           </p>
         ) : null}
       </div>
-      <BudgetFormDialog
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        onSubmit={submitBudget}
-        categories={categories}
-        budget={currentBudget}
-        mode="edit"
-      />
+      <Drawer open={isFormOpen} onOpenChange={setIsFormOpen} swipeDirection="right">
+        <BudgetFormDrawer
+          open={isFormOpen}
+          onOpenChange={setIsFormOpen}
+          onSubmit={submitBudget}
+          categories={categories}
+          budget={currentBudget}
+          mode="edit"
+        />
+      </Drawer>
       <BudgetDeleteConfirmationDialog
         budget={currentBudget}
         open={isDeleteDialogOpen}

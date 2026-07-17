@@ -14,7 +14,7 @@ async function fillBudgetForm(
 ) {
   const dialog = page.getByRole("dialog", { name: dialogName });
   await dialog.getByLabel("Name").fill(values.name);
-  await dialog.getByLabel("Monthly allowance").fill(values.allowance);
+  await dialog.getByLabel("Allowance").fill(values.allowance);
 }
 
 test("overspending an active budget emits a live critical alert with rich snapshot", async ({
