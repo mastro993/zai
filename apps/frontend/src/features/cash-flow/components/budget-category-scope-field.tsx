@@ -1,7 +1,7 @@
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useMemo, useState } from "react";
-import { type Control, useController, type FieldError } from "react-hook-form";
+import { type Control, useController } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerTrigger } from "@/components/ui/drawer";
@@ -25,7 +25,7 @@ interface BudgetCategoryScopeFieldProps {
   categories: Array<TransactionCategory>;
   control: Control<BudgetFormInput, unknown, BudgetFormValues>;
   formOpen: boolean;
-  error?: FieldError;
+  error?: { message?: string };
 }
 
 const EMPTY_CATEGORY_IDS: Array<string> = [];
