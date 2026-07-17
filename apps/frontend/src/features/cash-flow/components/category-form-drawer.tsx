@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
+import { DrawerSelect } from "@/components/drawer-select";
 import { Button } from "@/components/ui/button";
 import {
   DrawerClose,
@@ -26,13 +27,14 @@ import { getCategoryDisplayColor, getCategoryRoleLabel, isCategoryColor } from "
 import type { CategoryFormMode } from "../types/category-types";
 import {
   DEFAULT_CATEGORY_COLOR,
-  CATEGORY_ROLES,
   categoryFormSchema,
   type CategoryFormValues,
+  type CategoryRole,
   type TransactionCategory,
 } from "../types/model";
 import { CategoryBadge } from "./category-badge";
 import { CategoryColorPicker } from "./category-color-picker";
+import { CATEGORY_ROLE_OPTIONS } from "./category-role-options";
 
 const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
   if (mode.type === "create-root") {
@@ -122,10 +124,12 @@ function CategoryFormPreview({
 }
 
 function CategoryFormDrawer({
+  open,
   mode,
   categories,
   onSubmit,
 }: {
+  open: boolean;
   mode: CategoryFormMode;
   categories: Array<TransactionCategory>;
   onSubmit: (values: CategoryFormValues) => Promise<void>;
@@ -292,32 +296,24 @@ function CategoryFormDrawer({
             </Field>
           ) : (
             <Field data-invalid={Boolean(errors.role)}>
-              <FieldLabel>Role</FieldLabel>
+              <FieldLabel htmlFor="category-role">Role</FieldLabel>
               <Controller
                 control={form.control}
                 name="role"
                 render={({ field }) => (
-                  <Select
-                    items={CATEGORY_ROLES.map((value) => ({
-                      label: getCategoryRoleLabel(value),
-                      value,
-                    }))}
+                  <DrawerSelect<CategoryRole>
+                    id="category-role"
+                    ariaLabel="Category role"
+                    drawerTitle="Role"
+                    drawerDescription="Choose whether this category tracks spending or income."
+                    placeholder="Select a role"
                     value={field.value ?? null}
-                    onValueChange={(value) => field.onChange(value ?? undefined)}
-                  >
-                    <SelectTrigger className="w-full" aria-label="Category role">
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent alignItemWithTrigger={false}>
-                      <SelectGroup>
-                        {CATEGORY_ROLES.map((value) => (
-                          <SelectItem key={value} value={value}>
-                            {getCategoryRoleLabel(value)}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                    options={CATEGORY_ROLE_OPTIONS}
+                    parentOpen={open}
+                    backAriaLabel="Back to category"
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                  />
                 )}
               />
               <FieldDescription>
