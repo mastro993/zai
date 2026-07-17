@@ -179,7 +179,7 @@ function CategoryFormDrawer({
   const colorErrorId = "category-color-error";
 
   return (
-    <DrawerContent>
+    <DrawerContent className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem]">
       <DrawerHeader>
         <DrawerTitle>{title}</DrawerTitle>
         <DrawerDescription>{description}</DrawerDescription>

@@ -196,7 +196,7 @@ function BudgetCategorySelectionDrawer({
   };
 
   return (
-    <DrawerContent className="data-[swipe-axis=x]:w-full sm:data-[swipe-axis=x]:w-96">
+    <DrawerContent className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem] data-[swipe-axis=x]:w-[calc(100%-2rem)] sm:data-[swipe-axis=x]:w-96">
       <DrawerHeader className="flex-row items-start gap-2">
         <DrawerClose
           render={
