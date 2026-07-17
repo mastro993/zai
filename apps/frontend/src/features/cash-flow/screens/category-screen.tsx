@@ -343,6 +343,7 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
                 ? formMode.category.id
                 : `${formMode.type}:${"parentId" in formMode ? formMode.parentId : "root"}`
             }
+            open={isFormDrawerOpen}
             mode={formMode}
             categories={categories}
             onSubmit={submitCategory}

@@ -7,7 +7,8 @@ import {
 } from "@hugeicons/core-free-icons";
 import { type Control, Controller } from "react-hook-form";
 
-import { FieldGroup } from "@/components/ui/field";
+import { DrawerSelect, type DrawerSelectOption } from "@/components/drawer-select";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 
 import {
   budgetMeasurementDescription,
@@ -23,7 +24,6 @@ import {
   type BudgetMeasurementMode,
   type BudgetRolloverMode,
 } from "../types/budget";
-import { BudgetFormOptionField, type BudgetFormOption } from "./budget-form-option-field";
 
 interface BudgetFormRulesFieldsProps {
   control: Control<BudgetFormInput, unknown, BudgetFormValues>;
@@ -41,7 +41,7 @@ const ROLLOVER_ICONS = {
   cumulative: Layers01Icon,
 } as const;
 
-const MEASUREMENT_OPTIONS: Array<BudgetFormOption<BudgetMeasurementMode>> =
+const MEASUREMENT_OPTIONS: Array<DrawerSelectOption<BudgetMeasurementMode>> =
   BUDGET_MEASUREMENT_MODES.map((mode) => ({
     value: mode,
     label: budgetMeasurementLabel[mode],
@@ -49,7 +49,7 @@ const MEASUREMENT_OPTIONS: Array<BudgetFormOption<BudgetMeasurementMode>> =
     icon: MEASUREMENT_ICONS[mode],
   }));
 
-const ROLLOVER_OPTIONS: Array<BudgetFormOption<BudgetRolloverMode>> = BUDGET_ROLLOVER_MODES.map(
+const ROLLOVER_OPTIONS: Array<DrawerSelectOption<BudgetRolloverMode>> = BUDGET_ROLLOVER_MODES.map(
   (mode) => ({
     value: mode,
     label: budgetRolloverOptionLabel[mode],
@@ -65,36 +65,44 @@ function BudgetFormRulesFields({ control, formOpen }: BudgetFormRulesFieldsProps
         control={control}
         name="measurementMode"
         render={({ field }) => (
-          <BudgetFormOptionField<BudgetMeasurementMode>
-            id="budget-measurement"
-            label="Measurement"
-            ariaLabel="Budget measurement"
-            drawerTitle="Measurement"
-            drawerDescription="Choose how transactions in scope count toward this budget."
-            value={field.value ?? "spending"}
-            options={MEASUREMENT_OPTIONS}
-            formOpen={formOpen}
-            onChange={field.onChange}
-            onBlur={field.onBlur}
-          />
+          <Field className="min-w-0">
+            <FieldLabel htmlFor="budget-measurement">Measurement</FieldLabel>
+            <DrawerSelect<BudgetMeasurementMode>
+              id="budget-measurement"
+              ariaLabel="Budget measurement"
+              drawerTitle="Measurement"
+              drawerDescription="Choose how transactions in scope count toward this budget."
+              placeholder="Select measurement"
+              value={field.value ?? "spending"}
+              options={MEASUREMENT_OPTIONS}
+              parentOpen={formOpen}
+              backAriaLabel="Back to budget"
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+            />
+          </Field>
         )}
       />
       <Controller
         control={control}
         name="rolloverMode"
         render={({ field }) => (
-          <BudgetFormOptionField<BudgetRolloverMode>
-            id="budget-rollover"
-            label="Rollover"
-            ariaLabel="Budget rollover"
-            drawerTitle="Rollover"
-            drawerDescription="Choose whether unused allowance or overspend carries into later periods."
-            value={field.value ?? "off"}
-            options={ROLLOVER_OPTIONS}
-            formOpen={formOpen}
-            onChange={field.onChange}
-            onBlur={field.onBlur}
-          />
+          <Field className="min-w-0">
+            <FieldLabel htmlFor="budget-rollover">Rollover</FieldLabel>
+            <DrawerSelect<BudgetRolloverMode>
+              id="budget-rollover"
+              ariaLabel="Budget rollover"
+              drawerTitle="Rollover"
+              drawerDescription="Choose whether unused allowance or overspend carries into later periods."
+              placeholder="Select rollover"
+              value={field.value ?? "off"}
+              options={ROLLOVER_OPTIONS}
+              parentOpen={formOpen}
+              backAriaLabel="Back to budget"
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+            />
+          </Field>
         )}
       />
     </FieldGroup>
