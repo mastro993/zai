@@ -10,6 +10,7 @@ import { CommandError } from "@/commands/errors";
 
 import type { Budget } from "../../types/budget";
 import type { TransactionCategory } from "../../types/model";
+import { budgetMeasurementDescription, budgetRolloverDescription } from "../../lib/budget";
 import { BudgetFormDrawer } from "../budget-form-drawer";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn() } }));
@@ -67,9 +68,7 @@ describe("BudgetFormDrawer", () => {
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Monthly spending" } });
     fireEvent.change(screen.getByLabelText("Allowance"), { target: { value: "100" } });
-    fireEvent.click(screen.getByRole("button", { name: "Advanced rules" }));
     fireEvent.change(screen.getByLabelText("Warning percentage"), { target: { value: "65" } });
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     fireEvent.click(screen.getByRole("button", { name: "Create budget" }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
@@ -77,9 +76,7 @@ describe("BudgetFormDrawer", () => {
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Monthly spending" } });
     fireEvent.change(screen.getByLabelText("Allowance"), { target: { value: "100" } });
-    fireEvent.click(screen.getByRole("button", { name: "Advanced rules" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Warn at" }));
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     fireEvent.click(screen.getByRole("button", { name: "Create budget" }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
@@ -87,6 +84,28 @@ describe("BudgetFormDrawer", () => {
       2,
       expect.objectContaining({ warningPercentage: null }),
     );
+  });
+
+  it("shows measurement and rollover selects with selected explanations", () => {
+    renderBudgetForm();
+
+    expect(screen.getByText(budgetMeasurementDescription.spending)).toBeTruthy();
+    expect(screen.getByText(budgetRolloverDescription.off)).toBeTruthy();
+    expect(budgetMeasurementDescription.netCashFlow).toContain("matching income");
+    expect(budgetRolloverDescription.cumulative).toContain("accumulate");
+
+    fireEvent.click(screen.getByLabelText("Budget measurement"));
+    expect(screen.getByRole("option", { name: "Spending" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Net cash flow" })).toBeTruthy();
+  });
+
+  it("lists rollover options in a select", () => {
+    renderBudgetForm();
+
+    fireEvent.click(screen.getByLabelText("Budget rollover"));
+    expect(screen.getByRole("option", { name: "No rollover" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Previous period only" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Cumulative" })).toBeTruthy();
   });
 
   it("filters and canonicalizes category selections", async () => {

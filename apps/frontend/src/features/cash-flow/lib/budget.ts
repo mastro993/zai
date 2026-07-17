@@ -17,6 +17,11 @@ export const budgetMeasurementOptionLabel = {
   netCashFlow: "Track net cash flow",
 } as const;
 
+export const budgetMeasurementDescription = {
+  spending: "Counts spending in the selected categories each period.",
+  netCashFlow: "Subtracts matching income from spending in the selected categories.",
+} as const;
+
 export const budgetRolloverLabel = {
   off: "Disabled",
   previousPeriodOnly: "Previous period only",
@@ -27,6 +32,12 @@ export const budgetRolloverOptionLabel = {
   off: "No rollover",
   previousPeriodOnly: "Previous period only",
   cumulative: "Cumulative",
+} as const;
+
+export const budgetRolloverDescription = {
+  off: "Each period starts from the base allowance.",
+  previousPeriodOnly: "Carry leftover or overspend from the previous period only.",
+  cumulative: "Unused allowance and overspend accumulate across periods.",
 } as const;
 
 export const budgetStatusLabel: Record<BudgetStatus, string> = {
