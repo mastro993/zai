@@ -42,12 +42,14 @@ function CategoryOptionRow({
   category,
   selected,
   nested = false,
+  embedded = false,
   optionId,
   onSelect,
 }: {
   category: TransactionCategory;
   selected: boolean;
   nested?: boolean;
+  embedded?: boolean;
   optionId: string;
   onSelect: () => void;
 }) {
@@ -58,12 +60,13 @@ function CategoryOptionRow({
       role="option"
       aria-selected={selected}
       className={cn(
-        "flex w-full min-w-0 items-center gap-2 px-3 py-2.5 text-left",
+        "flex w-full min-w-0 items-center gap-2 px-3 py-2.5 text-left focus-visible:outline-none",
         nested ? "pl-11" : null,
-        selected
-          ? "bg-primary/5 hover:bg-primary/5 focus-visible:bg-primary/5"
-          : "hover:bg-muted/40 focus-visible:bg-muted/40",
-        "focus-visible:outline-none",
+        embedded
+          ? null
+          : selected
+            ? "bg-primary/5 hover:bg-primary/5 focus-visible:bg-primary/5"
+            : "hover:bg-muted/40 focus-visible:bg-muted/40",
       )}
       onClick={onSelect}
     >

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/drawer";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { cn } from "@/lib/utils";
 
 import { getCategoryDisplayColor } from "../lib/category";
 import {
@@ -184,9 +185,17 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
               const showChildren = deferredQuery.length > 0 || isExpanded;
 
               if (props.mode === "single") {
+                const selected = props.selectedId === root.id;
                 return (
                   <div key={root.id} className="border-b last:border-b-0">
-                    <div className="flex min-w-0 items-center">
+                    <div
+                      className={cn(
+                        "flex min-w-0 items-center",
+                        selected
+                          ? "bg-primary/5 hover:bg-primary/5 focus-within:bg-primary/5"
+                          : "hover:bg-muted/40 focus-within:bg-muted/40",
+                      )}
+                    >
                       <ExpandControl
                         root={root}
                         childrenCount={children.length}
@@ -198,8 +207,9 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
                       <div className="min-w-0 flex-1">
                         <CategoryOptionRow
                           category={root}
+                          embedded
                           optionId={`${searchInputId}-option-${root.id}`}
-                          selected={props.selectedId === root.id}
+                          selected={selected}
                           onSelect={() => props.onSelect(root.id)}
                         />
                       </div>
