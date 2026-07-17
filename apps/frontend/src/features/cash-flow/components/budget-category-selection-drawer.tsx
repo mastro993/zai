@@ -125,15 +125,38 @@ function toggleChildSelection(
   return Array.from(nextIdSet);
 }
 
+interface CategorySelectionItem {
+  category: TransactionCategory;
+  label: string;
+}
+
+const formatCategoryScopeLabel = (
+  category: TransactionCategory,
+  categoriesById: ReadonlyMap<string, TransactionCategory>,
+) => {
+  if (!category.parentId) return category.name;
+  const parent = category.parent ?? categoriesById.get(category.parentId);
+  return parent ? `${parent.name} / ${category.name}` : category.name;
+};
+
 function getCategorySelectionItems(
   categories: Array<TransactionCategory>,
   selectedIds: Array<string>,
-) {
+): Array<CategorySelectionItem> {
   const selectedIdSet = new Set(selectedIds);
+  const categoriesById = new Map(categories.map((category) => [category.id, category]));
+
   return groupCategories(categories, "").flatMap(({ root, children }) => {
-    if (!root) return children.filter((category) => selectedIdSet.has(category.id));
-    if (getRootState(root, children, selectedIdSet).checked) return [root];
-    return children.filter((category) => selectedIdSet.has(category.id));
+    const selected = (() => {
+      if (!root) return children.filter((category) => selectedIdSet.has(category.id));
+      if (getRootState(root, children, selectedIdSet).checked) return [root];
+      return children.filter((category) => selectedIdSet.has(category.id));
+    })();
+
+    return selected.map((category) => ({
+      category,
+      label: formatCategoryScopeLabel(category, categoriesById),
+    }));
   });
 }
 
@@ -360,7 +383,7 @@ function BudgetCategorySelectionDrawer({
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="text-xs text-muted-foreground" aria-live="polite">
             {selectionCount === 0
-              ? "None selected"
+              ? "All categories"
               : `${selectionCount} ${selectionCount === 1 ? "category" : "categories"}`}
           </span>
           {selectionCount > 0 ? (

@@ -7,7 +7,6 @@ export const BUDGET_ROLLOVER_MODES = ["off", "previousPeriodOnly", "cumulative"]
 export const BUDGET_CADENCES = ["day", "week", "month", "year"] as const;
 export const BUDGET_STATUSES = ["onTrack", "warning", "overspent"] as const;
 export const BUDGET_LIST_FILTERS = ["active", "paused", "all"] as const;
-export const BUDGET_CATEGORY_SCOPES = ["all", "specific"] as const;
 
 const allowanceInputSchema = z
   .string()
@@ -35,39 +34,15 @@ const warningPercentageSchema = z
   .optional()
   .transform((value) => (value === undefined ? 80 : value));
 
-export const budgetFormSchema = z
-  .object({
-    name: z.string().trim().min(1, "Name is required"),
-    baseAllowance: allowanceInputSchema,
-    cadence: z.enum(BUDGET_CADENCES).default("month"),
-    categoryScope: z.enum(BUDGET_CATEGORY_SCOPES).optional(),
-    categoryIds: z.array(z.string()).default([]),
-    measurementMode: z.enum(BUDGET_MEASUREMENT_MODES).default("spending"),
-    rolloverMode: z.enum(BUDGET_ROLLOVER_MODES).default("off"),
-    warningPercentage: warningPercentageSchema,
-  })
-  .superRefine((data, ctx) => {
-    const scope = data.categoryScope ?? (data.categoryIds.length > 0 ? "specific" : "all");
-    if (scope === "specific" && data.categoryIds.length === 0) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Choose at least one category, or switch to All categories.",
-        path: ["categoryIds"],
-      });
-    }
-  })
-  .transform((data) => {
-    const scope = data.categoryScope ?? (data.categoryIds.length > 0 ? "specific" : "all");
-    return {
-      name: data.name,
-      baseAllowance: data.baseAllowance,
-      cadence: data.cadence,
-      categoryIds: scope === "all" ? [] : data.categoryIds,
-      measurementMode: data.measurementMode,
-      rolloverMode: data.rolloverMode,
-      warningPercentage: data.warningPercentage,
-    };
-  });
+export const budgetFormSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  baseAllowance: allowanceInputSchema,
+  cadence: z.enum(BUDGET_CADENCES).default("month"),
+  categoryIds: z.array(z.string()).default([]),
+  measurementMode: z.enum(BUDGET_MEASUREMENT_MODES).default("spending"),
+  rolloverMode: z.enum(BUDGET_ROLLOVER_MODES).default("off"),
+  warningPercentage: warningPercentageSchema,
+});
 
 const budgetPeriodSchema = z.object({
   start: z.string(),

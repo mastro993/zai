@@ -115,7 +115,7 @@ describe("BudgetFormDrawer", () => {
     const onSubmit = createSubmitMock();
     renderBudgetForm({ categories, onSubmit });
 
-    fireEvent.click(screen.getByRole("button", { name: "Specific" }));
+    fireEvent.click(screen.getByRole("button", { name: /Choose categories/ }));
     fireEvent.change(screen.getByLabelText("Search categories"), { target: { value: "rent" } });
 
     expect(screen.getByRole("checkbox", { name: "Food" })).toBeTruthy();
@@ -158,7 +158,7 @@ describe("BudgetFormDrawer", () => {
     const onSubmit = createSubmitMock();
     renderBudgetForm({ categories: [food, groceries, restaurants], onSubmit });
 
-    fireEvent.click(screen.getByRole("button", { name: "Specific" }));
+    fireEvent.click(screen.getByRole("button", { name: /Choose categories/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Food" }));
     fireEvent.click(screen.getByRole("button", { name: "Expand Food" }));
 
@@ -177,7 +177,7 @@ describe("BudgetFormDrawer", () => {
 
     let trigger = screen.getByRole("button", { name: /Choose categories/ });
     expect(within(trigger).queryByText("Food")).toBeNull();
-    expect(within(trigger).getByText("Restaurants")).toBeTruthy();
+    expect(within(trigger).getByText("Food / Restaurants")).toBeTruthy();
 
     fireEvent.click(trigger);
     fireEvent.click(screen.getByRole("checkbox", { name: "Groceries" }));
@@ -185,8 +185,8 @@ describe("BudgetFormDrawer", () => {
 
     trigger = screen.getByRole("button", { name: /Choose categories/ });
     expect(within(trigger).getByText("Food")).toBeTruthy();
-    expect(within(trigger).queryByText("Groceries")).toBeNull();
-    expect(within(trigger).queryByText("Restaurants")).toBeNull();
+    expect(within(trigger).queryByText("Food / Groceries")).toBeNull();
+    expect(within(trigger).queryByText("Food / Restaurants")).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Food budget" } });
     fireEvent.change(screen.getByLabelText("Allowance"), { target: { value: "500" } });

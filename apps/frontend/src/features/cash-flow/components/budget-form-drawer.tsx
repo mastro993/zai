@@ -70,7 +70,6 @@ const getDefaultValues = (budget?: Budget): BudgetFormInput => ({
   name: budget?.name ?? "",
   baseAllowance: budget ? formatAmountFromMinor(budget.baseAllowance) : "",
   cadence: budget?.cadence ?? "month",
-  categoryScope: budget && budget.categoryIds.length > 0 ? "specific" : "all",
   categoryIds: budget?.categoryIds ?? [],
   measurementMode: budget?.measurementMode ?? "spending",
   rolloverMode: budget?.rolloverMode ?? "off",
