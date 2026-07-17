@@ -60,6 +60,8 @@ type CategoryDrawerSelectPanelProps =
   | CategoryDrawerSelectPanelMultiple
   | CategoryDrawerSelectPanelSingle;
 
+const EMPTY_SELECTED_IDS: Array<string> = [];
+
 function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
   const {
     open,
@@ -77,7 +79,7 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
     () => groupCategories(categories, deferredQuery),
     [categories, deferredQuery],
   );
-  const multipleIds = props.mode === "multiple" ? props.selectedIds : [];
+  const multipleIds = props.mode === "multiple" ? props.selectedIds : EMPTY_SELECTED_IDS;
   const selectedIdSet = useMemo(() => new Set(multipleIds), [multipleIds]);
   const selectionCount =
     props.mode === "multiple"
