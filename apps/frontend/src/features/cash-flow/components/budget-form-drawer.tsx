@@ -206,6 +206,12 @@ function BudgetFormDrawer({
                 <FieldDescription>Amount available each period.</FieldDescription>
                 <FieldError id={allowanceErrorId}>{errors.baseAllowance?.message}</FieldError>
               </Field>
+              <BudgetCategoryScopeField
+                categories={categories}
+                control={form.control}
+                formOpen={open}
+                error={errors.categoryIds}
+              />
               <Field>
                 <FieldLabel>Cadence</FieldLabel>
                 <Controller
@@ -248,15 +254,6 @@ function BudgetFormDrawer({
               </Field>
             </FieldGroup>
           </FieldSet>
-
-          <FieldSeparator />
-
-          <BudgetCategoryScopeField
-            categories={categories}
-            control={form.control}
-            formOpen={open}
-            error={errors.categoryIds}
-          />
 
           <FieldSeparator />
 

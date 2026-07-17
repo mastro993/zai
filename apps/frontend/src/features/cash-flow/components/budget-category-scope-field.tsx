@@ -9,8 +9,7 @@ import {
   Field,
   FieldDescription,
   FieldError as FieldErrorMessage,
-  FieldLegend,
-  FieldSet,
+  FieldLabel,
 } from "@/components/ui/field";
 
 import { getCategoryDisplayColor } from "../lib/category";
@@ -45,6 +44,8 @@ function BudgetCategoryScopeField({
     [categories, selectedIds],
   );
   const categoryErrorId = "budget-category-scope-error";
+  const categoryDescriptionId = "budget-category-scope-description";
+  const summaryId = "budget-category-selection-summary";
 
   useEffect(() => {
     if (!formOpen) setIsDrawerOpen(false);
@@ -56,65 +57,61 @@ function BudgetCategoryScopeField({
   };
 
   return (
-    <FieldSet>
-      <FieldLegend>Category scope</FieldLegend>
-      <FieldDescription id="budget-category-scope-description">
+    <Field data-invalid={Boolean(error)} className="min-w-0">
+      <FieldLabel htmlFor="budget-categories-trigger">Categories</FieldLabel>
+      <Drawer open={isDrawerOpen} onOpenChange={handleOpenChange} swipeDirection="right">
+        <DrawerTrigger
+          render={
+            <Button
+              id="budget-categories-trigger"
+              type="button"
+              variant="outline"
+              className="h-auto min-h-8 w-full min-w-0 justify-between gap-2 overflow-hidden py-1.5 font-normal"
+              aria-label={
+                selectionItems.length === 0
+                  ? "Choose categories, all categories"
+                  : `Choose categories, ${selectionItems.length} selected`
+              }
+              aria-describedby={`${categoryDescriptionId} ${summaryId}${error ? ` ${categoryErrorId}` : ""}`}
+              aria-invalid={Boolean(error)}
+            />
+          }
+        >
+          <span id={summaryId} className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+            {selectionItems.length === 0 ? (
+              <span className="text-muted-foreground">All categories</span>
+            ) : (
+              selectionItems.map(({ category, label }) => (
+                <CategoryBadge
+                  key={category.id}
+                  color={getCategoryDisplayColor(category)}
+                  truncate={false}
+                  className="max-w-full shrink"
+                >
+                  {label}
+                </CategoryBadge>
+              ))
+            )}
+          </span>
+          <HugeiconsIcon
+            icon={ArrowRight01Icon}
+            className="shrink-0 self-center"
+            data-icon="inline-end"
+            aria-hidden="true"
+          />
+        </DrawerTrigger>
+        <BudgetCategorySelectionDrawer
+          open={isDrawerOpen}
+          categories={categories}
+          selectedIds={selectedIds}
+          onSelectedIdsChange={field.onChange}
+        />
+      </Drawer>
+      <FieldDescription id={categoryDescriptionId}>
         Empty includes all transactions. Roots include their subcategories.
       </FieldDescription>
-      <Field data-invalid={Boolean(error)} className="min-w-0">
-        <Drawer open={isDrawerOpen} onOpenChange={handleOpenChange} swipeDirection="right">
-          <DrawerTrigger
-            render={
-              <Button
-                type="button"
-                variant="outline"
-                className="h-auto min-h-8 w-full min-w-0 justify-between gap-2 overflow-hidden py-1.5 font-normal"
-                aria-label={
-                  selectionItems.length === 0
-                    ? "Choose categories, all categories"
-                    : `Choose categories, ${selectionItems.length} selected`
-                }
-                aria-describedby={`budget-category-scope-description budget-category-selection-summary${error ? ` ${categoryErrorId}` : ""}`}
-                aria-invalid={Boolean(error)}
-              />
-            }
-          >
-            <span
-              id="budget-category-selection-summary"
-              className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5"
-            >
-              {selectionItems.length === 0 ? (
-                <span className="text-muted-foreground">All categories</span>
-              ) : (
-                selectionItems.map(({ category, label }) => (
-                  <CategoryBadge
-                    key={category.id}
-                    color={getCategoryDisplayColor(category)}
-                    truncate={false}
-                    className="max-w-full shrink"
-                  >
-                    {label}
-                  </CategoryBadge>
-                ))
-              )}
-            </span>
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
-              className="shrink-0 self-center"
-              data-icon="inline-end"
-              aria-hidden="true"
-            />
-          </DrawerTrigger>
-          <BudgetCategorySelectionDrawer
-            open={isDrawerOpen}
-            categories={categories}
-            selectedIds={selectedIds}
-            onSelectedIdsChange={field.onChange}
-          />
-        </Drawer>
-        <FieldErrorMessage id={categoryErrorId} errors={[error]} />
-      </Field>
-    </FieldSet>
+      <FieldErrorMessage id={categoryErrorId} errors={[error]} />
+    </Field>
   );
 }
 
