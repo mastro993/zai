@@ -1,17 +1,15 @@
-use super::calculation::{
-    calculate_configuration, load_category_hierarchy, map_budget_insert_error,
-};
+use super::calculation::map_budget_insert_error;
 use super::models::{BudgetConfigurationRow, BudgetRow};
-use super::projection::{load_previous_period, result_row, upsert_period_result};
+use super::timeline::{
+    BudgetPeriodTimeline, SourceChange, load_category_hierarchy, load_current_or_ensure,
+};
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{budget_configurations, budgets};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use zai_core::Error;
-use zai_core::features::budgets::models::{
-    Budget, BudgetPeriod, BudgetUpdate, CategoryHierarchy, canonicalize_category_ids,
-};
+use zai_core::features::budgets::models::{Budget, BudgetUpdate, canonicalize_category_ids};
 
 pub(super) fn update_budget(
     conn: &mut SqliteConnection,
@@ -28,13 +26,7 @@ pub(super) fn update_budget(
         )));
     }
 
-    let mut budget = match super::list_projection::projected_budget_from_connection(conn, id, now)?
-    {
-        super::list_projection::ProjectionState::Current(budget) => budget,
-        super::list_projection::ProjectionState::NeedsMaterialization => {
-            super::projection::materialize_budget(conn, id, now)?
-        }
-    };
+    let mut budget = load_current_or_ensure(conn, id, now)?;
     let categories = load_category_hierarchy(conn)?;
     let category_ids = canonicalize_category_ids(&update.category_ids, &categories);
     let configuration_changed = configuration_changed(&budget, &update, &category_ids);
@@ -42,14 +34,20 @@ pub(super) fn update_budget(
     update_budget_row(conn, id, &update, revision)?;
 
     if configuration_changed {
-        let period =
-            replace_current_configuration(conn, id, &budget, &update, &category_ids, &categories)?;
+        replace_current_configuration_row(conn, id, &budget, &update, &category_ids)?;
+        BudgetPeriodTimeline::reconcile(
+            conn,
+            SourceChange::BudgetConfigured {
+                budget_id: id.to_string(),
+            },
+            now,
+        )?;
+        budget = load_current_or_ensure(conn, id, now)?;
         budget.category_ids = category_ids;
         budget.measurement_mode = update.measurement_mode;
         budget.base_allowance = update.base_allowance;
         budget.rollover_mode = update.rollover_mode;
         budget.warning_percentage = update.warning_percentage;
-        budget.current_period = period;
     }
 
     budget.name = update.name;
@@ -119,14 +117,13 @@ fn update_budget_row(
     Ok(())
 }
 
-fn replace_current_configuration(
+fn replace_current_configuration_row(
     conn: &mut SqliteConnection,
     id: &str,
     budget: &Budget,
     update: &BudgetUpdate,
     category_ids: &[String],
-    categories: &[CategoryHierarchy],
-) -> crate::errors::Result<BudgetPeriod> {
+) -> crate::errors::Result<()> {
     let configuration = BudgetConfigurationRow {
         budget_id: id.to_string(),
         period_start: budget.current_period.start,
@@ -156,11 +153,5 @@ fn replace_current_configuration(
     ))
     .execute(conn)
     .into_storage()?;
-
-    let previous_period = load_previous_period(conn, id, configuration.period_start)?;
-    let period =
-        calculate_configuration(conn, &configuration, categories, previous_period.as_ref())?;
-    let result = result_row(id, &period);
-    upsert_period_result(conn, &result)?;
-    Ok(period)
+    Ok(())
 }

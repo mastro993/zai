@@ -14,7 +14,7 @@ use super::import_dedup;
 use super::models::TransactionRow;
 use super::repository::TransactionsRepository;
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budgets};
-use crate::budgets::repair_transaction_budget_projections;
+use crate::budgets::timeline::{BudgetPeriodTimeline, SourceChange};
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{transaction_categories, transactions};
 use crate::transaction_categories::{insert_import_categories, models::TransactionCategoryRow};
@@ -90,7 +90,14 @@ pub(super) async fn import_transactions(
                     .load::<TransactionRow>(conn)
                     .into_storage()?;
 
-                repair_transaction_budget_projections(conn, now, &[], &transactions_rows)?;
+                BudgetPeriodTimeline::reconcile(
+                    conn,
+                    SourceChange::Transactions {
+                        old: vec![],
+                        new: transactions_rows.clone(),
+                    },
+                    now,
+                )?;
                 let after = snapshot_active_budgets(conn, now)?;
                 let alerts = emit_budget_transition_alerts(
                     conn,
@@ -171,7 +178,14 @@ pub(super) async fn import_transactions_with_categories(
                 };
 
                 if !transactions_rows.is_empty() {
-                    repair_transaction_budget_projections(conn, now, &[], &transactions_rows)?;
+                    BudgetPeriodTimeline::reconcile(
+                        conn,
+                        SourceChange::Transactions {
+                            old: vec![],
+                            new: transactions_rows.clone(),
+                        },
+                        now,
+                    )?;
                 }
                 let after = snapshot_active_budgets(conn, now)?;
                 let alerts = emit_budget_transition_alerts(

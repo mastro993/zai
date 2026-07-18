@@ -1,4 +1,5 @@
 use super::BudgetsRepository;
+use crate::budgets::timeline::{BudgetPeriodTimeline, TimelineInspectEntry, TimelineSelection};
 use crate::connection::run_migrations;
 use crate::sql_statement_counter::ConnectionStatementCounter;
 use crate::test_utils::TempDb;
@@ -35,6 +36,7 @@ fn setup_with_clock(
     BudgetsRepository,
     TransactionsRepository,
     TransactionCategoriesRepository,
+    crate::write_actor::WriteHandle,
 ) {
     let manager = r2d2::ConnectionManager::<diesel::sqlite::SqliteConnection>::new(temp_db.path());
     let pool = Pool::builder().build(manager).expect("pool");
@@ -48,7 +50,8 @@ fn setup_with_clock(
             writer.clone(),
             Arc::clone(&clock),
         ),
-        TransactionCategoriesRepository::new_with_clock(pool, writer, clock),
+        TransactionCategoriesRepository::new_with_clock(Arc::clone(&pool), writer.clone(), clock),
+        writer,
     )
 }
 
@@ -85,26 +88,26 @@ async fn seed_current_budgets(
     ids
 }
 
-fn measure_list_projection_sql(db_path: &str, now: NaiveDateTime) -> (Vec<String>, usize) {
+fn measure_list_inspect_sql(db_path: &str, now: NaiveDateTime) -> (Vec<String>, usize) {
     let mut conn = diesel::SqliteConnection::establish(db_path).expect("connection");
     let counter = ConnectionStatementCounter::install(&mut conn);
-    let projected = super::super::list_projection::project_budget_list(
+    let inspect = BudgetPeriodTimeline::inspect(
         &mut conn,
-        BudgetListFilter::Active,
+        TimelineSelection::Filter(BudgetListFilter::Active),
         now,
     )
-    .expect("project budget list");
-    let ids = projected
+    .expect("inspect budget list");
+    let ids = inspect
+        .entries
         .into_iter()
-        .map(|(id, state)| {
-            assert!(
-                matches!(
-                    state,
-                    super::super::list_projection::ProjectionState::Current(_)
-                ),
-                "expected current projection for {id}"
-            );
-            id
+        .map(|entry| match entry {
+            TimelineInspectEntry::Current(budget) => {
+                assert!(!budget.id.is_empty(), "expected current budget id");
+                budget.id
+            }
+            TimelineInspectEntry::Stale { id } => {
+                panic!("expected current projection for {id}")
+            }
         })
         .collect();
     (ids, counter.count())
@@ -117,10 +120,10 @@ async fn current_budget_list_sql_count_is_bounded_independent_of_n() {
     let clock = Arc::new(ManualClock {
         now: Mutex::new(anchor),
     });
-    let (budgets, _, _) = setup_with_clock(&temp_db, clock);
+    let (budgets, _, _, _) = setup_with_clock(&temp_db, clock);
     let db_path = temp_db.path().to_string();
 
-    let (empty_ids, empty_statements) = measure_list_projection_sql(&db_path, anchor);
+    let (empty_ids, empty_statements) = measure_list_inspect_sql(&db_path, anchor);
     assert!(empty_ids.is_empty());
     assert!(
         empty_statements <= MAX_CURRENT_LIST_SQL_STATEMENTS,
@@ -148,7 +151,7 @@ async fn current_budget_list_sql_count_is_bounded_independent_of_n() {
         listed_one[0].current_period.remaining_allowance,
         detail_one.current_period.remaining_allowance
     );
-    let (one_ids, one_statements) = measure_list_projection_sql(&db_path, anchor);
+    let (one_ids, one_statements) = measure_list_inspect_sql(&db_path, anchor);
     assert_eq!(one_ids, vec!["stmt-budget-00".to_string()]);
     assert!(
         one_statements <= MAX_CURRENT_LIST_SQL_STATEMENTS,
@@ -156,7 +159,7 @@ async fn current_budget_list_sql_count_is_bounded_independent_of_n() {
     );
 
     seed_current_budgets(&budgets, 1, 9).await;
-    let (ten_ids, ten_statements) = measure_list_projection_sql(&db_path, anchor);
+    let (ten_ids, ten_statements) = measure_list_inspect_sql(&db_path, anchor);
     assert_eq!(ten_ids.len(), 10);
     assert_eq!(ten_ids[0], "stmt-budget-00");
     assert_eq!(ten_ids[9], "stmt-budget-09");
@@ -171,7 +174,7 @@ async fn current_budget_list_sql_count_is_bounded_independent_of_n() {
         .await
         .expect("list fifty");
     assert_eq!(listed_fifty.len(), 50);
-    let (fifty_ids, fifty_statements) = measure_list_projection_sql(&db_path, anchor);
+    let (fifty_ids, fifty_statements) = measure_list_inspect_sql(&db_path, anchor);
     assert_eq!(
         fifty_ids,
         (0..50)
@@ -195,7 +198,7 @@ async fn stale_budget_among_current_triggers_one_repair_path() {
     let clock = Arc::new(ManualClock {
         now: Mutex::new(anchor),
     });
-    let (budgets, _, _) = setup_with_clock(&temp_db, clock);
+    let (budgets, _, _, writer) = setup_with_clock(&temp_db, clock);
     seed_current_budgets(&budgets, 0, 10).await;
 
     let mut conn = diesel::SqliteConnection::establish(temp_db.path()).expect("connection");
@@ -203,46 +206,46 @@ async fn stale_budget_among_current_triggers_one_repair_path() {
         .execute(&mut conn)
         .expect("delete one result");
 
-    let before = super::super::list_projection::project_budget_list(
+    let before = BudgetPeriodTimeline::inspect(
         &mut conn,
-        BudgetListFilter::Active,
+        TimelineSelection::Filter(BudgetListFilter::Active),
         anchor,
     )
-    .expect("project before repair");
+    .expect("inspect before repair");
     let stale_before = before
+        .entries
         .iter()
-        .filter(|(_, state)| {
-            matches!(
-                state,
-                super::super::list_projection::ProjectionState::NeedsMaterialization
-            )
-        })
+        .filter(|entry| matches!(entry, TimelineInspectEntry::Stale { .. }))
         .count();
     assert_eq!(stale_before, 1, "only one budget should be stale");
 
+    writer.reset_exec_count();
     let listed = budgets
         .list_budgets(BudgetListFilter::Active)
         .await
         .expect("list with one stale");
+    assert_eq!(
+        writer.exec_count(),
+        1,
+        "stale list must use exactly one writer job"
+    );
     assert_eq!(listed.len(), 10);
     assert!(
         listed.iter().any(|budget| budget.id == "stmt-budget-03"),
         "stale budget should be repaired and returned"
     );
 
-    let after = super::super::list_projection::project_budget_list(
+    let after = BudgetPeriodTimeline::inspect(
         &mut diesel::SqliteConnection::establish(temp_db.path()).expect("connection"),
-        BudgetListFilter::Active,
+        TimelineSelection::Filter(BudgetListFilter::Active),
         anchor,
     )
-    .expect("project after repair");
+    .expect("inspect after repair");
     assert!(
-        after.iter().all(|(_, state)| {
-            matches!(
-                state,
-                super::super::list_projection::ProjectionState::Current(_)
-            )
-        }),
+        after
+            .entries
+            .iter()
+            .all(|entry| { matches!(entry, TimelineInspectEntry::Current(_)) }),
         "list repair should leave every budget current"
     );
 }
