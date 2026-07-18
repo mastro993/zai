@@ -190,6 +190,15 @@ mid-period uses the full containing period and full base allowance, includes
 matching transactions from before creation within that period, and has no
 predecessor from which to receive rollover.
 
+**Budget period timeline**:
+The ordered, gap-free sequence of a budget's calculated periods. For an active
+budget it begins with the period containing its creation and extends through the
+period current at the operation's observation time. It includes periods without
+matching transactions and periods elapsed while the budget is paused. A deleted
+budget retains its timeline without advancing it. Rollover makes later periods
+depend on earlier results, so correcting one period may change the timeline's
+suffix.
+
 **Closed budget period**:
 A budget period whose end boundary has passed. Its budget configuration is
 immutable, while corrections to source transactions may recalculate its result.
