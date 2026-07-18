@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { CommandError } from "../errors";
 import { decodeCommandValue } from "../decode-command-result";
-import { budgetSchema } from "@/features/cash-flow/types/budget";
+import { budgetSchema } from "@/features/budgets/types/budget";
 import { domainAlertListPageSchema } from "@/features/alerts/types/domain-alert";
 
 describe("decodeCommandValue", () => {

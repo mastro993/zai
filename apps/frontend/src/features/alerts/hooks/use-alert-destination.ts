@@ -2,7 +2,7 @@ import { Result } from "@praha/byethrow";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 
-import { getBudget } from "@/features/cash-flow/commands/budgets";
+import { getBudget } from "@/features/budgets/commands/budgets";
 
 import { markAlertRead } from "../commands/alerts";
 import { isNavigableAlertDestination, isUnreadAlert } from "../lib/parse";

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { BudgetStatus } from "@/features/cash-flow/types/budget";
+import type { BudgetStatus } from "@/features/budgets/types/budget";
 
 export const BUDGET_STATUS_RICH_KIND = "budget.status";
 export const BUDGET_STATUS_RICH_VERSION = 1;

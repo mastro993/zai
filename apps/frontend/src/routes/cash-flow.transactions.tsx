@@ -1,10 +1,10 @@
 import { Result } from "@praha/byethrow";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { getTransactionCategories } from "@/features/cash-flow/commands/transaction-categories";
-import { getTransactions } from "@/features/cash-flow/commands/transactions";
-import { DEFAULT_TRANSACTION_ROWS_PER_PAGE } from "@/features/cash-flow/lib/pagination";
-import { TransactionScreen } from "@/features/cash-flow/screens/transaction-screen";
+import { getTransactionCategories } from "@/features/categories/commands/transaction-categories";
+import { getTransactions } from "@/features/transactions/commands/transactions";
+import { DEFAULT_TRANSACTION_ROWS_PER_PAGE } from "@/features/transactions/lib/pagination";
+import { TransactionScreen } from "@/features/transactions/screens/transaction-screen";
 
 export const Route = createFileRoute("/cash-flow/transactions")({
   loader: async () => {
