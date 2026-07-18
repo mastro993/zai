@@ -206,6 +206,7 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
             key={actions.formMode.type === "edit" ? actions.formMode.transaction.id : "create"}
             mode={actions.formMode}
             categories={controller.categories}
+            open={actions.isFormDrawerOpen}
             onSubmit={actions.submitTransaction}
           />
         ) : null}
