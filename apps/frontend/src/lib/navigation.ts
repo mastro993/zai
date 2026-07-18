@@ -31,6 +31,7 @@ export const navigationItems = [
     icon: TransactionHistoryIcon,
     subItems: [
       { title: "Transactions", to: "/cash-flow/transactions" },
+      { title: "Recurring", to: "/cash-flow/recurring" },
       { title: "Budgets", to: "/cash-flow/budgets" },
       { title: "Categories", to: "/cash-flow/categories" },
     ],

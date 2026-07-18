@@ -27,9 +27,10 @@ describe("resolveScreenBreadcrumbs", () => {
 });
 
 describe("cash flow navigation", () => {
-  it("places budgets between transactions and categories", () => {
+  it("places recurring between transactions and budgets", () => {
     expect(cashFlowNavigation?.subItems?.map((item) => item.title)).toEqual([
       "Transactions",
+      "Recurring",
       "Budgets",
       "Categories",
     ]);
