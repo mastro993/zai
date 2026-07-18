@@ -14,7 +14,7 @@ use super::read::category_from_row;
 use super::repository::TransactionCategoriesRepository;
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_budgets_by_ids};
 use crate::budgets::category_impact::analyze_deletion;
-use crate::budgets::projection::{rebuild_budget_projections, refresh_active_budget_projections};
+use crate::budgets::timeline::{BudgetPeriodTimeline, SourceChange};
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{transaction_categories, transactions};
 
@@ -33,7 +33,6 @@ pub(super) async fn delete_categories(
             move |conn: &mut SqliteConnection| -> crate::errors::Result<
                 CommittedOutcome<Vec<TransactionCategory>>,
             > {
-                refresh_active_budget_projections(conn, now)?;
                 let impact = analyze_deletion(
                     conn,
                     &owned_ids,
@@ -105,7 +104,13 @@ pub(super) async fn delete_categories(
                     .into_iter()
                     .map(category_from_row)
                     .collect::<crate::errors::Result<Vec<_>>>()?;
-                rebuild_budget_projections(conn, &affected_ids)?;
+                BudgetPeriodTimeline::reconcile(
+                    conn,
+                    SourceChange::CategoriesAffected {
+                        budget_ids: affected_ids.clone(),
+                    },
+                    now,
+                )?;
                 let after = snapshot_budgets_by_ids(conn, &affected_ids, now)?;
                 let alerts = emit_budget_transition_alerts(
                     conn,

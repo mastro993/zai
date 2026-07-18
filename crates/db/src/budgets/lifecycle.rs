@@ -1,5 +1,5 @@
 use super::models::BudgetRow;
-use super::projection::materialize_budget;
+use super::timeline::load_current_or_ensure;
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::budgets;
 use chrono::NaiveDateTime;
@@ -27,13 +27,7 @@ pub(super) fn set_budget_paused(
         }));
     }
 
-    let mut budget = match super::list_projection::projected_budget_from_connection(conn, id, now)?
-    {
-        super::list_projection::ProjectionState::Current(budget) => budget,
-        super::list_projection::ProjectionState::NeedsMaterialization => {
-            materialize_budget(conn, id, now)?
-        }
-    };
+    let mut budget = load_current_or_ensure(conn, id, now)?;
     let revision = stored.revision.checked_add(1).ok_or_else(|| {
         StorageError::CoreError(Error::InvalidData("Budget revision overflow".to_string()))
     })?;

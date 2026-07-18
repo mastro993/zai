@@ -11,7 +11,7 @@ use zai_core::features::transactions::models::Transaction;
 use super::models::TransactionRow;
 use super::repository::TransactionsRepository;
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budgets};
-use crate::budgets::repair_transaction_budget_projections;
+use crate::budgets::timeline::{BudgetPeriodTimeline, SourceChange};
 use crate::errors::IntoStorage;
 use crate::schema::transactions;
 
@@ -49,11 +49,13 @@ pub(super) async fn delete_transaction(
                     .first::<TransactionRow>(conn)
                     .into_storage()?;
 
-                repair_transaction_budget_projections(
+                BudgetPeriodTimeline::reconcile(
                     conn,
+                    SourceChange::Transactions {
+                        old: vec![existing.clone()],
+                        new: vec![deleted.clone()],
+                    },
                     now,
-                    std::slice::from_ref(&existing),
-                    std::slice::from_ref(&deleted),
                 )?;
                 let after = snapshot_active_budgets(conn, now)?;
                 let alerts = emit_budget_transition_alerts(
@@ -106,7 +108,14 @@ pub(super) async fn delete_transactions(
 
                 let deleted_transactions: Vec<Transaction> =
                     deleted.iter().cloned().map(Transaction::from).collect();
-                repair_transaction_budget_projections(conn, now, &existing, &deleted)?;
+                BudgetPeriodTimeline::reconcile(
+                    conn,
+                    SourceChange::Transactions {
+                        old: existing.clone(),
+                        new: deleted.clone(),
+                    },
+                    now,
+                )?;
                 let after = snapshot_active_budgets(conn, now)?;
                 let alerts = emit_budget_transition_alerts(
                     conn,

@@ -4,11 +4,7 @@ pub(crate) mod category_impact;
 mod edit;
 mod history;
 mod lifecycle;
-mod list_projection;
 mod models;
-pub(crate) mod projection;
-mod projection_persistence;
-mod repair;
 mod repository;
 #[cfg(test)]
 mod repository_alert_tests;
@@ -16,7 +12,6 @@ mod repository_alert_tests;
 mod repository_delete_tests;
 #[cfg(test)]
 mod repository_tests;
+pub(crate) mod timeline;
 
 pub use repository::BudgetsRepository;
-
-pub(crate) use repair::repair_transaction_budget_projections;
