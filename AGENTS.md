@@ -77,7 +77,7 @@ See `apps/frontend/AGENTS.md` for frontend-specific conventions.
 
 1. **Frontend route/UI** → `apps/frontend/src/routes/`
 2. **Command wrapper** → `apps/frontend/src/commands/` or
-   `features/<feature>/commands/`
+   `apps/frontend/src/features/<feature>/commands/`
 3. **Tauri command** → `apps/tauri/src/commands/*.rs`, wire in `mod.rs` +
    `lib.rs`
 4. **Web endpoint** → `apps/server/src/api/`, call `crates/core` service
@@ -96,6 +96,8 @@ See `apps/frontend/AGENTS.md` for frontend-specific conventions.
 
 ```json
 Frontend command wrapper → invokeCommand → Tauri IPC
+                ↓
+            crates/app (wiring)
                 ↓
             crates/core (business logic)
                 ↓
