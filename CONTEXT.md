@@ -62,6 +62,12 @@ configuration or recalculating results.
 The fixed calendar unit—day, week, month, or year—that defines a budget's
 periods for its entire lifetime.
 
+**Budget time zone**:
+The explicitly captured IANA zone that determines a budget's local-calendar
+period boundaries for its entire lifetime. Actual and projected transaction
+matching use those same boundaries, and device time-zone changes do not alter
+them.
+
 **Budget configuration**:
 The allowance, scope, measurement mode, rollover mode, and warning threshold
 used to calculate a budget period. Each period has one effective configuration:
@@ -156,6 +162,11 @@ alert because no transaction was automatically inserted.
 A future occurrence computed from an active recurring transaction for forecasting.
 It may contribute to a budget projection but does not affect actual transactions,
 budget results, statuses, rollover, or alerts until it becomes due and fulfilled.
+
+**Budget projection**:
+A snapshot-derived forecast over an explicit bounded future window. It combines
+persisted budget activity with projected occurrences and may derive hypothetical
+rollover and status without changing actual budget state or emitting alerts.
 
 **Recurring occurrence alert**:
 The durable domain alert created with one automatically generated occurrence. It
