@@ -1,12 +1,12 @@
 import { Result } from "@praha/byethrow";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { getBudget, getBudgetHistory } from "@/features/cash-flow/commands/budgets";
-import { getTransactionCategories } from "@/features/cash-flow/commands/transaction-categories";
-import { BudgetDetailScreen } from "@/features/cash-flow/screens/budget-detail-screen";
-import { BudgetErrorScreen } from "@/features/cash-flow/screens/budget-screen";
-import type { Budget, BudgetHistory } from "@/features/cash-flow/types/budget";
-import type { TransactionCategory } from "@/features/cash-flow/types/model";
+import { getBudget, getBudgetHistory } from "@/features/budgets/commands/budgets";
+import { getTransactionCategories } from "@/features/categories/commands/transaction-categories";
+import { BudgetDetailScreen } from "@/features/budgets/screens/budget-detail-screen";
+import { BudgetErrorScreen } from "@/features/budgets/screens/budget-screen";
+import type { Budget, BudgetHistory } from "@/features/budgets/types/budget";
+import type { TransactionCategory } from "@/features/categories/types/model";
 
 export interface BudgetDetailRouteData {
   budget?: Budget;

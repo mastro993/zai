@@ -199,15 +199,15 @@ No new Wayfinder tickets are needed from this endpoint decision.
 ## Sources
 
 - `apps/frontend/src/commands/shared.ts`
-- `apps/frontend/src/features/cash-flow/commands/transaction-categories.ts`
-- `apps/frontend/src/features/cash-flow/commands/transactions.ts`
-- `apps/frontend/src/features/cash-flow/commands/category-import.ts`
-- `apps/frontend/src/features/cash-flow/commands/transaction-import.ts`
-- `apps/frontend/src/features/cash-flow/commands/category-export.ts`
-- `apps/frontend/src/features/cash-flow/commands/transaction-export.ts`
-- `apps/frontend/src/features/cash-flow/lib/category-import.ts`
-- `apps/frontend/src/features/cash-flow/lib/transaction-import.ts`
-- `apps/frontend/src/features/cash-flow/types/model.ts`
+- `apps/frontend/src/features/categories/commands/transaction-categories.ts`
+- `apps/frontend/src/features/transactions/commands/transactions.ts`
+- `apps/frontend/src/features/categories/commands/category-import.ts`
+- `apps/frontend/src/features/transactions/commands/transaction-import.ts`
+- `apps/frontend/src/features/categories/commands/category-export.ts`
+- `apps/frontend/src/features/transactions/commands/transaction-export.ts`
+- `apps/frontend/src/features/categories/lib/category-import.ts`
+- `apps/frontend/src/features/transactions/lib/transaction-import.ts`
+- `apps/frontend/src/features/categories/types/model.ts and apps/frontend/src/features/transactions/types/model.ts`
 - `apps/tauri/src/commands/transaction_categories.rs`
 - `apps/tauri/src/commands/transactions.rs`
 - `apps/tauri/src/lib.rs`

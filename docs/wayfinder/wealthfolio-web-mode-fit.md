@@ -25,7 +25,7 @@ Wealthfolio selects desktop versus web at build time with a Vite alias keyed by 
 
 For Zai, keep it smaller than Wealthfolio:
 
-- Keep feature-level command wrappers in `apps/frontend/src/features/cash-flow/commands/`.
+- Keep feature-level command wrappers in `apps/frontend/src/features/<feature>/commands/`.
 - Change the shared command plumbing behind `invokeCommand` rather than introducing a large `src/adapters` surface immediately.
 - Introduce a build target such as `BUILD_TARGET=tauri|web`.
 - Alias only the command transport module at first, for example a Tauri implementation and a web implementation that both export `invokeCommand<T>(command, args): CommandResult<T>`.
@@ -174,12 +174,12 @@ Wealthfolio at commit `659d776980718e70ec4d669a086ddebefa82530f`:
 Zai local sources:
 
 - `apps/frontend/src/commands/shared.ts`
-- `apps/frontend/src/features/cash-flow/commands/transaction-categories.ts`
-- `apps/frontend/src/features/cash-flow/commands/transactions.ts`
-- `apps/frontend/src/features/cash-flow/commands/category-import.ts`
-- `apps/frontend/src/features/cash-flow/commands/transaction-import.ts`
-- `apps/frontend/src/features/cash-flow/commands/category-export.ts`
-- `apps/frontend/src/features/cash-flow/commands/transaction-export.ts`
+- `apps/frontend/src/features/categories/commands/transaction-categories.ts`
+- `apps/frontend/src/features/transactions/commands/transactions.ts`
+- `apps/frontend/src/features/categories/commands/category-import.ts`
+- `apps/frontend/src/features/transactions/commands/transaction-import.ts`
+- `apps/frontend/src/features/categories/commands/category-export.ts`
+- `apps/frontend/src/features/transactions/commands/transaction-export.ts`
 - `apps/frontend/vite.config.ts`
 - `apps/tauri/src/context/providers.rs`
 - `apps/tauri/src/context/registry.rs`

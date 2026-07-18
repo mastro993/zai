@@ -44,7 +44,7 @@ vi.mock("../commands/alerts", () => ({
   markAlertUnread: (...args: Array<unknown>) => markAlertUnread(...args),
 }));
 
-vi.mock("@/features/cash-flow/commands/budgets", () => ({
+vi.mock("@/features/budgets/commands/budgets", () => ({
   getBudget: (...args: Array<unknown>) => getBudget(...args),
 }));
 

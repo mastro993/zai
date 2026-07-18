@@ -1,8 +1,8 @@
 import { Result } from "@praha/byethrow";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { getTransactionCategories } from "@/features/cash-flow/commands/transaction-categories";
-import { CategoryScreen } from "@/features/cash-flow/screens/category-screen";
+import { getTransactionCategories } from "@/features/categories/commands/transaction-categories";
+import { CategoryScreen } from "@/features/categories/screens/category-screen";
 
 export const Route = createFileRoute("/cash-flow/categories")({
   loader: async () => {

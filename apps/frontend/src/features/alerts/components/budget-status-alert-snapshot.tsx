@@ -3,7 +3,7 @@ import {
   budgetStatusLabel,
   budgetStatusVariant,
   formatBudgetPeriod,
-} from "@/features/cash-flow/lib/budget";
+} from "@/features/budgets/lib/budget";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 
 import {
