@@ -28,8 +28,8 @@ To run the project from source, follow the development instructions below.
 ### Desktop quick start
 
 ```bash
-git clone https://github.com/mastro993/zai-app.git
-cd zai-app
+git clone https://github.com/mastro993/zai.git
+cd zai
 pnpm install --frozen-lockfile
 pnpm dev:tauri
 ```

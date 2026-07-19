@@ -15,7 +15,7 @@ Zai is unfinished alpha software (`0.0.1-alpha.1` at the time of writing). There
 
 Report security issues privately through GitHub Security Advisories:
 
-<https://github.com/mastro993/zai-app/security/advisories/new>
+<https://github.com/mastro993/zai/security/advisories/new>
 
 ## What to Include
 

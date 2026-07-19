@@ -23,8 +23,8 @@ Every contribution should respect the project pillars:
 ## Installation
 
 ```sh
-git clone https://github.com/mastro993/zai-app.git
-cd zai-app
+git clone https://github.com/mastro993/zai.git
+cd zai
 pnpm install
 ```
 
