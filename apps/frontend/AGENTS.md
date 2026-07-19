@@ -18,12 +18,18 @@ pnpm --filter frontend generate-routes  # Regenerate src/routeTree.gen.ts
 pnpm --filter frontend build
 ```
 
-## Key files
+## Structure
 
 ```json
 apps/frontend/
 ├── src/
 │   ├── routes/           # File-based routes (__root.tsx, index.tsx, …)
+│   ├── components/       # Shared components
+│   │   └── ui/           # Shadcn components (do not touch)
+│   ├── features/         # Self-contained feature modules
+│   ├── commands/         # Shared invokeCommand plumbing
+│   ├── lib/              # Primitives and utilities
+│   ├── types/            # Shared types
 │   ├── routeTree.gen.ts  # Generated — run generate-routes after route changes
 │   ├── main.tsx          # SPA entry (RouterProvider)
 │   ├── router.tsx        # Router factory + type registration

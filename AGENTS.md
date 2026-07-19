@@ -45,28 +45,15 @@ trade-off is unavoidable, state it explicitly.
 ## Project structure
 
 ```json
-apps/frontend/src/
-├── routes/               # TanStack file-based route pages
-├── components/           # Shared components
-│   └── ui/               # Shadcn components (do not touch)
-├── features/             # Self-contained feature modules
-│   └── <feature>/
-│       ├── types/        # Zod schemas and inferred types
-│       └── commands/     # Feature-specific command wrappers
-├── commands/             # Shared invokeCommand plumbing
-├── lib/                  # Primitives and utilities
-└── types/                # Shared types
-
-apps/tauri/src/
-└── commands/             # Tauri IPC commands
-
-apps/server/src/
-└── api/                  # Axum HTTP handlers
+apps/
+├── frontend/         # Frontend app, Typescript, React, Tanstack Router
+├── tauri/            # Tauri IPC commands
+└── server/           # Axum HTTP handlers
 
 crates/
-├── app/                  # Context initialization
-├── core/                 # Business logic, models, services
-└── db/                   # Diesel ORM, repositories, migrations
+├── app/              # Context initialization
+├── core/             # Business logic, models, services
+└── db/               # Diesel ORM, repositories, migrations
 ```
 
 See `apps/frontend/AGENTS.md` for frontend-specific conventions.
