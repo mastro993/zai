@@ -31,9 +31,11 @@ cd zai-app
 pnpm install --frozen-lockfile
 pnpm dev:tauri
 ```
+
 `pnpm install` also installs the repository’s Lefthook Git hooks.
 
 ### Local web development
+
 Web mode exists for development and transport verification. The Axum server is
 restricted to loopback addresses and is not intended for hosted or remote use yet
 
@@ -51,10 +53,12 @@ cp .env.web.example .env.web
 Then configure `ZAI_DATA_DIR` in `.env.web`.
 
 ## Data, privacy and backups
+
 Desktop data is stored in a local SQLite database named zai.db under the
 operating system’s application-data directory.
 
 The current alpha:
+
 - does not include cloud sync, bank connections, or telemetry;
 - does not encrypt the SQLite database at rest;
 - does not provide automatic full-database backup and restore;
@@ -63,7 +67,7 @@ The current alpha:
 Back up important source data independently. Never attach a real Zai database,
 financial statement, or unredacted log to a public issue.
 
-##  Contributing
+## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. By
 participating, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
