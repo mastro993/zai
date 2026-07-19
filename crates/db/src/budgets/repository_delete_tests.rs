@@ -1,5 +1,5 @@
 use super::BudgetsRepository;
-use crate::budgets::projection::rebuild_budget_projections;
+use crate::budgets::timeline::{BudgetPeriodTimeline, SourceChange};
 use crate::connection::run_migrations;
 use crate::schema::{budget_configurations, budget_period_results, budgets};
 use crate::test_utils::TempDb;
@@ -300,8 +300,14 @@ async fn tombstoned_budget_is_excluded_from_category_safeguards_and_repair() {
             .expect("retained result"),
         0
     );
-    rebuild_budget_projections(&mut conn, &["excluded".to_string()])
-        .expect("tombstoned budget must be skipped by rebuild");
+    BudgetPeriodTimeline::reconcile(
+        &mut conn,
+        SourceChange::CategoriesAffected {
+            budget_ids: vec!["excluded".to_string()],
+        },
+        january,
+    )
+    .expect("tombstoned budget must be skipped by rebuild");
     assert_eq!(
         budget_period_results::table
             .filter(budget_period_results::budget_id.eq("excluded"))

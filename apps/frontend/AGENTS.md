@@ -62,15 +62,16 @@ src/features/<feature>/
 3. **Intent skills**: TanStack Router skills appear in `intent list` only after their packages are installed in `apps/frontend`.
 4. **Devtools**: `@tanstack/devtools-vite` strips devtools from production builds automatically.
 
-<!-- intent-skills:start -->
+## Skill loading
 
-## Skill Loading
+Before editing files for a substantial routing or frontend-framework task:
 
-Before editing files for a substantial task:
-
-- Run `pnpm dlx @tanstack/intent@latest list` from the workspace root to see available local skills.
-- If a listed skill matches the task, run `pnpm dlx @tanstack/intent@latest load <package>#<skill>` before changing files.
-- Use the loaded `SKILL.md` guidance while making the change.
-- Monorepos: when working across packages, run the skill check from the workspace root and prefer the local skill for the package being changed.
-- Multiple matches: prefer the most specific local skill for the package or concern you are changing; load additional skills only when the task spans multiple packages or concerns.
-<!-- intent-skills:end -->
+- Consult the reviewed local skill first:
+  `.agents/skills/tanstack-router/SKILL.md` (also linked from
+  `.claude/skills/tanstack-router`).
+- Prefer other checked-in skills under `.agents/skills/` when they match the
+  task. See `docs/agents/skill-provenance.md` for layout and trust rules.
+- Do not run unpinned remote skill loaders (for example
+  `pnpm dlx @tanstack/intent@latest`). If remote package execution is genuinely
+  required, use an explicitly reviewed pinned version and obtain operator
+  approval before running it.

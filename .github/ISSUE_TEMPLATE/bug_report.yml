@@ -59,9 +59,19 @@ body:
     id: logs
     attributes:
       label: Logs or screenshots
-      description: Redact financial data and secrets. Paste errors or attach screenshots.
+      description: Use synthetic or fully redacted data only. Never attach real databases, statements, exports, credentials, tokens, or unredacted financial logs.
     validations:
       required: false
+
+  - type: checkboxes
+    id: privacy-acknowledgement
+    attributes:
+      label: Privacy acknowledgement
+      description: Required before submitting.
+      options:
+        - label: I confirm that examples, logs, screenshots, and attachments use synthetic or fully redacted data only (no real financial data, credentials, or secrets).
+    validations:
+      required: true
 
   - type: textarea
     id: context

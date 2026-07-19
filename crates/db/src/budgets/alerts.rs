@@ -1,6 +1,8 @@
-use super::list_projection::{ProjectionState, projected_budget_from_connection};
 use super::models::BudgetRow;
-use super::projection::materialize_budget_silent;
+use super::timeline::{
+    BudgetPeriodTimeline, InspectState, TimelineChange, TimelineInspectEntry, TimelineSelection,
+    inspect_budget, load_current_or_ensure,
+};
 use crate::domain_alerts::insert_domain_alert;
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{budgets, domain_alerts};
@@ -28,16 +30,46 @@ pub(crate) fn snapshot_active_budgets(
     conn: &mut SqliteConnection,
     now: NaiveDateTime,
 ) -> crate::errors::Result<HashMap<String, BudgetAlertSnapshot>> {
-    let rows = budgets::table
-        .filter(budgets::deleted_at.is_null())
-        .filter(budgets::paused.eq(false))
-        .load::<BudgetRow>(conn)
-        .into_storage()?;
+    let inspect = BudgetPeriodTimeline::inspect(
+        conn,
+        TimelineSelection::Filter(zai_core::features::budgets::models::BudgetListFilter::Active),
+        now,
+    )?;
+    let stale_ids = inspect.stale_ids();
+    let mut snapshots: HashMap<String, BudgetAlertSnapshot> = inspect
+        .entries
+        .into_iter()
+        .filter_map(|entry| match entry {
+            TimelineInspectEntry::Current(budget) if !budget.paused => Some((
+                budget.id.clone(),
+                BudgetAlertSnapshot {
+                    id: budget.id.clone(),
+                    name: budget.name.clone(),
+                    paused: budget.paused,
+                    period_start: budget.current_period.start,
+                    period: budget.current_period.clone(),
+                },
+            )),
+            _ => None,
+        })
+        .collect();
 
-    let mut snapshots = HashMap::new();
-    for row in rows {
-        if let Some(snapshot) = snapshot_budget(conn, &row.id, now)? {
-            snapshots.insert(snapshot.id.clone(), snapshot);
+    if !stale_ids.is_empty() {
+        let (budgets, _) = BudgetPeriodTimeline::ensure_current(conn, &stale_ids, now)?;
+        for budget in budgets {
+            if budget.paused {
+                continue;
+            }
+            snapshots.insert(
+                budget.id.clone(),
+                BudgetAlertSnapshot {
+                    id: budget.id.clone(),
+                    name: budget.name.clone(),
+                    paused: budget.paused,
+                    period_start: budget.current_period.start,
+                    period: budget.current_period.clone(),
+                },
+            );
         }
     }
     Ok(snapshots)
@@ -61,9 +93,9 @@ pub(crate) fn snapshot_budget(
         return Ok(None);
     }
 
-    let budget = match projected_budget_from_connection(conn, budget_id, now)? {
-        ProjectionState::Current(budget) => budget,
-        ProjectionState::NeedsMaterialization => materialize_budget_silent(conn, budget_id, now)?,
+    let budget = match inspect_budget(conn, budget_id, now)? {
+        InspectState::Current(budget) => budget,
+        InspectState::Stale => load_current_or_ensure(conn, budget_id, now)?,
     };
 
     Ok(Some(BudgetAlertSnapshot {
@@ -87,6 +119,49 @@ pub(crate) fn snapshot_budgets_by_ids(
         }
     }
     Ok(snapshots)
+}
+
+pub(crate) fn emit_timeline_transition_alerts(
+    conn: &mut SqliteConnection,
+    changes: &[TimelineChange],
+    budgets: &[Budget],
+) -> crate::errors::Result<Vec<AlertInsertOutcome>> {
+    let budgets_by_id = budgets
+        .iter()
+        .map(|budget| (budget.id.clone(), budget))
+        .collect::<HashMap<_, _>>();
+    let mut outcomes = Vec::new();
+    for change in changes {
+        let Some(budget) = budgets_by_id.get(&change.budget_id) else {
+            continue;
+        };
+        if budget.paused {
+            continue;
+        }
+        // First materialization has no previous current period; stay silent.
+        let Some(previous) = &change.previous_current else {
+            continue;
+        };
+        let scenario = if previous.start == change.resulting_current.start {
+            BudgetAlertScenario::SamePeriodTransition {
+                before: previous.status,
+                after: change.resulting_current.status,
+            }
+        } else {
+            BudgetAlertScenario::PeriodAdvancement {
+                final_status: change.resulting_current.status,
+            }
+        };
+        outcomes.extend(emit_budget_alert(
+            conn,
+            BudgetAlertMode::Transition,
+            scenario,
+            &budget.id,
+            &budget.name,
+            &change.resulting_current,
+        )?);
+    }
+    Ok(outcomes)
 }
 
 pub(crate) fn emit_budget_transition_alerts(

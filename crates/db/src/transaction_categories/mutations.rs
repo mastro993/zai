@@ -18,7 +18,7 @@ use super::validation::{
 };
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_budgets_by_ids};
 use crate::budgets::category_impact::affected_budgets_for_update;
-use crate::budgets::projection::{rebuild_budget_projections, refresh_active_budget_projections};
+use crate::budgets::timeline::{BudgetPeriodTimeline, SourceChange};
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::transaction_categories;
 
@@ -92,7 +92,6 @@ pub(super) async fn update_category(
                 let structural_change =
                     existing.parent_id != changeset.parent_id || existing.role != changeset.role;
                 let affected_budgets = if structural_change {
-                    refresh_active_budget_projections(conn, now)?;
                     affected_budgets_for_update(
                         conn,
                         &category_id,
@@ -166,7 +165,13 @@ pub(super) async fn update_category(
 
                 let category = category_from_rows(category_row, parent_row)?;
                 if structural_change {
-                    rebuild_budget_projections(conn, &affected_ids)?;
+                    BudgetPeriodTimeline::reconcile(
+                        conn,
+                        SourceChange::CategoriesAffected {
+                            budget_ids: affected_ids.clone(),
+                        },
+                        now,
+                    )?;
                 }
                 let after = snapshot_budgets_by_ids(conn, &affected_ids, now)?;
                 let alerts = if structural_change {
