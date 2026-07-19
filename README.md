@@ -56,7 +56,7 @@ Then configure `ZAI_DATA_DIR` in `.env.web`.
 
 ## Data, privacy and backups
 
-Desktop data is stored in a local SQLite database named zai.db under the
+Desktop data is stored in a local SQLite database named `zai.db` under the
 operating system’s application-data directory.
 
 The current alpha:
