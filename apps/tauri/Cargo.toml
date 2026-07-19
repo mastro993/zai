@@ -5,6 +5,7 @@ description = "Your personal finance app"
 authors = ["fedemas"]
 edition.workspace = true
 license.workspace = true
+publish.workspace = true
 
 [lib]
 name = "zai_app_lib"
