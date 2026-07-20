@@ -1,6 +1,7 @@
 use crate::budgets::BudgetsRepository;
 use crate::domain_alerts::DomainAlertsRepository;
 use crate::errors::{IntoCore, StorageError};
+use crate::recurring_transactions::RecurringTransactionsRepository;
 use crate::transaction_categories::TransactionCategoriesRepository;
 use crate::transactions::TransactionsRepository;
 use crate::write_actor::{WriteHandle, spawn_writer};
@@ -72,6 +73,13 @@ impl Database {
             Arc::clone(&self.pool),
             self.writer.clone(),
             self.domain_alert_event_bus.clone(),
+        ))
+    }
+
+    pub fn recurring_transactions_repository(&self) -> Arc<RecurringTransactionsRepository> {
+        Arc::new(RecurringTransactionsRepository::new(
+            Arc::clone(&self.pool),
+            self.writer.clone(),
         ))
     }
 

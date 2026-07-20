@@ -16,7 +16,12 @@ fn sample_alert() -> DomainAlert {
             .unwrap()
             .and_hms_opt(12, 0, 0)
             .unwrap(),
+        updated_at: NaiveDate::from_ymd_opt(2026, 7, 14)
+            .unwrap()
+            .and_hms_opt(12, 0, 0)
+            .unwrap(),
         read_at: None,
+        resolved_at: None,
     }
 }
 

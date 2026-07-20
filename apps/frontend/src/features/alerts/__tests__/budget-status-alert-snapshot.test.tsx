@@ -21,6 +21,7 @@ const baseAlert: DomainAlert = {
   title: "Groceries is overspent",
   body: "Net budget spending exceeded the effective allowance for the budget period starting 2026-07-01.",
   createdAt: "2026-07-14T10:00:00",
+  updatedAt: "2026-07-14T10:00:00",
   readAt: null,
   destination: {
     type: "budget",

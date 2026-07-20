@@ -31,7 +31,9 @@ pub fn list_domain_alerts(
     db_query = match read_state {
         DomainAlertReadState::All => db_query,
         DomainAlertReadState::Read => db_query.filter(domain_alerts::read_at.is_not_null()),
-        DomainAlertReadState::Unread => db_query.filter(domain_alerts::read_at.is_null()),
+        DomainAlertReadState::Unread => db_query
+            .filter(domain_alerts::read_at.is_null())
+            .filter(domain_alerts::resolved_at.is_null()),
     };
     if let Some(severity_values) = &severities {
         db_query = db_query.filter(domain_alerts::severity.eq_any(severity_values));
@@ -74,6 +76,7 @@ pub fn list_domain_alerts(
 pub fn unread_domain_alert_count(conn: &mut SqliteConnection) -> Result<i64> {
     domain_alerts::table
         .filter(domain_alerts::read_at.is_null())
+        .filter(domain_alerts::resolved_at.is_null())
         .select(count_star())
         .first::<i64>(conn)
         .into_core()

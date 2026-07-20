@@ -233,7 +233,12 @@ fn domain_alert_model_round_trips_serialization() {
             .unwrap()
             .and_hms_opt(12, 0, 0)
             .unwrap(),
+        updated_at: chrono::NaiveDate::from_ymd_opt(2026, 7, 14)
+            .unwrap()
+            .and_hms_opt(12, 0, 0)
+            .unwrap(),
         read_at: None,
+        resolved_at: None,
     };
 
     let serialized = serde_json::to_string(&alert).expect("serialize");

@@ -87,9 +87,115 @@ diesel::table! {
         destination -> Nullable<Text>,
         data -> Nullable<Text>,
         created_at -> Timestamp,
+        updated_at -> Timestamp,
         read_at -> Nullable<Timestamp>,
+        resolved_at -> Nullable<Timestamp>,
     }
 }
+
+diesel::table! {
+    recurring_transactions (id) {
+        id -> Text,
+        name -> Text,
+        lifecycle -> Text,
+        total_occurrences -> Nullable<Integer>,
+        fulfilled_count -> Integer,
+        revision -> Integer,
+        lifecycle_changed_at -> Timestamp,
+        paused_at -> Nullable<Timestamp>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+        deleted_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    recurring_schedule_revisions (id) {
+        id -> Text,
+        recurring_transaction_id -> Text,
+        sequence -> Integer,
+        effective_from_local -> Timestamp,
+        effective_until_local -> Nullable<Timestamp>,
+        first_scheduled_local -> Timestamp,
+        interval_every -> Nullable<Integer>,
+        interval_unit -> Nullable<Text>,
+        monthly_day -> Nullable<Integer>,
+    }
+}
+
+diesel::table! {
+    recurring_template_revisions (id) {
+        id -> Text,
+        recurring_transaction_id -> Text,
+        sequence -> Integer,
+        effective_from_local -> Timestamp,
+        effective_until_local -> Nullable<Timestamp>,
+        description -> Nullable<Text>,
+        amount -> Integer,
+        transaction_type -> Text,
+        transaction_category_id -> Nullable<Text>,
+        notes -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    recurring_occurrence_heads (recurring_transaction_id) {
+        recurring_transaction_id -> Text,
+        schedule_revision_id -> Text,
+        next_ordinal -> Integer,
+        next_scheduled_local -> Timestamp,
+    }
+}
+
+diesel::table! {
+    recurring_occurrences (recurring_transaction_id, schedule_revision_id, ordinal) {
+        recurring_transaction_id -> Text,
+        schedule_revision_id -> Text,
+        ordinal -> Integer,
+        scheduled_local -> Timestamp,
+        template_revision_id -> Text,
+        fulfilled_at -> Timestamp,
+        fulfillment_position -> Integer,
+        transaction_id -> Text,
+        fulfillment_kind -> Text,
+        recurring_alert_id -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    recurring_generation_failures (recurring_transaction_id, schedule_revision_id, ordinal) {
+        recurring_transaction_id -> Text,
+        schedule_revision_id -> Text,
+        ordinal -> Integer,
+        error_code -> Text,
+        cause_category -> Text,
+        repair_field_key -> Nullable<Text>,
+        correlation_id -> Text,
+        failed_scheduled_local -> Timestamp,
+        first_failed_at -> Timestamp,
+        last_failed_at -> Timestamp,
+        attempt_count -> Integer,
+        repaired_at -> Nullable<Timestamp>,
+        repair_revision -> Nullable<Integer>,
+        resolved_at -> Nullable<Timestamp>,
+        resolution_kind -> Nullable<Text>,
+        generation_failure_alert_id -> Text,
+    }
+}
+
+diesel::joinable!(recurring_schedule_revisions -> recurring_transactions (recurring_transaction_id));
+diesel::joinable!(recurring_template_revisions -> recurring_transactions (recurring_transaction_id));
+diesel::joinable!(recurring_occurrence_heads -> recurring_transactions (recurring_transaction_id));
+diesel::joinable!(recurring_occurrence_heads -> recurring_schedule_revisions (schedule_revision_id));
+diesel::joinable!(recurring_occurrences -> recurring_transactions (recurring_transaction_id));
+diesel::joinable!(recurring_occurrences -> recurring_schedule_revisions (schedule_revision_id));
+diesel::joinable!(recurring_occurrences -> recurring_template_revisions (template_revision_id));
+diesel::joinable!(recurring_occurrences -> transactions (transaction_id));
+diesel::joinable!(recurring_occurrences -> domain_alerts (recurring_alert_id));
+diesel::joinable!(recurring_generation_failures -> recurring_transactions (recurring_transaction_id));
+diesel::joinable!(recurring_generation_failures -> recurring_schedule_revisions (schedule_revision_id));
+diesel::joinable!(recurring_generation_failures -> domain_alerts (generation_failure_alert_id));
+diesel::joinable!(recurring_template_revisions -> transaction_categories (transaction_category_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     transaction_categories,
@@ -98,4 +204,10 @@ diesel::allow_tables_to_appear_in_same_query!(
     budget_period_results,
     budgets,
     domain_alerts,
+    recurring_transactions,
+    recurring_schedule_revisions,
+    recurring_template_revisions,
+    recurring_occurrence_heads,
+    recurring_occurrences,
+    recurring_generation_failures,
 );

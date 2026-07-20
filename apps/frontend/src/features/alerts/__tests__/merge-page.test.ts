@@ -11,6 +11,7 @@ const unreadAlert: DomainAlert = {
   title: "Warning alert",
   body: "Body",
   createdAt: "2026-07-14T10:00:00",
+  updatedAt: "2026-07-14T10:00:00",
   readAt: null,
 };
 
@@ -25,6 +26,7 @@ const olderUnreadAlert: DomainAlert = {
   occurrenceKey: "b",
   title: "Older alert",
   createdAt: "2026-07-13T10:00:00",
+  updatedAt: "2026-07-13T10:00:00",
 };
 
 const unreadFilters = { readState: "unread" as const, severity: "all" as const };

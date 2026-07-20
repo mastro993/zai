@@ -13,10 +13,11 @@ mod schema;
 mod sql_statement_counter;
 #[cfg(test)]
 mod test_utils;
-pub mod transaction_categories;
-pub mod transactions;
 mod write_actor;
 
 pub use connection::{Database, connect, connect_with_event_bus};
 pub mod budgets;
 pub mod domain_alerts;
+pub mod recurring_transactions;
+pub mod transaction_categories;
+pub mod transactions;

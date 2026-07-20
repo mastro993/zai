@@ -26,7 +26,9 @@ export const domainAlertSchema = z.object({
   destination: domainAlertDestinationSchema.nullable().optional(),
   data: domainAlertRichDataSchema.nullable().optional(),
   createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
   readAt: z.string().nullable().optional(),
+  resolvedAt: z.string().nullable().optional(),
 });
 
 export const domainAlertListPageSchema = z.object({
