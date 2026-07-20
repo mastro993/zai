@@ -62,12 +62,6 @@ configuration or recalculating results.
 The fixed calendar unit—day, week, month, or year—that defines a budget's
 periods for its entire lifetime.
 
-**Budget time zone**:
-The explicitly captured IANA zone that determines a budget's local-calendar
-period boundaries for its entire lifetime. Actual and projected transaction
-matching use those same boundaries, and device time-zone changes do not alter
-them.
-
 **Budget configuration**:
 The allowance, scope, measurement mode, rollover mode, and warning threshold
 used to calculate a budget period. Each period has one effective configuration:
@@ -99,13 +93,13 @@ history retains it.
 **Catch-up generation**:
 The creation of every due, not-yet-created recurring transaction occurrence after
 Zai becomes able to process schedules again. Generated transactions retain their
-originally scheduled dates regardless of what initiates processing.
+originally scheduled local date and time regardless of what initiates processing.
 
 **Scheduled occurrence**:
-A single due instance identified by its intended local date and time plus the
-time zone captured by its recurring transaction. It resolves to a UTC instant,
-shifting through a daylight-saving gap or choosing the earlier repeated instant;
-its generated transaction retains that resolved instant after catch-up.
+A single due instance identified by a floating local calendar date and time,
+without a stored or selectable time zone. It becomes due according to the
+device's current local clock, so future occurrences follow the device when its
+time zone changes.
 
 **Interval recurrence**:
 A recurring transaction rule that schedules an occurrence every fixed number of
@@ -164,7 +158,10 @@ It may contribute to a budget projection but does not affect actual transactions
 budget results, statuses, rollover, or alerts until it becomes due and fulfilled.
 
 **Budget projection**:
-A snapshot-derived forecast over an explicit bounded future window. It combines
+A snapshot-derived forecast over a bounded rolling device-local calendar window.
+The window starts from one sampled local-clock observation and ends at the same
+local time after the selected number of calendar months, retaining the
+day-of-month or clamping to the target month's last valid day. It combines
 persisted budget activity with projected occurrences and may derive hypothetical
 rollover and status without changing actual budget state or emitting alerts.
 
@@ -172,6 +169,20 @@ rollover and status without changing actual budget state or emitting alerts.
 The durable domain alert created with one automatically generated occurrence. It
 identifies the generated transaction and recurring transaction; finite recurrences
 also report the generated position, total, and remaining count.
+
+**Generation-blocked recurring transaction**:
+An active recurring transaction parked at an occurrence generation failure. It
+needs attention and cannot fulfill later occurrences until recovery succeeds.
+
+**Occurrence generation failure**:
+A deterministic failure that prevents one scheduled occurrence from being
+fulfilled without allowing later occurrences of the same recurring transaction
+to bypass it.
+
+**Recurring generation failure alert**:
+The durable domain alert created for an occurrence generation failure. Failed
+retries update it, and successful recovery resolves it without creating a
+separate recovery alert.
 
 **Rollover mode**:
 A budget's rule for carrying a remaining allowance or overspending between
@@ -194,12 +205,13 @@ the effective allowance remains zero.
 
 **Budget period**:
 The calendar day, week, month, or year over which a budget allowance is
-measured. It is a half-open local-calendar interval from the period's start at
-00:00 up to, but excluding, the next period's start at 00:00. Weekly boundaries
-consume an explicit week-start convention, currently Monday. A budget created
-mid-period uses the full containing period and full base allowance, includes
-matching transactions from before creation within that period, and has no
-predecessor from which to receive rollover.
+measured. It is a half-open device-local calendar interval from the period's
+start at 00:00 up to, but excluding, the next period's start at 00:00. Stored
+transaction dates and times never shift when the device's time zone changes.
+Weekly boundaries consume an explicit week-start convention, currently Monday.
+A budget created mid-period uses the full containing period and full base
+allowance, includes matching transactions from before creation within that
+period, and has no predecessor from which to receive rollover.
 
 **Budget period timeline**:
 The ordered, gap-free sequence of a budget's calculated periods. For an active
