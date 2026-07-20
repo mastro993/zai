@@ -1,5 +1,4 @@
 mod blocking;
-mod code_migrations;
 mod connection;
 mod errors;
 #[cfg(test)]
@@ -18,9 +17,6 @@ pub mod transaction_categories;
 pub mod transactions;
 mod write_actor;
 
-pub use code_migrations::{
-    CodeMigration, CodeMigrationStore, PragmaUserVersionStore, run_pending_code_migrations,
-};
 pub use connection::{Database, connect, connect_with_event_bus};
 pub mod budgets;
 pub mod domain_alerts;
