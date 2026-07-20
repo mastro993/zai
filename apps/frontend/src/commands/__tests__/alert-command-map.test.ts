@@ -67,7 +67,7 @@ describe("alerts web command map", () => {
     expect(readRepoFile("apps/frontend/src/features/alerts/commands/alerts.ts")).toContain(
       "invokeDecodedCommand(ALERT_COMMANDS.mark_all_alerts_read)",
     );
-    expect(readRepoFile("apps/frontend/src/commands/alerts-web-command-map.ts")).toContain(
+    expect(readRepoFile("apps/frontend/src/features/alerts/commands/web-command-map.ts")).toContain(
       'case "mark_all_alerts_read"',
     );
     expect(readRepoFile("apps/tauri/src/lib.rs")).toContain(

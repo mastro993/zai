@@ -1,7 +1,4 @@
 {
-  "apps/frontend/src/commands/web-command-map.ts": {
-    "reason": "Typed command registry remains centralized until transport generation replaces it."
-  },
   "apps/server/src/api/cash_flow/transactions.rs": {
     "reason": "Existing transport adapter combines transaction routes; split is outside issue 123 scope."
   },
