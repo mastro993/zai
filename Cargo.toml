@@ -38,6 +38,8 @@ log = "0.4.28"
 r2d2 = "0.8.10"
 thiserror = "2.0.12"
 chrono = { version = "0.4.42", features = ["serde"] }
+chrono-tz = "0.10"
+iana-time-zone = "0.1"
 tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread", "sync"] }
 async-trait = "0.1.89"
 uuid = { version = "1.18.1", features = ["v4"] }
