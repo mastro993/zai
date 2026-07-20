@@ -36,6 +36,7 @@ pub struct BudgetsRepository {
     writer: WriteHandle,
     clock: Arc<dyn CalendarClock>,
     alert_publisher: Arc<dyn DomainAlertEventPublisher>,
+    zone_provider: Arc<dyn zai_core::time::DeviceZoneProvider>,
 }
 
 impl BudgetsRepository {
@@ -74,6 +75,7 @@ impl BudgetsRepository {
             writer,
             clock,
             alert_publisher,
+            zone_provider: Arc::new(zai_core::time::SystemDeviceZoneProvider),
         }
     }
 
@@ -204,6 +206,7 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
         let base_allowance = budget.base_allowance;
         let name = budget.name;
         let selected_category_ids = budget.category_ids;
+        let zone = self.zone_provider.current_zone()?;
         self.writer
             .exec(move |conn| {
                 let categories = load_category_hierarchy(conn)?;
@@ -222,6 +225,7 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
                     deleted_at: None,
                     revision: 0,
                     paused: false,
+                    time_zone: zone.name().to_string(),
                 };
                 diesel::insert_into(budgets::table)
                     .values(&budget_row)

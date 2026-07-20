@@ -138,6 +138,7 @@ fn rollover_mode_carries_remaining_allowance_across_periods() {
             created_at: january,
             updated_at: january,
             deleted_at: None,
+            time_zone: "UTC".to_string(),
         })
         .execute(&mut conn)
         .expect("transaction");
@@ -177,6 +178,7 @@ fn transaction_correction_repairs_suffix() {
         created_at: january,
         updated_at: january,
         deleted_at: None,
+        time_zone: "UTC".to_string(),
     };
     diesel::insert_into(crate::schema::transactions::table)
         .values(&tx)
@@ -207,10 +209,7 @@ fn transaction_correction_repairs_suffix() {
     )
     .expect("repair suffix");
 
-    let january_start = chrono::NaiveDate::from_ymd_opt(2026, 1, 1)
-        .expect("date")
-        .and_hms_opt(0, 0, 0)
-        .expect("time");
+    let january_start = chrono::NaiveDate::from_ymd_opt(2026, 1, 1).expect("date");
     let january_spending: i64 = crate::schema::budget_period_results::table
         .filter(crate::schema::budget_period_results::budget_id.eq("suffix"))
         .filter(crate::schema::budget_period_results::period_start.eq(january_start))

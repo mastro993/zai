@@ -27,7 +27,9 @@ fn load_existing_in_import_range(
         return Ok(Vec::new());
     }
 
-    let range = import_dedup::import_half_open_date_range(candidates);
+    // Wall-time range widened by a day on each side so the UTC-stored column
+    // still covers every zone offset.
+    let range = import_dedup::import_half_open_date_range(candidates).widened_for_utc();
     let mut query = transactions::table
         .filter(transactions::deleted_at.is_null())
         .filter(transactions::transaction_date.ge(range.start))
@@ -41,10 +43,11 @@ fn load_existing_in_import_range(
 fn prepare_import_rows(
     candidates: Vec<NewTransaction>,
     existing_rows: &[TransactionRow],
-) -> Vec<TransactionRow> {
+    zone: &zai_core::time::IanaZone,
+) -> crate::errors::Result<Vec<TransactionRow>> {
     import_dedup::filter_import_duplicates(candidates, existing_rows)
         .into_iter()
-        .map(Into::into)
+        .map(|candidate| TransactionRow::from_new(candidate, zone).map_err(StorageError::CoreError))
         .collect()
 }
 
@@ -58,6 +61,7 @@ pub(super) async fn import_transactions(
 
     let clock = Arc::clone(&repository.clock);
     let publisher = Arc::clone(&repository.alert_publisher);
+    let zone = repository.zone_provider.current_zone()?;
     let outcome = repository
         .writer
         .exec(
@@ -66,7 +70,7 @@ pub(super) async fn import_transactions(
             > {
                 let existing_rows = load_existing_in_import_range(conn, &new_transactions)?;
                 let transactions_rows =
-                    prepare_import_rows(new_transactions, &existing_rows);
+                    prepare_import_rows(new_transactions, &existing_rows, &zone)?;
 
                 if transactions_rows.is_empty() {
                     return Ok(CommittedOutcome::with_alert_outcomes(Vec::new(), vec![]));
@@ -123,6 +127,7 @@ pub(super) async fn import_transactions_with_categories(
 ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)> {
     let clock = Arc::clone(&repository.clock);
     let publisher = Arc::clone(&repository.alert_publisher);
+    let zone = repository.zone_provider.current_zone()?;
     let outcome = repository
         .writer
         .exec(
@@ -130,7 +135,8 @@ pub(super) async fn import_transactions_with_categories(
                 CommittedOutcome<(Vec<TransactionCategory>, Vec<Transaction>)>,
             > {
                 let existing_rows = load_existing_in_import_range(conn, &new_transactions)?;
-                let transactions_rows = prepare_import_rows(new_transactions, &existing_rows);
+                let transactions_rows =
+                    prepare_import_rows(new_transactions, &existing_rows, &zone)?;
 
                 let now = clock.sample();
                 let before = snapshot_active_budgets(conn, now)?;

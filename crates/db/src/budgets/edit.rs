@@ -126,8 +126,8 @@ fn replace_current_configuration_row(
 ) -> crate::errors::Result<()> {
     let configuration = BudgetConfigurationRow {
         budget_id: id.to_string(),
-        period_start: budget.current_period.start,
-        period_end: budget.current_period.end,
+        period_start: budget.current_period.start.date(),
+        period_end: budget.current_period.end.date(),
         category_ids: serde_json::to_string(category_ids).map_err(|error| {
             StorageError::CoreError(Error::InvalidData(format!(
                 "Invalid budget category scope: {error}"

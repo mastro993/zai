@@ -1,6 +1,6 @@
 use super::calculate::{
-    calculate_configuration, count_missing_periods, invalid_budget, load_category_hierarchy,
-    next_period, parse_cadence, validate_period_boundaries,
+    budget_zone, calculate_configuration, count_missing_periods, invalid_budget,
+    load_category_hierarchy, next_period, parse_cadence, validate_period_boundaries,
 };
 use super::impact::frontiers_for_transactions;
 use super::inspect::{InspectState, inspect_budget};
@@ -12,7 +12,7 @@ use crate::budgets::models::{BudgetConfigurationRow, BudgetRow};
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{budget_configurations, budget_period_results, budgets};
 use crate::transactions::models::TransactionRow;
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime};
 use diesel::OptionalExtension;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
@@ -158,6 +158,7 @@ fn ensure_one(
         .into_storage()?;
     let cadence = parse_cadence(&budget_row)?;
     let (current_start, _) = current_period(now, cadence).map_err(StorageError::CoreError)?;
+    let current_start = current_start.date();
     let existing_configurations = all_configurations(conn, id)?;
     let result_count = budget_period_results::table
         .filter(budget_period_results::budget_id.eq(id))
@@ -225,8 +226,8 @@ fn seed_initial_configuration(
         current_period(now, cadence).map_err(StorageError::CoreError)?;
     let configuration = BudgetConfigurationRow {
         budget_id: budget_id.to_string(),
-        period_start,
-        period_end,
+        period_start: period_start.date(),
+        period_end: period_end.date(),
         category_ids: serde_json::to_string(category_ids).map_err(|error| {
             StorageError::CoreError(Error::InvalidData(format!(
                 "Invalid budget category scope: {error}"
@@ -285,7 +286,7 @@ fn load_latest_persisted_period(
 fn repair_from_frontier(
     conn: &mut SqliteConnection,
     id: &str,
-    earliest_period_start: NaiveDateTime,
+    earliest_period_start: NaiveDate,
     now: NaiveDateTime,
 ) -> crate::errors::Result<()> {
     let Some(budget) = budgets::table
@@ -298,7 +299,9 @@ fn repair_from_frontier(
         return Ok(());
     };
     let cadence = parse_cadence(&budget)?;
+    let zone = budget_zone(&budget)?;
     let (current_start, _) = current_period(now, cadence).map_err(StorageError::CoreError)?;
+    let current_start = current_start.date();
     let configurations = all_configurations(conn, id)?;
     let first_configuration = configurations
         .first()
@@ -341,8 +344,13 @@ fn repair_from_frontier(
 
     loop {
         validate_period_boundaries(&configuration, cadence)?;
-        let period =
-            calculate_configuration(conn, &configuration, &categories, previous_period.as_ref())?;
+        let period = calculate_configuration(
+            conn,
+            &configuration,
+            &categories,
+            previous_period.as_ref(),
+            &zone,
+        )?;
         let result = result_row(id, &period);
         upsert_period_result(conn, &result)?;
         previous_period = Some(period);

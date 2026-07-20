@@ -78,8 +78,9 @@ pub(crate) fn find_existing_duplicate_keys(
         .iter()
         .map(|candidate| candidate.transaction_date)
         .collect::<Vec<_>>();
-    let range =
-        import_dedup::half_open_date_range_from_dates(&dates).expect("non-empty candidates");
+    let range = import_dedup::half_open_date_range_from_dates(&dates)
+        .expect("non-empty candidates")
+        .widened_for_utc();
 
     let mut query = transactions::table
         .filter(transactions::deleted_at.is_null())
@@ -94,7 +95,7 @@ pub(crate) fn find_existing_duplicate_keys(
         .iter()
         .map(|transaction| {
             duplicate_key(
-                transaction.transaction_date,
+                transaction.wall_transaction_date(),
                 transaction.amount,
                 transaction.description.as_deref(),
             )
@@ -198,7 +199,7 @@ fn to_csv_row<'a>(
     categories_by_id: &HashMap<String, TransactionCategoryRow>,
 ) -> CsvTransactionRow<'a> {
     CsvTransactionRow {
-        transaction_date: row.transaction_date,
+        transaction_date: row.wall_transaction_date(),
         amount: row.amount,
         transaction_type: row.transaction_type.as_str(),
         description: row.description.as_deref(),

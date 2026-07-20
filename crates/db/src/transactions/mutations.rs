@@ -20,6 +20,7 @@ pub(super) async fn create_transaction(
 ) -> Result<Transaction> {
     let clock = Arc::clone(&repository.clock);
     let publisher = Arc::clone(&repository.alert_publisher);
+    let zone = repository.zone_provider.current_zone()?;
     let outcome = repository
         .writer
         .exec(
@@ -28,7 +29,8 @@ pub(super) async fn create_transaction(
             > {
                 let now = clock.sample();
                 let before = snapshot_active_budgets(conn, now)?;
-                let transaction: TransactionRow = new_transaction.into();
+                let transaction = TransactionRow::from_new(new_transaction, &zone)
+                    .map_err(crate::errors::StorageError::CoreError)?;
                 let transaction_id = transaction.id.clone();
 
                 diesel::insert_into(transactions::table)
@@ -82,13 +84,17 @@ pub(super) async fn update_transaction(
                 let now = clock.sample();
                 let before = snapshot_active_budgets(conn, now)?;
                 let transaction_id = updated_transaction.id.clone();
-                let mut changeset: TransactionRowUpdate = updated_transaction.into();
-                changeset.updated_at = now;
 
                 let existing = transactions::table
                     .find(&transaction_id)
                     .first::<TransactionRow>(conn)
                     .into_storage()?;
+
+                let row_zone = crate::tz::parse_zone(&existing.time_zone)?;
+                let mut changeset =
+                    TransactionRowUpdate::from_update(updated_transaction, &row_zone)
+                        .map_err(crate::errors::StorageError::CoreError)?;
+                changeset.updated_at = now;
 
                 diesel::update(transactions::table.find(&transaction_id))
                     .set(&changeset)

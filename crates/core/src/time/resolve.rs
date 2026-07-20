@@ -8,7 +8,10 @@ pub fn resolve_local_to_utc(
     time: LocalTime,
     zone: &IanaZone,
 ) -> Result<UtcInstant> {
-    let naive = NaiveDateTime::new(date.naive(), time.naive());
+    resolve_local_datetime_to_utc(NaiveDateTime::new(date.naive(), time.naive()), zone)
+}
+
+pub fn resolve_local_datetime_to_utc(naive: NaiveDateTime, zone: &IanaZone) -> Result<UtcInstant> {
     let tz = zone.tz();
     let resolved = match tz.from_local_datetime(&naive) {
         LocalResult::Single(dt) => dt,
@@ -16,6 +19,10 @@ pub fn resolve_local_to_utc(
         LocalResult::None => shift_forward_through_gap(tz, naive)?,
     };
     Ok(UtcInstant::from_utc(resolved.with_timezone(&chrono::Utc)))
+}
+
+pub fn project_utc_to_local(utc: NaiveDateTime, zone: &IanaZone) -> NaiveDateTime {
+    zone.tz().from_utc_datetime(&utc).naive_local()
 }
 
 fn shift_forward_through_gap(tz: Tz, naive: NaiveDateTime) -> Result<DateTime<Tz>> {

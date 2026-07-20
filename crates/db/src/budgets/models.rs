@@ -1,9 +1,13 @@
 use crate::schema::{budget_configurations, budget_period_results, budgets};
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use diesel::prelude::*;
 use zai_core::features::budgets::models::{
     Budget, BudgetCadence, BudgetMeasurementMode, BudgetPeriod, BudgetRolloverMode, BudgetStatus,
 };
+
+pub(crate) fn midnight(date: NaiveDate) -> NaiveDateTime {
+    date.and_time(NaiveTime::MIN)
+}
 
 #[derive(Queryable, Identifiable, Insertable, Selectable, Debug, Clone)]
 #[diesel(table_name = budgets)]
@@ -21,6 +25,7 @@ pub struct BudgetRow {
     pub deleted_at: Option<NaiveDateTime>,
     pub revision: i64,
     pub paused: bool,
+    pub time_zone: String,
 }
 
 #[derive(Queryable, Insertable, Debug, Clone)]
@@ -29,8 +34,8 @@ pub struct BudgetRow {
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct BudgetConfigurationRow {
     pub budget_id: String,
-    pub period_start: NaiveDateTime,
-    pub period_end: NaiveDateTime,
+    pub period_start: NaiveDate,
+    pub period_end: NaiveDate,
     pub category_ids: String,
     pub base_allowance: i64,
     pub measurement_mode: String,
@@ -44,8 +49,8 @@ pub struct BudgetConfigurationRow {
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct BudgetPeriodResultRow {
     pub budget_id: String,
-    pub period_start: NaiveDateTime,
-    pub period_end: NaiveDateTime,
+    pub period_start: NaiveDate,
+    pub period_end: NaiveDate,
     pub net_budget_spending: i64,
     pub effective_allowance: i64,
     pub remaining_allowance: i64,
@@ -103,8 +108,8 @@ pub fn build_budget(
         rollover_mode,
         warning_percentage: configuration.warning_percentage,
         current_period: BudgetPeriod {
-            start: result.period_start,
-            end: result.period_end,
+            start: midnight(result.period_start),
+            end: midnight(result.period_end),
             base_allowance: configuration.base_allowance,
             effective_allowance: result.effective_allowance,
             net_budget_spending: result.net_budget_spending,

@@ -93,6 +93,7 @@ fn budget_created_reconcile_catches_up_from_row_only() {
             deleted_at: None,
             revision: 0,
             paused: false,
+            time_zone: "UTC".to_string(),
         })
         .execute(&mut conn)
         .expect("budget row");

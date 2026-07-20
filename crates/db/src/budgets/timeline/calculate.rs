@@ -1,7 +1,7 @@
-use crate::budgets::models::{BudgetConfigurationRow, BudgetRow};
+use crate::budgets::models::{BudgetConfigurationRow, BudgetRow, midnight};
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{self, transaction_categories};
-use chrono::NaiveDateTime;
+use chrono::NaiveDate;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use zai_core::Error;
@@ -9,14 +9,20 @@ use zai_core::features::budgets::models::{
     BudgetCadence, BudgetMeasurementMode, BudgetPeriod, BudgetRolloverMode, CategoryHierarchy,
     calculate_period_with_rollover, current_period, expand_category_scope,
 };
+use zai_core::time::IanaZone;
 
 pub(super) const MAX_PERIOD_ADVANCE: i64 = 2_000;
+
+pub(super) fn budget_zone(budget: &BudgetRow) -> crate::errors::Result<IanaZone> {
+    crate::tz::parse_zone(&budget.time_zone)
+}
 
 pub(super) fn calculate_configuration(
     conn: &mut SqliteConnection,
     configuration: &BudgetConfigurationRow,
     categories: &[CategoryHierarchy],
     previous_period: Option<&BudgetPeriod>,
+    zone: &IanaZone,
 ) -> crate::errors::Result<BudgetPeriod> {
     let category_ids = parse_category_ids(&configuration.category_ids)?;
     let scope_ids = expand_category_scope(&category_ids, categories);
@@ -32,13 +38,14 @@ pub(super) fn calculate_configuration(
         conn,
         configuration.period_start,
         configuration.period_end,
+        zone,
         measurement_mode,
         &scope_ids,
     )?;
 
     calculate_period_with_rollover(
-        configuration.period_start,
-        configuration.period_end,
+        midnight(configuration.period_start),
+        midnight(configuration.period_end),
         configuration.base_allowance,
         spending,
         rollover_mode,
@@ -50,11 +57,15 @@ pub(super) fn calculate_configuration(
 
 pub(crate) fn calculate_spending(
     conn: &mut SqliteConnection,
-    start: NaiveDateTime,
-    end: NaiveDateTime,
+    start: NaiveDate,
+    end: NaiveDate,
+    zone: &IanaZone,
     measurement_mode: BudgetMeasurementMode,
     scope_ids: &[String],
 ) -> crate::errors::Result<i64> {
+    // Half-open local date bounds map to half-open UTC instants in the budget zone.
+    let start = crate::tz::local_date_to_utc(start, zone).map_err(StorageError::CoreError)?;
+    let end = crate::tz::local_date_to_utc(end, zone).map_err(StorageError::CoreError)?;
     let mut query = schema::transactions::table
         .left_join(schema::transaction_categories::table)
         .filter(schema::transactions::deleted_at.is_null())
@@ -96,7 +107,7 @@ pub(crate) fn calculate_spending(
 
 pub(super) fn count_missing_periods(
     configuration: &BudgetConfigurationRow,
-    current_start: NaiveDateTime,
+    current_start: NaiveDate,
     cadence: BudgetCadence,
 ) -> crate::errors::Result<i64> {
     let mut count = 0;
@@ -116,18 +127,18 @@ pub(super) fn count_missing_periods(
 pub(super) fn next_period(
     configuration: &BudgetConfigurationRow,
     cadence: BudgetCadence,
-) -> crate::errors::Result<(NaiveDateTime, NaiveDateTime)> {
+) -> crate::errors::Result<(NaiveDate, NaiveDate)> {
     let start = configuration.period_end;
     let end = next_period_end(start, cadence)?;
     Ok((start, end))
 }
 
 pub(super) fn next_period_end(
-    period_start: NaiveDateTime,
+    period_start: NaiveDate,
     cadence: BudgetCadence,
-) -> crate::errors::Result<NaiveDateTime> {
-    current_period(period_start, cadence)
-        .map(|(_, end)| end)
+) -> crate::errors::Result<NaiveDate> {
+    current_period(midnight(period_start), cadence)
+        .map(|(_, end)| end.date())
         .map_err(StorageError::CoreError)
 }
 
@@ -135,9 +146,10 @@ pub(super) fn validate_period_boundaries(
     configuration: &BudgetConfigurationRow,
     cadence: BudgetCadence,
 ) -> crate::errors::Result<()> {
-    let expected_end = current_period(configuration.period_start, cadence)
+    let expected_end = current_period(midnight(configuration.period_start), cadence)
         .map_err(StorageError::CoreError)?
-        .1;
+        .1
+        .date();
     if configuration.period_start >= configuration.period_end
         || expected_end != configuration.period_end
     {

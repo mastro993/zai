@@ -75,7 +75,7 @@ fn fresh_database_applies_squashed_budget_migration_with_current_schema() {
     .get_result::<CountRow>(&mut connection)
     .expect("domain alerts table");
     let domain_alert_column_count = diesel::sql_query(
-        "SELECT COUNT(*) AS count FROM pragma_table_info('domain_alerts') WHERE name IN ('id', 'producer_key', 'occurrence_key', 'severity', 'title', 'body', 'destination', 'data', 'created_at', 'read_at')",
+        "SELECT COUNT(*) AS count FROM pragma_table_info('domain_alerts') WHERE name IN ('id', 'producer_key', 'occurrence_key', 'severity', 'title', 'body', 'destination', 'data', 'created_at', 'read_at', 'updated_at', 'resolved_at')",
     )
     .get_result::<CountRow>(&mut connection)
     .expect("domain alerts columns");
@@ -91,7 +91,7 @@ fn fresh_database_applies_squashed_budget_migration_with_current_schema() {
     .expect("domain alerts table sql");
 
     assert_eq!(domain_alert_table_count.count, 1);
-    assert_eq!(domain_alert_column_count.count, 10);
+    assert_eq!(domain_alert_column_count.count, 12);
     assert_eq!(domain_alert_index_count.count, 3);
     assert!(
         domain_alert_table
@@ -156,14 +156,14 @@ fn pre_alert_finance_data_survives_domain_alerts_migration() {
     .execute(&mut connection)
     .expect("seed category");
     diesel::sql_query(
-        "INSERT INTO transactions (id, amount, transaction_date, transaction_type, created_at, updated_at) \
-         VALUES ('txn-1', 1500, CURRENT_TIMESTAMP, 'expense', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        "INSERT INTO transactions (id, amount, transaction_date, transaction_type, created_at, updated_at, time_zone) \
+         VALUES ('txn-1', 1500, CURRENT_TIMESTAMP, 'expense', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'UTC')",
     )
     .execute(&mut connection)
     .expect("seed transaction");
     diesel::sql_query(
-        "INSERT INTO budgets (id, name, cadence, measurement_mode, base_allowance, rollover_mode, created_at, updated_at, revision, paused) \
-         VALUES ('budget-1', 'Monthly food', 'month', 'spending', 10000, 'off', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0)",
+        "INSERT INTO budgets (id, name, cadence, measurement_mode, base_allowance, rollover_mode, created_at, updated_at, revision, paused, time_zone) \
+         VALUES ('budget-1', 'Monthly food', 'month', 'spending', 10000, 'off', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'UTC')",
     )
     .execute(&mut connection)
     .expect("seed budget");

@@ -1,13 +1,13 @@
 use super::calculate::{
-    calculate_configuration, count_missing_periods, invalid_budget, load_category_hierarchy,
-    next_period, parse_cadence, status_string, validate_period_boundaries,
+    budget_zone, calculate_configuration, count_missing_periods, invalid_budget,
+    load_category_hierarchy, next_period, parse_cadence, status_string, validate_period_boundaries,
 };
 use crate::budgets::models::{
-    BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget,
+    BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget, midnight,
 };
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{budget_configurations, budget_period_results, budgets};
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime};
 use diesel::OptionalExtension;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
@@ -22,7 +22,7 @@ pub(super) struct AdvanceInput {
     pub now: NaiveDateTime,
     pub budget: BudgetRow,
     pub cadence: BudgetCadence,
-    pub current_start: NaiveDateTime,
+    pub current_start: NaiveDate,
     pub existing_configurations: Vec<BudgetConfigurationRow>,
     pub repair_all: bool,
 }
@@ -41,7 +41,7 @@ pub(super) fn all_configurations(
 pub(super) fn load_previous_period(
     conn: &mut SqliteConnection,
     id: &str,
-    period_start: NaiveDateTime,
+    period_start: NaiveDate,
 ) -> crate::errors::Result<Option<BudgetPeriod>> {
     let Some(result) = budget_period_results::table
         .filter(budget_period_results::budget_id.eq(id))
@@ -83,8 +83,8 @@ pub(crate) fn period_from_rows(
         _ => return Err(Error::Repository("Invalid budget status".to_string())),
     };
     Ok(BudgetPeriod {
-        start: result.period_start,
-        end: result.period_end,
+        start: midnight(result.period_start),
+        end: midnight(result.period_end),
         base_allowance: configuration.base_allowance,
         effective_allowance: result.effective_allowance,
         net_budget_spending: result.net_budget_spending,
@@ -96,8 +96,8 @@ pub(crate) fn period_from_rows(
 pub(super) fn result_row(id: &str, period: &BudgetPeriod) -> BudgetPeriodResultRow {
     BudgetPeriodResultRow {
         budget_id: id.to_string(),
-        period_start: period.start,
-        period_end: period.end,
+        period_start: period.start.date(),
+        period_end: period.end.date(),
         net_budget_spending: period.net_budget_spending,
         effective_allowance: period.effective_allowance,
         remaining_allowance: period.remaining_allowance,
@@ -146,6 +146,7 @@ pub(super) fn advance_timeline(
         existing_configurations,
         repair_all,
     } = input;
+    let zone = budget_zone(&budget)?;
     let mut configuration = if repair_all {
         existing_configurations
             .first()
@@ -158,7 +159,7 @@ pub(super) fn advance_timeline(
         let configuration = BudgetConfigurationRow {
             budget_id: id.clone(),
             period_start: current_start,
-            period_end,
+            period_end: period_end.date(),
             category_ids: "[]".to_string(),
             base_allowance: budget.base_allowance,
             measurement_mode: budget.measurement_mode.clone(),
@@ -217,8 +218,13 @@ pub(super) fn advance_timeline(
         }
         validate_period_boundaries(&configuration, cadence)?;
 
-        let period =
-            calculate_configuration(conn, &configuration, &categories, previous_period.as_ref())?;
+        let period = calculate_configuration(
+            conn,
+            &configuration,
+            &categories,
+            previous_period.as_ref(),
+            &zone,
+        )?;
         let result = result_row(&id, &period);
         upsert_period_result(conn, &result)?;
         previous_period = Some(period);
@@ -248,6 +254,7 @@ pub(super) fn rebuild_derived(conn: &mut SqliteConnection, id: &str) -> crate::e
         return Ok(());
     };
     let cadence = parse_cadence(&budget)?;
+    let zone = budget_zone(&budget)?;
     let configurations = all_configurations(conn, id)?;
     if configurations.is_empty() {
         return Ok(());
@@ -261,8 +268,13 @@ pub(super) fn rebuild_derived(conn: &mut SqliteConnection, id: &str) -> crate::e
     let mut previous_period = None;
     for configuration in configurations {
         validate_period_boundaries(&configuration, cadence)?;
-        let period =
-            calculate_configuration(conn, &configuration, &categories, previous_period.as_ref())?;
+        let period = calculate_configuration(
+            conn,
+            &configuration,
+            &categories,
+            previous_period.as_ref(),
+            &zone,
+        )?;
         let result = result_row(id, &period);
         diesel::insert_into(budget_period_results::table)
             .values(&result)
@@ -284,17 +296,23 @@ pub(super) fn refresh_current_configuration(
         .first::<BudgetRow>(conn)
         .into_storage()?;
     let cadence = parse_cadence(&budget_row)?;
+    let zone = budget_zone(&budget_row)?;
     let (current_start, _) = current_period(now, cadence).map_err(StorageError::CoreError)?;
     let configuration = budget_configurations::table
         .filter(budget_configurations::budget_id.eq(id))
-        .filter(budget_configurations::period_start.eq(current_start))
+        .filter(budget_configurations::period_start.eq(current_start.date()))
         .first::<BudgetConfigurationRow>(conn)
         .into_storage()?;
     validate_period_boundaries(&configuration, cadence)?;
     let categories = load_category_hierarchy(conn)?;
     let previous_period = load_previous_period(conn, id, configuration.period_start)?;
-    let period =
-        calculate_configuration(conn, &configuration, &categories, previous_period.as_ref())?;
+    let period = calculate_configuration(
+        conn,
+        &configuration,
+        &categories,
+        previous_period.as_ref(),
+        &zone,
+    )?;
     let result = result_row(id, &period);
     upsert_period_result(conn, &result)?;
     build_budget(budget_row, configuration, result).map_err(StorageError::CoreError)

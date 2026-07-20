@@ -57,6 +57,7 @@ fn insert_transaction_with_category(repo: &TransactionCategoriesRepository, cate
             transactions::transaction_type.eq(transaction.transaction_type),
             transactions::transaction_category_id.eq(transaction.transaction_category_id),
             transactions::notes.eq(transaction.notes),
+            transactions::time_zone.eq("UTC"),
         ))
         .execute(conn)
         .unwrap();

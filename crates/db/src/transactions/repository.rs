@@ -24,6 +24,7 @@ pub struct TransactionsRepository {
     pub(super) writer: WriteHandle,
     pub(super) clock: Arc<dyn CalendarClock>,
     pub(super) alert_publisher: Arc<dyn DomainAlertEventPublisher>,
+    pub(super) zone_provider: Arc<dyn zai_core::time::DeviceZoneProvider>,
 }
 
 impl TransactionsRepository {
@@ -65,6 +66,7 @@ impl TransactionsRepository {
             writer,
             clock,
             alert_publisher,
+            zone_provider: Arc::new(zai_core::time::SystemDeviceZoneProvider),
         }
     }
 }

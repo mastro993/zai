@@ -56,6 +56,8 @@ async fn insert_alert(repo: &DomainAlertsRepository, alert: NewDomainAlert) -> D
         data: None,
         created_at: alert.created_at,
         read_at: alert.read_at,
+        updated_at: alert.created_at,
+        resolved_at: None,
     }
 }
 

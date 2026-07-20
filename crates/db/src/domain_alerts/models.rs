@@ -18,6 +18,8 @@ pub struct DomainAlertRow {
     pub data: Option<String>,
     pub created_at: NaiveDateTime,
     pub read_at: Option<NaiveDateTime>,
+    pub updated_at: NaiveDateTime,
+    pub resolved_at: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable, Debug, Clone)]

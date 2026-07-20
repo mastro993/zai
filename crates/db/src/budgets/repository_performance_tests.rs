@@ -110,12 +110,12 @@ fn bulk_seed_transactions(conn: &mut diesel::sqlite::SqliteConnection, count: us
             }
             let id = format!("perf-txn-{offset}");
             values.push_str(&format!(
-                "('{id}', 'Perf transaction {offset}', 100, '2026-01-15T12:00:00', 'expense', NULL, NULL, '2026-01-01T00:00:00', '2026-01-01T00:00:00', NULL)"
+                "('{id}', 'Perf transaction {offset}', 100, '2026-01-15T12:00:00', 'expense', NULL, NULL, '2026-01-01T00:00:00', '2026-01-01T00:00:00', NULL, 'UTC')"
             ));
             offset += 1;
         }
         let statement = format!(
-            "INSERT INTO transactions (id, description, amount, transaction_date, transaction_type, transaction_category_id, notes, created_at, updated_at, deleted_at) VALUES {values}"
+            "INSERT INTO transactions (id, description, amount, transaction_date, transaction_type, transaction_category_id, notes, created_at, updated_at, deleted_at, time_zone) VALUES {values}"
         );
         diesel::sql_query(statement)
             .execute(conn)

@@ -13,10 +13,10 @@ async fn listing_budget_recovers_when_projection_configuration_is_missing() {
     sql_query(
         "INSERT INTO budgets (
             id, name, cadence, measurement_mode, base_allowance, rollover_mode,
-            warning_percentage, created_at, updated_at
+            warning_percentage, created_at, updated_at, time_zone
         ) VALUES (
             'orphan-budget', 'Orphan budget', 'month', 'spending', 10000, 'off',
-            80, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            80, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'UTC'
         )",
     )
     .execute(&mut conn)

@@ -185,6 +185,7 @@ fn decide_state(
         StorageError::CoreError(Error::Repository("Invalid budget cadence".to_string()))
     })?;
     let (current_start, _) = current_period(now, cadence).map_err(StorageError::CoreError)?;
+    let current_start = current_start.date();
     let Some(configuration) = configuration else {
         return Ok(InspectState::Stale);
     };

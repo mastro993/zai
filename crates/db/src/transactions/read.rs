@@ -19,6 +19,28 @@ use crate::errors::IntoCore;
 use crate::pagination::{Paginate, total_pages};
 use crate::schema::transactions;
 
+type UtcBounds = (Option<chrono::NaiveDateTime>, Option<chrono::NaiveDateTime>);
+
+/// Filter bounds arrive as device wall times; the stored column is UTC.
+fn utc_date_bounds(
+    repository: &TransactionsRepository,
+    filters: Option<&TransactionSearchFilters<'_>>,
+) -> Result<UtcBounds> {
+    let start = filters.and_then(|f| f.start_date);
+    let end = filters.and_then(|f| f.end_date);
+    if start.is_none() && end.is_none() {
+        return Ok((None, None));
+    }
+    let zone = repository.zone_provider.current_zone()?;
+    Ok((
+        start
+            .map(|date| crate::tz::wall_to_utc(date, &zone))
+            .transpose()?,
+        end.map(|date| crate::tz::wall_to_utc(date, &zone))
+            .transpose()?,
+    ))
+}
+
 pub(super) async fn get_transactions(
     repository: &TransactionsRepository,
     page: i64,
@@ -40,8 +62,7 @@ pub(super) async fn get_transactions(
     let owned_transaction_type = filters
         .as_ref()
         .and_then(|f| f.transaction_type.map(str::to_owned));
-    let start_date = filters.as_ref().and_then(|f| f.start_date);
-    let end_date = filters.as_ref().and_then(|f| f.end_date);
+    let (start_date, end_date) = utc_date_bounds(repository, filters.as_ref())?;
     let has_filters = filters.is_some();
 
     run_blocking(move || {
@@ -125,8 +146,7 @@ pub(super) async fn get_filtered_transaction_ids(
     let owned_transaction_type = filters
         .as_ref()
         .and_then(|f| f.transaction_type.map(str::to_owned));
-    let start_date = filters.as_ref().and_then(|f| f.start_date);
-    let end_date = filters.as_ref().and_then(|f| f.end_date);
+    let (start_date, end_date) = utc_date_bounds(repository, filters.as_ref())?;
     let has_filters = filters.is_some();
 
     run_blocking(move || {
@@ -165,8 +185,7 @@ pub(super) async fn export_transactions_csv(
     let owned_transaction_type = filters
         .as_ref()
         .and_then(|f| f.transaction_type.map(str::to_owned));
-    let start_date = filters.as_ref().and_then(|f| f.start_date);
-    let end_date = filters.as_ref().and_then(|f| f.end_date);
+    let (start_date, end_date) = utc_date_bounds(repository, filters.as_ref())?;
     let has_filters = filters.is_some();
 
     run_blocking(move || {

@@ -12,6 +12,20 @@ pub(crate) struct ImportDateRange {
     pub end_exclusive: Option<NaiveDateTime>,
 }
 
+impl ImportDateRange {
+    /// Widens the wall-time range by one day on each side so filtering the
+    /// UTC-stored `transaction_date` column covers every zone offset (±14h).
+    pub fn widened_for_utc(self) -> Self {
+        let day = chrono::Duration::days(1);
+        Self {
+            start: self.start.checked_sub_signed(day).unwrap_or(self.start),
+            end_exclusive: self
+                .end_exclusive
+                .map(|end| end.checked_add_signed(day).unwrap_or(end)),
+        }
+    }
+}
+
 pub(crate) fn import_half_open_date_range(transactions: &[NewTransaction]) -> ImportDateRange {
     let dates = transactions
         .iter()
@@ -56,7 +70,7 @@ pub(crate) fn filter_import_duplicates(
         .iter()
         .map(|transaction| {
             duplicate_key(
-                transaction.transaction_date,
+                transaction.wall_transaction_date(),
                 transaction.amount,
                 transaction.description.as_deref(),
             )
@@ -112,6 +126,7 @@ mod tests {
             created_at: datetime("2026-01-01T00:00:00"),
             updated_at: datetime("2026-01-01T00:00:00"),
             deleted_at: None,
+            time_zone: "UTC".to_string(),
         }
     }
 

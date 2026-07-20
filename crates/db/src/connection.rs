@@ -162,6 +162,13 @@ pub(crate) fn get_connection(pool: &DbPool) -> Result<DbConnection> {
 }
 
 pub(crate) fn run_migrations(pool: &DbPool) -> Result<()> {
+    run_migrations_with_zone_provider(pool, Arc::new(zai_core::time::SystemDeviceZoneProvider))
+}
+
+pub(crate) fn run_migrations_with_zone_provider(
+    pool: &DbPool,
+    zone_provider: Arc<dyn zai_core::time::DeviceZoneProvider>,
+) -> Result<()> {
     info!("Running database migrations");
     let mut connection = get_connection(pool)?;
 
@@ -179,7 +186,12 @@ pub(crate) fn run_migrations(pool: &DbPool) -> Result<()> {
         }
     }
 
-    Ok(())
+    let recurring = crate::code_migrations::RecurringMvpSchemaMigration::new(zone_provider);
+    crate::code_migrations::run_pending_code_migrations(
+        &mut connection,
+        &[&recurring],
+        &crate::code_migrations::PragmaUserVersionStore,
+    )
 }
 
 #[derive(Debug)]

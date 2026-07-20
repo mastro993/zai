@@ -19,7 +19,7 @@ struct CategoryInfo {
 struct BudgetScope {
     impact: BudgetImpact,
     measurement_mode: BudgetMeasurementMode,
-    current_period_start: NaiveDateTime,
+    current_period_start: chrono::NaiveDate,
     configurations: Vec<BudgetConfigurationRow>,
 }
 
@@ -237,6 +237,7 @@ fn load_budget_scopes(
                     })?;
             let (current_period_start, _) =
                 current_period(now, cadence).map_err(StorageError::CoreError)?;
+            let current_period_start = current_period_start.date();
             Ok(BudgetScope {
                 impact: BudgetImpact {
                     id: id.clone(),

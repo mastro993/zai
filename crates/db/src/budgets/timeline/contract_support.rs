@@ -48,14 +48,17 @@ pub(super) fn insert_budget_row(
             deleted_at: None,
             revision: 0,
             paused,
+            time_zone: "UTC".to_string(),
         })
         .execute(conn)?;
+    let zone = zai_core::time::IanaZone::parse("UTC").expect("utc zone");
     let (period_start, period_end) =
         current_period(now, cadence).map_err(crate::errors::StorageError::CoreError)?;
     let spending = super::calculate::calculate_spending(
         conn,
-        period_start,
-        period_end,
+        period_start.date(),
+        period_end.date(),
+        &zone,
         BudgetMeasurementMode::Spending,
         &[],
     )?;
@@ -71,8 +74,8 @@ pub(super) fn insert_budget_row(
     .map_err(crate::errors::StorageError::CoreError)?;
     let configuration = BudgetConfigurationRow {
         budget_id: id.to_string(),
-        period_start,
-        period_end,
+        period_start: period_start.date(),
+        period_end: period_end.date(),
         category_ids: "[]".to_string(),
         base_allowance: 10_000,
         measurement_mode: BudgetMeasurementMode::Spending.to_string(),
@@ -85,8 +88,8 @@ pub(super) fn insert_budget_row(
     diesel::insert_into(budget_period_results::table)
         .values(&BudgetPeriodResultRow {
             budget_id: id.to_string(),
-            period_start,
-            period_end,
+            period_start: period_start.date(),
+            period_end: period_end.date(),
             net_budget_spending: period.net_budget_spending,
             effective_allowance: period.effective_allowance,
             remaining_allowance: period.remaining_allowance,
