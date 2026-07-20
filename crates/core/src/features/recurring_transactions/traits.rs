@@ -36,7 +36,8 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         cursor: Option<String>,
     ) -> Result<RecurringFailurePage>;
 
-    async fn list_unresolved_failures(&self, limit: i64) -> Result<Vec<RecurringGenerationFailure>>;
+    async fn list_unresolved_failures(&self, limit: i64)
+    -> Result<Vec<RecurringGenerationFailure>>;
 
     async fn get_recurring_transaction(&self, id: &str) -> Result<RecurringTransaction>;
 

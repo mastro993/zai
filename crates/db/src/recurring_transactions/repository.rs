@@ -1,6 +1,6 @@
 use super::queries::{
-    find_provenance_by_transaction, get_recurring_transaction, list_due_heads, list_failure_history,
-    list_feed, list_occurrences, list_unresolved_failures,
+    find_provenance_by_transaction, get_recurring_transaction, list_due_heads,
+    list_failure_history, list_feed, list_occurrences, list_unresolved_failures,
 };
 use super::revisions::{find_schedule_revision_at, find_template_revision_at};
 use crate::blocking::run_blocking;
@@ -18,6 +18,7 @@ use zai_core::features::recurring_transactions::{
 
 pub struct RecurringTransactionsRepository {
     pool: Arc<DbPool>,
+    #[allow(dead_code)]
     writer: WriteHandle,
 }
 
@@ -71,7 +72,12 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
         let recurring_transaction_id = recurring_transaction_id.to_string();
         run_blocking(move || {
             let mut conn = get_connection(&pool)?;
-            list_occurrences(&mut conn, &recurring_transaction_id, limit, cursor.as_deref())
+            list_occurrences(
+                &mut conn,
+                &recurring_transaction_id,
+                limit,
+                cursor.as_deref(),
+            )
         })
         .await
     }

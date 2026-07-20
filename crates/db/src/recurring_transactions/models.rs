@@ -157,9 +157,7 @@ pub fn build_occurrence(row: RecurringOccurrenceRow) -> Result<RecurringOccurren
     })
 }
 
-pub fn build_generation_failure(
-    row: RecurringGenerationFailureRow,
-) -> RecurringGenerationFailure {
+pub fn build_generation_failure(row: RecurringGenerationFailureRow) -> RecurringGenerationFailure {
     RecurringGenerationFailure {
         recurring_transaction_id: row.recurring_transaction_id,
         schedule_revision_id: row.schedule_revision_id,

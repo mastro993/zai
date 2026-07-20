@@ -80,10 +80,7 @@ async fn feed_and_due_discovery_use_indexes_and_cursor_paging() {
             transaction_type: "expense",
         };
         writer
-            .exec({
-                let seed = seed;
-                move |conn| seed_active_interval_source(conn, &seed)
-            })
+            .exec(move |conn| seed_active_interval_source(conn, &seed))
             .await
             .expect("seed");
     }
@@ -138,10 +135,7 @@ async fn provenance_and_failure_queries_are_indexed() {
         transaction_type: "income",
     };
     let (schedule_id, template_id) = writer
-        .exec({
-            let seed = seed;
-            move |conn| seed_active_interval_source(conn, &seed)
-        })
+        .exec(move |conn| seed_active_interval_source(conn, &seed))
         .await
         .expect("seed");
 
@@ -213,13 +207,10 @@ async fn provenance_and_failure_queries_are_indexed() {
     let unresolved = list_unresolved_failures(&mut conn, 20).expect("unresolved");
     assert_eq!(unresolved.len(), 1);
 
-    let schedule = super::revisions::find_schedule_revision_at(
-        &mut conn,
-        "rt-prov",
-        local(2026, 1, 15, 9, 0),
-    )
-    .expect("schedule lookup")
-    .expect("present");
+    let schedule =
+        super::revisions::find_schedule_revision_at(&mut conn, "rt-prov", local(2026, 1, 15, 9, 0))
+            .expect("schedule lookup")
+            .expect("present");
     assert_eq!(schedule.id, schedule_id);
 
     let provenance_plan = explain_plan(

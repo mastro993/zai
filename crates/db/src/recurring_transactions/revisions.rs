@@ -6,10 +6,10 @@ use crate::schema::{recurring_schedule_revisions, recurring_template_revisions};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
+use zai_core::Result;
 use zai_core::features::recurring_transactions::{
     RecurringScheduleRevision, RecurringTemplateRevision,
 };
-use zai_core::Result;
 
 pub fn find_schedule_revision_at(
     conn: &mut SqliteConnection,
@@ -17,9 +17,7 @@ pub fn find_schedule_revision_at(
     at_local: NaiveDateTime,
 ) -> Result<Option<RecurringScheduleRevision>> {
     let row = recurring_schedule_revisions::table
-        .filter(
-            recurring_schedule_revisions::recurring_transaction_id.eq(recurring_transaction_id),
-        )
+        .filter(recurring_schedule_revisions::recurring_transaction_id.eq(recurring_transaction_id))
         .filter(recurring_schedule_revisions::effective_from_local.le(at_local))
         .filter(
             recurring_schedule_revisions::effective_until_local
@@ -53,9 +51,7 @@ pub fn find_template_revision_at(
     at_local: NaiveDateTime,
 ) -> Result<Option<RecurringTemplateRevision>> {
     let row = recurring_template_revisions::table
-        .filter(
-            recurring_template_revisions::recurring_transaction_id.eq(recurring_transaction_id),
-        )
+        .filter(recurring_template_revisions::recurring_transaction_id.eq(recurring_transaction_id))
         .filter(recurring_template_revisions::effective_from_local.le(at_local))
         .filter(
             recurring_template_revisions::effective_until_local

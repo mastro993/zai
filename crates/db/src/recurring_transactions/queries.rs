@@ -41,9 +41,9 @@ pub fn encode_feed_cursor(updated_at: NaiveDateTime, id: &str) -> String {
 }
 
 pub fn decode_feed_cursor(cursor: &str) -> Result<(NaiveDateTime, String)> {
-    let (updated_at, id) = cursor.split_once('|').ok_or_else(|| {
-        Error::InvalidData("Feed cursor must be updatedAt|id".to_string())
-    })?;
+    let (updated_at, id) = cursor
+        .split_once('|')
+        .ok_or_else(|| Error::InvalidData("Feed cursor must be updatedAt|id".to_string()))?;
     let updated_at = NaiveDateTime::parse_from_str(updated_at, "%Y-%m-%d %H:%M:%S%.f")
         .or_else(|_| NaiveDateTime::parse_from_str(updated_at, "%Y-%m-%d %H:%M:%S"))
         .map_err(|_| Error::InvalidData("Feed cursor updatedAt is invalid".to_string()))?;
@@ -72,7 +72,9 @@ pub fn decode_occurrence_cursor(cursor: &str) -> Result<(NaiveDateTime, String, 
     }
     let scheduled_local = NaiveDateTime::parse_from_str(parts[0], "%Y-%m-%d %H:%M:%S%.f")
         .or_else(|_| NaiveDateTime::parse_from_str(parts[0], "%Y-%m-%d %H:%M:%S"))
-        .map_err(|_| Error::InvalidData("Occurrence cursor scheduledLocal is invalid".to_string()))?;
+        .map_err(|_| {
+            Error::InvalidData("Occurrence cursor scheduledLocal is invalid".to_string())
+        })?;
     let ordinal = parts[2]
         .parse::<i32>()
         .map_err(|_| Error::InvalidData("Occurrence cursor ordinal is invalid".to_string()))?;
@@ -127,11 +129,11 @@ pub fn list_feed(
     if let Some(cursor) = cursor {
         let (updated_at, id) = decode_feed_cursor(cursor)?;
         query = query.filter(
-            recurring_transactions::updated_at
-                .lt(updated_at)
-                .or(recurring_transactions::updated_at
+            recurring_transactions::updated_at.lt(updated_at).or(
+                recurring_transactions::updated_at
                     .eq(updated_at)
-                    .and(recurring_transactions::id.lt(id))),
+                    .and(recurring_transactions::id.lt(id)),
+            ),
         );
     }
 
@@ -169,10 +171,9 @@ pub fn list_due_heads(
 ) -> Result<Vec<RecurringOccurrenceHead>> {
     let limit = normalize_feed_limit(limit)?;
     let rows = recurring_occurrence_heads::table
-        .inner_join(
-            recurring_transactions::table.on(recurring_occurrence_heads::recurring_transaction_id
-                .eq(recurring_transactions::id)),
-        )
+        .inner_join(recurring_transactions::table.on(
+            recurring_occurrence_heads::recurring_transaction_id.eq(recurring_transactions::id),
+        ))
         .filter(recurring_occurrence_heads::next_scheduled_local.le(observed_local))
         .filter(recurring_transactions::lifecycle.eq("active"))
         .filter(recurring_transactions::deleted_at.is_null())
@@ -196,9 +197,7 @@ pub fn list_occurrences(
 ) -> Result<RecurringOccurrencePage> {
     let limit = normalize_feed_limit(limit)?;
     let mut query = recurring_occurrences::table
-        .filter(
-            recurring_occurrences::recurring_transaction_id.eq(recurring_transaction_id),
-        )
+        .filter(recurring_occurrences::recurring_transaction_id.eq(recurring_transaction_id))
         .into_boxed();
 
     if let Some(cursor) = cursor {
@@ -206,13 +205,15 @@ pub fn list_occurrences(
         query = query.filter(
             recurring_occurrences::scheduled_local
                 .lt(scheduled_local)
-                .or(recurring_occurrences::scheduled_local.eq(scheduled_local).and(
-                    recurring_occurrences::schedule_revision_id
-                        .lt(schedule_revision_id.clone())
-                        .or(recurring_occurrences::schedule_revision_id
-                            .eq(schedule_revision_id)
-                            .and(recurring_occurrences::ordinal.lt(ordinal))),
-                )),
+                .or(recurring_occurrences::scheduled_local
+                    .eq(scheduled_local)
+                    .and(
+                        recurring_occurrences::schedule_revision_id
+                            .lt(schedule_revision_id.clone())
+                            .or(recurring_occurrences::schedule_revision_id
+                                .eq(schedule_revision_id)
+                                .and(recurring_occurrences::ordinal.lt(ordinal))),
+                    )),
         );
     }
 
@@ -268,8 +269,7 @@ pub fn list_failure_history(
     let limit = normalize_failure_limit(limit)?;
     let mut query = recurring_generation_failures::table
         .filter(
-            recurring_generation_failures::recurring_transaction_id
-                .eq(recurring_transaction_id),
+            recurring_generation_failures::recurring_transaction_id.eq(recurring_transaction_id),
         )
         .into_boxed();
 
