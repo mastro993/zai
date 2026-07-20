@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,14 +7,29 @@ import { describe, expect, it } from "vitest";
 import { BACKEND_COMMAND_NAMES, WEB_MAPPED_BACKEND_COMMAND_NAMES } from "@/commands/registry";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../..");
-
-const WEB_COMMAND_MAP_FILES = [
-  "apps/frontend/src/commands/web-command-map.ts",
-  "apps/frontend/src/commands/alerts-web-command-map.ts",
-] as const;
+const featuresCommandsRoot = path.join(repoRoot, "apps/frontend/src/features");
+const centralWebCommandMapPath = "apps/frontend/src/commands/web-command-map.ts";
 
 const readFile = (relativePath: string): string =>
   readFileSync(path.join(repoRoot, relativePath), "utf8");
+
+const discoverFeatureWebCommandMapFiles = (): Array<string> => {
+  const maps: Array<string> = [];
+
+  for (const featureName of readdirSync(featuresCommandsRoot).toSorted()) {
+    const relativePath = path.join(
+      "apps/frontend/src/features",
+      featureName,
+      "commands",
+      "web-command-map.ts",
+    );
+    if (existsSync(path.join(repoRoot, relativePath))) {
+      maps.push(relativePath);
+    }
+  }
+
+  return maps;
+};
 
 const readTauriCommands = (): Set<string> | null => {
   const source = readFile("apps/tauri/src/lib.rs");
@@ -35,7 +50,7 @@ const readTauriCommands = (): Set<string> | null => {
 const readWebCommands = (): Set<string> => {
   const commands = new Set<string>();
 
-  for (const relativePath of WEB_COMMAND_MAP_FILES) {
+  for (const relativePath of discoverFeatureWebCommandMapFiles()) {
     const source = readFile(relativePath);
     for (const match of source.matchAll(/case "([^"]+)":/g)) {
       commands.add(match[1]);
@@ -49,6 +64,22 @@ const toSortedArray = (commands: Iterable<string>): Array<string> =>
   [...commands].toSorted((left, right) => left.localeCompare(right));
 
 describe("command transport registry parity", () => {
+  it("discovers every feature-owned web command map", () => {
+    const discoveredMaps = discoverFeatureWebCommandMapFiles();
+    expect(discoveredMaps).toEqual([
+      "apps/frontend/src/features/alerts/commands/web-command-map.ts",
+      "apps/frontend/src/features/budgets/commands/web-command-map.ts",
+      "apps/frontend/src/features/categories/commands/web-command-map.ts",
+      "apps/frontend/src/features/transactions/commands/web-command-map.ts",
+    ]);
+
+    const centralSource = readFile(centralWebCommandMapPath);
+    for (const relativePath of discoveredMaps) {
+      const importPath = relativePath.replace(/^apps\/frontend\/src\//, "@/").replace(/\.ts$/, "");
+      expect(centralSource).toContain(`from "${importPath}"`);
+    }
+  });
+
   it("lists every backend command in the typed registry", () => {
     expect(toSortedArray(BACKEND_COMMAND_NAMES)).toEqual(
       toSortedArray([
