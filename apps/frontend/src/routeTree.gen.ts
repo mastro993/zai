@@ -16,6 +16,7 @@ import { Route as CashFlowRouteImport } from './routes/cash-flow'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CashFlowIndexRouteImport } from './routes/cash-flow.index'
 import { Route as CashFlowTransactionsRouteImport } from './routes/cash-flow.transactions'
+import { Route as CashFlowForecastRouteImport } from './routes/cash-flow.forecast'
 import { Route as CashFlowCategoriesRouteImport } from './routes/cash-flow.categories'
 import { Route as CashFlowBudgetsRouteImport } from './routes/cash-flow.budgets'
 import { Route as CashFlowBudgetsIndexRouteImport } from './routes/cash-flow.budgets.index'
@@ -56,6 +57,11 @@ const CashFlowTransactionsRoute = CashFlowTransactionsRouteImport.update({
   path: '/transactions',
   getParentRoute: () => CashFlowRoute,
 } as any)
+const CashFlowForecastRoute = CashFlowForecastRouteImport.update({
+  id: '/forecast',
+  path: '/forecast',
+  getParentRoute: () => CashFlowRoute,
+} as any)
 const CashFlowCategoriesRoute = CashFlowCategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/cash-flow/budgets': typeof CashFlowBudgetsRouteWithChildren
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
+  '/cash-flow/forecast': typeof CashFlowForecastRoute
   '/cash-flow/transactions': typeof CashFlowTransactionsRoute
   '/cash-flow/': typeof CashFlowIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/net-worth': typeof NetWorthRoute
   '/settings': typeof SettingsRoute
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
+  '/cash-flow/forecast': typeof CashFlowForecastRoute
   '/cash-flow/transactions': typeof CashFlowTransactionsRoute
   '/cash-flow': typeof CashFlowIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/cash-flow/budgets': typeof CashFlowBudgetsRouteWithChildren
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
+  '/cash-flow/forecast': typeof CashFlowForecastRoute
   '/cash-flow/transactions': typeof CashFlowTransactionsRoute
   '/cash-flow/': typeof CashFlowIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/cash-flow/budgets'
     | '/cash-flow/categories'
+    | '/cash-flow/forecast'
     | '/cash-flow/transactions'
     | '/cash-flow/'
     | '/cash-flow/budgets/$budgetId'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/net-worth'
     | '/settings'
     | '/cash-flow/categories'
+    | '/cash-flow/forecast'
     | '/cash-flow/transactions'
     | '/cash-flow'
     | '/cash-flow/budgets/$budgetId'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/cash-flow/budgets'
     | '/cash-flow/categories'
+    | '/cash-flow/forecast'
     | '/cash-flow/transactions'
     | '/cash-flow/'
     | '/cash-flow/budgets/$budgetId'
@@ -214,6 +226,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CashFlowTransactionsRouteImport
       parentRoute: typeof CashFlowRoute
     }
+    '/cash-flow/forecast': {
+      id: '/cash-flow/forecast'
+      path: '/forecast'
+      fullPath: '/cash-flow/forecast'
+      preLoaderRoute: typeof CashFlowForecastRouteImport
+      parentRoute: typeof CashFlowRoute
+    }
     '/cash-flow/categories': {
       id: '/cash-flow/categories'
       path: '/categories'
@@ -262,6 +281,7 @@ const CashFlowBudgetsRouteWithChildren = CashFlowBudgetsRoute._addFileChildren(
 interface CashFlowRouteChildren {
   CashFlowBudgetsRoute: typeof CashFlowBudgetsRouteWithChildren
   CashFlowCategoriesRoute: typeof CashFlowCategoriesRoute
+  CashFlowForecastRoute: typeof CashFlowForecastRoute
   CashFlowTransactionsRoute: typeof CashFlowTransactionsRoute
   CashFlowIndexRoute: typeof CashFlowIndexRoute
 }
@@ -269,6 +289,7 @@ interface CashFlowRouteChildren {
 const CashFlowRouteChildren: CashFlowRouteChildren = {
   CashFlowBudgetsRoute: CashFlowBudgetsRouteWithChildren,
   CashFlowCategoriesRoute: CashFlowCategoriesRoute,
+  CashFlowForecastRoute: CashFlowForecastRoute,
   CashFlowTransactionsRoute: CashFlowTransactionsRoute,
   CashFlowIndexRoute: CashFlowIndexRoute,
 }
