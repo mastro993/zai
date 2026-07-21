@@ -91,6 +91,9 @@ vi.mock("@/features/recurring-transactions/commands/recurring-transactions", asy
       ),
     ),
     getRecurringTransaction: vi.fn(() => Promise.resolve(Result.succeed(documentFixture))),
+    getRecurringTransactionOccurrences: vi.fn(() =>
+      Promise.resolve(Result.succeed(documentFixture.links.occurrences)),
+    ),
     createRecurringTransaction: vi.fn(() =>
       Promise.resolve(Result.succeed({ outcome: "succeeded", document: documentFixture })),
     ),
@@ -185,6 +188,7 @@ describe("recurring screen navigation", () => {
     expect(screen.getByLabelText("Lifecycle")).toBeTruthy();
     expect(screen.getByLabelText("Occurrence summary")).toBeTruthy();
     expect(screen.getByLabelText("Links")).toBeTruthy();
+    expect(screen.getByText(/Adopted/)).toBeTruthy();
     expect(screen.getByLabelText("Failures")).toBeTruthy();
     expect(screen.getByLabelText("Budget impact")).toBeTruthy();
     expect(screen.getByText("Back to feed")).toBeTruthy();

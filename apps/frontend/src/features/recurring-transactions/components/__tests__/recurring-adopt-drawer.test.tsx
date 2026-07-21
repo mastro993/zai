@@ -14,18 +14,21 @@ import type {
   RecurringAdoptOutcome,
 } from "../../types/recurring-transaction";
 
-vi.mock("../../commands/recurring-transactions", async () => {
-  const actual = await vi.importActual<typeof import("../../commands/recurring-transactions")>(
-    "../../commands/recurring-transactions",
-  );
+vi.mock("@/features/recurring-transactions/commands/recurring-transactions", async () => {
+  const { Result } = await import("@praha/byethrow");
+  const actual = await vi.importActual<
+    typeof import("@/features/recurring-transactions/commands/recurring-transactions")
+  >("@/features/recurring-transactions/commands/recurring-transactions");
   return {
     ...actual,
     previewRecurringAdoption: vi.fn(async () =>
-      Result.succeed({
-        transactionId: "txn-1",
-        firstScheduledLocal: "2026-04-21T10:00:00",
-        laterDueCount: 2,
-      }),
+      Promise.resolve(
+        Result.succeed({
+          transactionId: "txn-1",
+          firstScheduledLocal: "2026-04-21T10:00:00",
+          laterDueCount: 2,
+        }),
+      ),
     ),
   };
 });
@@ -120,7 +123,9 @@ describe("RecurringAdoptDrawer", () => {
     render(<Harness onSubmit={onSubmit} />);
 
     await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent("catch up 2 later due occurrences");
+      expect(screen.getByRole("status").textContent ?? "").toContain(
+        "catch up 2 later due occurrences",
+      );
     });
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Monthly rent" } });
@@ -128,7 +133,7 @@ describe("RecurringAdoptDrawer", () => {
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalled();
-      expect(screen.getByRole("button", { name: "Make recurring" })).toHaveFocus();
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Make recurring" }));
     });
   });
 });

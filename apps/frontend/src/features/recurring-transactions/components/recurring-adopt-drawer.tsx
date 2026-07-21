@@ -28,7 +28,7 @@ import type { TransactionCategory } from "@/features/categories/types/model";
 import { formatAmountFromMinor } from "@/features/transactions/lib/transaction";
 import type { Transaction } from "@/features/transactions/types/model";
 
-import { previewRecurringAdoption } from "../commands/recurring-transactions";
+import { previewRecurringAdoption } from "@/features/recurring-transactions/commands/recurring-transactions";
 import { formatLocalDateTime } from "../lib/recurring";
 import {
   SCHEDULE_INTERVAL_UNITS,
@@ -77,7 +77,6 @@ export function RecurringAdoptDrawer({
     register,
     handleSubmit,
     reset,
-    getValues,
     formState: { errors, isSubmitting },
   } = useForm<AdoptRecurringFormInput, unknown, AdoptRecurringFormValues>({
     resolver: zodResolver(adoptRecurringFormSchema),
@@ -101,13 +100,36 @@ export function RecurringAdoptDrawer({
       return;
     }
     let cancelled = false;
-    const values = getValues();
-    const parsed = adoptRecurringFormSchema.safeParse(values);
-    if (!parsed.success) {
+    const every = Number(intervalEvery);
+    const day = Number(monthlyDay);
+    const total = Number(totalOccurrences);
+    const scheduleValid =
+      scheduleKind === "interval"
+        ? Number.isInteger(every) && every >= 1
+        : Number.isInteger(day) && day >= 1 && day <= 31;
+    const totalValid = totalMode === "indefinite" || (Number.isInteger(total) && total >= 1);
+    if (!scheduleValid || !totalValid) {
       setLaterDueCount(null);
+      setPreviewError(undefined);
       return;
     }
-    void previewRecurringAdoption(transaction.id, parsed.data).then((result) => {
+
+    const values: AdoptRecurringFormValues = {
+      name: "preview",
+      scheduleKind,
+      intervalEvery: String(every || 1),
+      intervalUnit: intervalUnit ?? "month",
+      monthlyDay: String(day || 1),
+      totalMode: totalMode ?? "indefinite",
+      totalOccurrences: totalMode === "finite" ? String(total) : undefined,
+      description: "",
+      amount: 0,
+      transactionType: "expense",
+      transactionCategoryId: undefined,
+      notes: "",
+    };
+
+    void previewRecurringAdoption(transaction.id, values).then((result) => {
       if (cancelled) {
         return;
       }
@@ -131,7 +153,6 @@ export function RecurringAdoptDrawer({
     monthlyDay,
     totalMode,
     totalOccurrences,
-    getValues,
   ]);
 
   const submit = handleSubmit(async (values) => {
