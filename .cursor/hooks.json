@@ -10,7 +10,8 @@
     "stop": [
       {
         "command": ".cursor/hooks/check.sh",
-        "timeout": 120
+        "timeout": 900,
+        "loop_limit": 5
       }
     ]
   }

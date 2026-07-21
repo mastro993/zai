@@ -32,7 +32,7 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 | `.agents/skills/` | Canonical shared skill store (real directories) | Primary copy for most skills; Codex Impeccable hook points here |
 | `.claude/skills/` | Claude Code consumer tree | Most entries symlink into `.agents/skills/`; `byethrow` and `impeccable` are real copies |
 | `.codex/` | Codex consumer config | `hooks.json` runs Impeccable hook under `.agents/skills/` |
-| `.cursor/` | Cursor consumer config | `hooks.json` runs `.cursor/hooks/{format,check}.sh` (not Impeccable) |
+| `.cursor/` | Cursor consumer config | `hooks.json` runs format on edit and gates stop on `pnpm check` via followup_message |
 | `.github/skills/` | GitHub Copilot / shared skill copy | Currently only `impeccable` (real copy) |
 | `.github/hooks/` | GitHub Copilot hook manifests | `impeccable.json` runs hook under `.github/skills/` |
 | `skills-lock.json` | Install/lock record | Source + `computedHash` for a subset of skills; no licensing or consumers |
@@ -44,7 +44,7 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 | --------------- | ---------------- | ------ |
 | `.codex/hooks.json` | `node ".agents/skills/impeccable/scripts/hook.mjs"` | Agents Impeccable tree |
 | `.github/hooks/impeccable.json` | `node "$(git rev-parse --show-toplevel)/.github/skills/impeccable/scripts/hook.mjs"` | GitHub Impeccable tree |
-| `.cursor/hooks.json` | `.cursor/hooks/format.sh`, `.cursor/hooks/check.sh` | Local `pnpm format` / `pnpm check` |
+| `.cursor/hooks.json` | `.cursor/hooks/format.sh`, `.cursor/hooks/check.sh` | `afterFileEdit` → `pnpm format`; `stop` → `pnpm check` with `followup_message` on failure |
 | Claude Code | `.claude/skills/*` | Symlinks to `.agents/skills/*` except real copies of `byethrow` and `impeccable` |
 | Agents / generic | `.agents/skills/*/SKILL.md` | Canonical skill docs; Impeccable scripts under `.agents/skills/impeccable/scripts/` |
 
@@ -73,8 +73,10 @@ Real copies (not symlinks):
   directory (on the order of ~66 script files per tree). Hook entrypoints:
   - `.agents/skills/impeccable/scripts/hook.mjs` (Codex)
   - `.github/skills/impeccable/scripts/hook.mjs` (GitHub Copilot)
-- Cursor: `.cursor/hooks/format.sh` is mode `+x` and runs `pnpm format`;
-  `.cursor/hooks/check.sh` runs `pnpm check`.
+- Cursor: `.cursor/hooks/format.sh` and `.cursor/hooks/check.sh` are mode `+x`.
+  `format.sh` runs `pnpm format`. `check.sh` runs `pnpm check` and, on failure,
+  exits 0 with JSON `{ "followup_message": ... }` so Cursor auto-continues the
+  agent (non-zero hook exits are fail-open and would not gate completion).
 
 ## Provenance table
 
