@@ -7,8 +7,14 @@ use super::models::{
     DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringLifecycle,
     RecurringTransaction,
 };
+use super::process::{
+    ProcessOneOutcome, ProcessingSliceOutcome, ProcessingStopReason, ProcessingWorkBudget,
+};
 use super::schedule::scheduled_local_at;
-use super::traits::{RecurringTransactionsRepositoryTrait, RecurringTransactionsServiceTrait};
+use super::traits::{
+    RecurringOccurrenceProcessor, RecurringTransactionsRepositoryTrait,
+    RecurringTransactionsServiceTrait,
+};
 use crate::features::budgets::traits::CalendarClock;
 use crate::{Error, Result};
 use std::sync::Arc;
@@ -157,5 +163,51 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         let created = self.repository.create_recurring_transaction(input).await?;
         let document = self.compose_document(created).await?;
         Ok(RecurringCreateOutcome::Succeeded { document })
+    }
+}
+
+#[async_trait::async_trait]
+impl RecurringOccurrenceProcessor for RecurringTransactionsService {
+    async fn process_due(
+        &self,
+        observed_local: chrono::NaiveDateTime,
+        work_budget: ProcessingWorkBudget,
+    ) -> Result<ProcessingSliceOutcome> {
+        let max_occurrences = work_budget.max_occurrences.max(1);
+        let mut committed = 0_u32;
+        let mut already_fulfilled = 0_u32;
+
+        while committed + already_fulfilled < max_occurrences {
+            match self
+                .repository
+                .process_one_due_occurrence(observed_local)
+                .await?
+            {
+                ProcessOneOutcome::Committed(_) => committed += 1,
+                ProcessOneOutcome::AlreadyFulfilled(_) => already_fulfilled += 1,
+                ProcessOneOutcome::NoEligibleWork => {
+                    return Ok(ProcessingSliceOutcome {
+                        committed,
+                        already_fulfilled,
+                        more_due_remaining: false,
+                        stop_reason: ProcessingStopReason::CaughtUp,
+                        observed_local,
+                    });
+                }
+            }
+        }
+
+        let more_due_remaining = !self
+            .repository
+            .list_due_heads(observed_local, 1)
+            .await?
+            .is_empty();
+        Ok(ProcessingSliceOutcome {
+            committed,
+            already_fulfilled,
+            more_due_remaining,
+            stop_reason: ProcessingStopReason::BudgetExhausted,
+            observed_local,
+        })
     }
 }
