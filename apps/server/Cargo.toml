@@ -20,8 +20,9 @@ futures-util = "=0.3.31"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "signal", "time"] }
 tower-http = { version = "0.6", features = ["cors"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
 zai-app = { workspace = true }
 zai-core = { workspace = true }
 

@@ -1,3 +1,4 @@
+use super::contention::{ContentionRetryDecision, next_contention_retry};
 use super::create::{NewRecurringTransaction, normalize_recurring_name};
 use super::document::{
     RecurringCreateOutcome, RecurringFeedItem, RecurringFeedResult, RecurringTransactionDocument,
@@ -12,17 +13,20 @@ use super::process::{
 };
 use super::schedule::scheduled_local_at;
 use super::traits::{
-    RecurringOccurrenceProcessor, RecurringTransactionsRepositoryTrait,
+    RecurringOccurrenceProcessor, RecurringProcessingWake, RecurringTransactionsRepositoryTrait,
     RecurringTransactionsServiceTrait,
 };
 use crate::features::budgets::traits::CalendarClock;
 use crate::{Error, Result};
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+use std::time::Instant;
 use uuid::Uuid;
 
 pub struct RecurringTransactionsService {
     repository: Arc<dyn RecurringTransactionsRepositoryTrait>,
     clock: Arc<dyn CalendarClock>,
+    wake: std::sync::RwLock<Option<Arc<dyn RecurringProcessingWake>>>,
 }
 
 impl RecurringTransactionsService {
@@ -30,7 +34,15 @@ impl RecurringTransactionsService {
         repository: Arc<dyn RecurringTransactionsRepositoryTrait>,
         clock: Arc<dyn CalendarClock>,
     ) -> Self {
-        Self { repository, clock }
+        Self {
+            repository,
+            clock,
+            wake: std::sync::RwLock::new(None),
+        }
+    }
+
+    pub fn attach_wake(&self, wake: Arc<dyn RecurringProcessingWake>) {
+        *self.wake.write().expect("wake lock") = Some(wake);
     }
 
     async fn compose_document(
@@ -97,6 +109,127 @@ impl RecurringTransactionsService {
             head,
         })
     }
+
+    async fn process_due_inner(
+        &self,
+        observed_local: chrono::NaiveDateTime,
+        work_budget: ProcessingWorkBudget,
+        cancelled: Option<&AtomicBool>,
+    ) -> Result<ProcessingSliceOutcome> {
+        let max_occurrences = work_budget.max_occurrences.max(1);
+        let mut committed = 0_u32;
+        let mut already_fulfilled = 0_u32;
+        let slice_started = Instant::now();
+        let mut contention_started: Option<Instant> = None;
+        let mut contention_attempt = 0_u32;
+
+        loop {
+            if cancelled.is_some_and(|flag| flag.load(std::sync::atomic::Ordering::SeqCst)) {
+                let more_due_remaining = self
+                    .repository
+                    .has_eligible_due_work(observed_local)
+                    .await
+                    .unwrap_or(true);
+                return Ok(ProcessingSliceOutcome {
+                    committed,
+                    already_fulfilled,
+                    more_due_remaining,
+                    stop_reason: ProcessingStopReason::Cancelled,
+                    observed_local,
+                });
+            }
+
+            if committed + already_fulfilled >= max_occurrences {
+                let more_due_remaining = self
+                    .repository
+                    .has_eligible_due_work(observed_local)
+                    .await?;
+                return Ok(ProcessingSliceOutcome {
+                    committed,
+                    already_fulfilled,
+                    more_due_remaining,
+                    stop_reason: ProcessingStopReason::BudgetExhausted,
+                    observed_local,
+                });
+            }
+
+            match self
+                .repository
+                .process_one_due_occurrence(observed_local)
+                .await
+            {
+                Ok(ProcessOneOutcome::Committed(_)) => {
+                    committed += 1;
+                    contention_started = None;
+                    contention_attempt = 0;
+                    if slice_started.elapsed() >= work_budget.max_duration {
+                        let more_due_remaining = self
+                            .repository
+                            .has_eligible_due_work(observed_local)
+                            .await?;
+                        return Ok(ProcessingSliceOutcome {
+                            committed,
+                            already_fulfilled,
+                            more_due_remaining,
+                            stop_reason: ProcessingStopReason::BudgetExhausted,
+                            observed_local,
+                        });
+                    }
+                }
+                Ok(ProcessOneOutcome::AlreadyFulfilled(_)) => {
+                    already_fulfilled += 1;
+                    contention_started = None;
+                    contention_attempt = 0;
+                    if slice_started.elapsed() >= work_budget.max_duration {
+                        let more_due_remaining = self
+                            .repository
+                            .has_eligible_due_work(observed_local)
+                            .await?;
+                        return Ok(ProcessingSliceOutcome {
+                            committed,
+                            already_fulfilled,
+                            more_due_remaining,
+                            stop_reason: ProcessingStopReason::BudgetExhausted,
+                            observed_local,
+                        });
+                    }
+                }
+                Ok(ProcessOneOutcome::NoEligibleWork) => {
+                    return Ok(ProcessingSliceOutcome {
+                        committed,
+                        already_fulfilled,
+                        more_due_remaining: false,
+                        stop_reason: ProcessingStopReason::CaughtUp,
+                        observed_local,
+                    });
+                }
+                Err(error) if error.is_transient_contention() => {
+                    let started = contention_started.get_or_insert_with(Instant::now);
+                    match next_contention_retry(contention_attempt, started.elapsed()) {
+                        ContentionRetryDecision::RetryAfter(delay) => {
+                            contention_attempt += 1;
+                            tokio::time::sleep(delay).await;
+                        }
+                        ContentionRetryDecision::Exhausted => {
+                            let more_due_remaining = self
+                                .repository
+                                .has_eligible_due_work(observed_local)
+                                .await
+                                .unwrap_or(true);
+                            return Ok(ProcessingSliceOutcome {
+                                committed,
+                                already_fulfilled,
+                                more_due_remaining,
+                                stop_reason: ProcessingStopReason::TransientlyDelayed,
+                                observed_local,
+                            });
+                        }
+                    }
+                }
+                Err(error) => return Err(error),
+            }
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -162,6 +295,9 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
 
         let created = self.repository.create_recurring_transaction(input).await?;
         let document = self.compose_document(created).await?;
+        if let Some(wake) = self.wake.read().expect("wake lock").as_ref() {
+            wake.request_wake();
+        }
         Ok(RecurringCreateOutcome::Succeeded { document })
     }
 }
@@ -172,41 +308,9 @@ impl RecurringOccurrenceProcessor for RecurringTransactionsService {
         &self,
         observed_local: chrono::NaiveDateTime,
         work_budget: ProcessingWorkBudget,
+        cancelled: Option<&AtomicBool>,
     ) -> Result<ProcessingSliceOutcome> {
-        let max_occurrences = work_budget.max_occurrences.max(1);
-        let mut committed = 0_u32;
-        let mut already_fulfilled = 0_u32;
-
-        while committed + already_fulfilled < max_occurrences {
-            match self
-                .repository
-                .process_one_due_occurrence(observed_local)
-                .await?
-            {
-                ProcessOneOutcome::Committed(_) => committed += 1,
-                ProcessOneOutcome::AlreadyFulfilled(_) => already_fulfilled += 1,
-                ProcessOneOutcome::NoEligibleWork => {
-                    return Ok(ProcessingSliceOutcome {
-                        committed,
-                        already_fulfilled,
-                        more_due_remaining: false,
-                        stop_reason: ProcessingStopReason::CaughtUp,
-                        observed_local,
-                    });
-                }
-            }
-        }
-
-        let more_due_remaining = self
-            .repository
-            .has_eligible_due_work(observed_local)
-            .await?;
-        Ok(ProcessingSliceOutcome {
-            committed,
-            already_fulfilled,
-            more_due_remaining,
-            stop_reason: ProcessingStopReason::BudgetExhausted,
-            observed_local,
-        })
+        self.process_due_inner(observed_local, work_budget, cancelled)
+            .await
     }
 }

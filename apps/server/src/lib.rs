@@ -7,7 +7,7 @@ use thiserror::Error;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 
 mod mutation_auth;
-use zai_app::{ServiceContext, initialize_context};
+use zai_app::{ServiceContext, bootstrap_context};
 use zai_core::Result as CoreResult;
 
 mod api;
@@ -125,8 +125,17 @@ pub fn create_router(context: Arc<ServiceContext>) -> Router {
 
 pub async fn serve(config: ServerConfig) -> Result<(), ServerError> {
     validate_bind_addr(&config.bind_addr)?;
-    let context = Arc::new(initialize_context(&config.data_dir)?);
+    let bootstrapped = bootstrap_context(&config.data_dir)?;
+    let context = Arc::new(bootstrapped.context);
+    let supervisor_handle = context.recurring_processing_supervisor();
+    let _supervisor = bootstrapped.supervisor.spawn();
     let app = create_router(context);
     let listener = config.bind_listener().await?;
-    axum::serve(listener, app).await.map_err(ServerError::Serve)
+    axum::serve(listener, app)
+        .with_graceful_shutdown(async move {
+            let _ = tokio::signal::ctrl_c().await;
+            supervisor_handle.request_shutdown();
+        })
+        .await
+        .map_err(ServerError::Serve)
 }
