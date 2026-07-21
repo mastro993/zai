@@ -42,15 +42,29 @@ const parseJsonResponse = async <T>(response: Response): Promise<T> => {
   return Result.isSuccess(result) ? result.value : Promise.reject(result.error);
 };
 
+const ZAI_APP_HEADER = "x-zai-app";
+const ZAI_APP_HEADER_VALUE = "zai";
+
+const buildWebRequestHeaders = (hasBody: boolean): Record<string, string> => {
+  const headers: Record<string, string> = {
+    [ZAI_APP_HEADER]: ZAI_APP_HEADER_VALUE,
+  };
+  if (hasBody) {
+    headers["Content-Type"] = "application/json";
+  }
+  return headers;
+};
+
 export const createWebCommandTransport = (): CommandTransport => ({
   invoke: async <T>(command: string, args?: CommandArgs) => {
     const spec = buildWebRequestSpec(command, args);
+    const hasBody = spec.body !== undefined;
     const response = await fetch(
       buildWebRequestUrl(resolveWebApiBaseUrlForCommand(command), spec),
       {
         method: spec.method,
-        headers: spec.body !== undefined ? { "Content-Type": "application/json" } : undefined,
-        body: spec.body !== undefined ? JSON.stringify(spec.body) : undefined,
+        headers: buildWebRequestHeaders(hasBody),
+        body: hasBody ? JSON.stringify(spec.body) : undefined,
       },
     );
 

@@ -439,10 +439,31 @@ describe("web command transport", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:3000/api/cash-flow/categories", {
       method: "GET",
-      headers: undefined,
+      headers: { "x-zai-app": "zai" },
       body: undefined,
     });
     expect(result).toEqual(payload);
+  });
+
+  it("sends x-zai-app on bodyless DELETE so mutation auth accepts it", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ id: "txn-1" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const transport = createWebCommandTransport();
+    await transport.invoke("delete_transaction", { transactionId: "txn-1" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:3000/api/cash-flow/transactions/txn-1",
+      {
+        method: "DELETE",
+        headers: { "x-zai-app": "zai" },
+        body: undefined,
+      },
+    );
   });
 
   it("preserves structured fields from non-2xx JSON error bodies", async () => {
