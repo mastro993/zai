@@ -118,7 +118,7 @@ export function RecurringScreen({
         ) : null}
       </div>
 
-      <Drawer open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+      <Drawer open={isCreateOpen} onOpenChange={setIsCreateOpen} swipeDirection="right">
         <RecurringCreateDrawer
           open={isCreateOpen}
           onOpenChange={setIsCreateOpen}

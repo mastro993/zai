@@ -34,7 +34,7 @@ function Harness({
       <button ref={buttonRef} type="button" onClick={() => setOpen(true)}>
         New recurring
       </button>
-      <Drawer open={open} onOpenChange={setOpen}>
+      <Drawer open={open} onOpenChange={setOpen} swipeDirection="right">
         <RecurringCreateDrawer
           open={open}
           onOpenChange={setOpen}

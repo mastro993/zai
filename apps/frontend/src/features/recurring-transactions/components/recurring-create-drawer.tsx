@@ -93,7 +93,7 @@ export function RecurringCreateDrawer({
   });
 
   return (
-    <DrawerContent>
+    <DrawerContent className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem] data-[swipe-axis=x]:w-[calc(100%-2rem)] sm:data-[swipe-axis=x]:w-96">
       <DrawerHeader>
         <DrawerTitle>New recurring transaction</DrawerTitle>
         <DrawerDescription>
