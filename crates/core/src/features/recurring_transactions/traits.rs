@@ -5,6 +5,7 @@ use super::models::{
     RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
     RecurringTemplateRevision, RecurringTransaction,
 };
+use super::process::{ProcessOneOutcome, ProcessingSliceOutcome, ProcessingWorkBudget};
 use crate::Result;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
@@ -79,6 +80,13 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         &self,
         input: NewRecurringTransaction,
     ) -> Result<RecurringTransaction>;
+
+    async fn has_eligible_due_work(&self, observed_local: NaiveDateTime) -> Result<bool>;
+
+    async fn process_one_due_occurrence(
+        &self,
+        observed_local: NaiveDateTime,
+    ) -> Result<ProcessOneOutcome>;
 }
 
 #[async_trait]
@@ -92,4 +100,16 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
     async fn get_document(&self, id: &str) -> Result<RecurringTransactionDocument>;
 
     async fn create(&self, input: NewRecurringTransaction) -> Result<RecurringCreateOutcome>;
+}
+
+/// Internal occurrence processor used by trusted Rust orchestration.
+///
+/// Not exposed through Tauri IPC or public Axum REST endpoints.
+#[async_trait]
+pub trait RecurringOccurrenceProcessor: Send + Sync {
+    async fn process_due(
+        &self,
+        observed_local: NaiveDateTime,
+        work_budget: ProcessingWorkBudget,
+    ) -> Result<ProcessingSliceOutcome>;
 }

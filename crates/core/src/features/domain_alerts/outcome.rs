@@ -16,6 +16,7 @@ pub struct DomainAlertLifecycleOutcome {
 pub struct CommittedOutcome<T> {
     pub value: T,
     pub created_alerts: Vec<DomainAlert>,
+    pub alert_state_changed: bool,
 }
 
 impl<T> CommittedOutcome<T> {
@@ -38,7 +39,13 @@ impl<T> CommittedOutcome<T> {
         Self {
             value,
             created_alerts,
+            alert_state_changed: false,
         }
+    }
+
+    pub fn with_alert_state_changed(mut self) -> Self {
+        self.alert_state_changed = true;
+        self
     }
 }
 
@@ -50,5 +57,8 @@ pub fn publish_created_alerts<T>(
         let _ = publisher.publish(&DomainAlertEvent::Created {
             alert: Box::new(alert.clone()),
         });
+    }
+    if outcome.alert_state_changed {
+        let _ = publisher.publish(&DomainAlertEvent::StateChanged);
     }
 }

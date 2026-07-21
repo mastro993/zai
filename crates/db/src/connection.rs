@@ -77,10 +77,14 @@ impl Database {
     }
 
     pub fn recurring_transactions_repository(&self) -> Arc<RecurringTransactionsRepository> {
-        Arc::new(RecurringTransactionsRepository::new(
-            Arc::clone(&self.pool),
-            self.writer.clone(),
-        ))
+        Arc::new(
+            RecurringTransactionsRepository::new_with_clock_and_publisher(
+                Arc::clone(&self.pool),
+                self.writer.clone(),
+                Arc::clone(&self.clock),
+                self.domain_alert_event_bus.clone(),
+            ),
+        )
     }
 
     pub fn domain_alert_event_bus(&self) -> Arc<DomainAlertEventBus> {
