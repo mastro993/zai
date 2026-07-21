@@ -1,3 +1,4 @@
+#[cfg(any(test, feature = "failpoints"))]
 use super::failpoints::{self, FulfillmentFailpoint};
 use super::fulfill_head::{
     complete_or_advance_after_fulfillment, find_occurrence,
@@ -21,6 +22,7 @@ use crate::transactions::models::TransactionRow;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
+#[cfg(any(test, feature = "failpoints"))]
 use std::sync::atomic::{AtomicBool, Ordering};
 use uuid::Uuid;
 use zai_core::Error;
@@ -32,7 +34,7 @@ use zai_core::features::recurring_transactions::{
 };
 use zai_core::features::transactions::models::NewTransaction;
 
-/// Legacy single-site flag kept for existing atomicity tests.
+#[cfg(any(test, feature = "failpoints"))]
 pub static FAIL_AFTER_TRANSACTION_INSERT: AtomicBool = AtomicBool::new(false);
 
 pub fn has_eligible_due_work(
@@ -76,6 +78,7 @@ fn fulfill_generated_occurrence(
     observed_local: NaiveDateTime,
     now: NaiveDateTime,
 ) -> Result<CommittedOutcome<ProcessOneOutcome>> {
+    #[cfg(any(test, feature = "failpoints"))]
     failpoints::hit(FulfillmentFailpoint::BeforeSideEffects)?;
 
     let recurring_row = recurring_transactions::table
@@ -177,12 +180,15 @@ fn fulfill_generated_occurrence(
         .execute(conn)
         .into_storage()?;
 
-    if FAIL_AFTER_TRANSACTION_INSERT.load(Ordering::SeqCst) {
-        return Err(StorageError::CoreError(Error::Repository(
-            "Injected fulfillment failure after transaction insert".to_string(),
-        )));
+    #[cfg(any(test, feature = "failpoints"))]
+    {
+        if FAIL_AFTER_TRANSACTION_INSERT.load(Ordering::SeqCst) {
+            return Err(StorageError::CoreError(Error::Repository(
+                "Injected fulfillment failure after transaction insert".to_string(),
+            )));
+        }
+        failpoints::hit(FulfillmentFailpoint::AfterTransactionInsert)?;
     }
-    failpoints::hit(FulfillmentFailpoint::AfterTransactionInsert)?;
 
     let inserted = transactions::table
         .filter(transactions::id.eq(&transaction_id))
@@ -207,6 +213,7 @@ fn fulfill_generated_occurrence(
     };
     let recurring_alert_id = created_alert.id.clone();
 
+    #[cfg(any(test, feature = "failpoints"))]
     failpoints::hit(FulfillmentFailpoint::AfterAlertInsert)?;
 
     diesel::insert_into(recurring_occurrences::table)
@@ -225,6 +232,7 @@ fn fulfill_generated_occurrence(
         .execute(conn)
         .into_storage()?;
 
+    #[cfg(any(test, feature = "failpoints"))]
     failpoints::hit(FulfillmentFailpoint::AfterOccurrenceInsert)?;
 
     complete_or_advance_after_fulfillment(
@@ -236,6 +244,7 @@ fn fulfill_generated_occurrence(
         now,
     )?;
 
+    #[cfg(any(test, feature = "failpoints"))]
     failpoints::hit(FulfillmentFailpoint::AfterHeadAdvance)?;
 
     let mut alert_state_changed = false;
@@ -283,6 +292,7 @@ fn fulfill_generated_occurrence(
         &after,
     )?);
 
+    #[cfg(any(test, feature = "failpoints"))]
     failpoints::hit(FulfillmentFailpoint::AfterBudgetReconcile)?;
 
     let occurrence = find_occurrence(

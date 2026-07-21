@@ -83,7 +83,7 @@ async fn synthetic_edit_revalidation_rejects_stale_head_schedule() {
     )
     .await;
 
-    // Synthetic future-only edit race: head scheduled local no longer matches schedule math.
+    // Head scheduled local no longer matches schedule calculation.
     let writer = repo.writer().clone();
     writer
         .exec(move |conn| {

@@ -221,8 +221,28 @@ async fn subprocess_exit_before_commit_leaves_zero_effects() {
 }
 
 #[tokio::test]
-async fn subprocess_exit_during_side_effect_leaves_zero_effects() {
+async fn subprocess_exit_after_transaction_insert_leaves_zero_effects() {
     run_subprocess_failpoint(FulfillmentFailpoint::AfterTransactionInsert, 0).await;
+}
+
+#[tokio::test]
+async fn subprocess_exit_after_alert_insert_leaves_zero_effects() {
+    run_subprocess_failpoint(FulfillmentFailpoint::AfterAlertInsert, 0).await;
+}
+
+#[tokio::test]
+async fn subprocess_exit_after_occurrence_insert_leaves_zero_effects() {
+    run_subprocess_failpoint(FulfillmentFailpoint::AfterOccurrenceInsert, 0).await;
+}
+
+#[tokio::test]
+async fn subprocess_exit_after_head_advance_leaves_zero_effects() {
+    run_subprocess_failpoint(FulfillmentFailpoint::AfterHeadAdvance, 0).await;
+}
+
+#[tokio::test]
+async fn subprocess_exit_after_budget_reconcile_leaves_zero_effects() {
+    run_subprocess_failpoint(FulfillmentFailpoint::AfterBudgetReconcile, 0).await;
 }
 
 #[tokio::test]
@@ -231,7 +251,7 @@ async fn subprocess_exit_after_commit_before_reply_leaves_one_effect() {
 }
 
 #[tokio::test]
-async fn subprocess_exit_between_slices_keeps_complete_first_occurrence() {
+async fn restart_after_between_slices_failure_keeps_complete_first_occurrence() {
     let observed = local(2026, 3, 10, 12, 0);
     let (temp_db, service, repo, _lock) = setup_service(observed).await;
     seed_source(

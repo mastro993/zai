@@ -47,7 +47,6 @@ impl CalendarClock for ManualClock {
     }
 }
 
-/// Labels an executor identity for barrier tests (app vs future daemon).
 pub struct LabeledProcessor {
     pub identity: &'static str,
     inner: Arc<dyn RecurringOccurrenceProcessor>,

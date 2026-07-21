@@ -306,8 +306,14 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
 }
 
 fn is_competing_fulfillment_unique_violation(error: &zai_core::Error) -> bool {
-    matches!(
-        error,
-        zai_core::Error::Database(zai_core::DatabaseError::UniqueViolation(_))
-    )
+    match error {
+        zai_core::Error::Database(zai_core::DatabaseError::UniqueViolation(message)) => {
+            let message = message.to_ascii_lowercase();
+            message.contains("recurring_occurrences")
+                || message.contains("fulfillment_position")
+                || message.contains("domain_alerts")
+                || message.contains("occurrence_key")
+        }
+        _ => false,
+    }
 }

@@ -84,6 +84,7 @@ fn spawn_writer_with_capacity(
         .spawn(move || {
             while let Some((job, reply_tx)) = handle.block_on(rx.recv()) {
                 let result = conn.immediate_transaction(|conn| job(conn));
+                #[cfg(any(test, feature = "failpoints"))]
                 let result = {
                     use crate::recurring_transactions::failpoints;
                     if result.is_ok() && failpoints::hit_after_commit_before_reply() {

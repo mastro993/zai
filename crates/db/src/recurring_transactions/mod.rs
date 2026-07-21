@@ -1,5 +1,7 @@
+#[cfg(any(test, feature = "failpoints"))]
 pub mod crash_child;
 mod create;
+#[cfg(any(test, feature = "failpoints"))]
 pub(crate) mod failpoints;
 mod fulfill;
 mod fulfill_head;
@@ -27,6 +29,8 @@ mod revisions;
 #[cfg(test)]
 mod seed;
 
+#[cfg(any(test, feature = "failpoints"))]
 pub use crash_child::run_crash_child_from_env;
+#[cfg(any(test, feature = "failpoints"))]
 pub use failpoints::FulfillmentFailpoint;
 pub use repository::RecurringTransactionsRepository;
