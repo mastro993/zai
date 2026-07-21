@@ -189,6 +189,25 @@ pub fn list_due_heads(
     Ok(rows.into_iter().map(build_occurrence_head).collect())
 }
 
+pub fn earliest_active_head_after(
+    conn: &mut SqliteConnection,
+    after_local: NaiveDateTime,
+) -> Result<Option<NaiveDateTime>> {
+    let next = recurring_occurrence_heads::table
+        .inner_join(recurring_transactions::table.on(
+            recurring_occurrence_heads::recurring_transaction_id.eq(recurring_transactions::id),
+        ))
+        .filter(recurring_occurrence_heads::next_scheduled_local.gt(after_local))
+        .filter(recurring_transactions::lifecycle.eq("active"))
+        .filter(recurring_transactions::deleted_at.is_null())
+        .select(diesel::dsl::min(
+            recurring_occurrence_heads::next_scheduled_local,
+        ))
+        .first::<Option<NaiveDateTime>>(conn)
+        .into_core()?;
+    Ok(next)
+}
+
 pub fn list_occurrences(
     conn: &mut SqliteConnection,
     recurring_transaction_id: &str,

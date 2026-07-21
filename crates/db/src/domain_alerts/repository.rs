@@ -1,7 +1,7 @@
 use super::insert::insert_domain_alert;
 use super::lifecycle::{
-    mark_all_domain_alerts_read, mark_domain_alert_read_with_outcome,
-    mark_domain_alert_unread_with_outcome, resolve_domain_alert,
+    ensure_open_domain_alert, mark_all_domain_alerts_read, mark_domain_alert_read_with_outcome,
+    mark_domain_alert_unread_with_outcome, resolve_domain_alert, resolve_domain_alert_by_keys,
 };
 use super::list::{list_domain_alerts_from_pool, unread_domain_alert_count_from_pool};
 use crate::connection::DbPool;
@@ -135,6 +135,34 @@ impl DomainAlertsRepository {
             self.publish_state_changed();
         }
         Ok(outcome)
+    }
+
+    pub async fn ensure_open(&self, alert: NewDomainAlert) -> Result<AlertInsertOutcome> {
+        let outcome = self
+            .writer
+            .exec(move |conn| ensure_open_domain_alert(conn, &alert))
+            .await?;
+        if let AlertInsertOutcome::Created(alert) = &outcome {
+            self.publish_event(DomainAlertEvent::Created {
+                alert: Box::new((**alert).clone()),
+            });
+        } else {
+            self.publish_state_changed();
+        }
+        Ok(outcome)
+    }
+
+    pub async fn resolve_by_keys(&self, producer_key: &str, occurrence_key: &str) -> Result<bool> {
+        let producer_key = producer_key.to_string();
+        let occurrence_key = occurrence_key.to_string();
+        let changed = self
+            .writer
+            .exec(move |conn| resolve_domain_alert_by_keys(conn, &producer_key, &occurrence_key))
+            .await?;
+        if changed {
+            self.publish_state_changed();
+        }
+        Ok(changed)
     }
 }
 

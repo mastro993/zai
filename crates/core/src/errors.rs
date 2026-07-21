@@ -119,6 +119,9 @@ pub enum DatabaseError {
     #[error("Database migration failed: {0}")]
     MigrationFailed(String),
 
+    #[error("Database temporarily locked")]
+    Busy,
+
     #[error("Internal database error: {0}")]
     Internal(String),
 }
@@ -137,10 +140,15 @@ impl Error {
                     | DatabaseError::QueryFailed(_)
                     | DatabaseError::TransactionFailed(_)
                     | DatabaseError::MigrationFailed(_)
+                    | DatabaseError::Busy
                     | DatabaseError::Internal(_)
             ),
             _ => false,
         }
+    }
+
+    pub fn is_transient_contention(&self) -> bool {
+        matches!(self, Self::Database(DatabaseError::Busy))
     }
 
     pub fn public_message(&self) -> String {

@@ -2,15 +2,22 @@ use std::{path::Path, sync::Arc};
 
 use zai_core::features::budgets::traits::LocalCalendarClock;
 use zai_core::features::domain_alerts::DomainAlertEventBus;
+use zai_core::features::recurring_transactions::{
+    RecurringProcessingEventBus, RecurringProcessingSupervisor,
+    RecurringProcessingSupervisorHandle, RecurringTransactionsService,
+};
 use zai_core::features::{
     budgets::{service::BudgetsService, traits::BudgetsServiceTrait},
     domain_alerts::{DomainAlertsService, DomainAlertsServiceTrait},
-    recurring_transactions::{RecurringTransactionsService, RecurringTransactionsServiceTrait},
+    recurring_transactions::RecurringTransactionsServiceTrait,
     transaction_categories::{
         service::TransactionCategoriesService, traits::TransactionCategoriesServiceTrait,
     },
     transactions::{service::TransactionsService, traits::TransactionsServiceTrait},
 };
+
+mod recurring_supervisor;
+use recurring_supervisor::{ProcessDelayAlertPort, RepositorySupervisorHeads};
 
 pub struct ServiceContext {
     pub budgets_service: Arc<dyn BudgetsServiceTrait>,
@@ -19,6 +26,8 @@ pub struct ServiceContext {
     pub transaction_categories_service: Arc<dyn TransactionCategoriesServiceTrait>,
     pub transactions_service: Arc<dyn TransactionsServiceTrait>,
     pub domain_alert_event_bus: Arc<DomainAlertEventBus>,
+    pub recurring_processing_event_bus: Arc<RecurringProcessingEventBus>,
+    pub recurring_processing_supervisor: RecurringProcessingSupervisorHandle,
 }
 
 impl ServiceContext {
@@ -45,17 +54,52 @@ impl ServiceContext {
     pub fn domain_alert_event_bus(&self) -> Arc<DomainAlertEventBus> {
         Arc::clone(&self.domain_alert_event_bus)
     }
+
+    pub fn recurring_processing_event_bus(&self) -> Arc<RecurringProcessingEventBus> {
+        Arc::clone(&self.recurring_processing_event_bus)
+    }
+
+    pub fn recurring_processing_supervisor(&self) -> RecurringProcessingSupervisorHandle {
+        self.recurring_processing_supervisor.clone()
+    }
+}
+
+pub struct BootstrappedApp {
+    pub context: ServiceContext,
+    pub supervisor: RecurringProcessingSupervisor,
 }
 
 pub fn initialize_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<ServiceContext> {
+    Ok(bootstrap_context(app_data_dir)?.context)
+}
+
+pub fn bootstrap_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<BootstrappedApp> {
     let domain_alert_event_bus = DomainAlertEventBus::new();
-    initialize_context_with_event_bus(app_data_dir, domain_alert_event_bus)
+    let recurring_processing_event_bus = RecurringProcessingEventBus::new();
+    bootstrap_context_with_buses(
+        app_data_dir,
+        domain_alert_event_bus,
+        recurring_processing_event_bus,
+    )
 }
 
 pub fn initialize_context_with_event_bus(
     app_data_dir: impl AsRef<Path>,
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
 ) -> zai_core::Result<ServiceContext> {
+    Ok(bootstrap_context_with_buses(
+        app_data_dir,
+        domain_alert_event_bus,
+        RecurringProcessingEventBus::new(),
+    )?
+    .context)
+}
+
+pub fn bootstrap_context_with_buses(
+    app_data_dir: impl AsRef<Path>,
+    domain_alert_event_bus: Arc<DomainAlertEventBus>,
+    recurring_processing_event_bus: Arc<RecurringProcessingEventBus>,
+) -> zai_core::Result<BootstrappedApp> {
     let database =
         zai_db::connect_with_event_bus(app_data_dir, Arc::clone(&domain_alert_event_bus))?;
     log::info!("Database initialized at {}", database.path().display());
@@ -65,19 +109,49 @@ pub fn initialize_context_with_event_bus(
     let budgets_repository = database.budgets_repository();
     let domain_alerts_repository = database.domain_alerts_repository();
     let recurring_transactions_repository = database.recurring_transactions_repository();
+    let clock: Arc<dyn zai_core::features::budgets::traits::CalendarClock> =
+        Arc::new(LocalCalendarClock);
 
-    Ok(ServiceContext {
-        budgets_service: Arc::new(BudgetsService::new(budgets_repository)),
-        domain_alerts_service: Arc::new(DomainAlertsService::new(domain_alerts_repository)),
-        recurring_transactions_service: Arc::new(RecurringTransactionsService::new(
-            recurring_transactions_repository,
-            Arc::new(LocalCalendarClock),
-        )),
-        transaction_categories_service: Arc::new(TransactionCategoriesService::new(
-            transaction_categories_repository,
-        )),
-        transactions_service: Arc::new(TransactionsService::new(transactions_repository)),
-        domain_alert_event_bus,
+    let heads = Arc::new(RepositorySupervisorHeads::new(
+        recurring_transactions_repository.clone(),
+    ));
+    let delay_alerts = Arc::new(ProcessDelayAlertPort::new(domain_alerts_repository.clone()));
+
+    let recurring_processor = Arc::new(RecurringTransactionsService::new(
+        recurring_transactions_repository.clone(),
+        Arc::clone(&clock),
+    ));
+    let supervisor = RecurringProcessingSupervisor::new(
+        recurring_processor,
+        Arc::clone(&clock),
+        heads,
+        recurring_processing_event_bus.clone()
+            as Arc<
+                dyn zai_core::features::recurring_transactions::RecurringProcessingEventPublisher,
+            >,
+        delay_alerts,
+    );
+    let handle = supervisor.handle();
+
+    let recurring_transactions_service = Arc::new(
+        RecurringTransactionsService::new(recurring_transactions_repository, clock)
+            .with_wake(Arc::new(handle.clone())),
+    );
+
+    Ok(BootstrappedApp {
+        context: ServiceContext {
+            budgets_service: Arc::new(BudgetsService::new(budgets_repository)),
+            domain_alerts_service: Arc::new(DomainAlertsService::new(domain_alerts_repository)),
+            recurring_transactions_service,
+            transaction_categories_service: Arc::new(TransactionCategoriesService::new(
+                transaction_categories_repository,
+            )),
+            transactions_service: Arc::new(TransactionsService::new(transactions_repository)),
+            domain_alert_event_bus,
+            recurring_processing_event_bus,
+            recurring_processing_supervisor: handle,
+        },
+        supervisor,
     })
 }
 

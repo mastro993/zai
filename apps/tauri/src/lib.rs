@@ -2,11 +2,15 @@ mod commands;
 
 use dotenvy::dotenv;
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, Runtime};
 use tauri_plugin_log::log::error;
-use zai_app::initialize_context;
+use zai_app::bootstrap_context;
 use zai_core::features::domain_alerts::{
     DOMAIN_ALERT_EVENT_NAME, DomainAlertEvent, DomainAlertEventBus, serialize_domain_alert_event,
+};
+use zai_core::features::recurring_transactions::{
+    RECURRING_PROCESSING_EVENT_NAME, RecurringProcessingEvent, RecurringProcessingEventBus,
+    serialize_recurring_processing_event,
 };
 
 fn start_alert_event_forwarder<R>(handle: AppHandle<R>, event_bus: Arc<DomainAlertEventBus>)
@@ -16,6 +20,18 @@ where
     tauri::async_runtime::spawn(forward_alert_events(handle, event_bus.subscribe()));
 }
 
+fn start_recurring_processing_forwarder<R>(
+    handle: AppHandle<R>,
+    event_bus: Arc<RecurringProcessingEventBus>,
+) where
+    R: Runtime,
+{
+    tauri::async_runtime::spawn(forward_recurring_processing_events(
+        handle,
+        event_bus.subscribe(),
+    ));
+}
+
 trait AlertEventEmitter: Send + 'static {
     fn emit_alert_event(&self, payload: String);
 }
@@ -23,6 +39,16 @@ trait AlertEventEmitter: Send + 'static {
 impl<R: Runtime> AlertEventEmitter for AppHandle<R> {
     fn emit_alert_event(&self, payload: String) {
         let _ = self.emit(DOMAIN_ALERT_EVENT_NAME, payload);
+    }
+}
+
+trait RecurringProcessingEmitter: Send + 'static {
+    fn emit_recurring_processing_event(&self, payload: String);
+}
+
+impl<R: Runtime> RecurringProcessingEmitter for AppHandle<R> {
+    fn emit_recurring_processing_event(&self, payload: String) {
+        let _ = self.emit(RECURRING_PROCESSING_EVENT_NAME, payload);
     }
 }
 
@@ -46,6 +72,29 @@ where
     }
 }
 
+async fn forward_recurring_processing_events<E>(
+    emitter: E,
+    mut receiver: tokio::sync::broadcast::Receiver<String>,
+) where
+    E: RecurringProcessingEmitter,
+{
+    loop {
+        let payload = match receiver.recv().await {
+            Ok(payload) => payload,
+            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                match serialize_recurring_processing_event(&RecurringProcessingEvent::StateChanged)
+                {
+                    Ok(payload) => payload,
+                    Err(_) => continue,
+                }
+            }
+            Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+        };
+
+        emitter.emit_recurring_processing_event(payload);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     dotenv().ok();
@@ -60,17 +109,22 @@ pub fn run() {
             tauri::async_runtime::block_on(async {
                 let app_data_dir = handle.path().app_data_dir()?;
 
-                let context = match initialize_context(&app_data_dir) {
-                    Ok(ctx) => Arc::new(ctx),
+                let bootstrapped = match bootstrap_context(&app_data_dir) {
+                    Ok(value) => value,
                     Err(e) => {
                         error!("Failed to initialize context: {}", e);
                         return Err(Box::<dyn std::error::Error>::from(e));
                     }
                 };
 
-                let event_bus = context.domain_alert_event_bus();
-                handle.manage(context);
-                start_alert_event_forwarder(handle.clone(), event_bus);
+                let alert_bus = bootstrapped.context.domain_alert_event_bus();
+                let processing_bus = bootstrapped.context.recurring_processing_event_bus();
+                let supervisor_handle = bootstrapped.context.recurring_processing_supervisor();
+                handle.manage(Arc::new(bootstrapped.context));
+                handle.manage(supervisor_handle);
+                let _ = bootstrapped.supervisor.spawn();
+                start_alert_event_forwarder(handle.clone(), alert_bus);
+                start_recurring_processing_forwarder(handle.clone(), processing_bus);
 
                 Ok(())
             })
@@ -124,16 +178,36 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
-    app.run(|_app_handle, _event| {});
+    app.run(|app_handle, event| {
+        if let RunEvent::ExitRequested { .. } | RunEvent::Exit = event {
+            if let Some(handle) = app_handle.try_state::<zai_core::features::recurring_transactions::RecurringProcessingSupervisorHandle>()
+            {
+                handle.request_shutdown();
+            }
+        }
+        if let RunEvent::Resumed = event {
+            if let Some(handle) = app_handle.try_state::<zai_core::features::recurring_transactions::RecurringProcessingSupervisorHandle>()
+            {
+                handle.request_wake();
+            }
+        }
+    });
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{AlertEventEmitter, forward_alert_events};
+    use super::{
+        AlertEventEmitter, RecurringProcessingEmitter, forward_alert_events,
+        forward_recurring_processing_events,
+    };
     use tokio::sync::mpsc;
     use zai_core::features::domain_alerts::{
         DomainAlertEvent, DomainAlertEventBus, DomainAlertEventPublisher,
         deserialize_domain_alert_event,
+    };
+    use zai_core::features::recurring_transactions::{
+        RecurringProcessingEvent, RecurringProcessingEventBus, RecurringProcessingEventPublisher,
+        deserialize_recurring_processing_event,
     };
 
     #[derive(Clone)]
@@ -144,6 +218,14 @@ mod tests {
     impl AlertEventEmitter for FakeEmitter {
         fn emit_alert_event(&self, payload: String) {
             let _ = self.sender.send(("domain-alert".to_string(), payload));
+        }
+    }
+
+    impl RecurringProcessingEmitter for FakeEmitter {
+        fn emit_recurring_processing_event(&self, payload: String) {
+            let _ = self
+                .sender
+                .send(("recurring-processing".to_string(), payload));
         }
     }
 
@@ -186,6 +268,28 @@ mod tests {
         assert_eq!(
             deserialize_domain_alert_event(&payload).expect("lag hint should decode"),
             DomainAlertEvent::StateChanged
+        );
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn forwards_recurring_processing_lag_as_state_changed() {
+        let bus = RecurringProcessingEventBus::with_capacity(1);
+        let (sender, mut receiver) = mpsc::unbounded_channel();
+        let task = tokio::spawn(forward_recurring_processing_events(
+            FakeEmitter { sender },
+            bus.subscribe(),
+        ));
+
+        bus.publish(&RecurringProcessingEvent::StateChanged)
+            .expect("first");
+        bus.publish(&RecurringProcessingEvent::StateChanged)
+            .expect("second");
+        let (name, payload) = receiver.recv().await.expect("lag hint");
+        assert_eq!(name, "recurring-processing");
+        assert_eq!(
+            deserialize_recurring_processing_event(&payload).expect("decode"),
+            RecurringProcessingEvent::StateChanged
         );
         task.abort();
     }
