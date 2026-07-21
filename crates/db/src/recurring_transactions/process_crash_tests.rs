@@ -11,10 +11,39 @@ use zai_core::features::recurring_transactions::{
 };
 
 fn crash_child_exe() -> PathBuf {
+    if let Some(path) = option_env!("CARGO_BIN_EXE_recurring-crash-child") {
+        return PathBuf::from(path);
+    }
     let mut path = std::env::current_exe().expect("current exe");
     path.pop(); // deps/
     path.pop(); // debug|release/
     path.push("recurring-crash-child");
+    if path.is_file() {
+        return path;
+    }
+    // `cargo test` does not emit required-features bins; build on demand.
+    let status = Command::new(env!("CARGO"))
+        .args([
+            "build",
+            "-p",
+            "zai-db",
+            "--bin",
+            "recurring-crash-child",
+            "--features",
+            "failpoints",
+            "--quiet",
+        ])
+        .status()
+        .expect("build recurring-crash-child");
+    assert!(
+        status.success(),
+        "failed to build recurring-crash-child: {status:?}"
+    );
+    assert!(
+        path.is_file(),
+        "recurring-crash-child missing after build at {}",
+        path.display()
+    );
     path
 }
 
@@ -131,7 +160,7 @@ async fn failpoint_between_slices_keeps_completed_occurrence_only() {
         &repo,
         SeedRecurringSource {
             id: "rt-fp-slices".into(),
-            name: "Slices".into(),
+            description: "Slices".into(),
             lifecycle: "active",
             total_occurrences: Some(3),
             fulfilled_count: 0,
@@ -258,7 +287,7 @@ async fn restart_after_between_slices_failure_keeps_complete_first_occurrence() 
         &repo,
         SeedRecurringSource {
             id: "rt-sub-slices".into(),
-            name: "SubSlices".into(),
+            description: "SubSlices".into(),
             lifecycle: "active",
             total_occurrences: Some(3),
             fulfilled_count: 0,

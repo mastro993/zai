@@ -281,10 +281,10 @@ pub fn assert_no_generation_failure(repo: &super::RecurringTransactionsRepositor
     assert_eq!(delay_or_failure_alerts, 0);
 }
 
-pub fn default_seed(id: &str, name: &str, first: NaiveDateTime) -> SeedRecurringSource {
+pub fn default_seed(id: &str, description: &str, first: NaiveDateTime) -> SeedRecurringSource {
     SeedRecurringSource {
         id: id.into(),
-        name: name.into(),
+        description: description.into(),
         lifecycle: "active",
         total_occurrences: None,
         fulfilled_count: 0,

@@ -76,7 +76,7 @@ async fn competing_processors_different_observations_loser_reselects() {
         &app_repo,
         SeedRecurringSource {
             id: "rt-race-diff".into(),
-            name: "Race Diff".into(),
+            description: "Race Diff".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,

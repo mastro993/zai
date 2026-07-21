@@ -24,7 +24,7 @@
     "format": "pnpm --filter frontend format && cargo fmt --all",
     "format:check": "pnpm --filter frontend format:check && cargo fmt --all --check",
     "check:frontend": "pnpm --filter frontend check",
-    "check:backend": "mkdir -p dist && printf '<!doctype html><html><body></body></html>' > dist/index.html && cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace",
+    "check:backend": "mkdir -p dist && printf '<!doctype html><html><body></body></html>' > dist/index.html && cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo build -p zai-db --bin recurring-crash-child --features failpoints && cargo test --workspace",
     "check:file-size": "node --test scripts/check-file-size.test.mjs && node scripts/check-file-size.mjs",
     "check": "pnpm check:file-size && pnpm check:frontend && pnpm check:backend",
     "audit:frontend": "node scripts/check-advisory-exceptions.mjs && node scripts/osv-audit.mjs --min-severity high pnpm-lock.yaml",

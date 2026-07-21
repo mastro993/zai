@@ -186,7 +186,7 @@ async fn cancellation_between_commits_keeps_completed_occurrence() {
         &repo,
         SeedRecurringSource {
             id: "rt-cancel".into(),
-            name: "Cancel".into(),
+            description: "Cancel".into(),
             lifecycle: "active",
             total_occurrences: Some(3),
             fulfilled_count: 0,
