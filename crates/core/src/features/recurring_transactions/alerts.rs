@@ -1,11 +1,15 @@
 use crate::Result;
-use crate::features::domain_alerts::{DomainAlertRichData, DomainAlertSeverity, NewDomainAlert};
+use crate::features::domain_alerts::{
+    DomainAlertDestination, DomainAlertRichData, DomainAlertSeverity, NewDomainAlert,
+};
 use serde_json::{Map, Value, json};
 
 pub const RECURRING_OCCURRENCE_PRODUCER_KEY: &str = "recurring.occurrence";
 pub const RECURRING_OCCURRENCE_RICH_KIND: &str = "recurring.occurrence";
 pub const RECURRING_OCCURRENCE_RICH_VERSION: u32 = 1;
 pub const RECURRING_GENERATION_FAILURE_PRODUCER_KEY: &str = "recurring.generation_failure";
+pub const RECURRING_PROCESS_DELAY_PRODUCER_KEY: &str = "recurring.process_delay";
+pub const RECURRING_PROCESS_DELAY_OCCURRENCE_KEY: &str = "process";
 
 pub fn occurrence_identity_key(
     recurring_transaction_id: &str,
@@ -95,6 +99,20 @@ fn build_rich_data(
     }
 }
 
+pub fn build_process_delay_alert() -> Result<NewDomainAlert> {
+    Ok(NewDomainAlert {
+        id: None,
+        producer_key: RECURRING_PROCESS_DELAY_PRODUCER_KEY.to_string(),
+        occurrence_key: RECURRING_PROCESS_DELAY_OCCURRENCE_KEY.to_string(),
+        severity: DomainAlertSeverity::Critical,
+        title: "Recurring processing delayed".to_string(),
+        body: "Zai could not finish recurring catch-up because the local database was busy. Processing will retry automatically."
+            .to_string(),
+        destination: Some(DomainAlertDestination::RecurringTransactions),
+        data: None,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -125,5 +143,21 @@ mod tests {
         assert!(!data.payload.contains_key("position"));
         assert!(!data.payload.contains_key("total"));
         assert!(!data.payload.contains_key("remaining"));
+    }
+
+    #[test]
+    fn process_delay_alert_is_privacy_safe_and_dedupe_keyed() {
+        let alert = build_process_delay_alert().expect("alert");
+        assert_eq!(alert.producer_key, RECURRING_PROCESS_DELAY_PRODUCER_KEY);
+        assert_eq!(alert.occurrence_key, RECURRING_PROCESS_DELAY_OCCURRENCE_KEY);
+        assert_eq!(alert.title, "Recurring processing delayed");
+        assert!(alert.body.contains("database was busy"));
+        assert_eq!(
+            alert.destination,
+            Some(DomainAlertDestination::RecurringTransactions)
+        );
+        assert!(alert.data.is_none());
+        assert!(!alert.title.to_ascii_lowercase().contains("amount"));
+        assert!(!alert.body.to_ascii_lowercase().contains("account"));
     }
 }

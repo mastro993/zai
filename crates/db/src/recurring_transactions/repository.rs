@@ -9,9 +9,9 @@ use super::fulfill::{
     has_eligible_due_work as query_has_eligible_due_work, process_one_due_occurrence,
 };
 use super::queries::{
-    find_provenance_by_transaction, find_unresolved_failure, get_occurrence_head,
-    get_recurring_transaction, list_due_heads, list_failure_history, list_feed, list_occurrences,
-    list_unresolved_failures,
+    earliest_active_head_after, find_provenance_by_transaction, find_unresolved_failure,
+    get_occurrence_head, get_recurring_transaction, list_due_heads, list_failure_history,
+    list_feed, list_occurrences, list_unresolved_failures,
 };
 use super::revisions::{find_schedule_revision_at, find_template_revision_at};
 use crate::blocking::run_blocking;
@@ -95,6 +95,18 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
         run_blocking(move || {
             let mut conn = get_connection(&pool)?;
             list_due_heads(&mut conn, observed_local, limit)
+        })
+        .await
+    }
+
+    async fn earliest_active_head_after(
+        &self,
+        after_local: NaiveDateTime,
+    ) -> Result<Option<NaiveDateTime>> {
+        let pool = Arc::clone(&self.pool);
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            earliest_active_head_after(&mut conn, after_local)
         })
         .await
     }

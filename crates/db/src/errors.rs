@@ -50,6 +50,9 @@ impl From<StorageError> for Error {
             )) => Error::Database(DatabaseError::ForeignKeyViolation(
                 info.message().to_string(),
             )),
+            StorageError::QueryFailed(err) if is_sqlite_busy(&err) => {
+                Error::Database(DatabaseError::Busy)
+            }
             StorageError::QueryFailed(err) => {
                 Error::Database(DatabaseError::QueryFailed(err.to_string()))
             }
@@ -71,6 +74,23 @@ where
 {
     fn into_core(self) -> zai_core::Result<T> {
         self.map_err(StorageError::from).map_err(Error::from)
+    }
+}
+
+fn is_sqlite_busy(err: &DieselError) -> bool {
+    match err {
+        DieselError::DatabaseError(DatabaseErrorKind::Unknown, info) => {
+            let message = info.message().to_ascii_lowercase();
+            message.contains("database is locked") || message.contains("database is busy")
+        }
+        DieselError::DatabaseError(_, info) => {
+            let message = info.message().to_ascii_lowercase();
+            message.contains("database is locked") || message.contains("database is busy")
+        }
+        _ => {
+            let message = err.to_string().to_ascii_lowercase();
+            message.contains("database is locked") || message.contains("database is busy")
+        }
     }
 }
 

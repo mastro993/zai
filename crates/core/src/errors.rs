@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+pub use crate::database_error::DatabaseError;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -90,39 +92,6 @@ pub enum Error {
     Unexpected(String),
 }
 
-#[derive(Error, Debug)]
-pub enum DatabaseError {
-    #[error("Failed to create database directory '{path}': {reason}")]
-    DirectoryCreation { path: String, reason: String },
-
-    #[error("Failed to create database connection pool: {0}")]
-    PoolCreationFailed(String),
-
-    #[error("Failed to connect to the database: {0}")]
-    ConnectionFailed(String),
-
-    #[error("Failed to execute query: {0}")]
-    QueryFailed(String),
-
-    #[error("Record not found: {0}")]
-    NotFound(String),
-
-    #[error("Unique constraint violation: {0}")]
-    UniqueViolation(String),
-
-    #[error("Foreign key violation: {0}")]
-    ForeignKeyViolation(String),
-
-    #[error("Database transaction failed: {0}")]
-    TransactionFailed(String),
-
-    #[error("Database migration failed: {0}")]
-    MigrationFailed(String),
-
-    #[error("Internal database error: {0}")]
-    Internal(String),
-}
-
 const INTERNAL_PUBLIC_MESSAGE: &str = "An internal error occurred";
 
 impl Error {
@@ -137,10 +106,15 @@ impl Error {
                     | DatabaseError::QueryFailed(_)
                     | DatabaseError::TransactionFailed(_)
                     | DatabaseError::MigrationFailed(_)
+                    | DatabaseError::Busy
                     | DatabaseError::Internal(_)
             ),
             _ => false,
         }
+    }
+
+    pub fn is_transient_contention(&self) -> bool {
+        matches!(self, Self::Database(DatabaseError::Busy))
     }
 
     pub fn public_message(&self) -> String {

@@ -69,7 +69,7 @@ async fn schedule_edit_retains_overdue_under_prior_revision() {
     );
 
     let first = service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect("overdue under old");
     assert_eq!(first.committed, 1);
@@ -80,12 +80,7 @@ async fn schedule_edit_retains_overdue_under_prior_revision() {
     );
 
     let catch_up = service
-        .process_due(
-            observed,
-            ProcessingWorkBudget {
-                max_occurrences: 10,
-            },
-        )
+        .process_due(observed, ProcessingWorkBudget::occurrences(10), None)
         .await
         .expect("catch up");
     assert!(catch_up.committed >= 1);
@@ -126,7 +121,7 @@ async fn template_edit_is_future_only() {
     .await;
 
     service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect("fulfill first");
 
@@ -154,7 +149,7 @@ async fn template_edit_is_future_only() {
     assert_eq!(document.template.amount, 2500);
 
     service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect("second");
     let after = service.get_document("rt-tmpl").await.expect("after");

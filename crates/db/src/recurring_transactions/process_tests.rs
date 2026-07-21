@@ -31,7 +31,7 @@ async fn generated_transaction_retains_scheduled_local_after_late_catch_up() {
     .await;
 
     let outcome = service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect("process");
     assert_eq!(outcome.committed, 1);
@@ -120,7 +120,7 @@ async fn processes_due_work_in_scheduled_local_then_identity_order() {
 
     assert_eq!(
         service
-            .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+            .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
             .await
             .expect("first")
             .committed,
@@ -140,7 +140,7 @@ async fn processes_due_work_in_scheduled_local_then_identity_order() {
 
     assert_eq!(
         service
-            .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+            .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
             .await
             .expect("second")
             .committed,
@@ -160,7 +160,7 @@ async fn processes_due_work_in_scheduled_local_then_identity_order() {
 
     assert_eq!(
         service
-            .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+            .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
             .await
             .expect("third")
             .committed,
@@ -253,7 +253,7 @@ async fn open_failure_blocks_only_that_source() {
         .expect("seed failure");
 
     let outcome = service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 5 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(5), None)
         .await
         .expect("process");
     assert_eq!(outcome.committed, 1);
@@ -339,7 +339,7 @@ async fn advancing_across_schedule_revision_recomputes_under_new_rule() {
         .expect("seed revision boundary");
 
     let first = service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect("first");
     assert_eq!(first.committed, 1);
@@ -351,7 +351,7 @@ async fn advancing_across_schedule_revision_recomputes_under_new_rule() {
     assert_eq!(head.next_scheduled_local, local(2026, 2, 15, 9, 0));
 
     let second = service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect("second under new revision");
     assert_eq!(second.committed, 1);

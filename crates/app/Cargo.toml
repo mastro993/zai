@@ -12,6 +12,8 @@ workspace = true
 zai-core = { workspace = true }
 zai-db = { workspace = true }
 log = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

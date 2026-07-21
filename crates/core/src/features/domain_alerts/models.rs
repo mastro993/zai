@@ -51,6 +51,7 @@ pub enum DomainAlertDestination {
         #[serde(rename = "budgetId")]
         budget_id: String,
     },
+    RecurringTransactions,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -127,6 +128,7 @@ fn validate_nonblank(label: &str, value: &str) -> Result<()> {
 
 fn validate_destination(destination: &DomainAlertDestination) -> Result<()> {
     match destination {
+        DomainAlertDestination::RecurringTransactions => {}
         DomainAlertDestination::Budget { budget_id } => {
             if !is_valid_uuid(budget_id) {
                 return Err(Error::InvalidData(

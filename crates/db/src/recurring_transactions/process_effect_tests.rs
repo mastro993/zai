@@ -35,7 +35,7 @@ async fn fulfillment_rolls_back_atomically_when_side_effect_fails() {
 
     FAIL_AFTER_TRANSACTION_INSERT.store(true, Ordering::SeqCst);
     let error = service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect_err("injected failure");
     FAIL_AFTER_TRANSACTION_INSERT.store(false, Ordering::SeqCst);
@@ -96,12 +96,7 @@ async fn finite_source_completes_and_idempotent_replay_creates_nothing() {
     .await;
 
     let first = service
-        .process_due(
-            observed,
-            ProcessingWorkBudget {
-                max_occurrences: 10,
-            },
-        )
+        .process_due(observed, ProcessingWorkBudget::occurrences(10), None)
         .await
         .expect("process");
     assert_eq!(first.committed, 2);
@@ -146,12 +141,7 @@ async fn finite_source_completes_and_idempotent_replay_creates_nothing() {
     );
 
     let replay = service
-        .process_due(
-            observed,
-            ProcessingWorkBudget {
-                max_occurrences: 10,
-            },
-        )
+        .process_due(observed, ProcessingWorkBudget::occurrences(10), None)
         .await
         .expect("replay");
     assert_eq!(replay.committed, 0);
@@ -189,7 +179,7 @@ async fn indefinite_alert_omits_counts_and_adopted_rules_forbid_alert() {
     .await;
 
     service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect("process");
     let document = service.get_document("rt-indef").await.expect("document");
@@ -309,7 +299,7 @@ async fn repaired_failure_is_resolved_on_successful_fulfillment() {
         .expect("seed repaired failure");
 
     let outcome = service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect("process");
     assert_eq!(outcome.committed, 1);

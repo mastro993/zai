@@ -124,6 +124,7 @@ impl RecurringTransactionsService {
             .edit_recurring_schedule(input.clone())
             .await?;
         let document = self.get_document(&recurring.id).await?;
+        self.wake_processing();
         Ok(RecurringMutationOutcome::Succeeded { document })
     }
 
@@ -231,6 +232,7 @@ impl RecurringTransactionsService {
 
         self.repository.edit_recurring_count(input).await?;
         let document = self.get_document(&recurring.id).await?;
+        self.wake_processing();
         Ok(RecurringMutationOutcome::Succeeded { document })
     }
 
