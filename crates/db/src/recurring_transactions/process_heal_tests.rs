@@ -67,7 +67,7 @@ async fn stale_head_with_existing_occurrence_heals_as_already_fulfilled() {
         .expect("seed fulfilled occurrence with lagging head");
 
     let outcome = service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect("heal");
     assert_eq!(outcome.committed, 0);
@@ -81,7 +81,7 @@ async fn stale_head_with_existing_occurrence_heals_as_already_fulfilled() {
     assert_eq!(head.next_scheduled_local, local(2026, 2, 1, 9, 0));
 
     let continue_catch_up = service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 5 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(5), None)
         .await
         .expect("continue");
     assert_eq!(continue_catch_up.committed, 1);
@@ -162,7 +162,7 @@ async fn more_due_remaining_ignores_heads_blocked_by_unrepaired_failure() {
         .expect("seed blocked source");
 
     let outcome = service
-        .process_due(observed, ProcessingWorkBudget { max_occurrences: 1 })
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect("process");
     assert_eq!(outcome.committed, 1);

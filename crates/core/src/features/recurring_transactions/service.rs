@@ -11,22 +11,23 @@ use super::models::{
     DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringLifecycle,
     RecurringOccurrencePage, RecurringTransaction,
 };
-use super::process::{
-    ProcessOneOutcome, ProcessingSliceOutcome, ProcessingStopReason, ProcessingWorkBudget,
-};
+use super::process::{ProcessingSliceOutcome, ProcessingWorkBudget};
+use super::process_slice::run_processing_slice;
 use super::schedule::scheduled_local_at;
 use super::traits::{
-    RecurringOccurrenceProcessor, RecurringTransactionsRepositoryTrait,
+    RecurringOccurrenceProcessor, RecurringProcessingWake, RecurringTransactionsRepositoryTrait,
     RecurringTransactionsServiceTrait,
 };
 use crate::features::budgets::traits::CalendarClock;
 use crate::{Error, Result};
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use uuid::Uuid;
 
 pub struct RecurringTransactionsService {
     repository: Arc<dyn RecurringTransactionsRepositoryTrait>,
     clock: Arc<dyn CalendarClock>,
+    wake: std::sync::RwLock<Option<Arc<dyn RecurringProcessingWake>>>,
 }
 
 impl RecurringTransactionsService {
@@ -34,7 +35,15 @@ impl RecurringTransactionsService {
         repository: Arc<dyn RecurringTransactionsRepositoryTrait>,
         clock: Arc<dyn CalendarClock>,
     ) -> Self {
-        Self { repository, clock }
+        Self {
+            repository,
+            clock,
+            wake: std::sync::RwLock::new(None),
+        }
+    }
+
+    pub fn attach_wake(&self, wake: Arc<dyn RecurringProcessingWake>) {
+        *self.wake.write().expect("wake lock") = Some(wake);
     }
 
     async fn compose_document(
@@ -109,6 +118,12 @@ impl RecurringTransactionsService {
             )),
             Some(id) => Ok(id.to_string()),
             None => Ok(Uuid::new_v4().to_string()),
+        }
+    }
+
+    fn request_processing_wake(&self) {
+        if let Some(wake) = self.wake.read().expect("wake lock").as_ref() {
+            wake.request_wake();
         }
     }
 }
@@ -239,6 +254,7 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
 
         let created = self.repository.create_recurring_transaction(input).await?;
         let document = self.compose_document(created).await?;
+        self.request_processing_wake();
         Ok(RecurringCreateOutcome::Succeeded { document })
     }
 
@@ -254,8 +270,9 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
             .await?;
 
         let _catch_up = self
-            .process_due(observed_local, ProcessingWorkBudget::default_slice())
+            .process_due(observed_local, ProcessingWorkBudget::default_slice(), None)
             .await?;
+        self.request_processing_wake();
 
         let document = self
             .compose_document(
@@ -274,41 +291,14 @@ impl RecurringOccurrenceProcessor for RecurringTransactionsService {
         &self,
         observed_local: chrono::NaiveDateTime,
         work_budget: ProcessingWorkBudget,
+        cancelled: Option<&AtomicBool>,
     ) -> Result<ProcessingSliceOutcome> {
-        let max_occurrences = work_budget.max_occurrences.max(1);
-        let mut committed = 0_u32;
-        let mut already_fulfilled = 0_u32;
-
-        while committed + already_fulfilled < max_occurrences {
-            match self
-                .repository
-                .process_one_due_occurrence(observed_local)
-                .await?
-            {
-                ProcessOneOutcome::Committed(_) => committed += 1,
-                ProcessOneOutcome::AlreadyFulfilled(_) => already_fulfilled += 1,
-                ProcessOneOutcome::NoEligibleWork => {
-                    return Ok(ProcessingSliceOutcome {
-                        committed,
-                        already_fulfilled,
-                        more_due_remaining: false,
-                        stop_reason: ProcessingStopReason::CaughtUp,
-                        observed_local,
-                    });
-                }
-            }
-        }
-
-        let more_due_remaining = self
-            .repository
-            .has_eligible_due_work(observed_local)
-            .await?;
-        Ok(ProcessingSliceOutcome {
-            committed,
-            already_fulfilled,
-            more_due_remaining,
-            stop_reason: ProcessingStopReason::BudgetExhausted,
+        run_processing_slice(
+            self.repository.as_ref(),
             observed_local,
-        })
+            work_budget,
+            cancelled,
+        )
+        .await
     }
 }

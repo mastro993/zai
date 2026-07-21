@@ -1,6 +1,7 @@
 use crate::connection::DbPool;
 use crate::errors::{IntoCore, Result};
 use diesel::SqliteConnection;
+use diesel::connection::SimpleConnection;
 use std::any::Any;
 #[cfg(test)]
 use std::sync::{
@@ -72,6 +73,8 @@ fn spawn_writer_with_capacity(
     queue_capacity: usize,
 ) -> zai_core::Result<WriteHandle> {
     let mut conn = pool.get().into_core()?;
+    conn.batch_execute("PRAGMA busy_timeout = 100;")
+        .map_err(|err| writer_error(&format!("failed to set writer busy_timeout: {err}")))?;
     let handle = tokio::runtime::Handle::try_current()
         .map_err(|err| writer_error(&format!("missing Tokio runtime: {err}")))?;
     let (tx, mut rx) = mpsc::channel::<WriterMessage>(queue_capacity);

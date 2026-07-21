@@ -13,6 +13,7 @@ use super::process::{ProcessOneOutcome, ProcessingSliceOutcome, ProcessingWorkBu
 use crate::Result;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
+use std::sync::atomic::AtomicBool;
 
 #[async_trait]
 pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
@@ -23,6 +24,11 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         observed_local: NaiveDateTime,
         limit: i64,
     ) -> Result<Vec<RecurringOccurrenceHead>>;
+
+    async fn earliest_active_head_after(
+        &self,
+        after_local: NaiveDateTime,
+    ) -> Result<Option<NaiveDateTime>>;
 
     async fn list_occurrences(
         &self,
@@ -139,5 +145,10 @@ pub trait RecurringOccurrenceProcessor: Send + Sync {
         &self,
         observed_local: NaiveDateTime,
         work_budget: ProcessingWorkBudget,
+        cancelled: Option<&AtomicBool>,
     ) -> Result<ProcessingSliceOutcome>;
+}
+
+pub trait RecurringProcessingWake: Send + Sync {
+    fn request_wake(&self);
 }

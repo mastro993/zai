@@ -233,7 +233,8 @@ async fn tombstoning_adopted_transaction_keeps_occurrence_and_finite_count() {
     let replay = service
         .process_due(
             observed,
-            zai_core::features::recurring_transactions::ProcessingWorkBudget { max_occurrences: 5 },
+            zai_core::features::recurring_transactions::ProcessingWorkBudget::occurrences(5),
+            None,
         )
         .await
         .expect("replay");
