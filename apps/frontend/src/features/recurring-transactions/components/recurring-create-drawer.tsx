@@ -97,8 +97,8 @@ export function RecurringCreateDrawer({
       <DrawerHeader>
         <DrawerTitle>New recurring transaction</DrawerTitle>
         <DrawerDescription>
-          Name the source, set its schedule and future transaction template, then choose an
-          indefinite or finite total.
+          Name the recurring transaction, set its schedule and future transaction template, then
+          choose an indefinite or finite total.
         </DrawerDescription>
       </DrawerHeader>
       <form className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4" onSubmit={submit}>

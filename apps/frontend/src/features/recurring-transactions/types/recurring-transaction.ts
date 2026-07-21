@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { prepareAmountForValidation } from "@/features/transactions/lib/transaction";
+import {
+  MAX_TRANSACTION_AMOUNT_MINOR,
+  prepareAmountForValidation,
+} from "@/features/transactions/lib/transaction";
 
 export const RECURRING_LIFECYCLES = [
   "active",
@@ -39,9 +42,13 @@ const amountInputSchema = z
       .string()
       .min(1, "Amount is required")
       .refine((value) => /^\d+(\.\d{1,2})?$/.test(value), "Enter a valid amount")
+      .refine((value) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && parsed >= 0;
+      }, "Amount must be zero or greater")
       .transform((value) => Math.round(Number(value) * 100)),
   )
-  .pipe(z.number().int().nonnegative());
+  .pipe(z.number().int().max(MAX_TRANSACTION_AMOUNT_MINOR, "Amount exceeds supported maximum"));
 
 export const scheduleRuleSchema = z.discriminatedUnion("type", [
   z.object({

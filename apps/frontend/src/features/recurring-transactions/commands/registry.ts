@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import type { CommandDescriptor } from "@/commands/command-descriptor";
 
 import {

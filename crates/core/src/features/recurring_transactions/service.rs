@@ -1,8 +1,7 @@
 use super::create::{NewRecurringTransaction, normalize_recurring_name};
 use super::document::{
     RecurringCreateOutcome, RecurringFeedItem, RecurringFeedResult, RecurringTransactionDocument,
-    budget_impact_unavailable, empty_failure_page, empty_occurrence_page, failures_section,
-    links_section, occurrence_summary,
+    budget_impact_unavailable, failures_section, links_section, occurrence_summary,
 };
 use super::models::{
     DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringLifecycle,
@@ -76,13 +75,11 @@ impl RecurringTransactionsService {
         let links = self
             .repository
             .list_occurrences(&recurring.id, DEFAULT_FEED_LIMIT, None)
-            .await
-            .unwrap_or_else(|_| empty_occurrence_page());
+            .await?;
         let history = self
             .repository
             .list_failure_history(&recurring.id, DEFAULT_FAILURE_LIMIT, None)
-            .await
-            .unwrap_or_else(|_| empty_failure_page());
+            .await?;
 
         Ok(RecurringTransactionDocument {
             occurrence_summary: occurrence_summary(&recurring, head.as_ref(), needs_attention),

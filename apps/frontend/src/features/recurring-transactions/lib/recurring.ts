@@ -41,14 +41,22 @@ export const formatLocalDateTime = (value: string | null | undefined): string =>
     return "—";
   }
   const normalized = value.includes("T") ? value : value.replace(" ", "T");
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) {
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) {
     return value;
   }
+  const [, year, month, day, hour, minute] = match;
+  const asLocal = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+  );
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(date);
+  }).format(asLocal);
 };
 
 export const defaultFirstScheduledLocal = (): string => {

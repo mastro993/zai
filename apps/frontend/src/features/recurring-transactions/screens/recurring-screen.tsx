@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { ScreenBase } from "@/components/screen-base";
-import { getTransactionCategories } from "@/features/categories/commands/transaction-categories";
 import type { TransactionCategory } from "@/features/categories/types/model";
 
 import {
@@ -130,12 +129,4 @@ export function RecurringScreen({
       </Drawer>
     </ScreenBase>
   );
-}
-
-export async function loadRecurringScreenCategories(): Promise<Array<TransactionCategory>> {
-  const result = await getTransactionCategories();
-  if (Result.isFailure(result)) {
-    return [];
-  }
-  return result.value;
 }
