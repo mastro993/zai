@@ -1,6 +1,9 @@
 use super::create::{
     create_recurring_transaction, find_open_schedule_revision, find_open_template_revision,
 };
+use super::fulfill::{
+    has_eligible_due_work as query_has_eligible_due_work, process_one_due_occurrence,
+};
 use super::queries::{
     find_provenance_by_transaction, find_unresolved_failure, get_occurrence_head,
     get_recurring_transaction, list_due_heads, list_failure_history, list_feed, list_occurrences,
@@ -14,21 +17,46 @@ use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use std::sync::Arc;
 use zai_core::Result;
+use zai_core::features::budgets::traits::CalendarClock;
+use zai_core::features::domain_alerts::{DomainAlertEventPublisher, publish_created_alerts};
 use zai_core::features::recurring_transactions::{
-    NewRecurringTransaction, RecurringFailurePage, RecurringFeedPage, RecurringGenerationFailure,
-    RecurringOccurrence, RecurringOccurrenceHead, RecurringOccurrencePage,
-    RecurringScheduleRevision, RecurringTemplateRevision, RecurringTransaction,
-    RecurringTransactionsRepositoryTrait,
+    NewRecurringTransaction, ProcessOneOutcome, RecurringFailurePage, RecurringFeedPage,
+    RecurringGenerationFailure, RecurringOccurrence, RecurringOccurrenceHead,
+    RecurringOccurrencePage, RecurringScheduleRevision, RecurringTemplateRevision,
+    RecurringTransaction, RecurringTransactionsRepositoryTrait,
 };
 
 pub struct RecurringTransactionsRepository {
     pool: Arc<DbPool>,
     writer: WriteHandle,
+    #[allow(dead_code)]
+    clock: Arc<dyn CalendarClock>,
+    alert_publisher: Arc<dyn DomainAlertEventPublisher>,
 }
 
 impl RecurringTransactionsRepository {
+    #[cfg(test)]
     pub(crate) fn new(pool: Arc<DbPool>, writer: WriteHandle) -> Self {
-        Self { pool, writer }
+        Self::new_with_clock_and_publisher(
+            pool,
+            writer,
+            Arc::new(zai_core::features::budgets::traits::LocalCalendarClock),
+            zai_core::features::domain_alerts::DomainAlertEventBus::new(),
+        )
+    }
+
+    pub(crate) fn new_with_clock_and_publisher(
+        pool: Arc<DbPool>,
+        writer: WriteHandle,
+        clock: Arc<dyn CalendarClock>,
+        alert_publisher: Arc<dyn DomainAlertEventPublisher>,
+    ) -> Self {
+        Self {
+            pool,
+            writer,
+            clock,
+            alert_publisher,
+        }
     }
 
     #[cfg(test)]
@@ -228,5 +256,27 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
         self.writer
             .exec(move |conn| create_recurring_transaction(conn, input))
             .await
+    }
+
+    async fn has_eligible_due_work(&self, observed_local: NaiveDateTime) -> Result<bool> {
+        let pool = Arc::clone(&self.pool);
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            query_has_eligible_due_work(&mut conn, observed_local).map_err(Into::into)
+        })
+        .await
+    }
+
+    async fn process_one_due_occurrence(
+        &self,
+        observed_local: NaiveDateTime,
+    ) -> Result<ProcessOneOutcome> {
+        let publisher = Arc::clone(&self.alert_publisher);
+        let outcome = self
+            .writer
+            .exec(move |conn| process_one_due_occurrence(conn, observed_local, observed_local))
+            .await?;
+        publish_created_alerts(publisher.as_ref(), &outcome);
+        Ok(outcome.value)
     }
 }
