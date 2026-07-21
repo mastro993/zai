@@ -77,16 +77,25 @@ impl RenameRecurringTransaction {
 }
 
 impl EditRecurringSchedule {
-    pub fn validate(&self, observed_local: NaiveDateTime) -> Result<()> {
+    pub fn validate(
+        &self,
+        observed_local: NaiveDateTime,
+        earliest_allowed_next: NaiveDateTime,
+    ) -> Result<()> {
         if self.expected_revision < 1 {
             return Err(Error::InvalidData(
                 "Expected revision must be at least 1".to_string(),
             ));
         }
         validate_schedule_rule(&self.schedule)?;
-        if self.next_scheduled_local < observed_local {
+        let minimum = if earliest_allowed_next > observed_local {
+            earliest_allowed_next
+        } else {
+            observed_local
+        };
+        if self.next_scheduled_local < minimum {
             return Err(Error::InvalidData(
-                "Next occurrence cannot be before the edit observation".to_string(),
+                "Next occurrence cannot be before the current head or edit observation".to_string(),
             ));
         }
         Ok(())
@@ -125,14 +134,6 @@ impl EditRecurringCount {
         }
         Ok(())
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EditKind {
-    Rename,
-    Schedule,
-    Template,
-    Count,
 }
 
 pub fn rename_allowed(lifecycle: RecurringLifecycle) -> bool {
@@ -176,7 +177,7 @@ mod tests {
     }
 
     #[test]
-    fn schedule_rejects_past_next_occurrence() {
+    fn schedule_rejects_next_before_head_or_observation() {
         let input = EditRecurringSchedule {
             recurring_transaction_id: "rt-1".into(),
             expected_revision: 1,
@@ -184,9 +185,11 @@ mod tests {
                 every: 1,
                 unit: ScheduleIntervalUnit::Month,
             },
-            next_scheduled_local: observed() - chrono::Duration::seconds(1),
+            next_scheduled_local: observed(),
         };
-        assert!(input.validate(observed()).is_err());
+        let future_head = observed() + chrono::Duration::days(30);
+        assert!(input.validate(observed(), future_head).is_err());
+        assert!(input.validate(observed(), observed()).is_ok());
     }
 
     #[test]

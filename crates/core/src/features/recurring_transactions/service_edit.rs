@@ -67,7 +67,6 @@ impl RecurringTransactionsService {
         input: EditRecurringSchedule,
     ) -> Result<RecurringMutationOutcome> {
         let observed_local = self.clock.sample();
-        input.validate(observed_local)?;
         let recurring = self
             .repository
             .get_recurring_transaction(&input.recurring_transaction_id)
@@ -89,6 +88,13 @@ impl RecurringTransactionsService {
                 )
                 .await;
         }
+
+        let head = self.repository.get_occurrence_head(&recurring.id).await?;
+        let earliest_allowed_next = head
+            .as_ref()
+            .map(|value| value.next_scheduled_local)
+            .unwrap_or(observed_local);
+        input.validate(observed_local, earliest_allowed_next)?;
 
         let open = self.require_open_schedule(&recurring.id).await?;
         let same_schedule = open.rule == input.schedule

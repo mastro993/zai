@@ -1,16 +1,14 @@
 use super::process_test_support::{local, seed_source, setup_service};
 use super::seed::SeedRecurringSource;
 use crate::schema::{
-    recurring_generation_failures, recurring_schedule_revisions,
-    recurring_transactions,
+    recurring_generation_failures, recurring_schedule_revisions, recurring_transactions,
 };
 use diesel::prelude::*;
 use zai_core::Error;
 use zai_core::features::recurring_transactions::{
-    EditRecurringCount, EditRecurringSchedule,
-    RecurringMutationOutcome,
-    RecurringTransactionsServiceTrait, RenameRecurringTransaction,
-    ScheduleRule, UNCHANGED_GENERATION_BLOCKED,
+    EditRecurringCount, EditRecurringSchedule, RecurringMutationOutcome,
+    RecurringTransactionsServiceTrait, RenameRecurringTransaction, ScheduleRule,
+    UNCHANGED_GENERATION_BLOCKED,
 };
 
 fn base_seed(id: &str, name: &str) -> SeedRecurringSource {

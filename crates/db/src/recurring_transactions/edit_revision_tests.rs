@@ -5,8 +5,7 @@ use diesel::prelude::*;
 use zai_core::features::recurring_transactions::{
     EditRecurringCount, EditRecurringSchedule, EditRecurringTemplate, ProcessingWorkBudget,
     RecurringMutationOutcome, RecurringOccurrenceProcessor, RecurringTemplateInput,
-    RecurringTransactionsServiceTrait, ScheduleIntervalUnit,
-    ScheduleRule,
+    RecurringTransactionsServiceTrait, ScheduleIntervalUnit, ScheduleRule,
 };
 
 fn base_seed(id: &str, name: &str) -> SeedRecurringSource {
@@ -177,6 +176,32 @@ async fn template_edit_is_future_only() {
         .await
         .expect("count closed");
     assert_eq!(closed, 1);
+}
+
+#[tokio::test]
+async fn count_edit_can_become_indefinite() {
+    let observed = local(2026, 7, 21, 10, 0);
+    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let mut seed = base_seed("rt-indef", "Indef");
+    seed.fulfilled_count = 2;
+    seed.total_occurrences = Some(10);
+    seed_source(&repo, seed).await;
+
+    let outcome = service
+        .edit_count(EditRecurringCount {
+            recurring_transaction_id: "rt-indef".into(),
+            expected_revision: 1,
+            total_occurrences: None,
+        })
+        .await
+        .expect("to indefinite");
+    match outcome {
+        RecurringMutationOutcome::Succeeded { document } => {
+            assert_eq!(document.recurring_transaction.total_occurrences, None);
+            assert!(document.head.is_some());
+        }
+        other => panic!("expected Succeeded, got {other:?}"),
+    }
 }
 
 #[tokio::test]

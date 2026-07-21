@@ -226,37 +226,6 @@ export const recurringMutationOutcomeSchema = z.discriminatedUnion("outcome", [
   }),
 ]);
 
-export const renameRecurringTransactionSchema = withPrivilegedRejection({
-  recurringTransactionId: z.string().min(1),
-  expectedRevision: z.number().int().positive(),
-  name: z.string().trim().min(1, "Name is required"),
-});
-
-export const editRecurringScheduleSchema = withPrivilegedRejection({
-  recurringTransactionId: z.string().min(1),
-  expectedRevision: z.number().int().positive(),
-  schedule: scheduleRuleSchema,
-  nextScheduledLocal: z.string().min(1, "Next occurrence is required"),
-});
-
-export const editRecurringTemplateSchema = withPrivilegedRejection({
-  recurringTransactionId: z.string().min(1),
-  expectedRevision: z.number().int().positive(),
-  template: z.object({
-    description: z.string().nullable().optional(),
-    amount: z.number().int().nonnegative(),
-    transactionType: z.enum(TRANSACTION_TYPES),
-    transactionCategoryId: z.string().nullable().optional(),
-    notes: z.string().nullable().optional(),
-  }),
-});
-
-export const editRecurringCountSchema = withPrivilegedRejection({
-  recurringTransactionId: z.string().min(1),
-  expectedRevision: z.number().int().positive(),
-  totalOccurrences: z.number().int().positive().nullable(),
-});
-
 export const recurringEditFormSchema = withPrivilegedRejection({
   name: z.string().trim().min(1, "Name is required"),
   scheduleKind: z.enum(["interval", "monthlyDay"]),

@@ -187,18 +187,28 @@ export function RecurringEditDrawer({
                       <FieldError>{errors.intervalEvery?.message}</FieldError>
                     </Field>
                     <Field>
-                      <FieldLabel htmlFor="recurring-edit-unit">Unit</FieldLabel>
-                      <select
-                        id="recurring-edit-unit"
-                        className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-                        {...register("intervalUnit")}
-                      >
-                        {SCHEDULE_INTERVAL_UNITS.map((unit) => (
-                          <option key={unit} value={unit}>
-                            {unit}
-                          </option>
-                        ))}
-                      </select>
+                      <FieldLabel>Unit</FieldLabel>
+                      <Controller
+                        control={control}
+                        name="intervalUnit"
+                        render={({ field }) => (
+                          <ToggleGroup
+                            variant="outline"
+                            value={[field.value]}
+                            onValueChange={(value) => {
+                              if (value[0]) {
+                                field.onChange(value[0]);
+                              }
+                            }}
+                          >
+                            {SCHEDULE_INTERVAL_UNITS.map((unit) => (
+                              <ToggleGroupItem key={unit} value={unit}>
+                                {unit}
+                              </ToggleGroupItem>
+                            ))}
+                          </ToggleGroup>
+                        )}
+                      />
                     </Field>
                   </div>
                 ) : (
@@ -234,15 +244,25 @@ export function RecurringEditDrawer({
                   <FieldError>{errors.amount?.message}</FieldError>
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="recurring-edit-type">Type</FieldLabel>
-                  <select
-                    id="recurring-edit-type"
-                    className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-                    {...register("transactionType")}
-                  >
-                    <option value="expense">Expense</option>
-                    <option value="income">Income</option>
-                  </select>
+                  <FieldLabel>Type</FieldLabel>
+                  <Controller
+                    control={control}
+                    name="transactionType"
+                    render={({ field }) => (
+                      <ToggleGroup
+                        variant="outline"
+                        value={[field.value]}
+                        onValueChange={(value) => {
+                          if (value[0]) {
+                            field.onChange(value[0]);
+                          }
+                        }}
+                      >
+                        <ToggleGroupItem value="expense">Expense</ToggleGroupItem>
+                        <ToggleGroupItem value="income">Income</ToggleGroupItem>
+                      </ToggleGroup>
+                    )}
+                  />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="recurring-edit-description">Description</FieldLabel>
