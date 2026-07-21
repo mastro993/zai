@@ -36,6 +36,50 @@ export const buildRecurringCommandRequestSpec = (
         body: newRecurringTransaction ?? {},
       };
     }
+    case "rename_recurring_transaction": {
+      const input = readRecord(args.input) ?? {};
+      const recurringTransactionId = readString(input.recurringTransactionId);
+      return {
+        method: "POST",
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}/rename`
+          : "/recurring-transactions/__missing_recurring_transaction_id__/rename",
+        body: input,
+      };
+    }
+    case "edit_recurring_schedule": {
+      const input = readRecord(args.input) ?? {};
+      const recurringTransactionId = readString(input.recurringTransactionId);
+      return {
+        method: "POST",
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}/schedule`
+          : "/recurring-transactions/__missing_recurring_transaction_id__/schedule",
+        body: input,
+      };
+    }
+    case "edit_recurring_template": {
+      const input = readRecord(args.input) ?? {};
+      const recurringTransactionId = readString(input.recurringTransactionId);
+      return {
+        method: "POST",
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}/template`
+          : "/recurring-transactions/__missing_recurring_transaction_id__/template",
+        body: input,
+      };
+    }
+    case "edit_recurring_count": {
+      const input = readRecord(args.input) ?? {};
+      const recurringTransactionId = readString(input.recurringTransactionId);
+      return {
+        method: "POST",
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}/count`
+          : "/recurring-transactions/__missing_recurring_transaction_id__/count",
+        body: input,
+      };
+    }
     default:
       return undefined;
   }

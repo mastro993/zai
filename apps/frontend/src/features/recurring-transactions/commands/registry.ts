@@ -3,6 +3,7 @@ import type { CommandDescriptor } from "@/commands/command-descriptor";
 import {
   recurringCreateOutcomeSchema,
   recurringFeedResultSchema,
+  recurringMutationOutcomeSchema,
   recurringTransactionDocumentSchema,
 } from "../types/recurring-transaction";
 
@@ -29,6 +30,19 @@ export const RECURRING_COMMANDS = {
     "create_recurring_transaction",
     recurringCreateOutcomeSchema,
   ),
+  rename_recurring_transaction: backendCommand(
+    "rename_recurring_transaction",
+    recurringMutationOutcomeSchema,
+  ),
+  edit_recurring_schedule: backendCommand(
+    "edit_recurring_schedule",
+    recurringMutationOutcomeSchema,
+  ),
+  edit_recurring_template: backendCommand(
+    "edit_recurring_template",
+    recurringMutationOutcomeSchema,
+  ),
+  edit_recurring_count: backendCommand("edit_recurring_count", recurringMutationOutcomeSchema),
 } as const;
 
 export const RECURRING_BACKEND_COMMANDS = Object.values(

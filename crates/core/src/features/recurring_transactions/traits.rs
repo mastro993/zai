@@ -1,5 +1,9 @@
 use super::create::NewRecurringTransaction;
 use super::document::{RecurringCreateOutcome, RecurringFeedResult, RecurringTransactionDocument};
+use super::edit::{
+    EditRecurringCount, EditRecurringSchedule, EditRecurringTemplate, RecurringMutationOutcome,
+    RenameRecurringTransaction,
+};
 use super::models::{
     RecurringFailurePage, RecurringFeedPage, RecurringGenerationFailure, RecurringOccurrence,
     RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
@@ -81,6 +85,27 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         input: NewRecurringTransaction,
     ) -> Result<RecurringTransaction>;
 
+    async fn rename_recurring_transaction(
+        &self,
+        recurring_transaction_id: String,
+        expected_revision: i32,
+        name: String,
+    ) -> Result<RecurringTransaction>;
+
+    async fn edit_recurring_schedule(
+        &self,
+        input: EditRecurringSchedule,
+    ) -> Result<RecurringTransaction>;
+
+    async fn edit_recurring_template(
+        &self,
+        input: EditRecurringTemplate,
+        effective_from_local: NaiveDateTime,
+    ) -> Result<RecurringTransaction>;
+
+    async fn edit_recurring_count(&self, input: EditRecurringCount)
+    -> Result<RecurringTransaction>;
+
     async fn has_eligible_due_work(&self, observed_local: NaiveDateTime) -> Result<bool>;
 
     async fn process_one_due_occurrence(
@@ -100,6 +125,16 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
     async fn get_document(&self, id: &str) -> Result<RecurringTransactionDocument>;
 
     async fn create(&self, input: NewRecurringTransaction) -> Result<RecurringCreateOutcome>;
+
+    async fn rename(&self, input: RenameRecurringTransaction) -> Result<RecurringMutationOutcome>;
+
+    async fn edit_schedule(&self, input: EditRecurringSchedule)
+    -> Result<RecurringMutationOutcome>;
+
+    async fn edit_template(&self, input: EditRecurringTemplate)
+    -> Result<RecurringMutationOutcome>;
+
+    async fn edit_count(&self, input: EditRecurringCount) -> Result<RecurringMutationOutcome>;
 }
 
 /// Internal occurrence processor used by trusted Rust orchestration.
@@ -109,7 +144,7 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
 pub trait RecurringOccurrenceProcessor: Send + Sync {
     async fn process_due(
         &self,
-        observed_local: NaiveDateTime,
+        observed_local: chrono::NaiveDateTime,
         work_budget: ProcessingWorkBudget,
     ) -> Result<ProcessingSliceOutcome>;
 }

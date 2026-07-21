@@ -1,10 +1,12 @@
 mod alerts;
 mod create;
 mod document;
+mod edit;
 mod models;
 mod process;
 mod schedule;
 mod service;
+mod service_edit;
 mod traits;
 
 pub use alerts::{
@@ -13,6 +15,7 @@ pub use alerts::{
 };
 pub use create::*;
 pub use document::*;
+pub use edit::*;
 pub use models::*;
 pub use process::{
     DEFAULT_PROCESS_MAX_OCCURRENCES, ProcessOneOutcome, ProcessingSliceOutcome,

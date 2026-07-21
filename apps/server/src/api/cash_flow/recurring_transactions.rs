@@ -5,13 +5,14 @@ use axum::{
     extract::rejection::{JsonRejection, QueryRejection},
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::get,
+    routing::{get, post},
 };
 use serde::Deserialize;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
-    NewRecurringTransaction, RecurringCreateOutcome, RecurringFeedResult,
-    RecurringTransactionDocument,
+    EditRecurringCount, EditRecurringSchedule, EditRecurringTemplate, NewRecurringTransaction,
+    RecurringCreateOutcome, RecurringFeedResult, RecurringMutationOutcome,
+    RecurringTransactionDocument, RenameRecurringTransaction,
 };
 
 use crate::api::error::{bad_request, command_error};
@@ -40,6 +41,22 @@ pub fn router() -> Router<Arc<ServiceContext>> {
         .route(
             "/recurring-transactions/{recurring_transaction_id}",
             get(get_recurring_transaction),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/rename",
+            post(rename_recurring_transaction),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/schedule",
+            post(edit_recurring_schedule),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/template",
+            post(edit_recurring_template),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/count",
+            post(edit_recurring_count),
         )
 }
 
@@ -80,4 +97,64 @@ async fn create_recurring_transaction(
         .await
         .map(|outcome| (StatusCode::CREATED, Json(outcome)))
         .map_err(|error| command_error("Failed to create recurring transaction", error))
+}
+
+async fn rename_recurring_transaction(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    payload: Result<Json<RenameRecurringTransaction>, JsonRejection>,
+) -> RecurringResult<Json<RecurringMutationOutcome>> {
+    let Json(mut input) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    input.recurring_transaction_id = recurring_transaction_id;
+    context
+        .recurring_transactions_service()
+        .rename(input)
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to rename recurring transaction", error))
+}
+
+async fn edit_recurring_schedule(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    payload: Result<Json<EditRecurringSchedule>, JsonRejection>,
+) -> RecurringResult<Json<RecurringMutationOutcome>> {
+    let Json(mut input) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    input.recurring_transaction_id = recurring_transaction_id;
+    context
+        .recurring_transactions_service()
+        .edit_schedule(input)
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to edit recurring schedule", error))
+}
+
+async fn edit_recurring_template(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    payload: Result<Json<EditRecurringTemplate>, JsonRejection>,
+) -> RecurringResult<Json<RecurringMutationOutcome>> {
+    let Json(mut input) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    input.recurring_transaction_id = recurring_transaction_id;
+    context
+        .recurring_transactions_service()
+        .edit_template(input)
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to edit recurring template", error))
+}
+
+async fn edit_recurring_count(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    payload: Result<Json<EditRecurringCount>, JsonRejection>,
+) -> RecurringResult<Json<RecurringMutationOutcome>> {
+    let Json(mut input) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    input.recurring_transaction_id = recurring_transaction_id;
+    context
+        .recurring_transactions_service()
+        .edit_count(input)
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to edit recurring count", error))
 }

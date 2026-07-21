@@ -4,8 +4,9 @@ use log::debug;
 use tauri::State;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
-    NewRecurringTransaction, RecurringCreateOutcome, RecurringFeedResult,
-    RecurringTransactionDocument,
+    EditRecurringCount, EditRecurringSchedule, EditRecurringTemplate, NewRecurringTransaction,
+    RecurringCreateOutcome, RecurringFeedResult, RecurringMutationOutcome,
+    RecurringTransactionDocument, RenameRecurringTransaction,
 };
 
 use super::{CommandResult, command_error};
@@ -51,4 +52,68 @@ pub async fn create_recurring_transaction(
         .create(new_recurring_transaction)
         .await
         .map_err(|error| command_error("Failed to create recurring transaction", error))
+}
+
+#[tauri::command]
+pub async fn rename_recurring_transaction(
+    input: RenameRecurringTransaction,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringMutationOutcome> {
+    debug!(
+        "Renaming recurring transaction {}...",
+        input.recurring_transaction_id
+    );
+    state
+        .recurring_transactions_service()
+        .rename(input)
+        .await
+        .map_err(|error| command_error("Failed to rename recurring transaction", error))
+}
+
+#[tauri::command]
+pub async fn edit_recurring_schedule(
+    input: EditRecurringSchedule,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringMutationOutcome> {
+    debug!(
+        "Editing recurring schedule {}...",
+        input.recurring_transaction_id
+    );
+    state
+        .recurring_transactions_service()
+        .edit_schedule(input)
+        .await
+        .map_err(|error| command_error("Failed to edit recurring schedule", error))
+}
+
+#[tauri::command]
+pub async fn edit_recurring_template(
+    input: EditRecurringTemplate,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringMutationOutcome> {
+    debug!(
+        "Editing recurring template {}...",
+        input.recurring_transaction_id
+    );
+    state
+        .recurring_transactions_service()
+        .edit_template(input)
+        .await
+        .map_err(|error| command_error("Failed to edit recurring template", error))
+}
+
+#[tauri::command]
+pub async fn edit_recurring_count(
+    input: EditRecurringCount,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringMutationOutcome> {
+    debug!(
+        "Editing recurring count {}...",
+        input.recurring_transaction_id
+    );
+    state
+        .recurring_transactions_service()
+        .edit_count(input)
+        .await
+        .map_err(|error| command_error("Failed to edit recurring count", error))
 }

@@ -3,6 +3,10 @@ use super::document::{
     RecurringCreateOutcome, RecurringFeedItem, RecurringFeedResult, RecurringTransactionDocument,
     budget_impact_unavailable, failures_section, links_section, occurrence_summary,
 };
+use super::edit::{
+    EditRecurringCount, EditRecurringSchedule, EditRecurringTemplate, RecurringMutationOutcome,
+    RenameRecurringTransaction,
+};
 use super::models::{
     DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringLifecycle,
     RecurringTransaction,
@@ -21,8 +25,8 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct RecurringTransactionsService {
-    repository: Arc<dyn RecurringTransactionsRepositoryTrait>,
-    clock: Arc<dyn CalendarClock>,
+    pub(super) repository: Arc<dyn RecurringTransactionsRepositoryTrait>,
+    pub(super) clock: Arc<dyn CalendarClock>,
 }
 
 impl RecurringTransactionsService {
@@ -163,6 +167,28 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         let created = self.repository.create_recurring_transaction(input).await?;
         let document = self.compose_document(created).await?;
         Ok(RecurringCreateOutcome::Succeeded { document })
+    }
+
+    async fn rename(&self, input: RenameRecurringTransaction) -> Result<RecurringMutationOutcome> {
+        self.rename_inner(input).await
+    }
+
+    async fn edit_schedule(
+        &self,
+        input: EditRecurringSchedule,
+    ) -> Result<RecurringMutationOutcome> {
+        self.edit_schedule_inner(input).await
+    }
+
+    async fn edit_template(
+        &self,
+        input: EditRecurringTemplate,
+    ) -> Result<RecurringMutationOutcome> {
+        self.edit_template_inner(input).await
+    }
+
+    async fn edit_count(&self, input: EditRecurringCount) -> Result<RecurringMutationOutcome> {
+        self.edit_count_inner(input).await
     }
 }
 

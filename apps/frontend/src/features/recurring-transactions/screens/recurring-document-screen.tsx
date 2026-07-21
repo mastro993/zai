@@ -1,17 +1,35 @@
+import { Result } from "@praha/byethrow";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Drawer } from "@/components/ui/drawer";
 import { ScreenBase } from "@/components/screen-base";
 import { formatCurrencyFromMinor } from "@/lib/currency";
+import type { TransactionCategory } from "@/features/categories/types/model";
 
+import {
+  editRecurringCount,
+  editRecurringSchedule,
+  editRecurringTemplate,
+  renameRecurringTransaction,
+} from "../commands/recurring-transactions";
+import {
+  RecurringEditDrawer,
+  type RecurringEditSection,
+} from "../components/recurring-edit-drawer";
 import {
   formatFiniteProgress,
   formatLocalDateTime,
   formatScheduleRule,
   recurringLifecycleLabel,
 } from "../lib/recurring";
-import type { RecurringTransactionDocument } from "../types/recurring-transaction";
+import type {
+  RecurringEditFormValues,
+  RecurringMutationOutcome,
+  RecurringTransactionDocument,
+} from "../types/recurring-transaction";
 
 function Section({
   title,
@@ -19,16 +37,21 @@ function Section({
   children,
   emptyMessage,
   failureMessage,
+  action,
 }: {
   title: string;
   state: "ready" | "empty" | "unavailable";
   children?: React.ReactNode;
   emptyMessage: string;
   failureMessage?: string;
+  action?: React.ReactNode;
 }) {
   return (
     <section className="space-y-2 border-b border-border py-6 last:border-b-0" aria-label={title}>
-      <h2 className="text-lg font-medium">{title}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-medium">{title}</h2>
+        {action}
+      </div>
       {state === "empty" ? <p className="text-sm text-muted-foreground">{emptyMessage}</p> : null}
       {state === "unavailable" ? (
         <p role="status" className="text-sm text-muted-foreground">
@@ -40,7 +63,28 @@ function Section({
   );
 }
 
-export function RecurringDocumentScreen({ document }: { document: RecurringTransactionDocument }) {
+const canRename = (lifecycle: RecurringTransactionDocument["recurringTransaction"]["lifecycle"]) =>
+  lifecycle === "active" ||
+  lifecycle === "paused" ||
+  lifecycle === "stopped" ||
+  lifecycle === "completed";
+
+const canEditConfiguration = (document: RecurringTransactionDocument): boolean => {
+  const lifecycle = document.recurringTransaction.lifecycle;
+  return (
+    (lifecycle === "active" || lifecycle === "paused") && !document.occurrenceSummary.needsAttention
+  );
+};
+
+export function RecurringDocumentScreen({
+  document: initialDocument,
+  categories,
+}: {
+  document: RecurringTransactionDocument;
+  categories: Array<TransactionCategory>;
+}) {
+  const [document, setDocument] = useState(initialDocument);
+  const [editSection, setEditSection] = useState<RecurringEditSection | null>(null);
   const {
     recurringTransaction,
     schedule,
@@ -54,6 +98,28 @@ export function RecurringDocumentScreen({ document }: { document: RecurringTrans
     occurrenceSummary.fulfilledCount,
     occurrenceSummary.totalOccurrences,
   );
+  const configurationEditable = canEditConfiguration(document);
+
+  const applyOutcome = (outcome: RecurringMutationOutcome) => {
+    setDocument(outcome.document);
+  };
+
+  const submitEdit = async (values: RecurringEditFormValues) => {
+    const id = recurringTransaction.id;
+    const revision = recurringTransaction.revision;
+    const result =
+      values.section === "name"
+        ? await renameRecurringTransaction(id, revision, values.name)
+        : values.section === "schedule"
+          ? await editRecurringSchedule(id, revision, values)
+          : values.section === "template"
+            ? await editRecurringTemplate(id, revision, values)
+            : await editRecurringCount(id, revision, values);
+    if (Result.isSuccess(result)) {
+      applyOutcome(result.value);
+    }
+    return result;
+  };
 
   return (
     <ScreenBase
@@ -75,7 +141,18 @@ export function RecurringDocumentScreen({ document }: { document: RecurringTrans
           <p className="text-sm text-muted-foreground">Revision {recurringTransaction.revision}</p>
         </div>
 
-        <Section title="Identity" state="ready" emptyMessage="">
+        <Section
+          title="Identity"
+          state="ready"
+          emptyMessage=""
+          action={
+            canRename(recurringTransaction.lifecycle) ? (
+              <Button variant="outline" size="sm" onClick={() => setEditSection("name")}>
+                Rename
+              </Button>
+            ) : null
+          }
+        >
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground">Name</dt>
@@ -88,7 +165,18 @@ export function RecurringDocumentScreen({ document }: { document: RecurringTrans
           </dl>
         </Section>
 
-        <Section title="Schedule" state="ready" emptyMessage="">
+        <Section
+          title="Schedule"
+          state="ready"
+          emptyMessage=""
+          action={
+            configurationEditable ? (
+              <Button variant="outline" size="sm" onClick={() => setEditSection("schedule")}>
+                Edit
+              </Button>
+            ) : null
+          }
+        >
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground">Rule</dt>
@@ -99,9 +187,25 @@ export function RecurringDocumentScreen({ document }: { document: RecurringTrans
               <dd>{formatLocalDateTime(schedule.firstScheduledLocal)}</dd>
             </div>
           </dl>
+          {!configurationEditable && occurrenceSummary.needsAttention ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Schedule edits are unavailable while generation needs attention.
+            </p>
+          ) : null}
         </Section>
 
-        <Section title="Template" state="ready" emptyMessage="">
+        <Section
+          title="Template"
+          state="ready"
+          emptyMessage=""
+          action={
+            configurationEditable ? (
+              <Button variant="outline" size="sm" onClick={() => setEditSection("template")}>
+                Edit
+              </Button>
+            ) : null
+          }
+        >
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground">Amount</dt>
@@ -116,6 +220,21 @@ export function RecurringDocumentScreen({ document }: { document: RecurringTrans
               <dd>{template.description || "—"}</dd>
             </div>
           </dl>
+        </Section>
+
+        <Section
+          title="Count"
+          state="ready"
+          emptyMessage=""
+          action={
+            configurationEditable ? (
+              <Button variant="outline" size="sm" onClick={() => setEditSection("count")}>
+                Edit
+              </Button>
+            ) : null
+          }
+        >
+          <p className="text-sm">{progressLabel ?? "Indefinite"}</p>
         </Section>
 
         <Section title="Lifecycle" state="ready" emptyMessage="">
@@ -149,21 +268,52 @@ export function RecurringDocumentScreen({ document }: { document: RecurringTrans
           </p>
         </Section>
 
-        <Section title="Failures" state={failures.state} emptyMessage="No generation failures.">
-          <p className="text-sm">
-            {failures.unresolved
-              ? "There is an unresolved generation failure."
-              : `${failures.history.items.length} failure history entries.`}
-          </p>
+        <Section
+          title="Failures"
+          state={failures.state}
+          emptyMessage="No generation failures."
+          failureMessage={undefined}
+        >
+          {failures.unresolved ? (
+            <p role="status" className="text-sm">
+              Needs attention: {failures.unresolved.errorCode}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">No open generation failure.</p>
+          )}
         </Section>
 
         <Section
           title="Budget impact"
           state={budgetImpact.state}
-          emptyMessage="No budget impact."
+          emptyMessage=""
           failureMessage={budgetImpact.message}
         />
       </div>
+
+      <Drawer
+        open={editSection !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditSection(null);
+          }
+        }}
+      >
+        {editSection ? (
+          <RecurringEditDrawer
+            open={editSection !== null}
+            section={editSection}
+            document={document}
+            categories={categories}
+            onOpenChange={(open) => {
+              if (!open) {
+                setEditSection(null);
+              }
+            }}
+            onSubmit={submitEdit}
+          />
+        ) : null}
+      </Drawer>
     </ScreenBase>
   );
 }
