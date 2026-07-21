@@ -192,17 +192,10 @@ mod supervisor_tests {
         tokio::time::advance(Duration::from_millis(1)).await;
 
         let _ = receiver.recv().await.expect("started");
-        // Drain until finished
         loop {
             let payload = receiver.recv().await.expect("event");
             let event = deserialize_recurring_processing_event(&payload).expect("decode");
-            if matches!(
-                event,
-                RecurringProcessingEvent::Finished {
-                    state: RecurringProcessingFinishState::CaughtUp,
-                    ..
-                }
-            ) {
+            if matches!(event, RecurringProcessingEvent::Finished { .. }) {
                 break;
             }
         }

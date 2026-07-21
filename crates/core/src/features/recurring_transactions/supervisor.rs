@@ -209,7 +209,7 @@ impl RecurringProcessingSupervisor {
                 Ok(outcome) => {
                     total_committed += outcome.committed;
                     total_fulfilled += outcome.already_fulfilled;
-                    if outcome.committed > 0 || outcome.already_fulfilled > 0 {
+                    if outcome.committed > 0 {
                         let _ = self.events.publish(&RecurringProcessingEvent::Progress {
                             run_id: run_id.clone(),
                             committed: total_committed,

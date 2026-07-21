@@ -117,13 +117,13 @@ pub fn bootstrap_context_with_buses(
     ));
     let delay_alerts = Arc::new(ProcessDelayAlertPort::new(domain_alerts_repository.clone()));
 
-    let recurring_processor = Arc::new(RecurringTransactionsService::new(
-        recurring_transactions_repository.clone(),
+    let recurring_transactions_service = Arc::new(RecurringTransactionsService::new(
+        recurring_transactions_repository,
         Arc::clone(&clock),
     ));
     let supervisor = RecurringProcessingSupervisor::new(
-        recurring_processor,
-        Arc::clone(&clock),
+        recurring_transactions_service.clone(),
+        clock,
         heads,
         recurring_processing_event_bus.clone()
             as Arc<
@@ -132,11 +132,7 @@ pub fn bootstrap_context_with_buses(
         delay_alerts,
     );
     let handle = supervisor.handle();
-
-    let recurring_transactions_service = Arc::new(
-        RecurringTransactionsService::new(recurring_transactions_repository, clock)
-            .with_wake(Arc::new(handle.clone())),
-    );
+    recurring_transactions_service.attach_wake(Arc::new(handle.clone()));
 
     Ok(BootstrappedApp {
         context: ServiceContext {

@@ -26,7 +26,7 @@ use uuid::Uuid;
 pub struct RecurringTransactionsService {
     repository: Arc<dyn RecurringTransactionsRepositoryTrait>,
     clock: Arc<dyn CalendarClock>,
-    wake: Option<Arc<dyn RecurringProcessingWake>>,
+    wake: std::sync::RwLock<Option<Arc<dyn RecurringProcessingWake>>>,
 }
 
 impl RecurringTransactionsService {
@@ -37,13 +37,12 @@ impl RecurringTransactionsService {
         Self {
             repository,
             clock,
-            wake: None,
+            wake: std::sync::RwLock::new(None),
         }
     }
 
-    pub fn with_wake(mut self, wake: Arc<dyn RecurringProcessingWake>) -> Self {
-        self.wake = Some(wake);
-        self
+    pub fn attach_wake(&self, wake: Arc<dyn RecurringProcessingWake>) {
+        *self.wake.write().expect("wake lock") = Some(wake);
     }
 
     async fn compose_document(
@@ -140,9 +139,7 @@ impl RecurringTransactionsService {
                 });
             }
 
-            if committed + already_fulfilled >= max_occurrences
-                || slice_started.elapsed() >= work_budget.max_duration
-            {
+            if committed + already_fulfilled >= max_occurrences {
                 let more_due_remaining = self
                     .repository
                     .has_eligible_due_work(observed_local)
@@ -165,11 +162,37 @@ impl RecurringTransactionsService {
                     committed += 1;
                     contention_started = None;
                     contention_attempt = 0;
+                    if slice_started.elapsed() >= work_budget.max_duration {
+                        let more_due_remaining = self
+                            .repository
+                            .has_eligible_due_work(observed_local)
+                            .await?;
+                        return Ok(ProcessingSliceOutcome {
+                            committed,
+                            already_fulfilled,
+                            more_due_remaining,
+                            stop_reason: ProcessingStopReason::BudgetExhausted,
+                            observed_local,
+                        });
+                    }
                 }
                 Ok(ProcessOneOutcome::AlreadyFulfilled(_)) => {
                     already_fulfilled += 1;
                     contention_started = None;
                     contention_attempt = 0;
+                    if slice_started.elapsed() >= work_budget.max_duration {
+                        let more_due_remaining = self
+                            .repository
+                            .has_eligible_due_work(observed_local)
+                            .await?;
+                        return Ok(ProcessingSliceOutcome {
+                            committed,
+                            already_fulfilled,
+                            more_due_remaining,
+                            stop_reason: ProcessingStopReason::BudgetExhausted,
+                            observed_local,
+                        });
+                    }
                 }
                 Ok(ProcessOneOutcome::NoEligibleWork) => {
                     return Ok(ProcessingSliceOutcome {
@@ -272,7 +295,7 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
 
         let created = self.repository.create_recurring_transaction(input).await?;
         let document = self.compose_document(created).await?;
-        if let Some(wake) = &self.wake {
+        if let Some(wake) = self.wake.read().expect("wake lock").as_ref() {
             wake.request_wake();
         }
         Ok(RecurringCreateOutcome::Succeeded { document })
