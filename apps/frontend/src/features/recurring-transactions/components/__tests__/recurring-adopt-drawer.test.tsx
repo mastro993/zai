@@ -83,7 +83,6 @@ describe("RecurringAdoptDrawer", () => {
         document: {
           recurringTransaction: {
             id: "rt-1",
-            name: "Rent",
             lifecycle: "active",
             totalOccurrences: 6,
             fulfilledCount: 3,
@@ -107,6 +106,7 @@ describe("RecurringAdoptDrawer", () => {
             effectiveFromLocal: "2026-04-21T10:00:00",
             amount: 120000,
             transactionType: "expense",
+            description: "Rent",
           },
           occurrenceSummary: {
             fulfilledCount: 3,
@@ -129,7 +129,7 @@ describe("RecurringAdoptDrawer", () => {
       );
     });
 
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Monthly rent" } });
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Monthly rent" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirm adoption" }));
 
     await waitFor(() => {

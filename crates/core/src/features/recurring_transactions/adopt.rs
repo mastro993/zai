@@ -1,4 +1,4 @@
-use super::create::{RecurringTemplateInput, normalize_recurring_name};
+use super::create::RecurringTemplateInput;
 use super::models::ScheduleRule;
 use super::schedule::{scheduled_local_at, validate_schedule_rule};
 use crate::{Error, Result};
@@ -11,7 +11,6 @@ pub struct AdoptRecurringTransaction {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     pub transaction_id: String,
-    pub name: String,
     pub schedule: ScheduleRule,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub total_occurrences: Option<i32>,
@@ -38,11 +37,6 @@ pub struct AdoptionPreview {
 impl AdoptRecurringTransaction {
     pub fn validate_inputs(&self) -> Result<()> {
         validate_adopt_base(&self.transaction_id, &self.schedule, self.total_occurrences)?;
-        if normalize_recurring_name(&self.name).is_empty() {
-            return Err(Error::InvalidData(
-                "Recurring transaction name cannot be empty".to_string(),
-            ));
-        }
         self.template.validate()?;
         Ok(())
     }

@@ -20,7 +20,7 @@ fn monthly() -> ScheduleRule {
 
 fn template_from(amount: i32) -> RecurringTemplateInput {
     RecurringTemplateInput {
-        description: Some("Rent".into()),
+        description: "Rent".into(),
         amount,
         transaction_type: "expense".into(),
         transaction_category_id: None,
@@ -79,7 +79,6 @@ async fn adopt_preserves_transaction_records_occurrence_one_without_alert_and_ca
         .adopt(AdoptRecurringTransaction {
             id: Some("rt-adopt".into()),
             transaction_id: txn_id.into(),
-            name: "Monthly rent".into(),
             schedule: monthly(),
             total_occurrences: Some(6),
             template: template_from(120_000),
@@ -149,7 +148,6 @@ async fn adopt_rejects_transaction_with_existing_provenance_including_tombstoned
         .adopt(AdoptRecurringTransaction {
             id: Some("rt-first".into()),
             transaction_id: txn_id.into(),
-            name: "First".into(),
             schedule: monthly(),
             total_occurrences: Some(2),
             template: template_from(50),
@@ -175,7 +173,6 @@ async fn adopt_rejects_transaction_with_existing_provenance_including_tombstoned
         .adopt(AdoptRecurringTransaction {
             id: Some("rt-second".into()),
             transaction_id: txn_id.into(),
-            name: "Second".into(),
             schedule: monthly(),
             total_occurrences: Some(2),
             template: template_from(50),
@@ -200,7 +197,6 @@ async fn tombstoning_adopted_transaction_keeps_occurrence_and_finite_count() {
         .adopt(AdoptRecurringTransaction {
             id: Some("rt-keep".into()),
             transaction_id: txn_id.into(),
-            name: "Keep count".into(),
             schedule: monthly(),
             total_occurrences: Some(3),
             template: template_from(80),
@@ -254,7 +250,6 @@ async fn provenance_hides_source_link_when_recurring_is_tombstoned() {
         .adopt(AdoptRecurringTransaction {
             id: Some(Uuid::new_v4().to_string()),
             transaction_id: txn_id.into(),
-            name: "Hidden later".into(),
             schedule: monthly(),
             total_occurrences: Some(1),
             template: template_from(40),

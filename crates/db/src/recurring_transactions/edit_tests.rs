@@ -6,10 +6,10 @@ use zai_core::features::recurring_transactions::{
     UNCHANGED_SAME_VALUE, UpdateRecurringTransaction,
 };
 
-fn base_seed(id: &str, name: &str) -> SeedRecurringSource {
+fn base_seed(id: &str, description: &str) -> SeedRecurringSource {
     SeedRecurringSource {
         id: id.into(),
-        name: name.into(),
+        description: description.into(),
         lifecycle: "active",
         total_occurrences: Some(12),
         fulfilled_count: 0,
@@ -26,7 +26,6 @@ fn update_from_document(document: &RecurringTransactionDocument) -> UpdateRecurr
     UpdateRecurringTransaction {
         recurring_transaction_id: document.recurring_transaction.id.clone(),
         expected_revision: document.recurring_transaction.revision,
-        name: document.recurring_transaction.name.clone(),
         schedule: document.schedule.rule.clone(),
         next_scheduled_local: document
             .occurrence_summary
@@ -44,18 +43,21 @@ fn update_from_document(document: &RecurringTransactionDocument) -> UpdateRecurr
 }
 
 #[tokio::test]
-async fn rename_succeeds_and_is_idempotent_on_replay() {
+async fn template_description_update_is_idempotent_on_replay() {
     let observed = local(2026, 7, 21, 10, 0);
     let (_db, service, repo, _lock) = setup_service(observed).await;
-    seed_source(&repo, base_seed("rt-rename", "Old name")).await;
-    let before = service.get_document("rt-rename").await.expect("doc");
+    seed_source(&repo, base_seed("rt-description", "Old description")).await;
+    let before = service.get_document("rt-description").await.expect("doc");
 
     let mut first_input = update_from_document(&before);
-    first_input.name = "New name".into();
-    let first = service.update(first_input.clone()).await.expect("rename");
+    first_input.template.description = "New description".into();
+    let first = service
+        .update(first_input.clone())
+        .await
+        .expect("update description");
     match first {
         RecurringMutationOutcome::Succeeded { document } => {
-            assert_eq!(document.recurring_transaction.name, "New name");
+            assert_eq!(document.template.description, "New description");
             assert_eq!(document.recurring_transaction.revision, 2);
         }
         other => panic!("expected Succeeded, got {other:?}"),
@@ -71,7 +73,7 @@ async fn rename_succeeds_and_is_idempotent_on_replay() {
 }
 
 #[tokio::test]
-async fn rename_unchanged_when_same_name() {
+async fn template_description_unchanged_when_same_value() {
     let observed = local(2026, 7, 21, 10, 0);
     let (_db, service, repo, _lock) = setup_service(observed).await;
     seed_source(&repo, base_seed("rt-same", "Same")).await;
@@ -90,7 +92,7 @@ async fn rename_unchanged_when_same_name() {
 }
 
 #[tokio::test]
-async fn stopped_source_allows_rename_only() {
+async fn stopped_source_rejects_configuration_edits() {
     let observed = local(2026, 7, 21, 10, 0);
     let (_db, service, repo, _lock) = setup_service(observed).await;
     let mut seed = base_seed("rt-stopped", "Stopped");
@@ -98,16 +100,7 @@ async fn stopped_source_allows_rename_only() {
     seed_source(&repo, seed).await;
     let before = service.get_document("rt-stopped").await.expect("doc");
 
-    let mut renamed = update_from_document(&before);
-    renamed.name = "Stopped renamed".into();
-    let renamed = service.update(renamed).await.expect("rename stopped");
-    assert!(matches!(
-        renamed,
-        RecurringMutationOutcome::Succeeded { .. }
-    ));
-
-    let after = service.get_document("rt-stopped").await.expect("after");
-    let mut schedule = update_from_document(&after);
+    let mut schedule = update_from_document(&before);
     schedule.schedule = ScheduleRule::Interval {
         every: 2,
         unit: ScheduleIntervalUnit::Week,

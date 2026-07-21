@@ -96,7 +96,6 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         &self,
         input: UpdateRecurringTransaction,
         observed_local: NaiveDateTime,
-        apply_name: bool,
         apply_schedule: bool,
         apply_template: bool,
         apply_count: bool,

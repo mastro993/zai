@@ -15,7 +15,6 @@ vi.mock("@tanstack/react-router-devtools", () => ({
 const documentFixture = {
   recurringTransaction: {
     id: "rt-1",
-    name: "Rent",
     lifecycle: "active" as const,
     totalOccurrences: 12,
     fulfilledCount: 1,
@@ -82,6 +81,7 @@ vi.mock("@/features/recurring-transactions/commands/recurring-transactions", asy
           items: [
             {
               recurringTransaction: documentFixture.recurringTransaction,
+              description: "Monthly rent",
               nextScheduledLocal: "2026-09-01T09:00:00",
               needsAttention: false,
             },
@@ -174,14 +174,14 @@ describe("recurring screen navigation", () => {
     await renderPath("/cash-flow/recurring");
     expect(await screen.findByRole("heading", { name: "Recurring transactions" })).toBeTruthy();
     expect(screen.getByRole("feed", { name: "Recurring transactions" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Rent" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Monthly rent" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "New recurring" })).toBeTruthy();
-    expect(screen.getByLabelText(/Rent, Active/)).toBeTruthy();
+    expect(screen.getByLabelText(/Monthly rent, Active/)).toBeTruthy();
   });
 
   it("opens the full-bleed document with required sections", async () => {
     await renderPath("/cash-flow/recurring/rt-1");
-    expect(await screen.findByRole("heading", { name: "Rent" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Monthly rent" })).toBeTruthy();
     expect(screen.getByLabelText("Identity")).toBeTruthy();
     expect(screen.getByLabelText("Schedule")).toBeTruthy();
     expect(screen.getByLabelText("Template")).toBeTruthy();

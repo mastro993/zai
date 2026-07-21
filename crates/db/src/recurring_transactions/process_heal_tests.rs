@@ -16,7 +16,7 @@ async fn stale_head_with_existing_occurrence_heals_as_already_fulfilled() {
         &repo,
         SeedRecurringSource {
             id: "rt-stale".into(),
-            name: "Stale head".into(),
+            description: "Stale head".into(),
             lifecycle: "active",
             total_occurrences: Some(2),
             fulfilled_count: 0,
@@ -96,7 +96,7 @@ async fn more_due_remaining_ignores_heads_blocked_by_unrepaired_failure() {
         &repo,
         SeedRecurringSource {
             id: "rt-healthy".into(),
-            name: "Healthy".into(),
+            description: "Healthy".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -113,7 +113,7 @@ async fn more_due_remaining_ignores_heads_blocked_by_unrepaired_failure() {
         &repo,
         SeedRecurringSource {
             id: "rt-block-remain".into(),
-            name: "Blocked remain".into(),
+            description: "Blocked remain".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,

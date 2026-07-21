@@ -19,7 +19,7 @@ async fn fulfillment_rolls_back_atomically_when_side_effect_fails() {
         &repo,
         SeedRecurringSource {
             id: "rt-atomic".into(),
-            name: "Atomic".into(),
+            description: "Atomic".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -81,7 +81,7 @@ async fn finite_source_completes_and_idempotent_replay_creates_nothing() {
         &repo,
         SeedRecurringSource {
             id: "rt-finite".into(),
-            name: "Finite".into(),
+            description: "Finite".into(),
             lifecycle: "active",
             total_occurrences: Some(2),
             fulfilled_count: 0,
@@ -164,7 +164,7 @@ async fn indefinite_alert_omits_counts_and_adopted_rules_forbid_alert() {
         &repo,
         SeedRecurringSource {
             id: "rt-indef".into(),
-            name: "Indefinite".into(),
+            description: "Indefinite".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -247,7 +247,7 @@ async fn repaired_failure_is_resolved_on_successful_fulfillment() {
         &repo,
         SeedRecurringSource {
             id: "rt-repaired".into(),
-            name: "Repaired".into(),
+            description: "Repaired".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,

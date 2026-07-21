@@ -8,10 +8,10 @@ use zai_core::features::recurring_transactions::{
     ScheduleIntervalUnit, ScheduleRule, UpdateRecurringTransaction,
 };
 
-fn base_seed(id: &str, name: &str) -> SeedRecurringSource {
+fn base_seed(id: &str, description: &str) -> SeedRecurringSource {
     SeedRecurringSource {
         id: id.into(),
-        name: name.into(),
+        description: description.into(),
         lifecycle: "active",
         total_occurrences: Some(12),
         fulfilled_count: 0,
@@ -28,7 +28,6 @@ fn update_from_document(document: &RecurringTransactionDocument) -> UpdateRecurr
     UpdateRecurringTransaction {
         recurring_transaction_id: document.recurring_transaction.id.clone(),
         expected_revision: document.recurring_transaction.revision,
-        name: document.recurring_transaction.name.clone(),
         schedule: document.schedule.rule.clone(),
         next_scheduled_local: document
             .occurrence_summary
@@ -53,7 +52,7 @@ async fn schedule_rule_edit_with_same_next_succeeds() {
         &repo,
         SeedRecurringSource {
             id: "rt-same-next".into(),
-            name: "Same next".into(),
+            description: "Same next".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -101,7 +100,7 @@ async fn template_edit_before_first_scheduled_succeeds() {
         &repo,
         SeedRecurringSource {
             id: "rt-tmpl-early".into(),
-            name: "Template early".into(),
+            description: "Template early".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -136,7 +135,7 @@ async fn schedule_edit_retains_overdue_under_prior_revision() {
         &repo,
         SeedRecurringSource {
             id: "rt-sched".into(),
-            name: "Schedule edit".into(),
+            description: "Schedule edit".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -206,7 +205,7 @@ async fn template_edit_is_future_only() {
         &repo,
         SeedRecurringSource {
             id: "rt-tmpl".into(),
-            name: "Template edit".into(),
+            description: "Template edit".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -231,7 +230,7 @@ async fn template_edit_is_future_only() {
 
     let mut input = update_from_document(&before);
     input.template = RecurringTemplateInput {
-        description: Some("Updated".into()),
+        description: "Updated".into(),
         amount: 2500,
         transaction_type: "expense".into(),
         transaction_category_id: None,

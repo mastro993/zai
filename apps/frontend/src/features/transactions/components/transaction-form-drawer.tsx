@@ -135,7 +135,7 @@ function TransactionFormDrawer({
               params={{ recurringTransactionId: visibleSource.id }}
               className="underline-offset-4 hover:underline"
             >
-              Part of recurring: {visibleSource.name}
+              Part of recurring: {visibleSource.description}
             </Link>
           </p>
         ) : null}

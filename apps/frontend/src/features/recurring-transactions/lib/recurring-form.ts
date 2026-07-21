@@ -13,7 +13,6 @@ export const toLocalInputValue = (value: string | null | undefined): string => {
 };
 
 export const createRecurringFormDefaults = (): RecurringFormInput => ({
-  name: "",
   scheduleKind: "interval",
   intervalEvery: "1",
   intervalUnit: "month",
@@ -34,7 +33,6 @@ export const defaultsFromDocument = (
   const { recurringTransaction, schedule, template, occurrenceSummary } = document;
   const scheduleKind = schedule.rule.type === "monthlyDay" ? "monthlyDay" : "interval";
   return {
-    name: recurringTransaction.name,
     scheduleKind,
     intervalEvery: schedule.rule.type === "interval" ? String(schedule.rule.every) : "1",
     intervalUnit: schedule.rule.type === "interval" ? schedule.rule.unit : "month",
@@ -47,7 +45,7 @@ export const defaultsFromDocument = (
       recurringTransaction.totalOccurrences == null
         ? ""
         : String(recurringTransaction.totalOccurrences),
-    description: template.description ?? "",
+    description: template.description,
     amount: (template.amount / 100).toFixed(2),
     transactionType: template.transactionType,
     transactionCategoryId: template.transactionCategoryId ?? undefined,
@@ -67,7 +65,7 @@ export const getRecurringFormCopy = (mode: RecurringFormMode) => {
     return {
       title: "Edit recurring transaction",
       description:
-        "Update the name, schedule, template, and count. Future occurrences use these values; fulfilled history stays unchanged.",
+        "Update the description, schedule, template, and count. Future occurrences use these values; fulfilled history stays unchanged.",
       submitLabel: "Save changes",
       submittingLabel: "Saving...",
       successMessage: "Recurring transaction updated",
@@ -76,7 +74,7 @@ export const getRecurringFormCopy = (mode: RecurringFormMode) => {
   return {
     title: "New recurring transaction",
     description:
-      "Name the recurring transaction, set its schedule and future transaction template, then choose an indefinite or finite total.",
+      "Fill the transaction template, then add schedule options for first occurrence and total.",
     submitLabel: "Create recurring transaction",
     submittingLabel: "Creating...",
     successMessage: "Recurring transaction created",

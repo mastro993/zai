@@ -11,7 +11,7 @@ import {
 import type { RecurringFeedItem } from "../types/recurring-transaction";
 
 export function RecurringOccurrenceCard({ item }: { item: RecurringFeedItem }) {
-  const { recurringTransaction, nextScheduledLocal, needsAttention } = item;
+  const { recurringTransaction, description, nextScheduledLocal, needsAttention } = item;
   const progress = progressRatio(
     recurringTransaction.fulfilledCount,
     recurringTransaction.totalOccurrences,
@@ -24,7 +24,7 @@ export function RecurringOccurrenceCard({ item }: { item: RecurringFeedItem }) {
   return (
     <article
       className="border-b border-border py-4 last:border-b-0"
-      aria-label={`${recurringTransaction.name}, ${recurringLifecycleLabel[recurringTransaction.lifecycle]}`}
+      aria-label={`${description}, ${recurringLifecycleLabel[recurringTransaction.lifecycle]}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-2">
@@ -34,7 +34,7 @@ export function RecurringOccurrenceCard({ item }: { item: RecurringFeedItem }) {
               to="/cash-flow/recurring/$recurringTransactionId"
               params={{ recurringTransactionId: recurringTransaction.id }}
             >
-              {recurringTransaction.name}
+              {description}
             </Link>
             <Badge variant={recurringTransaction.lifecycle === "active" ? "default" : "secondary"}>
               {recurringLifecycleLabel[recurringTransaction.lifecycle]}

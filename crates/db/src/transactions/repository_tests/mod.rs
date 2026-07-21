@@ -7,7 +7,7 @@ use crate::write_actor::spawn_writer;
 use chrono::NaiveDate;
 use diesel::r2d2::{self, Pool};
 use diesel::sqlite::SqliteConnection;
-use diesel::{Connection, QueryDsl, RunQueryDsl, sql_query};
+use diesel::{Connection, ExpressionMethods, QueryDsl, RunQueryDsl, sql_query};
 use std::sync::Arc;
 use uuid::Uuid;
 use zai_core::Error;

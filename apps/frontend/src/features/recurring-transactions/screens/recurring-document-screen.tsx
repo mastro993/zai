@@ -53,12 +53,6 @@ function Section({
   );
 }
 
-const canRename = (lifecycle: RecurringTransactionDocument["recurringTransaction"]["lifecycle"]) =>
-  lifecycle === "active" ||
-  lifecycle === "paused" ||
-  lifecycle === "stopped" ||
-  lifecycle === "completed";
-
 const canEditConfiguration = (document: RecurringTransactionDocument): boolean => {
   const lifecycle = document.recurringTransaction.lifecycle;
   return (
@@ -158,8 +152,8 @@ export function RecurringDocumentScreen({
     occurrenceSummary.fulfilledCount,
     occurrenceSummary.totalOccurrences,
   );
-  const editable = canRename(recurringTransaction.lifecycle);
   const configurationEditable = canEditConfiguration(document);
+  const editable = configurationEditable;
 
   const submitEdit = async (values: RecurringFormValues) => {
     const result = await updateRecurringTransaction(document, values);
@@ -191,7 +185,7 @@ export function RecurringDocumentScreen({
       <div className="mx-auto w-full max-w-3xl space-y-2">
         <div className="space-y-3 pb-4">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-3xl font-semibold tracking-tight">{recurringTransaction.name}</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">{template.description}</h1>
             <Badge>{recurringLifecycleLabel[recurringTransaction.lifecycle]}</Badge>
             {occurrenceSummary.needsAttention ? (
               <Badge variant="destructive">Needs attention</Badge>
@@ -203,8 +197,8 @@ export function RecurringDocumentScreen({
         <Section title="Identity" state="ready" emptyMessage="">
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-muted-foreground">Name</dt>
-              <dd>{recurringTransaction.name}</dd>
+              <dt className="text-muted-foreground">Description</dt>
+              <dd>{template.description}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Lifecycle</dt>

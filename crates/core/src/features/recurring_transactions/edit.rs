@@ -15,7 +15,6 @@ pub const UNCHANGED_GENERATION_BLOCKED: &str = "generation_blocked";
 pub struct UpdateRecurringTransaction {
     pub recurring_transaction_id: String,
     pub expected_revision: i32,
-    pub name: String,
     pub schedule: ScheduleRule,
     pub next_scheduled_local: NaiveDateTime,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -39,19 +38,13 @@ pub enum RecurringMutationOutcome {
 }
 
 impl UpdateRecurringTransaction {
-    pub fn validate_name(&self) -> Result<String> {
+    pub fn validate_revision(&self) -> Result<()> {
         if self.expected_revision < 1 {
             return Err(Error::InvalidData(
                 "Expected revision must be at least 1".to_string(),
             ));
         }
-        let name = super::create::normalize_recurring_name(&self.name);
-        if name.is_empty() {
-            return Err(Error::InvalidData(
-                "Recurring transaction name cannot be empty".to_string(),
-            ));
-        }
-        Ok(name)
+        Ok(())
     }
 
     pub fn validate_schedule(
@@ -94,16 +87,6 @@ impl UpdateRecurringTransaction {
     }
 }
 
-pub fn rename_allowed(lifecycle: RecurringLifecycle) -> bool {
-    matches!(
-        lifecycle,
-        RecurringLifecycle::Active
-            | RecurringLifecycle::Paused
-            | RecurringLifecycle::Stopped
-            | RecurringLifecycle::Completed
-    )
-}
-
 pub fn configuration_edit_allowed(lifecycle: RecurringLifecycle, generation_blocked: bool) -> bool {
     matches!(
         lifecycle,
@@ -128,7 +111,6 @@ mod tests {
         UpdateRecurringTransaction {
             recurring_transaction_id: "rt-1".into(),
             expected_revision: 1,
-            name: "Rent".into(),
             schedule: ScheduleRule::Interval {
                 every: 1,
                 unit: ScheduleIntervalUnit::Month,
@@ -136,7 +118,7 @@ mod tests {
             next_scheduled_local: observed(),
             total_occurrences: Some(12),
             template: RecurringTemplateInput {
-                description: None,
+                description: "Rent".into(),
                 amount: 1000,
                 transaction_type: "expense".into(),
                 transaction_category_id: None,
@@ -146,10 +128,17 @@ mod tests {
     }
 
     #[test]
-    fn update_rejects_blank_name() {
+    fn update_rejects_blank_description() {
         let mut input = base_input();
-        input.name = "  ".into();
-        assert!(input.validate_name().is_err());
+        input.template.description = "  ".into();
+        assert!(input.validate_template().is_err());
+    }
+
+    #[test]
+    fn update_rejects_revision_below_one() {
+        let mut input = base_input();
+        input.expected_revision = 0;
+        assert!(input.validate_revision().is_err());
     }
 
     #[test]

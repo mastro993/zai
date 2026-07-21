@@ -50,14 +50,13 @@ interface RecurringAdoptDrawerProps {
 }
 
 const defaultsFromTransaction = (transaction: Transaction): AdoptRecurringFormInput => ({
-  name: transaction.description?.trim() || "Recurring transaction",
   scheduleKind: "interval",
   intervalEvery: "1",
   intervalUnit: "month",
   monthlyDay: "1",
   totalMode: "indefinite",
   totalOccurrences: "",
-  description: transaction.description ?? "",
+  description: transaction.description?.trim() || "Recurring transaction",
   amount: formatAmountFromMinor(transaction.amount),
   transactionType: transaction.transactionType === "income" ? "income" : "expense",
   transactionCategoryId: transaction.transactionCategoryId ?? undefined,
@@ -115,14 +114,13 @@ export function RecurringAdoptDrawer({
     }
 
     const values: AdoptRecurringFormValues = {
-      name: "preview",
       scheduleKind,
       intervalEvery: String(every || 1),
       intervalUnit: intervalUnit ?? "month",
       monthlyDay: String(day || 1),
       totalMode: totalMode ?? "indefinite",
       totalOccurrences: totalMode === "finite" ? String(total) : undefined,
-      description: "",
+      description: "preview",
       amount: 0,
       transactionType: "expense",
       transactionCategoryId: undefined,
@@ -163,11 +161,13 @@ export function RecurringAdoptDrawer({
     }
     toast.success("Recurring transaction adopted");
     onOpenChange(false);
-    queueMicrotask(() => returnFocusRef?.current?.focus());
   });
 
   return (
-    <DrawerContent className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem] data-[swipe-axis=x]:w-[calc(100%-2rem)] sm:data-[swipe-axis=x]:w-96">
+    <DrawerContent
+      className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem] data-[swipe-axis=x]:w-[calc(100%-2rem)] sm:data-[swipe-axis=x]:w-96"
+      finalFocus={returnFocusRef}
+    >
       <DrawerHeader>
         <DrawerTitle>Adopt as recurring</DrawerTitle>
         <DrawerDescription>
@@ -188,16 +188,6 @@ export function RecurringAdoptDrawer({
         </p>
         <FieldSet>
           <FieldGroup>
-            <Field data-invalid={Boolean(errors.name)}>
-              <FieldLabel htmlFor="adopt-recurring-name">Name</FieldLabel>
-              <Input
-                id="adopt-recurring-name"
-                aria-invalid={Boolean(errors.name)}
-                {...register("name")}
-              />
-              <FieldError>{errors.name?.message}</FieldError>
-            </Field>
-
             <Field>
               <FieldLabel>Schedule</FieldLabel>
               <Controller
@@ -346,9 +336,14 @@ export function RecurringAdoptDrawer({
               />
             </Field>
 
-            <Field>
+            <Field data-invalid={Boolean(errors.description)}>
               <FieldLabel htmlFor="adopt-recurring-description">Description</FieldLabel>
-              <Input id="adopt-recurring-description" {...register("description")} />
+              <Input
+                id="adopt-recurring-description"
+                aria-invalid={Boolean(errors.description)}
+                {...register("description")}
+              />
+              <FieldError>{errors.description?.message}</FieldError>
             </Field>
 
             <Field>

@@ -13,7 +13,7 @@ use diesel::sqlite::SqliteConnection;
 
 pub struct SeedRecurringSource {
     pub id: String,
-    pub name: String,
+    pub description: String,
     pub lifecycle: &'static str,
     pub total_occurrences: Option<i32>,
     pub fulfilled_count: i32,
@@ -36,7 +36,6 @@ pub fn seed_active_interval_source(
     diesel::insert_into(recurring_transactions::table)
         .values(RecurringTransactionRow {
             id: seed.id.clone(),
-            name: seed.name.clone(),
             lifecycle: seed.lifecycle.to_string(),
             total_occurrences: seed.total_occurrences,
             fulfilled_count: seed.fulfilled_count,
@@ -72,7 +71,7 @@ pub fn seed_active_interval_source(
             sequence: 1,
             effective_from_local: seed.first_scheduled_local,
             effective_until_local: None,
-            description: Some(format!("{} template", seed.name)),
+            description: seed.description.clone(),
             amount: seed.amount,
             transaction_type: seed.transaction_type.to_string(),
             transaction_category_id: None,

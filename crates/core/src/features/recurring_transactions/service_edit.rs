@@ -1,7 +1,7 @@
-use super::create::{RecurringTemplateInput, normalize_recurring_name};
+use super::create::{RecurringTemplateInput, normalize_template_description};
 use super::edit::{
     RecurringMutationOutcome, UNCHANGED_GENERATION_BLOCKED, UNCHANGED_NOT_EDITABLE,
-    UNCHANGED_SAME_VALUE, UpdateRecurringTransaction, configuration_edit_allowed, rename_allowed,
+    UNCHANGED_SAME_VALUE, UpdateRecurringTransaction, configuration_edit_allowed,
 };
 use super::models::{
     RecurringLifecycle, RecurringScheduleRevision, RecurringTemplateRevision, RecurringTransaction,
@@ -16,8 +16,8 @@ impl RecurringTransactionsService {
         &self,
         mut input: UpdateRecurringTransaction,
     ) -> Result<RecurringMutationOutcome> {
-        let name = input.validate_name()?;
-        input.name = name;
+        input.validate_revision()?;
+        input.template.description = normalize_template_description(&input.template.description);
         input.validate_template()?;
 
         let observed_local = self.clock.sample();
@@ -27,14 +27,6 @@ impl RecurringTransactionsService {
             .await?;
         self.ensure_visible(&recurring)?;
         input.validate_count(recurring.fulfilled_count)?;
-
-        if !rename_allowed(recurring.lifecycle) {
-            let document = self.get_document(&recurring.id).await?;
-            return Ok(RecurringMutationOutcome::Unchanged {
-                document,
-                reason: UNCHANGED_NOT_EDITABLE.to_string(),
-            });
-        }
 
         let generation_blocked = self
             .repository
@@ -47,7 +39,6 @@ impl RecurringTransactionsService {
         let open_template = self.require_open_template(&recurring.id).await?;
         let head = self.repository.get_occurrence_head(&recurring.id).await?;
 
-        let name_changed = !names_equal(&recurring.name, &input.name);
         let current_next = head
             .as_ref()
             .map(|value| value.next_scheduled_local)
@@ -61,7 +52,7 @@ impl RecurringTransactionsService {
         let config_changed = schedule_changed || template_changed || count_changed;
 
         if recurring.revision != input.expected_revision {
-            if !name_changed && !config_changed {
+            if !config_changed {
                 let document = self.get_document(&recurring.id).await?;
                 return Ok(RecurringMutationOutcome::AlreadyApplied { document });
             }
@@ -70,7 +61,7 @@ impl RecurringTransactionsService {
             });
         }
 
-        if !name_changed && !config_changed {
+        if !config_changed {
             let document = self.get_document(&recurring.id).await?;
             return Ok(RecurringMutationOutcome::Unchanged {
                 document,
@@ -108,7 +99,6 @@ impl RecurringTransactionsService {
             .update_recurring_transaction(
                 input.clone(),
                 observed_local,
-                name_changed,
                 schedule_changed && config_allowed,
                 template_changed && config_allowed,
                 count_changed && config_allowed,
@@ -155,12 +145,9 @@ impl RecurringTransactionsService {
     }
 }
 
-fn names_equal(current: &str, next: &str) -> bool {
-    normalize_recurring_name(current) == normalize_recurring_name(next)
-}
-
 fn templates_equal(open: &RecurringTemplateRevision, input: &RecurringTemplateInput) -> bool {
-    open.description == input.description
+    normalize_template_description(&open.description)
+        == normalize_template_description(&input.description)
         && open.amount == input.amount
         && open.transaction_type == input.transaction_type
         && open.transaction_category_id == input.transaction_category_id
