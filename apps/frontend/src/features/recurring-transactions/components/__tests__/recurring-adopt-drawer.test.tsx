@@ -12,18 +12,19 @@ import { RecurringAdoptDrawer } from "../recurring-adopt-drawer";
 import type {
   AdoptRecurringFormValues,
   RecurringAdoptOutcome,
+  RecurringTransactionDocument,
 } from "../../types/recurring-transaction";
 
 vi.mock("@/features/recurring-transactions/commands/recurring-transactions", async () => {
-  const { Result } = await import("@praha/byethrow");
-  const actual = await vi.importActual<
-    typeof import("@/features/recurring-transactions/commands/recurring-transactions")
-  >("@/features/recurring-transactions/commands/recurring-transactions");
+  const byethrow = await import("@praha/byethrow");
+  const actual = await vi.importActual(
+    "@/features/recurring-transactions/commands/recurring-transactions",
+  );
   return {
-    ...actual,
+    ...(actual as object),
     previewRecurringAdoption: vi.fn(async () =>
       Promise.resolve(
-        Result.succeed({
+        byethrow.Result.succeed({
           transactionId: "txn-1",
           firstScheduledLocal: "2026-04-21T10:00:00",
           laterDueCount: 2,
@@ -76,8 +77,8 @@ function Harness({
 
 describe("RecurringAdoptDrawer", () => {
   it("previews later due count and returns focus after confirm", async () => {
-    const onSubmit = vi.fn(async () =>
-      Result.succeed({
+    const onSubmit = vi.fn(async (_values: AdoptRecurringFormValues) => {
+      return Result.succeed({
         outcome: "succeeded",
         document: {
           recurringTransaction: {
@@ -116,9 +117,9 @@ describe("RecurringAdoptDrawer", () => {
           links: { state: "ready", occurrences: { items: [] } },
           failures: { state: "empty", history: { items: [] } },
           budgetImpact: { state: "unavailable", message: "n/a" },
-        },
-      }),
-    );
+        } satisfies RecurringTransactionDocument,
+      } satisfies RecurringAdoptOutcome);
+    });
 
     render(<Harness onSubmit={onSubmit} />);
 
