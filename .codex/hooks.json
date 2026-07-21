@@ -9,6 +9,24 @@
             "command": "node \".agents/skills/impeccable/scripts/hook.mjs\"",
             "timeout": 5,
             "statusMessage": "Checking UI changes"
+          },
+          {
+            "type": "command",
+            "command": "bash \".agents/hooks/format.sh\"",
+            "timeout": 120,
+            "statusMessage": "Formatting"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \".agents/hooks/check-gate.sh\"",
+            "timeout": 900,
+            "statusMessage": "Running repository checks"
           }
         ]
       }

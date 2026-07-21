@@ -97,11 +97,6 @@ When transport or web behavior changes, also run:
 pnpm test:e2e:web
 ```
 
-Cursor agents are gated the same way: `.cursor/hooks.json` formats on every
-file edit and runs `pnpm check` on agent stop. Failed checks inject a follow-up
-so the agent must fix lint/format/tests before the task can finish. See
-`AGENTS.md` (“Task completion gate”).
-
 ## Pull Requests
 
 - Keep changes focused and reviewable.

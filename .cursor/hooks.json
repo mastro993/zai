@@ -3,13 +3,13 @@
   "hooks": {
     "afterFileEdit": [
       {
-        "command": ".cursor/hooks/format.sh",
+        "command": ".agents/hooks/format.sh",
         "timeout": 120
       }
     ],
     "stop": [
       {
-        "command": ".cursor/hooks/check.sh",
+        "command": ".agents/hooks/check-gate.sh",
         "timeout": 900,
         "loop_limit": 5
       }

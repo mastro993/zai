@@ -42,24 +42,6 @@ trade-off is unavoidable, state it explicitly.
   or hide a problem just to make it disappear.
 - Max 400 LOC files. Break them into multiple files when they become too big
 
-## Task completion gate
-
-Do **not** claim a coding task is complete until repository checks pass:
-
-```sh
-pnpm check
-```
-
-That command covers format check, lint, type-check, frontend tests, file-size
-limits, `cargo fmt --check`, Clippy (`-D warnings`), and Rust workspace tests.
-
-Cursor enforces this via `.cursor/hooks.json`:
-
-- `afterFileEdit` runs `.cursor/hooks/format.sh` (`pnpm format`)
-- `stop` runs `.cursor/hooks/check.sh` (`pnpm check`). On failure the hook
-  returns a `followup_message` so the agent must fix failures and continue
-  (up to `loop_limit`). Do not treat the task as done while that loop is open.
-
 ## Project structure
 
 ```json
