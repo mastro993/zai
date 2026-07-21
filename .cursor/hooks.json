@@ -1,6 +1,12 @@
 {
   "version": 1,
   "hooks": {
+    "sessionStart": [
+      {
+        "command": ".agents/hooks/install.sh",
+        "timeout": 300
+      }
+    ],
     "afterFileEdit": [
       {
         "command": ".agents/hooks/format.sh",
