@@ -22,7 +22,7 @@ const toBackendLocal = (value: string): string => {
 export const buildScheduleRule = (values: {
   scheduleKind: "interval" | "monthlyDay";
   intervalEvery: string;
-  intervalUnit: ScheduleRule extends { type: "interval"; unit: infer U } ? U : never;
+  intervalUnit: "day" | "week" | "month" | "year";
   monthlyDay: string;
 }): ScheduleRule => {
   if (values.scheduleKind === "monthlyDay") {

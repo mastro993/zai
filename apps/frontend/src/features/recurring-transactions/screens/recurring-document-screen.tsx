@@ -276,7 +276,7 @@ export function RecurringDocumentScreen({
         >
           {failures.unresolved ? (
             <p role="status" className="text-sm">
-              Needs attention: {failures.unresolved.errorCode}
+              Needs attention: repair required before schedule, template, or count edits.
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">No open generation failure.</p>

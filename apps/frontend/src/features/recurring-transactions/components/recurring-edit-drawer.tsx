@@ -194,10 +194,16 @@ export function RecurringEditDrawer({
                         render={({ field }) => (
                           <ToggleGroup
                             variant="outline"
-                            value={[field.value]}
+                            value={[field.value ?? "month"]}
                             onValueChange={(value) => {
-                              if (value[0]) {
-                                field.onChange(value[0]);
+                              const next = value[0];
+                              if (
+                                next === "day" ||
+                                next === "week" ||
+                                next === "month" ||
+                                next === "year"
+                              ) {
+                                field.onChange(next);
                               }
                             }}
                           >
@@ -251,10 +257,11 @@ export function RecurringEditDrawer({
                     render={({ field }) => (
                       <ToggleGroup
                         variant="outline"
-                        value={[field.value]}
+                        value={[field.value ?? "expense"]}
                         onValueChange={(value) => {
-                          if (value[0]) {
-                            field.onChange(value[0]);
+                          const next = value[0];
+                          if (next === "expense" || next === "income") {
+                            field.onChange(next);
                           }
                         }}
                       >
@@ -302,7 +309,8 @@ export function RecurringEditDrawer({
                     name="totalMode"
                     render={({ field }) => (
                       <ToggleGroup
-                        value={[field.value]}
+                        variant="outline"
+                        value={[field.value ?? "indefinite"]}
                         onValueChange={(value) => {
                           const next = value[0];
                           if (next === "indefinite" || next === "finite") {
