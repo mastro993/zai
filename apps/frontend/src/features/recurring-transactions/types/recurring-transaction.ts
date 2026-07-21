@@ -163,6 +163,24 @@ export const recurringFeedResultSchema = z.object({
   nextCursor: z.string().nullable().optional(),
 });
 
+export const recurringOccurrenceSchema = z.object({
+  recurringTransactionId: z.string().min(1),
+  scheduleRevisionId: z.string().min(1),
+  ordinal: z.number().int().positive(),
+  scheduledLocal: z.string(),
+  templateRevisionId: z.string().min(1),
+  fulfilledAt: z.string(),
+  fulfillmentPosition: z.number().int().positive(),
+  transactionId: z.string().min(1),
+  fulfillmentKind: z.enum(["generated", "adopted"]),
+  recurringAlertId: z.string().nullable().optional(),
+});
+
+export const recurringOccurrencePageSchema = z.object({
+  items: z.array(recurringOccurrenceSchema),
+  nextCursor: z.string().nullable().optional(),
+});
+
 export const recurringOccurrenceSummarySchema = z.object({
   fulfilledCount: z.number().int().nonnegative(),
   totalOccurrences: z.number().int().nullable(),
@@ -172,10 +190,7 @@ export const recurringOccurrenceSummarySchema = z.object({
 
 export const recurringLinksSectionSchema = z.object({
   state: z.enum(SECTION_STATES),
-  occurrences: z.object({
-    items: z.array(z.unknown()),
-    nextCursor: z.string().nullable().optional(),
-  }),
+  occurrences: recurringOccurrencePageSchema,
 });
 
 export const recurringFailuresSectionSchema = z.object({
@@ -210,6 +225,31 @@ export const recurringCreateOutcomeSchema = z.discriminatedUnion("outcome", [
   }),
 ]);
 
+export const recurringAdoptOutcomeSchema = z.discriminatedUnion("outcome", [
+  z.object({
+    outcome: z.literal("succeeded"),
+    document: recurringTransactionDocumentSchema,
+  }),
+]);
+
+export const adoptionPreviewSchema = z.object({
+  transactionId: z.string().min(1),
+  firstScheduledLocal: z.string(),
+  laterDueCount: z.number().int().nonnegative(),
+});
+
+export const transactionRecurringProvenanceSchema = z.object({
+  occurrence: recurringOccurrenceSchema,
+  source: z
+    .object({
+      id: z.string().min(1),
+      name: z.string().min(1),
+      lifecycle: z.enum(RECURRING_LIFECYCLES),
+    })
+    .nullable()
+    .optional(),
+});
+
 export const newRecurringTransactionSchema = withPrivilegedRejection({
   name: z.string().min(1),
   schedule: scheduleRuleSchema,
@@ -224,12 +264,64 @@ export const newRecurringTransactionSchema = withPrivilegedRejection({
   }),
 });
 
+export const adoptRecurringFormSchema = withPrivilegedRejection({
+  name: z.string().trim().min(1, "Name is required"),
+  scheduleKind: z.enum(["interval", "monthlyDay"]),
+  intervalEvery: z.string().trim().default("1"),
+  intervalUnit: z.enum(SCHEDULE_INTERVAL_UNITS).default("month"),
+  monthlyDay: z.string().trim().default("1"),
+  totalMode: z.enum(["indefinite", "finite"]).default("indefinite"),
+  totalOccurrences: z.string().trim().optional(),
+  description: z.string().trim().optional(),
+  amount: amountInputSchema,
+  transactionType: z.enum(TRANSACTION_TYPES).default("expense"),
+  transactionCategoryId: z.string().optional(),
+  notes: z.string().trim().optional(),
+}).superRefine((value, ctx) => {
+  if (value.scheduleKind === "interval") {
+    const every = Number(value.intervalEvery);
+    if (!Number.isInteger(every) || every < 1) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Interval must be a positive whole number",
+        path: ["intervalEvery"],
+      });
+    }
+  } else {
+    const day = Number(value.monthlyDay);
+    if (!Number.isInteger(day) || day < 1 || day > 31) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Day must be between 1 and 31",
+        path: ["monthlyDay"],
+      });
+    }
+  }
+  if (value.totalMode === "finite") {
+    const total = Number(value.totalOccurrences);
+    if (!Number.isInteger(total) || total < 1) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Total must be a positive whole number",
+        path: ["totalOccurrences"],
+      });
+    }
+  }
+});
+
 export type RecurringFormInput = z.input<typeof recurringFormSchema>;
 export type RecurringFormValues = z.infer<typeof recurringFormSchema>;
+export type AdoptRecurringFormInput = z.input<typeof adoptRecurringFormSchema>;
+export type AdoptRecurringFormValues = z.infer<typeof adoptRecurringFormSchema>;
 export type RecurringTransaction = z.infer<typeof recurringTransactionSchema>;
 export type RecurringFeedItem = z.infer<typeof recurringFeedItemSchema>;
 export type RecurringFeedResult = z.infer<typeof recurringFeedResultSchema>;
 export type RecurringTransactionDocument = z.infer<typeof recurringTransactionDocumentSchema>;
 export type RecurringCreateOutcome = z.infer<typeof recurringCreateOutcomeSchema>;
+export type RecurringAdoptOutcome = z.infer<typeof recurringAdoptOutcomeSchema>;
+export type AdoptionPreview = z.infer<typeof adoptionPreviewSchema>;
+export type RecurringOccurrence = z.infer<typeof recurringOccurrenceSchema>;
+export type RecurringOccurrencePage = z.infer<typeof recurringOccurrencePageSchema>;
+export type TransactionRecurringProvenance = z.infer<typeof transactionRecurringProvenanceSchema>;
 export type ScheduleRule = z.infer<typeof scheduleRuleSchema>;
 export type RecurringLifecycle = (typeof RECURRING_LIFECYCLES)[number];

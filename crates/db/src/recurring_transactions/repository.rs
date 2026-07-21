@@ -1,3 +1,6 @@
+use super::adopt::{
+    adopt_existing_transaction, find_visible_transaction_date as query_visible_transaction_date,
+};
 use super::create::{
     create_recurring_transaction, find_open_schedule_revision, find_open_template_revision,
 };
@@ -20,8 +23,8 @@ use zai_core::Result;
 use zai_core::features::budgets::traits::CalendarClock;
 use zai_core::features::domain_alerts::{DomainAlertEventPublisher, publish_created_alerts};
 use zai_core::features::recurring_transactions::{
-    NewRecurringTransaction, ProcessOneOutcome, RecurringFailurePage, RecurringFeedPage,
-    RecurringGenerationFailure, RecurringOccurrence, RecurringOccurrenceHead,
+    AdoptRecurringTransaction, NewRecurringTransaction, ProcessOneOutcome, RecurringFailurePage,
+    RecurringFeedPage, RecurringGenerationFailure, RecurringOccurrence, RecurringOccurrenceHead,
     RecurringOccurrencePage, RecurringScheduleRevision, RecurringTemplateRevision,
     RecurringTransaction, RecurringTransactionsRepositoryTrait,
 };
@@ -267,6 +270,26 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
     ) -> Result<RecurringTransaction> {
         self.writer
             .exec(move |conn| create_recurring_transaction(conn, input))
+            .await
+    }
+
+    async fn find_visible_transaction_date(&self, transaction_id: &str) -> Result<NaiveDateTime> {
+        let pool = Arc::clone(&self.pool);
+        let transaction_id = transaction_id.to_string();
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            query_visible_transaction_date(&mut conn, &transaction_id).map_err(Into::into)
+        })
+        .await
+    }
+
+    async fn adopt_existing_transaction(
+        &self,
+        input: AdoptRecurringTransaction,
+        observed_local: NaiveDateTime,
+    ) -> Result<RecurringTransaction> {
+        self.writer
+            .exec(move |conn| adopt_existing_transaction(conn, input, observed_local))
             .await
     }
 

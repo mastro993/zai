@@ -84,6 +84,7 @@ describe("command transport registry parity", () => {
   it("lists every backend command in the typed registry", () => {
     expect(toSortedArray(BACKEND_COMMAND_NAMES)).toEqual(
       toSortedArray([
+        "adopt_recurring_transaction",
         "create_budget",
         "create_recurring_transaction",
         "create_transaction",
@@ -96,7 +97,9 @@ describe("command transport registry parity", () => {
         "get_budget_history",
         "get_budgets",
         "get_recurring_transaction",
+        "get_recurring_transaction_occurrences",
         "get_recurring_transactions",
+        "get_transaction_recurring_provenance",
         "export_transactions_csv",
         "find_existing_duplicate_keys",
         "get_filtered_transaction_ids",
@@ -113,6 +116,7 @@ describe("command transport registry parity", () => {
         "mark_alert_unread",
         "mark_all_alerts_read",
         "pause_budget",
+        "preview_recurring_adoption",
         "resume_budget",
         "update_budget",
         "update_transaction",

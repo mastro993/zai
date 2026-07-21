@@ -28,12 +28,52 @@ export const buildRecurringCommandRequestSpec = (
           : "/recurring-transactions/__missing_recurring_transaction_id__",
       };
     }
+    case "get_recurring_transaction_occurrences": {
+      const recurringTransactionId = readString(args.recurringTransactionId);
+      const limit = readNumber(args.limit, 50);
+      const cursor = readString(args.cursor);
+      return {
+        method: "GET",
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}/occurrences`
+          : "/recurring-transactions/__missing_recurring_transaction_id__/occurrences",
+        query: {
+          limit: String(limit),
+          ...(cursor ? { cursor } : {}),
+        },
+      };
+    }
+    case "get_transaction_recurring_provenance": {
+      const transactionId = readString(args.transactionId);
+      return {
+        method: "GET",
+        path: transactionId
+          ? `/recurring-transactions/provenance/${transactionId}`
+          : "/recurring-transactions/provenance/__missing_transaction_id__",
+      };
+    }
     case "create_recurring_transaction": {
       const newRecurringTransaction = readRecord(args.newRecurringTransaction);
       return {
         method: "POST",
         path: "/recurring-transactions",
         body: newRecurringTransaction ?? {},
+      };
+    }
+    case "preview_recurring_adoption": {
+      const request = readRecord(args.request);
+      return {
+        method: "POST",
+        path: "/recurring-transactions/adoption-preview",
+        body: request ?? {},
+      };
+    }
+    case "adopt_recurring_transaction": {
+      const request = readRecord(args.request);
+      return {
+        method: "POST",
+        path: "/recurring-transactions/adopt",
+        body: request ?? {},
       };
     }
     default:

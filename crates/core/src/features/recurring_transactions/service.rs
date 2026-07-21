@@ -1,16 +1,18 @@
-use super::contention::{ContentionRetryDecision, next_contention_retry};
+use super::adopt::{
+    AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, count_later_due_occurrences,
+};
 use super::create::{NewRecurringTransaction, normalize_recurring_name};
 use super::document::{
-    RecurringCreateOutcome, RecurringFeedItem, RecurringFeedResult, RecurringTransactionDocument,
-    budget_impact_unavailable, failures_section, links_section, occurrence_summary,
+    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedItem, RecurringFeedResult,
+    RecurringTransactionDocument, TransactionRecurringProvenance, budget_impact_unavailable,
+    failures_section, links_section, occurrence_summary, visible_source_link,
 };
 use super::models::{
     DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringLifecycle,
-    RecurringTransaction,
+    RecurringOccurrencePage, RecurringTransaction,
 };
-use super::process::{
-    ProcessOneOutcome, ProcessingSliceOutcome, ProcessingStopReason, ProcessingWorkBudget,
-};
+use super::process::{ProcessingSliceOutcome, ProcessingWorkBudget};
+use super::process_slice::run_processing_slice;
 use super::schedule::scheduled_local_at;
 use super::traits::{
     RecurringOccurrenceProcessor, RecurringProcessingWake, RecurringTransactionsRepositoryTrait,
@@ -20,7 +22,6 @@ use crate::features::budgets::traits::CalendarClock;
 use crate::{Error, Result};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
-use std::time::Instant;
 use uuid::Uuid;
 
 pub struct RecurringTransactionsService {
@@ -110,124 +111,19 @@ impl RecurringTransactionsService {
         })
     }
 
-    async fn process_due_inner(
-        &self,
-        observed_local: chrono::NaiveDateTime,
-        work_budget: ProcessingWorkBudget,
-        cancelled: Option<&AtomicBool>,
-    ) -> Result<ProcessingSliceOutcome> {
-        let max_occurrences = work_budget.max_occurrences.max(1);
-        let mut committed = 0_u32;
-        let mut already_fulfilled = 0_u32;
-        let slice_started = Instant::now();
-        let mut contention_started: Option<Instant> = None;
-        let mut contention_attempt = 0_u32;
+    fn assign_id(input_id: Option<String>) -> Result<String> {
+        match input_id.as_deref().map(str::trim) {
+            Some("") => Err(Error::InvalidData(
+                "Recurring transaction id cannot be blank".into(),
+            )),
+            Some(id) => Ok(id.to_string()),
+            None => Ok(Uuid::new_v4().to_string()),
+        }
+    }
 
-        loop {
-            if cancelled.is_some_and(|flag| flag.load(std::sync::atomic::Ordering::SeqCst)) {
-                let more_due_remaining = self
-                    .repository
-                    .has_eligible_due_work(observed_local)
-                    .await
-                    .unwrap_or(true);
-                return Ok(ProcessingSliceOutcome {
-                    committed,
-                    already_fulfilled,
-                    more_due_remaining,
-                    stop_reason: ProcessingStopReason::Cancelled,
-                    observed_local,
-                });
-            }
-
-            if committed + already_fulfilled >= max_occurrences {
-                let more_due_remaining = self
-                    .repository
-                    .has_eligible_due_work(observed_local)
-                    .await?;
-                return Ok(ProcessingSliceOutcome {
-                    committed,
-                    already_fulfilled,
-                    more_due_remaining,
-                    stop_reason: ProcessingStopReason::BudgetExhausted,
-                    observed_local,
-                });
-            }
-
-            match self
-                .repository
-                .process_one_due_occurrence(observed_local)
-                .await
-            {
-                Ok(ProcessOneOutcome::Committed(_)) => {
-                    committed += 1;
-                    contention_started = None;
-                    contention_attempt = 0;
-                    if slice_started.elapsed() >= work_budget.max_duration {
-                        let more_due_remaining = self
-                            .repository
-                            .has_eligible_due_work(observed_local)
-                            .await?;
-                        return Ok(ProcessingSliceOutcome {
-                            committed,
-                            already_fulfilled,
-                            more_due_remaining,
-                            stop_reason: ProcessingStopReason::BudgetExhausted,
-                            observed_local,
-                        });
-                    }
-                }
-                Ok(ProcessOneOutcome::AlreadyFulfilled(_)) => {
-                    already_fulfilled += 1;
-                    contention_started = None;
-                    contention_attempt = 0;
-                    if slice_started.elapsed() >= work_budget.max_duration {
-                        let more_due_remaining = self
-                            .repository
-                            .has_eligible_due_work(observed_local)
-                            .await?;
-                        return Ok(ProcessingSliceOutcome {
-                            committed,
-                            already_fulfilled,
-                            more_due_remaining,
-                            stop_reason: ProcessingStopReason::BudgetExhausted,
-                            observed_local,
-                        });
-                    }
-                }
-                Ok(ProcessOneOutcome::NoEligibleWork) => {
-                    return Ok(ProcessingSliceOutcome {
-                        committed,
-                        already_fulfilled,
-                        more_due_remaining: false,
-                        stop_reason: ProcessingStopReason::CaughtUp,
-                        observed_local,
-                    });
-                }
-                Err(error) if error.is_transient_contention() => {
-                    let started = contention_started.get_or_insert_with(Instant::now);
-                    match next_contention_retry(contention_attempt, started.elapsed()) {
-                        ContentionRetryDecision::RetryAfter(delay) => {
-                            contention_attempt += 1;
-                            tokio::time::sleep(delay).await;
-                        }
-                        ContentionRetryDecision::Exhausted => {
-                            let more_due_remaining = self
-                                .repository
-                                .has_eligible_due_work(observed_local)
-                                .await
-                                .unwrap_or(true);
-                            return Ok(ProcessingSliceOutcome {
-                                committed,
-                                already_fulfilled,
-                                more_due_remaining,
-                                stop_reason: ProcessingStopReason::TransientlyDelayed,
-                                observed_local,
-                            });
-                        }
-                    }
-                }
-                Err(error) => return Err(error),
-            }
+    fn request_processing_wake(&self) {
+        if let Some(wake) = self.wake.read().expect("wake lock").as_ref() {
+            wake.request_wake();
         }
     }
 }
@@ -272,20 +168,83 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         self.compose_document(recurring).await
     }
 
+    async fn list_linked_occurrences(
+        &self,
+        recurring_transaction_id: &str,
+        limit: Option<i64>,
+        cursor: Option<String>,
+    ) -> Result<RecurringOccurrencePage> {
+        let recurring = self
+            .repository
+            .get_recurring_transaction(recurring_transaction_id)
+            .await?;
+        if recurring.lifecycle == RecurringLifecycle::Tombstoned || recurring.deleted_at.is_some() {
+            return Err(Error::NotFound(format!(
+                "Recurring transaction {recurring_transaction_id} not found"
+            )));
+        }
+        let limit = limit.unwrap_or(DEFAULT_FEED_LIMIT).clamp(1, MAX_FEED_LIMIT);
+        self.repository
+            .list_occurrences(recurring_transaction_id, limit, cursor)
+            .await
+    }
+
+    async fn get_transaction_provenance(
+        &self,
+        transaction_id: &str,
+    ) -> Result<Option<TransactionRecurringProvenance>> {
+        let Some(occurrence) = self
+            .repository
+            .find_provenance_by_transaction(transaction_id)
+            .await?
+        else {
+            return Ok(None);
+        };
+        let recurring = self
+            .repository
+            .get_recurring_transaction(&occurrence.recurring_transaction_id)
+            .await?;
+        Ok(Some(TransactionRecurringProvenance {
+            occurrence,
+            source: visible_source_link(&recurring),
+        }))
+    }
+
+    async fn preview_adoption(&self, input: AdoptionPreviewRequest) -> Result<AdoptionPreview> {
+        input.validate_inputs()?;
+        let observed_local = self.clock.sample();
+        if self
+            .repository
+            .find_provenance_by_transaction(&input.transaction_id)
+            .await?
+            .is_some()
+        {
+            return Err(Error::Conflict(
+                "Transaction already has recurring provenance".to_string(),
+            ));
+        }
+
+        let first_scheduled_local = self
+            .repository
+            .find_visible_transaction_date(&input.transaction_id)
+            .await?;
+        let later_due_count = count_later_due_occurrences(
+            &input.schedule,
+            first_scheduled_local,
+            input.total_occurrences,
+            observed_local,
+        )?;
+        Ok(AdoptionPreview {
+            transaction_id: input.transaction_id,
+            first_scheduled_local,
+            later_due_count,
+        })
+    }
+
     async fn create(&self, mut input: NewRecurringTransaction) -> Result<RecurringCreateOutcome> {
         let observed_local = self.clock.sample();
         input.name = normalize_recurring_name(&input.name);
-
-        match input.id.as_deref().map(str::trim) {
-            Some("") => {
-                return Err(Error::InvalidData(
-                    "Recurring transaction id cannot be blank".into(),
-                ));
-            }
-            Some(id) => input.id = Some(id.to_string()),
-            None => input.id = Some(Uuid::new_v4().to_string()),
-        }
-
+        input.id = Some(Self::assign_id(input.id)?);
         input.validate(observed_local)?;
 
         let first_scheduled_local =
@@ -295,10 +254,34 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
 
         let created = self.repository.create_recurring_transaction(input).await?;
         let document = self.compose_document(created).await?;
-        if let Some(wake) = self.wake.read().expect("wake lock").as_ref() {
-            wake.request_wake();
-        }
+        self.request_processing_wake();
         Ok(RecurringCreateOutcome::Succeeded { document })
+    }
+
+    async fn adopt(&self, mut input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {
+        let observed_local = self.clock.sample();
+        input.name = normalize_recurring_name(&input.name);
+        input.id = Some(Self::assign_id(input.id)?);
+        input.validate_inputs()?;
+
+        let created = self
+            .repository
+            .adopt_existing_transaction(input, observed_local)
+            .await?;
+
+        let _catch_up = self
+            .process_due(observed_local, ProcessingWorkBudget::default_slice(), None)
+            .await?;
+        self.request_processing_wake();
+
+        let document = self
+            .compose_document(
+                self.repository
+                    .get_recurring_transaction(&created.id)
+                    .await?,
+            )
+            .await?;
+        Ok(RecurringAdoptOutcome::Succeeded { document })
     }
 }
 
@@ -310,7 +293,12 @@ impl RecurringOccurrenceProcessor for RecurringTransactionsService {
         work_budget: ProcessingWorkBudget,
         cancelled: Option<&AtomicBool>,
     ) -> Result<ProcessingSliceOutcome> {
-        self.process_due_inner(observed_local, work_budget, cancelled)
-            .await
+        run_processing_slice(
+            self.repository.as_ref(),
+            observed_local,
+            work_budget,
+            cancelled,
+        )
+        .await
     }
 }
