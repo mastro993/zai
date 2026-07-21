@@ -30,9 +30,11 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 | Path | Role | Notes |
 | ---- | ---- | ----- |
 | `.agents/skills/` | Canonical shared skill store (real directories) | Primary copy for most skills; Codex Impeccable hook points here |
+| `.agents/hooks/` | Shared agent lifecycle hooks | `format.sh` + `check-gate.sh` used by Cursor, Claude Code, and Codex |
 | `.claude/skills/` | Claude Code consumer tree | Most entries symlink into `.agents/skills/`; `byethrow` and `impeccable` are real copies |
-| `.codex/` | Codex consumer config | `hooks.json` runs Impeccable hook under `.agents/skills/` |
-| `.cursor/` | Cursor consumer config | `hooks.json` runs `.cursor/hooks/{format,check}.sh` (not Impeccable) |
+| `.claude/settings.json` | Claude Code project settings | Committed Stop / PostToolUse hooks → `.agents/hooks/` |
+| `.codex/` | Codex consumer config | `hooks.json` runs Impeccable + shared format/check-gate hooks |
+| `.cursor/` | Cursor consumer config | `hooks.json` runs shared format on edit and check-gate on stop |
 | `.github/skills/` | GitHub Copilot / shared skill copy | Currently only `impeccable` (real copy) |
 | `.github/hooks/` | GitHub Copilot hook manifests | `impeccable.json` runs hook under `.github/skills/` |
 | `skills-lock.json` | Install/lock record | Source + `computedHash` for a subset of skills; no licensing or consumers |
@@ -42,14 +44,15 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 
 | Consumer config | Reads / executes | Target |
 | --------------- | ---------------- | ------ |
-| `.codex/hooks.json` | `node ".agents/skills/impeccable/scripts/hook.mjs"` | Agents Impeccable tree |
+| `.codex/hooks.json` | Impeccable + `.agents/hooks/{format,check-gate}.sh` | PostToolUse format/UI check; Stop → `pnpm check` (`decision: block`) |
+| `.claude/settings.json` | `.agents/hooks/{format,check-gate}.sh` | PostToolUse format; Stop → `pnpm check` (`decision: block`) |
+| `.cursor/hooks.json` | `.agents/hooks/{format,check-gate}.sh` | afterFileEdit format; stop → `pnpm check` (`followup_message`) |
 | `.github/hooks/impeccable.json` | `node "$(git rev-parse --show-toplevel)/.github/skills/impeccable/scripts/hook.mjs"` | GitHub Impeccable tree |
-| `.cursor/hooks.json` | `.cursor/hooks/format.sh`, `.cursor/hooks/check.sh` | Local `pnpm format` / `pnpm check` |
 | Claude Code | `.claude/skills/*` | Symlinks to `.agents/skills/*` except real copies of `byethrow` and `impeccable` |
 | Agents / generic | `.agents/skills/*/SKILL.md` | Canonical skill docs; Impeccable scripts under `.agents/skills/impeccable/scripts/` |
 
-Claude Code may also install machine-local hooks via gitignored settings; that
-path is not inventoried here as a committed consumer.
+Project-level Claude hooks live in committed `.claude/settings.json`. Machine-local
+`.claude/settings.local.json` (if present) is not inventoried here.
 
 ## Symlinks (verified)
 
@@ -66,15 +69,17 @@ Real copies (not symlinks):
 
 ## Executable tooling (verified)
 
-- `find … -type f -perm -111` over skill/hook trees returned no mode-+x skill
-  scripts in this worktree inventory (Node scripts are still executable via
-  `node path/to/file.mjs`).
+- Cursor / Claude / Codex shared hooks under `.agents/hooks/` are mode `+x`:
+  - `format.sh` runs `pnpm format` after edits
+  - `check-gate.sh` runs `pnpm check` on stop/completion. On failure it exits 0
+    with consumer-specific JSON so the agent must continue:
+    - Cursor: `{ "followup_message": "..." }` (non-zero hook exits are fail-open)
+    - Claude Code / Codex: `{ "decision": "block", "reason": "..." }`
+  - `.cursor/hooks/{format,check}.sh` are thin `exec` wrappers to the shared scripts
 - Impeccable ships many `.mjs`/`.js` scripts under each copy’s `scripts/`
   directory (on the order of ~66 script files per tree). Hook entrypoints:
   - `.agents/skills/impeccable/scripts/hook.mjs` (Codex)
   - `.github/skills/impeccable/scripts/hook.mjs` (GitHub Copilot)
-- Cursor: `.cursor/hooks/format.sh` is mode `+x` and runs `pnpm format`;
-  `.cursor/hooks/check.sh` runs `pnpm check`.
 
 ## Provenance table
 

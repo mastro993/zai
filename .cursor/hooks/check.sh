@@ -1,6 +1,3 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
-cat > /dev/null
-
-pnpm check
+# Thin Cursor adapter → shared check-gate hook.
+exec "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/.agents/hooks/check-gate.sh"
