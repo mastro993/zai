@@ -1,9 +1,11 @@
 use std::{path::Path, sync::Arc};
 
+use zai_core::features::budgets::traits::LocalCalendarClock;
 use zai_core::features::domain_alerts::DomainAlertEventBus;
 use zai_core::features::{
     budgets::{service::BudgetsService, traits::BudgetsServiceTrait},
     domain_alerts::{DomainAlertsService, DomainAlertsServiceTrait},
+    recurring_transactions::{RecurringTransactionsService, RecurringTransactionsServiceTrait},
     transaction_categories::{
         service::TransactionCategoriesService, traits::TransactionCategoriesServiceTrait,
     },
@@ -13,6 +15,7 @@ use zai_core::features::{
 pub struct ServiceContext {
     pub budgets_service: Arc<dyn BudgetsServiceTrait>,
     pub domain_alerts_service: Arc<dyn DomainAlertsServiceTrait>,
+    pub recurring_transactions_service: Arc<dyn RecurringTransactionsServiceTrait>,
     pub transaction_categories_service: Arc<dyn TransactionCategoriesServiceTrait>,
     pub transactions_service: Arc<dyn TransactionsServiceTrait>,
     pub domain_alert_event_bus: Arc<DomainAlertEventBus>,
@@ -25,6 +28,10 @@ impl ServiceContext {
 
     pub fn domain_alerts_service(&self) -> Arc<dyn DomainAlertsServiceTrait> {
         Arc::clone(&self.domain_alerts_service)
+    }
+
+    pub fn recurring_transactions_service(&self) -> Arc<dyn RecurringTransactionsServiceTrait> {
+        Arc::clone(&self.recurring_transactions_service)
     }
 
     pub fn transaction_categories_service(&self) -> Arc<dyn TransactionCategoriesServiceTrait> {
@@ -57,10 +64,15 @@ pub fn initialize_context_with_event_bus(
     let transactions_repository = database.transactions_repository();
     let budgets_repository = database.budgets_repository();
     let domain_alerts_repository = database.domain_alerts_repository();
+    let recurring_transactions_repository = database.recurring_transactions_repository();
 
     Ok(ServiceContext {
         budgets_service: Arc::new(BudgetsService::new(budgets_repository)),
         domain_alerts_service: Arc::new(DomainAlertsService::new(domain_alerts_repository)),
+        recurring_transactions_service: Arc::new(RecurringTransactionsService::new(
+            recurring_transactions_repository,
+            Arc::new(LocalCalendarClock),
+        )),
         transaction_categories_service: Arc::new(TransactionCategoriesService::new(
             transaction_categories_repository,
         )),
@@ -126,9 +138,15 @@ mod tests {
             .list_budgets(BudgetListFilter::Active)
             .await
             .expect("budgets service should query migrated database");
+        let recurring = context
+            .recurring_transactions_service()
+            .list_feed(None, None)
+            .await
+            .expect("recurring transactions service should query migrated database");
 
         assert!(categories.is_empty());
         assert!(transactions.data.is_empty());
         assert!(budgets.is_empty());
+        assert!(recurring.items.is_empty());
     }
 }

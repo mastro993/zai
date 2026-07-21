@@ -266,3 +266,68 @@ async fn mutations_go_through_serialized_writer_only() {
     let _ = list_feed(&mut read_conn, 10, None).expect("read feed");
     assert!(counter.count() >= 1);
 }
+
+#[tokio::test]
+async fn create_persists_source_revisions_and_head_through_writer() {
+    use zai_core::features::recurring_transactions::{
+        NewRecurringTransaction, RecurringTemplateInput, ScheduleIntervalUnit, ScheduleRule,
+    };
+
+    let temp_db = TempDb::new();
+    let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
+    run_migrations(&pool).expect("migrations");
+    let writer = spawn_writer(pool.as_ref().clone()).expect("writer");
+    writer.reset_exec_count();
+    let repo = super::RecurringTransactionsRepository::new(Arc::clone(&pool), writer.clone());
+
+    let created = repo
+        .create_recurring_transaction(NewRecurringTransaction {
+            id: Some("rt-create".into()),
+            name: "  Gym  ".into(),
+            schedule: ScheduleRule::Interval {
+                every: 1,
+                unit: ScheduleIntervalUnit::Month,
+            },
+            first_scheduled_local: local(2026, 8, 1, 9, 0),
+            total_occurrences: Some(12),
+            template: RecurringTemplateInput {
+                description: Some("Membership".into()),
+                amount: 4500,
+                transaction_type: "expense".into(),
+                transaction_category_id: None,
+                notes: None,
+            },
+        })
+        .await
+        .expect("create");
+
+    assert_eq!(writer.exec_count(), 1);
+    assert_eq!(created.name, "  Gym  ");
+    assert_eq!(created.total_occurrences, Some(12));
+    assert_eq!(created.fulfilled_count, 0);
+
+    let feed = repo.list_feed(10, None).await.expect("feed");
+    assert_eq!(feed.items.len(), 1);
+    assert_eq!(feed.items[0].id, "rt-create");
+
+    let head = repo
+        .get_occurrence_head("rt-create")
+        .await
+        .expect("head")
+        .expect("present");
+    assert_eq!(head.next_ordinal, 1);
+    assert_eq!(head.next_scheduled_local, local(2026, 8, 1, 9, 0));
+
+    let schedule = repo
+        .find_open_schedule_revision("rt-create")
+        .await
+        .expect("schedule")
+        .expect("present");
+    assert!(matches!(
+        schedule.rule,
+        ScheduleRule::Interval {
+            every: 1,
+            unit: ScheduleIntervalUnit::Month
+        }
+    ));
+}

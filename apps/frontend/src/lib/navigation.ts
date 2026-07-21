@@ -32,6 +32,7 @@ export const navigationItems = [
     subItems: [
       { title: "Transactions", to: "/cash-flow/transactions" },
       { title: "Budgets", to: "/cash-flow/budgets" },
+      { title: "Recurring", to: "/cash-flow/recurring" },
       { title: "Categories", to: "/cash-flow/categories" },
     ],
   },

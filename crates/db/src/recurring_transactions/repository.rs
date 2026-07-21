@@ -1,6 +1,10 @@
+use super::create::{
+    create_recurring_transaction, find_open_schedule_revision, find_open_template_revision,
+};
 use super::queries::{
-    find_provenance_by_transaction, get_recurring_transaction, list_due_heads,
-    list_failure_history, list_feed, list_occurrences, list_unresolved_failures,
+    find_provenance_by_transaction, find_unresolved_failure, get_occurrence_head,
+    get_recurring_transaction, list_due_heads, list_failure_history, list_feed, list_occurrences,
+    list_unresolved_failures,
 };
 use super::revisions::{find_schedule_revision_at, find_template_revision_at};
 use crate::blocking::run_blocking;
@@ -11,14 +15,14 @@ use chrono::NaiveDateTime;
 use std::sync::Arc;
 use zai_core::Result;
 use zai_core::features::recurring_transactions::{
-    RecurringFailurePage, RecurringFeedPage, RecurringGenerationFailure, RecurringOccurrence,
-    RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
-    RecurringTemplateRevision, RecurringTransaction, RecurringTransactionsRepositoryTrait,
+    NewRecurringTransaction, RecurringFailurePage, RecurringFeedPage, RecurringGenerationFailure,
+    RecurringOccurrence, RecurringOccurrenceHead, RecurringOccurrencePage,
+    RecurringScheduleRevision, RecurringTemplateRevision, RecurringTransaction,
+    RecurringTransactionsRepositoryTrait,
 };
 
 pub struct RecurringTransactionsRepository {
     pool: Arc<DbPool>,
-    #[allow(dead_code)]
     writer: WriteHandle,
 }
 
@@ -127,12 +131,38 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
         .await
     }
 
+    async fn find_unresolved_failure(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<Option<RecurringGenerationFailure>> {
+        let pool = Arc::clone(&self.pool);
+        let recurring_transaction_id = recurring_transaction_id.to_string();
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            find_unresolved_failure(&mut conn, &recurring_transaction_id)
+        })
+        .await
+    }
+
     async fn get_recurring_transaction(&self, id: &str) -> Result<RecurringTransaction> {
         let pool = Arc::clone(&self.pool);
         let id = id.to_string();
         run_blocking(move || {
             let mut conn = get_connection(&pool)?;
             get_recurring_transaction(&mut conn, &id)
+        })
+        .await
+    }
+
+    async fn get_occurrence_head(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<Option<RecurringOccurrenceHead>> {
+        let pool = Arc::clone(&self.pool);
+        let recurring_transaction_id = recurring_transaction_id.to_string();
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            get_occurrence_head(&mut conn, &recurring_transaction_id)
         })
         .await
     }
@@ -163,5 +193,40 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
             find_template_revision_at(&mut conn, &recurring_transaction_id, at_local)
         })
         .await
+    }
+
+    async fn find_open_schedule_revision(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<Option<RecurringScheduleRevision>> {
+        let pool = Arc::clone(&self.pool);
+        let recurring_transaction_id = recurring_transaction_id.to_string();
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            find_open_schedule_revision(&mut conn, &recurring_transaction_id)
+        })
+        .await
+    }
+
+    async fn find_open_template_revision(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<Option<RecurringTemplateRevision>> {
+        let pool = Arc::clone(&self.pool);
+        let recurring_transaction_id = recurring_transaction_id.to_string();
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            find_open_template_revision(&mut conn, &recurring_transaction_id)
+        })
+        .await
+    }
+
+    async fn create_recurring_transaction(
+        &self,
+        input: NewRecurringTransaction,
+    ) -> Result<RecurringTransaction> {
+        self.writer
+            .exec(move |conn| create_recurring_transaction(conn, input))
+            .await
     }
 }
