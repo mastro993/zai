@@ -5,13 +5,12 @@ use super::document::{
 };
 use super::models::{
     DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringLifecycle,
-    RecurringOccurrenceHead, RecurringTransaction,
+    RecurringTransaction,
 };
 use super::schedule::scheduled_local_at;
 use super::traits::{RecurringTransactionsRepositoryTrait, RecurringTransactionsServiceTrait};
 use crate::features::budgets::traits::CalendarClock;
 use crate::{Error, Result};
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -103,37 +102,25 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
     ) -> Result<RecurringFeedResult> {
         let limit = limit.unwrap_or(DEFAULT_FEED_LIMIT).clamp(1, MAX_FEED_LIMIT);
         let page = self.repository.list_feed(limit, cursor).await?;
-        let unresolved = self
-            .repository
-            .list_unresolved_failures(MAX_FEED_LIMIT)
-            .await?;
-        let attention_ids: HashSet<String> = unresolved
-            .into_iter()
-            .map(|failure| failure.recurring_transaction_id)
-            .collect();
 
-        let mut heads_by_id: HashMap<String, RecurringOccurrenceHead> = HashMap::new();
-        for item in &page.items {
-            if let Some(head) = self.repository.get_occurrence_head(&item.id).await? {
-                heads_by_id.insert(item.id.clone(), head);
-            }
+        let mut items = Vec::with_capacity(page.items.len());
+        for recurring_transaction in page.items {
+            let next_scheduled_local = self
+                .repository
+                .get_occurrence_head(&recurring_transaction.id)
+                .await?
+                .map(|head| head.next_scheduled_local);
+            let needs_attention = self
+                .repository
+                .find_unresolved_failure(&recurring_transaction.id)
+                .await?
+                .is_some();
+            items.push(RecurringFeedItem {
+                recurring_transaction,
+                next_scheduled_local,
+                needs_attention,
+            });
         }
-
-        let items = page
-            .items
-            .into_iter()
-            .map(|recurring_transaction| {
-                let next_scheduled_local = heads_by_id
-                    .get(&recurring_transaction.id)
-                    .map(|head| head.next_scheduled_local);
-                let needs_attention = attention_ids.contains(&recurring_transaction.id);
-                RecurringFeedItem {
-                    recurring_transaction,
-                    next_scheduled_local,
-                    needs_attention,
-                }
-            })
-            .collect();
 
         Ok(RecurringFeedResult {
             items,
@@ -149,17 +136,23 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
     async fn create(&self, mut input: NewRecurringTransaction) -> Result<RecurringCreateOutcome> {
         let observed_local = self.clock.sample();
         input.name = normalize_recurring_name(&input.name);
-        input.validate(observed_local)?;
 
-        let id = input
-            .id
-            .clone()
-            .unwrap_or_else(|| Uuid::new_v4().to_string());
-        input.id = Some(id.clone());
+        match input.id.as_deref().map(str::trim) {
+            Some("") => {
+                return Err(Error::InvalidData(
+                    "Recurring transaction id cannot be blank".into(),
+                ));
+            }
+            Some(id) => input.id = Some(id.to_string()),
+            None => input.id = Some(Uuid::new_v4().to_string()),
+        }
+
+        input.validate(observed_local)?;
 
         let first_scheduled_local =
             scheduled_local_at(&input.schedule, input.first_scheduled_local, 1)?;
         input.first_scheduled_local = first_scheduled_local;
+        input.validate(observed_local)?;
 
         let created = self.repository.create_recurring_transaction(input).await?;
         let document = self.compose_document(created).await?;

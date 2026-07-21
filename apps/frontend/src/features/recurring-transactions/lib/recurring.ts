@@ -59,8 +59,11 @@ export const formatLocalDateTime = (value: string | null | undefined): string =>
   }).format(asLocal);
 };
 
+const padLocalPart = (value: number) => String(value).padStart(2, "0");
+
 export const defaultFirstScheduledLocal = (): string => {
-  const now = new Date();
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  // Advance one minute so the default still passes backend creation-time checks
+  // after the user fills the form for a few seconds.
+  const now = new Date(Date.now() + 60_000);
+  return `${now.getFullYear()}-${padLocalPart(now.getMonth() + 1)}-${padLocalPart(now.getDate())}T${padLocalPart(now.getHours())}:${padLocalPart(now.getMinutes())}`;
 };

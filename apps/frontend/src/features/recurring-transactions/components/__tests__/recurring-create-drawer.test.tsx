@@ -6,9 +6,14 @@ import { Result } from "@praha/byethrow";
 import { useRef, useState } from "react";
 
 import { Drawer } from "@/components/ui/drawer";
+import type { CommandError } from "@/commands/errors";
 
 import { RecurringCreateDrawer } from "../recurring-create-drawer";
-import type { RecurringFormValues } from "../../types/recurring-transaction";
+import type {
+  RecurringCreateOutcome,
+  RecurringFormValues,
+  RecurringTransactionDocument,
+} from "../../types/recurring-transaction";
 
 afterEach(() => {
   cleanup();
@@ -17,7 +22,9 @@ afterEach(() => {
 function Harness({
   onSubmit,
 }: {
-  onSubmit: (values: RecurringFormValues) => Promise<Result.Result<unknown, { message: string }>>;
+  onSubmit: (
+    values: RecurringFormValues,
+  ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(true);
@@ -47,8 +54,53 @@ describe("RecurringCreateDrawer", () => {
       expect(values.amount).toBe(4500);
       return Result.succeed({
         outcome: "succeeded",
-        document: { recurringTransaction: { id: "rt-1", name: values.name } },
-      });
+        document: {
+          recurringTransaction: {
+            id: "rt-1",
+            name: values.name,
+            lifecycle: "active",
+            totalOccurrences: null,
+            fulfilledCount: 0,
+            revision: 1,
+            lifecycleChangedAt: "2026-07-21T10:00:00",
+            createdAt: "2026-07-21T10:00:00",
+            updatedAt: "2026-07-21T10:00:00",
+          },
+          schedule: {
+            id: "sch-1",
+            recurringTransactionId: "rt-1",
+            sequence: 1,
+            effectiveFromLocal: "2026-07-21T10:00:00",
+            firstScheduledLocal: values.firstScheduledLocal,
+            rule: { type: "interval", every: 1, unit: "month" },
+          },
+          template: {
+            id: "tpl-1",
+            recurringTransactionId: "rt-1",
+            sequence: 1,
+            effectiveFromLocal: "2026-07-21T10:00:00",
+            amount: values.amount,
+            transactionType: values.transactionType,
+          },
+          occurrenceSummary: {
+            fulfilledCount: 0,
+            totalOccurrences: null,
+            needsAttention: false,
+          },
+          links: {
+            state: "ready",
+            occurrences: { items: [] },
+          },
+          failures: {
+            state: "ready",
+            history: { items: [] },
+          },
+          budgetImpact: {
+            state: "unavailable",
+            message: "Budget impact is not available yet",
+          },
+        } satisfies RecurringTransactionDocument,
+      } satisfies RecurringCreateOutcome);
     });
 
     render(<Harness onSubmit={onSubmit} />);

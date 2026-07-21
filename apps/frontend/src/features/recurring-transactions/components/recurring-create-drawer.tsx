@@ -151,7 +151,7 @@ export function RecurringCreateDrawer({
                     render={({ field }) => (
                       <ToggleGroup
                         variant="outline"
-                        value={[field.value]}
+                        value={[field.value ?? "month"]}
                         onValueChange={(value) => {
                           if (value[0]) {
                             field.onChange(value[0]);
@@ -195,7 +195,7 @@ export function RecurringCreateDrawer({
                 render={({ field }) => (
                   <ToggleGroup
                     variant="outline"
-                    value={[field.value]}
+                    value={[field.value ?? "indefinite"]}
                     onValueChange={(value) => {
                       if (value[0]) {
                         field.onChange(value[0]);
@@ -247,7 +247,7 @@ export function RecurringCreateDrawer({
                 render={({ field }) => (
                   <ToggleGroup
                     variant="outline"
-                    value={[field.value]}
+                    value={[field.value ?? "expense"]}
                     onValueChange={(value) => {
                       if (value[0]) {
                         field.onChange(value[0]);
@@ -282,6 +282,7 @@ export function RecurringCreateDrawer({
                     ariaLabel="Transaction category"
                     drawerTitle="Choose category"
                     clearable
+                    parentOpen={open}
                   />
                 )}
               />

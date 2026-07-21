@@ -116,6 +116,14 @@ vi.mock("@hugeicons/react", () => ({
 
 import { routeTree } from "@/routeTree.gen";
 
+async function renderPath(pathname: string) {
+  const history = createMemoryHistory({ initialEntries: [pathname] });
+  const router = createRouter({ routeTree, history });
+  render(<RouterProvider router={router} />);
+  await router.load();
+  return router;
+}
+
 describe("recurring screen navigation", () => {
   beforeEach(() => {
     Object.defineProperty(window, "scrollTo", {
@@ -140,14 +148,6 @@ describe("recurring screen navigation", () => {
   afterEach(() => {
     cleanup();
   });
-
-  async function renderPath(pathname: string) {
-    const history = createMemoryHistory({ initialEntries: [pathname] });
-    const router = createRouter({ routeTree, history });
-    render(<RouterProvider router={router} />);
-    await router.load();
-    return router;
-  }
 
   it("shows the occurrence-card feed and create control", async () => {
     await renderPath("/cash-flow/recurring");
