@@ -1,6 +1,16 @@
 import { Result } from "@praha/byethrow";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "@/components/toaster/toast";
+
+import { CommandError } from "@/commands/errors";
+import {
+  adoptRecurringTransaction,
+  getTransactionRecurringProvenance,
+} from "@/features/recurring-transactions/commands/recurring-transactions";
+import type {
+  AdoptRecurringFormValues,
+  TransactionRecurringProvenance,
+} from "@/features/recurring-transactions/types/recurring-transaction";
 
 import { exportTransactions } from "../commands/transaction-export";
 import {
@@ -33,6 +43,10 @@ export function useTransactionActions(controller: TransactionActionsController) 
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
+  const [adoptTransaction, setAdoptTransaction] = useState<Transaction | null>(null);
+  const [isAdoptDrawerOpen, setIsAdoptDrawerOpen] = useState(false);
+  const [editProvenance, setEditProvenance] = useState<TransactionRecurringProvenance | null>(null);
+  const adoptButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const selection = useTransactionSelection(controller.transactions);
   const { syncFilterFingerprint } = selection;
@@ -43,12 +57,48 @@ export function useTransactionActions(controller: TransactionActionsController) 
 
   const openFormDrawer = (mode: TransactionFormMode) => {
     setFormMode(mode);
+    setEditProvenance(null);
     setIsFormDrawerOpen(true);
+    if (mode.type === "edit") {
+      void getTransactionRecurringProvenance(mode.transaction.id).then((result) => {
+        if (Result.isSuccess(result)) {
+          setEditProvenance(result.value);
+        }
+      });
+    }
   };
 
   const openDeleteDialog = (transaction: Transaction) => {
     setPendingDelete(transaction);
     setIsDeleteDialogOpen(true);
+  };
+
+  const openAdoptDrawer = async (transaction: Transaction, trigger?: HTMLButtonElement | null) => {
+    adoptButtonRef.current = trigger ?? null;
+    const provenance = await getTransactionRecurringProvenance(transaction.id);
+    if (Result.isFailure(provenance)) {
+      toast.error("Could not check recurring provenance", {
+        description: provenance.error.message,
+      });
+      return;
+    }
+    if (provenance.value) {
+      toast.error("Transaction already belongs to a recurring schedule");
+      return;
+    }
+    setAdoptTransaction(transaction);
+    setIsAdoptDrawerOpen(true);
+  };
+
+  const submitAdopt = async (values: AdoptRecurringFormValues) => {
+    if (!adoptTransaction) {
+      return Result.fail(new CommandError("No transaction selected for adoption"));
+    }
+    const result = await adoptRecurringTransaction(adoptTransaction.id, values);
+    if (Result.isSuccess(result)) {
+      await controller.refreshList();
+    }
+    return result;
   };
 
   const submitTransaction = async (values: TransactionFormValues) => {
@@ -159,8 +209,12 @@ export function useTransactionActions(controller: TransactionActionsController) 
 
   return {
     ...selection,
+    adoptButtonRef,
+    adoptTransaction,
+    editProvenance,
     exportTransactionCsv,
     formMode,
+    isAdoptDrawerOpen,
     isBulkDeleteDialogOpen,
     isBulkDeleting,
     isDeleteDialogOpen,
@@ -169,6 +223,7 @@ export function useTransactionActions(controller: TransactionActionsController) 
     isFormDrawerOpen,
     isImportDialogOpen,
     isSelectingAllMatching,
+    openAdoptDrawer,
     openDeleteDialog,
     openFormDrawer,
     pendingDelete,
@@ -176,12 +231,15 @@ export function useTransactionActions(controller: TransactionActionsController) 
     removeSelectedTransactions,
     removeTransaction,
     selectAllMatchingTransactions,
+    setAdoptTransaction,
     setFormMode,
+    setIsAdoptDrawerOpen,
     setIsBulkDeleteDialogOpen,
     setIsDeleteDialogOpen,
     setIsFormDrawerOpen,
     setIsImportDialogOpen,
     setPendingDelete,
+    submitAdopt,
     submitTransaction,
   };
 }

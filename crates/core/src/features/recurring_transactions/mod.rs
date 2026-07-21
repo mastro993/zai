@@ -1,3 +1,4 @@
+mod adopt;
 mod alerts;
 mod create;
 mod document;
@@ -7,6 +8,7 @@ mod schedule;
 mod service;
 mod traits;
 
+pub use adopt::*;
 pub use alerts::{
     RECURRING_GENERATION_FAILURE_PRODUCER_KEY, RECURRING_OCCURRENCE_PRODUCER_KEY,
     build_generated_occurrence_alert, occurrence_identity_key,

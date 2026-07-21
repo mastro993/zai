@@ -1,7 +1,7 @@
 use super::models::{
-    RecurringFailurePage, RecurringGenerationFailure, RecurringOccurrenceHead,
-    RecurringOccurrencePage, RecurringScheduleRevision, RecurringTemplateRevision,
-    RecurringTransaction,
+    FulfillmentKind, RecurringFailurePage, RecurringGenerationFailure, RecurringLifecycle,
+    RecurringOccurrence, RecurringOccurrenceHead, RecurringOccurrencePage,
+    RecurringScheduleRevision, RecurringTemplateRevision, RecurringTransaction,
 };
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -80,6 +80,48 @@ pub enum RecurringCreateOutcome {
     Succeeded {
         document: RecurringTransactionDocument,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "outcome", rename_all = "camelCase")]
+pub enum RecurringAdoptOutcome {
+    Succeeded {
+        document: RecurringTransactionDocument,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecurringSourceLink {
+    pub id: String,
+    pub name: String,
+    pub lifecycle: RecurringLifecycle,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionRecurringProvenance {
+    pub occurrence: RecurringOccurrence,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<RecurringSourceLink>,
+}
+
+pub fn visible_source_link(recurring: &RecurringTransaction) -> Option<RecurringSourceLink> {
+    if recurring.lifecycle == RecurringLifecycle::Tombstoned || recurring.deleted_at.is_some() {
+        return None;
+    }
+    Some(RecurringSourceLink {
+        id: recurring.id.clone(),
+        name: recurring.name.clone(),
+        lifecycle: recurring.lifecycle,
+    })
+}
+
+pub fn fulfillment_kind_label(kind: FulfillmentKind) -> &'static str {
+    match kind {
+        FulfillmentKind::Generated => "Generated",
+        FulfillmentKind::Adopted => "Adopted",
+    }
 }
 
 pub fn empty_occurrence_page() -> RecurringOccurrencePage {

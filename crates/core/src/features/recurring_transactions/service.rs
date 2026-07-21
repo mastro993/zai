@@ -1,11 +1,15 @@
+use super::adopt::{
+    AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, count_later_due_occurrences,
+};
 use super::create::{NewRecurringTransaction, normalize_recurring_name};
 use super::document::{
-    RecurringCreateOutcome, RecurringFeedItem, RecurringFeedResult, RecurringTransactionDocument,
-    budget_impact_unavailable, failures_section, links_section, occurrence_summary,
+    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedItem, RecurringFeedResult,
+    RecurringTransactionDocument, TransactionRecurringProvenance, budget_impact_unavailable,
+    failures_section, links_section, occurrence_summary, visible_source_link,
 };
 use super::models::{
     DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringLifecycle,
-    RecurringTransaction,
+    RecurringOccurrencePage, RecurringTransaction,
 };
 use super::process::{
     ProcessOneOutcome, ProcessingSliceOutcome, ProcessingStopReason, ProcessingWorkBudget,
@@ -97,6 +101,19 @@ impl RecurringTransactionsService {
             head,
         })
     }
+
+    fn assign_id(mut input_id: Option<String>) -> Result<String> {
+        match input_id.as_deref().map(str::trim) {
+            Some("") => Err(Error::InvalidData(
+                "Recurring transaction id cannot be blank".into(),
+            )),
+            Some(id) => {
+                input_id = Some(id.to_string());
+                Ok(input_id.expect("id set"))
+            }
+            None => Ok(Uuid::new_v4().to_string()),
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -139,20 +156,83 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         self.compose_document(recurring).await
     }
 
+    async fn list_linked_occurrences(
+        &self,
+        recurring_transaction_id: &str,
+        limit: Option<i64>,
+        cursor: Option<String>,
+    ) -> Result<RecurringOccurrencePage> {
+        let recurring = self
+            .repository
+            .get_recurring_transaction(recurring_transaction_id)
+            .await?;
+        if recurring.lifecycle == RecurringLifecycle::Tombstoned || recurring.deleted_at.is_some() {
+            return Err(Error::NotFound(format!(
+                "Recurring transaction {recurring_transaction_id} not found"
+            )));
+        }
+        let limit = limit.unwrap_or(DEFAULT_FEED_LIMIT).clamp(1, MAX_FEED_LIMIT);
+        self.repository
+            .list_occurrences(recurring_transaction_id, limit, cursor)
+            .await
+    }
+
+    async fn get_transaction_provenance(
+        &self,
+        transaction_id: &str,
+    ) -> Result<Option<TransactionRecurringProvenance>> {
+        let Some(occurrence) = self
+            .repository
+            .find_provenance_by_transaction(transaction_id)
+            .await?
+        else {
+            return Ok(None);
+        };
+        let recurring = self
+            .repository
+            .get_recurring_transaction(&occurrence.recurring_transaction_id)
+            .await?;
+        Ok(Some(TransactionRecurringProvenance {
+            occurrence,
+            source: visible_source_link(&recurring),
+        }))
+    }
+
+    async fn preview_adoption(&self, input: AdoptionPreviewRequest) -> Result<AdoptionPreview> {
+        input.validate_inputs()?;
+        let observed_local = self.clock.sample();
+        if self
+            .repository
+            .find_provenance_by_transaction(&input.transaction_id)
+            .await?
+            .is_some()
+        {
+            return Err(Error::Conflict(
+                "Transaction already has recurring provenance".to_string(),
+            ));
+        }
+
+        let first_scheduled_local = self
+            .repository
+            .find_visible_transaction_date(&input.transaction_id)
+            .await?;
+        let later_due_count = count_later_due_occurrences(
+            &input.schedule,
+            first_scheduled_local,
+            input.total_occurrences,
+            observed_local,
+        )?;
+        Ok(AdoptionPreview {
+            transaction_id: input.transaction_id,
+            first_scheduled_local,
+            later_due_count,
+        })
+    }
+
     async fn create(&self, mut input: NewRecurringTransaction) -> Result<RecurringCreateOutcome> {
         let observed_local = self.clock.sample();
         input.name = normalize_recurring_name(&input.name);
-
-        match input.id.as_deref().map(str::trim) {
-            Some("") => {
-                return Err(Error::InvalidData(
-                    "Recurring transaction id cannot be blank".into(),
-                ));
-            }
-            Some(id) => input.id = Some(id.to_string()),
-            None => input.id = Some(Uuid::new_v4().to_string()),
-        }
-
+        input.id = Some(Self::assign_id(input.id)?);
         input.validate(observed_local)?;
 
         let first_scheduled_local =
@@ -163,6 +243,31 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         let created = self.repository.create_recurring_transaction(input).await?;
         let document = self.compose_document(created).await?;
         Ok(RecurringCreateOutcome::Succeeded { document })
+    }
+
+    async fn adopt(&self, mut input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {
+        let observed_local = self.clock.sample();
+        input.name = normalize_recurring_name(&input.name);
+        input.id = Some(Self::assign_id(input.id)?);
+        input.validate_inputs()?;
+
+        let created = self
+            .repository
+            .adopt_existing_transaction(input, observed_local)
+            .await?;
+
+        let _catch_up = self
+            .process_due(observed_local, ProcessingWorkBudget::default_slice())
+            .await?;
+
+        let document = self
+            .compose_document(
+                self.repository
+                    .get_recurring_transaction(&created.id)
+                    .await?,
+            )
+            .await?;
+        Ok(RecurringAdoptOutcome::Succeeded { document })
     }
 }
 

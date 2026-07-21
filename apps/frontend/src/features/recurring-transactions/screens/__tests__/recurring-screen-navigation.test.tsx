@@ -47,7 +47,25 @@ const documentFixture = {
     nextScheduledLocal: "2026-09-01T09:00:00",
     needsAttention: false,
   },
-  links: { state: "empty" as const, occurrences: { items: [] } },
+  links: {
+    state: "ready" as const,
+    occurrences: {
+      items: [
+        {
+          recurringTransactionId: "rt-1",
+          scheduleRevisionId: "sched-1",
+          ordinal: 1,
+          scheduledLocal: "2026-08-01T09:00:00",
+          templateRevisionId: "tmpl-1",
+          fulfilledAt: "2026-08-01T09:00:00",
+          fulfillmentPosition: 1,
+          transactionId: "txn-1",
+          fulfillmentKind: "adopted" as const,
+          recurringAlertId: null,
+        },
+      ],
+    },
+  },
   failures: { state: "empty" as const, history: { items: [] } },
   budgetImpact: {
     state: "unavailable" as const,
