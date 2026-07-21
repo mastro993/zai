@@ -36,7 +36,7 @@ pub use process::{
     ProcessingSliceOutcome, ProcessingStopReason, ProcessingWorkBudget,
 };
 pub use schedule::{scheduled_local_at, validate_schedule_rule};
-pub use service::RecurringTransactionsService;
+pub use service::{RecurringTransactionsService, process_failpoints};
 pub use supervisor::{
     CLOCK_FALLBACK_WAKE, RecurringProcessDelayAlerts, RecurringProcessingStatus,
     RecurringProcessingSupervisor, RecurringProcessingSupervisorHandle, RecurringSupervisorHeads,

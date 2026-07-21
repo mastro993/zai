@@ -1,3 +1,4 @@
+use super::failpoints::{self, FulfillmentFailpoint};
 use super::fulfill_head::{
     complete_or_advance_after_fulfillment, find_occurrence,
     heal_stale_head_after_existing_occurrence,
@@ -20,6 +21,7 @@ use crate::transactions::models::TransactionRow;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
+use std::sync::atomic::{AtomicBool, Ordering};
 use uuid::Uuid;
 use zai_core::Error;
 use zai_core::features::budgets::alerts::BudgetAlertMode;
@@ -30,10 +32,7 @@ use zai_core::features::recurring_transactions::{
 };
 use zai_core::features::transactions::models::NewTransaction;
 
-#[cfg(test)]
-use std::sync::atomic::{AtomicBool, Ordering};
-
-#[cfg(test)]
+/// Legacy single-site flag kept for existing atomicity tests.
 pub static FAIL_AFTER_TRANSACTION_INSERT: AtomicBool = AtomicBool::new(false);
 
 pub fn has_eligible_due_work(
@@ -77,6 +76,8 @@ fn fulfill_generated_occurrence(
     observed_local: NaiveDateTime,
     now: NaiveDateTime,
 ) -> Result<CommittedOutcome<ProcessOneOutcome>> {
+    failpoints::hit(FulfillmentFailpoint::BeforeSideEffects)?;
+
     let recurring_row = recurring_transactions::table
         .filter(recurring_transactions::id.eq(&head.recurring_transaction_id))
         .select(RecurringTransactionRow::as_select())
@@ -176,12 +177,12 @@ fn fulfill_generated_occurrence(
         .execute(conn)
         .into_storage()?;
 
-    #[cfg(test)]
     if FAIL_AFTER_TRANSACTION_INSERT.load(Ordering::SeqCst) {
         return Err(StorageError::CoreError(Error::Repository(
             "Injected fulfillment failure after transaction insert".to_string(),
         )));
     }
+    failpoints::hit(FulfillmentFailpoint::AfterTransactionInsert)?;
 
     let inserted = transactions::table
         .filter(transactions::id.eq(&transaction_id))
@@ -206,6 +207,8 @@ fn fulfill_generated_occurrence(
     };
     let recurring_alert_id = created_alert.id.clone();
 
+    failpoints::hit(FulfillmentFailpoint::AfterAlertInsert)?;
+
     diesel::insert_into(recurring_occurrences::table)
         .values(RecurringOccurrenceRow {
             recurring_transaction_id: recurring.id.clone(),
@@ -222,6 +225,8 @@ fn fulfill_generated_occurrence(
         .execute(conn)
         .into_storage()?;
 
+    failpoints::hit(FulfillmentFailpoint::AfterOccurrenceInsert)?;
+
     complete_or_advance_after_fulfillment(
         conn,
         &recurring,
@@ -230,6 +235,8 @@ fn fulfill_generated_occurrence(
         fulfillment_position,
         now,
     )?;
+
+    failpoints::hit(FulfillmentFailpoint::AfterHeadAdvance)?;
 
     let mut alert_state_changed = false;
     if let Some(failure) =
@@ -275,6 +282,8 @@ fn fulfill_generated_occurrence(
         &before,
         &after,
     )?);
+
+    failpoints::hit(FulfillmentFailpoint::AfterBudgetReconcile)?;
 
     let occurrence = find_occurrence(
         conn,

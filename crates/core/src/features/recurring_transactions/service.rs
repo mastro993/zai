@@ -23,6 +23,26 @@ use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 use uuid::Uuid;
 
+/// Test-only injection points. Default state is disarmed (`u32::MAX`).
+pub mod process_failpoints {
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    static FAIL_AFTER_COMMITS: AtomicU32 = AtomicU32::new(u32::MAX);
+
+    pub fn reset() {
+        FAIL_AFTER_COMMITS.store(u32::MAX, Ordering::SeqCst);
+    }
+
+    pub fn fail_after_commits(count: u32) {
+        FAIL_AFTER_COMMITS.store(count, Ordering::SeqCst);
+    }
+
+    pub fn should_fail_after(committed: u32) -> bool {
+        let armed = FAIL_AFTER_COMMITS.load(Ordering::SeqCst);
+        armed != u32::MAX && committed >= armed
+    }
+}
+
 pub struct RecurringTransactionsService {
     repository: Arc<dyn RecurringTransactionsRepositoryTrait>,
     clock: Arc<dyn CalendarClock>,
@@ -126,8 +146,7 @@ impl RecurringTransactionsService {
         loop {
             if cancelled.is_some_and(|flag| flag.load(std::sync::atomic::Ordering::SeqCst)) {
                 let more_due_remaining = self
-                    .repository
-                    .has_eligible_due_work(observed_local)
+                    .more_due_remaining(observed_local)
                     .await
                     .unwrap_or(true);
                 return Ok(ProcessingSliceOutcome {
@@ -140,10 +159,7 @@ impl RecurringTransactionsService {
             }
 
             if committed + already_fulfilled >= max_occurrences {
-                let more_due_remaining = self
-                    .repository
-                    .has_eligible_due_work(observed_local)
-                    .await?;
+                let more_due_remaining = self.more_due_remaining(observed_local).await?;
                 return Ok(ProcessingSliceOutcome {
                     committed,
                     already_fulfilled,
@@ -162,11 +178,13 @@ impl RecurringTransactionsService {
                     committed += 1;
                     contention_started = None;
                     contention_attempt = 0;
+                    if process_failpoints::should_fail_after(committed) {
+                        return Err(Error::Repository(
+                            "Injected failure between occurrence slices".to_string(),
+                        ));
+                    }
                     if slice_started.elapsed() >= work_budget.max_duration {
-                        let more_due_remaining = self
-                            .repository
-                            .has_eligible_due_work(observed_local)
-                            .await?;
+                        let more_due_remaining = self.more_due_remaining(observed_local).await?;
                         return Ok(ProcessingSliceOutcome {
                             committed,
                             already_fulfilled,
@@ -181,10 +199,7 @@ impl RecurringTransactionsService {
                     contention_started = None;
                     contention_attempt = 0;
                     if slice_started.elapsed() >= work_budget.max_duration {
-                        let more_due_remaining = self
-                            .repository
-                            .has_eligible_due_work(observed_local)
-                            .await?;
+                        let more_due_remaining = self.more_due_remaining(observed_local).await?;
                         return Ok(ProcessingSliceOutcome {
                             committed,
                             already_fulfilled,
@@ -212,8 +227,7 @@ impl RecurringTransactionsService {
                         }
                         ContentionRetryDecision::Exhausted => {
                             let more_due_remaining = self
-                                .repository
-                                .has_eligible_due_work(observed_local)
+                                .more_due_remaining(observed_local)
                                 .await
                                 .unwrap_or(true);
                             return Ok(ProcessingSliceOutcome {
@@ -228,6 +242,15 @@ impl RecurringTransactionsService {
                 }
                 Err(error) => return Err(error),
             }
+        }
+    }
+
+    async fn more_due_remaining(&self, observed_local: chrono::NaiveDateTime) -> Result<bool> {
+        match self.repository.has_eligible_due_work(observed_local).await {
+            Ok(value) => Ok(value),
+            // Concurrent BEGIN IMMEDIATE can surface Busy on the follow-up due-head read.
+            Err(error) if error.is_transient_contention() => Ok(true),
+            Err(error) => Err(error),
         }
     }
 }

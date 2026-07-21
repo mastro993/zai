@@ -284,11 +284,30 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
         observed_local: NaiveDateTime,
     ) -> Result<ProcessOneOutcome> {
         let publisher = Arc::clone(&self.alert_publisher);
-        let outcome = self
+        let outcome = match self
             .writer
             .exec(move |conn| process_one_due_occurrence(conn, observed_local, observed_local))
-            .await?;
+            .await
+        {
+            Ok(outcome) => outcome,
+            Err(error) if is_competing_fulfillment_unique_violation(&error) => {
+                // Winner committed; loser reselects canonical durable state under the writer.
+                self.writer
+                    .exec(move |conn| {
+                        process_one_due_occurrence(conn, observed_local, observed_local)
+                    })
+                    .await?
+            }
+            Err(error) => return Err(error),
+        };
         publish_created_alerts(publisher.as_ref(), &outcome);
         Ok(outcome.value)
     }
+}
+
+fn is_competing_fulfillment_unique_violation(error: &zai_core::Error) -> bool {
+    matches!(
+        error,
+        zai_core::Error::Database(zai_core::DatabaseError::UniqueViolation(_))
+    )
 }
