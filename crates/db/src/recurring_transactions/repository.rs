@@ -4,10 +4,7 @@ use super::adopt::{
 use super::create::{
     create_recurring_transaction, find_open_schedule_revision, find_open_template_revision,
 };
-use super::edit::{
-    RenameInput, edit_recurring_count, edit_recurring_schedule, edit_recurring_template,
-    rename_recurring_transaction,
-};
+use super::edit::update_recurring_transaction;
 use super::fulfill::{
     has_eligible_due_work as query_has_eligible_due_work, process_one_due_occurrence,
 };
@@ -27,11 +24,10 @@ use zai_core::Result;
 use zai_core::features::budgets::traits::CalendarClock;
 use zai_core::features::domain_alerts::{DomainAlertEventPublisher, publish_created_alerts};
 use zai_core::features::recurring_transactions::{
-    AdoptRecurringTransaction, EditRecurringCount, EditRecurringSchedule, EditRecurringTemplate,
-    NewRecurringTransaction, ProcessOneOutcome, RecurringFailurePage, RecurringFeedPage,
-    RecurringGenerationFailure, RecurringOccurrence, RecurringOccurrenceHead,
+    AdoptRecurringTransaction, NewRecurringTransaction, ProcessOneOutcome, RecurringFailurePage,
+    RecurringFeedPage, RecurringGenerationFailure, RecurringOccurrence, RecurringOccurrenceHead,
     RecurringOccurrencePage, RecurringScheduleRevision, RecurringTemplateRevision,
-    RecurringTransaction, RecurringTransactionsRepositoryTrait,
+    RecurringTransaction, RecurringTransactionsRepositoryTrait, UpdateRecurringTransaction,
 };
 
 pub struct RecurringTransactionsRepository {
@@ -278,51 +274,27 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
             .await
     }
 
-    async fn rename_recurring_transaction(
+    async fn update_recurring_transaction(
         &self,
-        recurring_transaction_id: String,
-        expected_revision: i32,
-        name: String,
+        input: UpdateRecurringTransaction,
+        observed_local: NaiveDateTime,
+        apply_name: bool,
+        apply_schedule: bool,
+        apply_template: bool,
+        apply_count: bool,
     ) -> Result<RecurringTransaction> {
         self.writer
             .exec(move |conn| {
-                rename_recurring_transaction(
+                update_recurring_transaction(
                     conn,
-                    RenameInput {
-                        recurring_transaction_id,
-                        expected_revision,
-                        name,
-                    },
+                    input,
+                    observed_local,
+                    apply_name,
+                    apply_schedule,
+                    apply_template,
+                    apply_count,
                 )
             })
-            .await
-    }
-
-    async fn edit_recurring_schedule(
-        &self,
-        input: EditRecurringSchedule,
-    ) -> Result<RecurringTransaction> {
-        self.writer
-            .exec(move |conn| edit_recurring_schedule(conn, input))
-            .await
-    }
-
-    async fn edit_recurring_template(
-        &self,
-        input: EditRecurringTemplate,
-        effective_from_local: NaiveDateTime,
-    ) -> Result<RecurringTransaction> {
-        self.writer
-            .exec(move |conn| edit_recurring_template(conn, input, effective_from_local))
-            .await
-    }
-
-    async fn edit_recurring_count(
-        &self,
-        input: EditRecurringCount,
-    ) -> Result<RecurringTransaction> {
-        self.writer
-            .exec(move |conn| edit_recurring_count(conn, input))
             .await
     }
 

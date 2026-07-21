@@ -6,9 +6,9 @@ use crate::schema::{
 use diesel::prelude::*;
 use zai_core::Error;
 use zai_core::features::recurring_transactions::{
-    EditRecurringCount, EditRecurringSchedule, RecurringMutationOutcome,
-    RecurringTransactionsServiceTrait, RenameRecurringTransaction, ScheduleRule,
-    UNCHANGED_GENERATION_BLOCKED,
+    RecurringMutationOutcome, RecurringTemplateInput, RecurringTransactionDocument,
+    RecurringTransactionsServiceTrait, ScheduleRule, UNCHANGED_GENERATION_BLOCKED,
+    UpdateRecurringTransaction,
 };
 
 fn base_seed(id: &str, name: &str) -> SeedRecurringSource {
@@ -24,6 +24,27 @@ fn base_seed(id: &str, name: &str) -> SeedRecurringSource {
         next_ordinal: 1,
         amount: 1000,
         transaction_type: "expense",
+    }
+}
+
+fn update_from_document(document: &RecurringTransactionDocument) -> UpdateRecurringTransaction {
+    UpdateRecurringTransaction {
+        recurring_transaction_id: document.recurring_transaction.id.clone(),
+        expected_revision: document.recurring_transaction.revision,
+        name: document.recurring_transaction.name.clone(),
+        schedule: document.schedule.rule.clone(),
+        next_scheduled_local: document
+            .occurrence_summary
+            .next_scheduled_local
+            .unwrap_or(document.schedule.first_scheduled_local),
+        total_occurrences: document.recurring_transaction.total_occurrences,
+        template: RecurringTemplateInput {
+            description: document.template.description.clone(),
+            amount: document.template.amount,
+            transaction_type: document.template.transaction_type.clone(),
+            transaction_category_id: document.template.transaction_category_id.clone(),
+            notes: document.template.notes.clone(),
+        },
     }
 }
 
@@ -66,24 +87,16 @@ async fn generation_blocked_blocks_config_but_allows_rename() {
         .await
         .expect("seed failure");
 
-    let rename = service
-        .rename(RenameRecurringTransaction {
-            recurring_transaction_id: "rt-block".into(),
-            expected_revision: 1,
-            name: "Still renameable".into(),
-        })
-        .await
-        .expect("rename while blocked");
+    let before = service.get_document("rt-block").await.expect("doc");
+    let mut rename = update_from_document(&before);
+    rename.name = "Still renameable".into();
+    let rename = service.update(rename).await.expect("rename while blocked");
     assert!(matches!(rename, RecurringMutationOutcome::Succeeded { .. }));
 
-    let count = service
-        .edit_count(EditRecurringCount {
-            recurring_transaction_id: "rt-block".into(),
-            expected_revision: 2,
-            total_occurrences: None,
-        })
-        .await
-        .expect("blocked count");
+    let after = service.get_document("rt-block").await.expect("after");
+    let mut count = update_from_document(&after);
+    count.total_occurrences = None;
+    let count = service.update(count).await.expect("blocked count");
     match count {
         RecurringMutationOutcome::Unchanged { reason, .. } => {
             assert_eq!(reason, UNCHANGED_GENERATION_BLOCKED);
@@ -97,24 +110,15 @@ async fn revision_conflict_when_stale_and_different() {
     let observed = local(2026, 7, 21, 10, 0);
     let (_db, service, repo, _lock) = setup_service(observed).await;
     seed_source(&repo, base_seed("rt-conflict", "Conflict")).await;
+    let before = service.get_document("rt-conflict").await.expect("doc");
 
-    service
-        .rename(RenameRecurringTransaction {
-            recurring_transaction_id: "rt-conflict".into(),
-            expected_revision: 1,
-            name: "First".into(),
-        })
-        .await
-        .expect("first");
+    let mut first = update_from_document(&before);
+    first.name = "First".into();
+    service.update(first).await.expect("first");
 
-    let error = service
-        .rename(RenameRecurringTransaction {
-            recurring_transaction_id: "rt-conflict".into(),
-            expected_revision: 1,
-            name: "Second".into(),
-        })
-        .await
-        .expect_err("stale");
+    let mut stale = update_from_document(&before);
+    stale.name = "Second".into();
+    let error = service.update(stale).await.expect_err("stale");
     assert!(matches!(
         error,
         Error::RevisionConflict {
@@ -145,16 +149,12 @@ async fn schedule_property_monthly_day_and_leap_year_clamp() {
     )
     .await;
 
+    let before = service.get_document("rt-leap").await.expect("doc");
     let boundary = local(2024, 2, 29, 9, 0);
-    let outcome = service
-        .edit_schedule(EditRecurringSchedule {
-            recurring_transaction_id: "rt-leap".into(),
-            expected_revision: 1,
-            schedule: ScheduleRule::MonthlyDay { day: 31 },
-            next_scheduled_local: boundary,
-        })
-        .await
-        .expect("monthly day");
+    let mut input = update_from_document(&before);
+    input.schedule = ScheduleRule::MonthlyDay { day: 31 };
+    input.next_scheduled_local = boundary;
+    let outcome = service.update(input).await.expect("monthly day");
     let RecurringMutationOutcome::Succeeded { document } = outcome else {
         panic!("expected Succeeded");
     };
@@ -206,14 +206,10 @@ async fn paused_source_remains_editable_without_generation_block() {
         .await
         .expect("set paused");
 
-    let outcome = service
-        .edit_count(EditRecurringCount {
-            recurring_transaction_id: "rt-paused".into(),
-            expected_revision: 1,
-            total_occurrences: None,
-        })
-        .await
-        .expect("paused editable");
+    let before = service.get_document("rt-paused").await.expect("doc");
+    let mut input = update_from_document(&before);
+    input.total_occurrences = None;
+    let outcome = service.update(input).await.expect("paused editable");
     assert!(matches!(
         outcome,
         RecurringMutationOutcome::Succeeded { .. }

@@ -12,36 +12,15 @@ pub const UNCHANGED_GENERATION_BLOCKED: &str = "generation_blocked";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RenameRecurringTransaction {
+pub struct UpdateRecurringTransaction {
     pub recurring_transaction_id: String,
     pub expected_revision: i32,
     pub name: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditRecurringSchedule {
-    pub recurring_transaction_id: String,
-    pub expected_revision: i32,
     pub schedule: ScheduleRule,
     pub next_scheduled_local: NaiveDateTime,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditRecurringTemplate {
-    pub recurring_transaction_id: String,
-    pub expected_revision: i32,
-    pub template: RecurringTemplateInput,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditRecurringCount {
-    pub recurring_transaction_id: String,
-    pub expected_revision: i32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub total_occurrences: Option<i32>,
+    pub template: RecurringTemplateInput,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -59,8 +38,8 @@ pub enum RecurringMutationOutcome {
     },
 }
 
-impl RenameRecurringTransaction {
-    pub fn validate(&self) -> Result<String> {
+impl UpdateRecurringTransaction {
+    pub fn validate_name(&self) -> Result<String> {
         if self.expected_revision < 1 {
             return Err(Error::InvalidData(
                 "Expected revision must be at least 1".to_string(),
@@ -74,19 +53,12 @@ impl RenameRecurringTransaction {
         }
         Ok(name)
     }
-}
 
-impl EditRecurringSchedule {
-    pub fn validate(
+    pub fn validate_schedule(
         &self,
         observed_local: NaiveDateTime,
         earliest_allowed_next: NaiveDateTime,
     ) -> Result<()> {
-        if self.expected_revision < 1 {
-            return Err(Error::InvalidData(
-                "Expected revision must be at least 1".to_string(),
-            ));
-        }
         validate_schedule_rule(&self.schedule)?;
         let minimum = if earliest_allowed_next > observed_local {
             earliest_allowed_next
@@ -100,26 +72,8 @@ impl EditRecurringSchedule {
         }
         Ok(())
     }
-}
 
-impl EditRecurringTemplate {
-    pub fn validate(&self) -> Result<()> {
-        if self.expected_revision < 1 {
-            return Err(Error::InvalidData(
-                "Expected revision must be at least 1".to_string(),
-            ));
-        }
-        self.template.validate()
-    }
-}
-
-impl EditRecurringCount {
-    pub fn validate(&self, fulfilled_count: i32) -> Result<()> {
-        if self.expected_revision < 1 {
-            return Err(Error::InvalidData(
-                "Expected revision must be at least 1".to_string(),
-            ));
-        }
+    pub fn validate_count(&self, fulfilled_count: i32) -> Result<()> {
         if let Some(total) = self.total_occurrences {
             if total < 1 {
                 return Err(Error::InvalidData(
@@ -133,6 +87,10 @@ impl EditRecurringCount {
             }
         }
         Ok(())
+    }
+
+    pub fn validate_template(&self) -> Result<()> {
+        self.template.validate()
     }
 }
 
@@ -166,40 +124,47 @@ mod tests {
             .unwrap()
     }
 
-    #[test]
-    fn rename_rejects_blank_name() {
-        let input = RenameRecurringTransaction {
+    fn base_input() -> UpdateRecurringTransaction {
+        UpdateRecurringTransaction {
             recurring_transaction_id: "rt-1".into(),
             expected_revision: 1,
-            name: "  ".into(),
-        };
-        assert!(input.validate().is_err());
-    }
-
-    #[test]
-    fn schedule_rejects_next_before_head_or_observation() {
-        let input = EditRecurringSchedule {
-            recurring_transaction_id: "rt-1".into(),
-            expected_revision: 1,
+            name: "Rent".into(),
             schedule: ScheduleRule::Interval {
                 every: 1,
                 unit: ScheduleIntervalUnit::Month,
             },
             next_scheduled_local: observed(),
-        };
+            total_occurrences: Some(12),
+            template: RecurringTemplateInput {
+                description: None,
+                amount: 1000,
+                transaction_type: "expense".into(),
+                transaction_category_id: None,
+                notes: None,
+            },
+        }
+    }
+
+    #[test]
+    fn update_rejects_blank_name() {
+        let mut input = base_input();
+        input.name = "  ".into();
+        assert!(input.validate_name().is_err());
+    }
+
+    #[test]
+    fn schedule_rejects_next_before_head_or_observation() {
+        let input = base_input();
         let future_head = observed() + chrono::Duration::days(30);
-        assert!(input.validate(observed(), future_head).is_err());
-        assert!(input.validate(observed(), observed()).is_ok());
+        assert!(input.validate_schedule(observed(), future_head).is_err());
+        assert!(input.validate_schedule(observed(), observed()).is_ok());
     }
 
     #[test]
     fn count_rejects_total_below_fulfilled() {
-        let input = EditRecurringCount {
-            recurring_transaction_id: "rt-1".into(),
-            expected_revision: 1,
-            total_occurrences: Some(2),
-        };
-        assert!(input.validate(3).is_err());
+        let mut input = base_input();
+        input.total_occurrences = Some(2);
+        assert!(input.validate_count(3).is_err());
     }
 
     #[test]

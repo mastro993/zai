@@ -15,49 +15,18 @@ use diesel::sqlite::SqliteConnection;
 use uuid::Uuid;
 use zai_core::Error;
 use zai_core::features::recurring_transactions::{
-    EditRecurringCount, EditRecurringSchedule, EditRecurringTemplate, RecurringLifecycle,
-    RecurringTemplateInput, RecurringTransaction, ScheduleRule, scheduled_local_at,
+    RecurringLifecycle, RecurringTemplateInput, RecurringTransaction, ScheduleRule,
+    UpdateRecurringTransaction, scheduled_local_at,
 };
 
-pub struct RenameInput {
-    pub recurring_transaction_id: String,
-    pub expected_revision: i32,
-    pub name: String,
-}
-
-pub fn rename_recurring_transaction(
+pub fn update_recurring_transaction(
     conn: &mut SqliteConnection,
-    input: RenameInput,
-) -> Result<RecurringTransaction> {
-    let now = chrono::Utc::now().naive_utc();
-    let updated = diesel::update(
-        recurring_transactions::table
-            .filter(recurring_transactions::id.eq(&input.recurring_transaction_id))
-            .filter(recurring_transactions::revision.eq(input.expected_revision))
-            .filter(recurring_transactions::deleted_at.is_null()),
-    )
-    .set((
-        recurring_transactions::name.eq(&input.name),
-        recurring_transactions::revision.eq(input.expected_revision + 1),
-        recurring_transactions::updated_at.eq(now),
-    ))
-    .execute(conn)
-    .map_err(map_name_conflict)?;
-
-    if updated == 0 {
-        return Err(StorageError::CoreError(revision_or_not_found(
-            conn,
-            &input.recurring_transaction_id,
-            input.expected_revision,
-        )));
-    }
-
-    load_recurring(conn, &input.recurring_transaction_id)
-}
-
-pub fn edit_recurring_schedule(
-    conn: &mut SqliteConnection,
-    input: EditRecurringSchedule,
+    input: UpdateRecurringTransaction,
+    observed_local: NaiveDateTime,
+    apply_name: bool,
+    apply_schedule: bool,
+    apply_template: bool,
+    apply_count: bool,
 ) -> Result<RecurringTransaction> {
     let now = chrono::Utc::now().naive_utc();
     let recurring = load_for_expected_revision(
@@ -65,7 +34,37 @@ pub fn edit_recurring_schedule(
         &input.recurring_transaction_id,
         input.expected_revision,
     )?;
-    let open = find_open_schedule_revision(conn, &recurring.id)
+
+    if apply_schedule {
+        apply_schedule_change(conn, &recurring.id, &input)?;
+    }
+    if apply_template {
+        apply_template_change(conn, &recurring.id, &input.template, observed_local)?;
+    }
+    if apply_count {
+        apply_count_change(conn, &recurring, &input, now)?;
+    }
+    if apply_name {
+        diesel::update(
+            recurring_transactions::table
+                .filter(recurring_transactions::id.eq(&recurring.id))
+                .filter(recurring_transactions::revision.eq(input.expected_revision)),
+        )
+        .set(recurring_transactions::name.eq(&input.name))
+        .execute(conn)
+        .map_err(map_name_conflict)?;
+    }
+
+    bump_revision(conn, &recurring.id, input.expected_revision, now)?;
+    load_recurring(conn, &recurring.id)
+}
+
+fn apply_schedule_change(
+    conn: &mut SqliteConnection,
+    recurring_transaction_id: &str,
+    input: &UpdateRecurringTransaction,
+) -> Result<()> {
+    let open = find_open_schedule_revision(conn, recurring_transaction_id)
         .map_err(StorageError::from)?
         .ok_or_else(|| {
             StorageError::CoreError(Error::Repository(
@@ -89,7 +88,7 @@ pub fn edit_recurring_schedule(
     diesel::insert_into(recurring_schedule_revisions::table)
         .values(RecurringScheduleRevisionRow {
             id: new_schedule_id.clone(),
-            recurring_transaction_id: recurring.id.clone(),
+            recurring_transaction_id: recurring_transaction_id.to_string(),
             sequence: open.sequence + 1,
             effective_from_local: boundary,
             effective_until_local: None,
@@ -101,13 +100,12 @@ pub fn edit_recurring_schedule(
         .execute(conn)
         .into_storage()?;
 
-    if let Some(head) = load_head(conn, &recurring.id)?
+    if let Some(head) = load_head(conn, recurring_transaction_id)?
         && head.next_scheduled_local >= boundary
     {
-        diesel::update(
-            recurring_occurrence_heads::table
-                .filter(recurring_occurrence_heads::recurring_transaction_id.eq(&recurring.id)),
-        )
+        diesel::update(recurring_occurrence_heads::table.filter(
+            recurring_occurrence_heads::recurring_transaction_id.eq(recurring_transaction_id),
+        ))
         .set((
             recurring_occurrence_heads::schedule_revision_id.eq(&new_schedule_id),
             recurring_occurrence_heads::next_ordinal.eq(1),
@@ -117,22 +115,16 @@ pub fn edit_recurring_schedule(
         .into_storage()?;
     }
 
-    bump_revision(conn, &recurring.id, input.expected_revision, now)?;
-    load_recurring(conn, &recurring.id)
+    Ok(())
 }
 
-pub fn edit_recurring_template(
+fn apply_template_change(
     conn: &mut SqliteConnection,
-    input: EditRecurringTemplate,
+    recurring_transaction_id: &str,
+    template: &RecurringTemplateInput,
     effective_from_local: NaiveDateTime,
-) -> Result<RecurringTransaction> {
-    let now = chrono::Utc::now().naive_utc();
-    let recurring = load_for_expected_revision(
-        conn,
-        &input.recurring_transaction_id,
-        input.expected_revision,
-    )?;
-    let open = find_open_template_revision(conn, &recurring.id)
+) -> Result<()> {
+    let open = find_open_template_revision(conn, recurring_transaction_id)
         .map_err(StorageError::from)?
         .ok_or_else(|| {
             StorageError::CoreError(Error::Repository(
@@ -149,29 +141,23 @@ pub fn edit_recurring_template(
 
     diesel::insert_into(recurring_template_revisions::table)
         .values(template_row(
-            &recurring.id,
+            recurring_transaction_id,
             open.sequence + 1,
             effective_from_local,
-            &input.template,
+            template,
         ))
         .execute(conn)
         .into_storage()?;
 
-    bump_revision(conn, &recurring.id, input.expected_revision, now)?;
-    load_recurring(conn, &recurring.id)
+    Ok(())
 }
 
-pub fn edit_recurring_count(
+fn apply_count_change(
     conn: &mut SqliteConnection,
-    input: EditRecurringCount,
-) -> Result<RecurringTransaction> {
-    let now = chrono::Utc::now().naive_utc();
-    let recurring = load_for_expected_revision(
-        conn,
-        &input.recurring_transaction_id,
-        input.expected_revision,
-    )?;
-
+    recurring: &RecurringTransaction,
+    input: &UpdateRecurringTransaction,
+    now: NaiveDateTime,
+) -> Result<()> {
     let completes = input
         .total_occurrences
         .is_some_and(|total| total == recurring.fulfilled_count);
@@ -194,8 +180,6 @@ pub fn edit_recurring_count(
             recurring_transactions::lifecycle.eq(RecurringLifecycle::Completed.as_str()),
             recurring_transactions::lifecycle_changed_at.eq(now),
             recurring_transactions::paused_at.eq(None::<NaiveDateTime>),
-            recurring_transactions::revision.eq(input.expected_revision + 1),
-            recurring_transactions::updated_at.eq(now),
         ))
         .execute(conn)
         .into_storage()?;
@@ -205,16 +189,12 @@ pub fn edit_recurring_count(
                 .filter(recurring_transactions::id.eq(&recurring.id))
                 .filter(recurring_transactions::revision.eq(input.expected_revision)),
         )
-        .set((
-            recurring_transactions::total_occurrences.eq(input.total_occurrences),
-            recurring_transactions::revision.eq(input.expected_revision + 1),
-            recurring_transactions::updated_at.eq(now),
-        ))
+        .set(recurring_transactions::total_occurrences.eq(input.total_occurrences))
         .execute(conn)
         .into_storage()?;
     }
 
-    load_recurring(conn, &recurring.id)
+    Ok(())
 }
 
 fn template_row(
@@ -315,24 +295,6 @@ fn load_head(
         .first::<RecurringOccurrenceHeadRow>(conn)
         .optional()
         .into_storage()
-}
-
-fn revision_or_not_found(conn: &mut SqliteConnection, id: &str, expected_revision: i32) -> Error {
-    match load_recurring(conn, id) {
-        Ok(recurring)
-            if recurring.deleted_at.is_none()
-                && recurring.lifecycle != RecurringLifecycle::Tombstoned =>
-        {
-            if recurring.revision == expected_revision {
-                Error::Unexpected("Rename update matched revision but wrote zero rows".into())
-            } else {
-                Error::RevisionConflict {
-                    current_revision: i64::from(recurring.revision),
-                }
-            }
-        }
-        _ => Error::NotFound(format!("Recurring transaction {id} not found")),
-    }
 }
 
 fn map_name_conflict(error: DieselError) -> StorageError {

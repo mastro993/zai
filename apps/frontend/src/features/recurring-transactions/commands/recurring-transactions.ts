@@ -1,6 +1,3 @@
-import { Result } from "@praha/byethrow";
-
-import type { CommandError } from "@/commands/errors";
 import { invokeDecodedCommand } from "@/commands/shared";
 import type { CommandResult } from "@/commands/shared";
 
@@ -103,38 +100,6 @@ export const createRecurringTransaction = (
   });
 };
 
-export const renameRecurringTransaction = (
-  recurringTransactionId: string,
-  expectedRevision: number,
-  name: string,
-): CommandResult<RecurringMutationOutcome> => {
-  return invokeDecodedCommand(RECURRING_COMMANDS.rename_recurring_transaction, {
-    input: {
-      recurringTransactionId,
-      expectedRevision,
-      name,
-    },
-  });
-};
-
-export const editRecurringSchedule = (
-  recurringTransactionId: string,
-  expectedRevision: number,
-  values: Pick<
-    RecurringFormValues,
-    "scheduleKind" | "intervalEvery" | "intervalUnit" | "monthlyDay" | "firstScheduledLocal"
-  >,
-): CommandResult<RecurringMutationOutcome> => {
-  return invokeDecodedCommand(RECURRING_COMMANDS.edit_recurring_schedule, {
-    input: {
-      recurringTransactionId,
-      expectedRevision,
-      schedule: buildScheduleRule(values),
-      nextScheduledLocal: toBackendLocal(values.firstScheduledLocal),
-    },
-  });
-};
-
 export const previewRecurringAdoption = (
   transactionId: string,
   values: AdoptRecurringFormValues,
@@ -144,29 +109,6 @@ export const previewRecurringAdoption = (
       transactionId,
       schedule: buildScheduleRule(values),
       totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
-    },
-  });
-};
-
-export const editRecurringTemplate = (
-  recurringTransactionId: string,
-  expectedRevision: number,
-  values: Pick<
-    RecurringFormValues,
-    "description" | "amount" | "transactionType" | "transactionCategoryId" | "notes"
-  >,
-): CommandResult<RecurringMutationOutcome> => {
-  return invokeDecodedCommand(RECURRING_COMMANDS.edit_recurring_template, {
-    input: {
-      recurringTransactionId,
-      expectedRevision,
-      template: {
-        description: values.description || null,
-        amount: values.amount,
-        transactionType: values.transactionType,
-        transactionCategoryId: values.transactionCategoryId || null,
-        notes: values.notes || null,
-      },
     },
   });
 };
@@ -192,81 +134,25 @@ export const adoptRecurringTransaction = (
   });
 };
 
-export const editRecurringCount = (
-  recurringTransactionId: string,
-  expectedRevision: number,
-  values: Pick<RecurringFormValues, "totalMode" | "totalOccurrences">,
-): CommandResult<RecurringMutationOutcome> => {
-  return invokeDecodedCommand(RECURRING_COMMANDS.edit_recurring_count, {
-    input: {
-      recurringTransactionId,
-      expectedRevision,
-      totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
-    },
-  });
-};
-
-export const updateRecurringTransaction = async (
+export const updateRecurringTransaction = (
   document: RecurringTransactionDocument,
   values: RecurringFormValues,
-  configurationEditable: boolean,
 ): CommandResult<RecurringMutationOutcome> => {
-  const id = document.recurringTransaction.id;
-  let revision = document.recurringTransaction.revision;
-  let latestDocument = document;
-  let sawSucceeded = false;
-  let sawAlreadyApplied = false;
-  let unchangedReason: string | undefined;
-
-  const apply = (
-    result: Result.Result<RecurringMutationOutcome, CommandError>,
-  ): Result.Result<RecurringMutationOutcome, CommandError> => {
-    if (Result.isFailure(result)) {
-      return result;
-    }
-    latestDocument = result.value.document;
-    revision = latestDocument.recurringTransaction.revision;
-    if (result.value.outcome === "succeeded") {
-      sawSucceeded = true;
-    } else if (result.value.outcome === "alreadyApplied") {
-      sawAlreadyApplied = true;
-    } else {
-      unchangedReason = result.value.reason;
-    }
-    return result;
-  };
-
-  const renameResult = apply(await renameRecurringTransaction(id, revision, values.name));
-  if (Result.isFailure(renameResult)) {
-    return renameResult;
-  }
-
-  if (configurationEditable) {
-    const scheduleResult = apply(await editRecurringSchedule(id, revision, values));
-    if (Result.isFailure(scheduleResult)) {
-      return scheduleResult;
-    }
-
-    const templateResult = apply(await editRecurringTemplate(id, revision, values));
-    if (Result.isFailure(templateResult)) {
-      return templateResult;
-    }
-
-    const countResult = apply(await editRecurringCount(id, revision, values));
-    if (Result.isFailure(countResult)) {
-      return countResult;
-    }
-  }
-
-  if (sawSucceeded) {
-    return Result.succeed({ outcome: "succeeded", document: latestDocument });
-  }
-  if (sawAlreadyApplied) {
-    return Result.succeed({ outcome: "alreadyApplied", document: latestDocument });
-  }
-  return Result.succeed({
-    outcome: "unchanged",
-    document: latestDocument,
-    reason: unchangedReason ?? "same_value",
+  return invokeDecodedCommand(RECURRING_COMMANDS.update_recurring_transaction, {
+    input: {
+      recurringTransactionId: document.recurringTransaction.id,
+      expectedRevision: document.recurringTransaction.revision,
+      name: values.name,
+      schedule: buildScheduleRule(values),
+      nextScheduledLocal: toBackendLocal(values.firstScheduledLocal),
+      totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
+      template: {
+        description: values.description || null,
+        amount: values.amount,
+        transactionType: values.transactionType,
+        transactionCategoryId: values.transactionCategoryId || null,
+        notes: values.notes || null,
+      },
+    },
   });
 };

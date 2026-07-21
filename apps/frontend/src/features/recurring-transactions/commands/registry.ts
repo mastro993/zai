@@ -30,15 +30,6 @@ export const RECURRING_COMMANDS = {
     "create_recurring_transaction",
     recurringCreateOutcomeSchema,
   ),
-  edit_recurring_count: backendCommand("edit_recurring_count", recurringMutationOutcomeSchema),
-  edit_recurring_schedule: backendCommand(
-    "edit_recurring_schedule",
-    recurringMutationOutcomeSchema,
-  ),
-  edit_recurring_template: backendCommand(
-    "edit_recurring_template",
-    recurringMutationOutcomeSchema,
-  ),
   get_recurring_transaction: backendCommand(
     "get_recurring_transaction",
     recurringTransactionDocumentSchema,
@@ -56,8 +47,8 @@ export const RECURRING_COMMANDS = {
     transactionRecurringProvenanceSchema.nullable(),
   ),
   preview_recurring_adoption: backendCommand("preview_recurring_adoption", adoptionPreviewSchema),
-  rename_recurring_transaction: backendCommand(
-    "rename_recurring_transaction",
+  update_recurring_transaction: backendCommand(
+    "update_recurring_transaction",
     recurringMutationOutcomeSchema,
   ),
 } as const;

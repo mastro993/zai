@@ -162,7 +162,7 @@ export function RecurringDocumentScreen({
   const configurationEditable = canEditConfiguration(document);
 
   const submitEdit = async (values: RecurringFormValues) => {
-    const result = await updateRecurringTransaction(document, values, configurationEditable);
+    const result = await updateRecurringTransaction(document, values);
     if (Result.isSuccess(result)) {
       setDocument(result.value.document);
     }

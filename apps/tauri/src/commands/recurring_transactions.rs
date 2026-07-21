@@ -4,10 +4,10 @@ use log::debug;
 use tauri::State;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
-    AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, EditRecurringCount,
-    EditRecurringSchedule, EditRecurringTemplate, NewRecurringTransaction, RecurringAdoptOutcome,
-    RecurringCreateOutcome, RecurringFeedResult, RecurringMutationOutcome, RecurringOccurrencePage,
-    RecurringTransactionDocument, RenameRecurringTransaction, TransactionRecurringProvenance,
+    AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, NewRecurringTransaction,
+    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult, RecurringMutationOutcome,
+    RecurringOccurrencePage, RecurringTransactionDocument, TransactionRecurringProvenance,
+    UpdateRecurringTransaction,
 };
 
 use super::{CommandResult, command_error};
@@ -90,67 +90,19 @@ pub async fn create_recurring_transaction(
 }
 
 #[tauri::command]
-pub async fn rename_recurring_transaction(
-    input: RenameRecurringTransaction,
+pub async fn update_recurring_transaction(
+    input: UpdateRecurringTransaction,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringMutationOutcome> {
     debug!(
-        "Renaming recurring transaction {}...",
+        "Updating recurring transaction {}...",
         input.recurring_transaction_id
     );
     state
         .recurring_transactions_service()
-        .rename(input)
+        .update(input)
         .await
-        .map_err(|error| command_error("Failed to rename recurring transaction", error))
-}
-
-#[tauri::command]
-pub async fn edit_recurring_schedule(
-    input: EditRecurringSchedule,
-    state: State<'_, Arc<ServiceContext>>,
-) -> CommandResult<RecurringMutationOutcome> {
-    debug!(
-        "Editing recurring schedule {}...",
-        input.recurring_transaction_id
-    );
-    state
-        .recurring_transactions_service()
-        .edit_schedule(input)
-        .await
-        .map_err(|error| command_error("Failed to edit recurring schedule", error))
-}
-
-#[tauri::command]
-pub async fn edit_recurring_template(
-    input: EditRecurringTemplate,
-    state: State<'_, Arc<ServiceContext>>,
-) -> CommandResult<RecurringMutationOutcome> {
-    debug!(
-        "Editing recurring template {}...",
-        input.recurring_transaction_id
-    );
-    state
-        .recurring_transactions_service()
-        .edit_template(input)
-        .await
-        .map_err(|error| command_error("Failed to edit recurring template", error))
-}
-
-#[tauri::command]
-pub async fn edit_recurring_count(
-    input: EditRecurringCount,
-    state: State<'_, Arc<ServiceContext>>,
-) -> CommandResult<RecurringMutationOutcome> {
-    debug!(
-        "Editing recurring count {}...",
-        input.recurring_transaction_id
-    );
-    state
-        .recurring_transactions_service()
-        .edit_count(input)
-        .await
-        .map_err(|error| command_error("Failed to edit recurring count", error))
+        .map_err(|error| command_error("Failed to update recurring transaction", error))
 }
 
 #[tauri::command]

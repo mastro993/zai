@@ -60,6 +60,17 @@ export const buildRecurringCommandRequestSpec = (
         body: newRecurringTransaction ?? {},
       };
     }
+    case "update_recurring_transaction": {
+      const input = readRecord(args.input) ?? {};
+      const recurringTransactionId = readString(input.recurringTransactionId);
+      return {
+        method: "POST",
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}`
+          : "/recurring-transactions/__missing_recurring_transaction_id__",
+        body: input,
+      };
+    }
     case "adopt_recurring_transaction": {
       const request = readRecord(args.request);
       return {
@@ -68,56 +79,12 @@ export const buildRecurringCommandRequestSpec = (
         body: request ?? {},
       };
     }
-    case "edit_recurring_count": {
-      const input = readRecord(args.input) ?? {};
-      const recurringTransactionId = readString(input.recurringTransactionId);
-      return {
-        method: "POST",
-        path: recurringTransactionId
-          ? `/recurring-transactions/${recurringTransactionId}/count`
-          : "/recurring-transactions/__missing_recurring_transaction_id__/count",
-        body: input,
-      };
-    }
-    case "edit_recurring_schedule": {
-      const input = readRecord(args.input) ?? {};
-      const recurringTransactionId = readString(input.recurringTransactionId);
-      return {
-        method: "POST",
-        path: recurringTransactionId
-          ? `/recurring-transactions/${recurringTransactionId}/schedule`
-          : "/recurring-transactions/__missing_recurring_transaction_id__/schedule",
-        body: input,
-      };
-    }
-    case "edit_recurring_template": {
-      const input = readRecord(args.input) ?? {};
-      const recurringTransactionId = readString(input.recurringTransactionId);
-      return {
-        method: "POST",
-        path: recurringTransactionId
-          ? `/recurring-transactions/${recurringTransactionId}/template`
-          : "/recurring-transactions/__missing_recurring_transaction_id__/template",
-        body: input,
-      };
-    }
     case "preview_recurring_adoption": {
       const request = readRecord(args.request);
       return {
         method: "POST",
         path: "/recurring-transactions/adoption-preview",
         body: request ?? {},
-      };
-    }
-    case "rename_recurring_transaction": {
-      const input = readRecord(args.input) ?? {};
-      const recurringTransactionId = readString(input.recurringTransactionId);
-      return {
-        method: "POST",
-        path: recurringTransactionId
-          ? `/recurring-transactions/${recurringTransactionId}/rename`
-          : "/recurring-transactions/__missing_recurring_transaction_id__/rename",
-        body: input,
       };
     }
     default:

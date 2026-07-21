@@ -3,9 +3,9 @@ use super::seed::SeedRecurringSource;
 use crate::schema::recurring_template_revisions;
 use diesel::prelude::*;
 use zai_core::features::recurring_transactions::{
-    EditRecurringCount, EditRecurringSchedule, EditRecurringTemplate, ProcessingWorkBudget,
-    RecurringMutationOutcome, RecurringOccurrenceProcessor, RecurringTemplateInput,
-    RecurringTransactionsServiceTrait, ScheduleIntervalUnit, ScheduleRule,
+    ProcessingWorkBudget, RecurringMutationOutcome, RecurringOccurrenceProcessor,
+    RecurringTemplateInput, RecurringTransactionDocument, RecurringTransactionsServiceTrait,
+    ScheduleIntervalUnit, ScheduleRule, UpdateRecurringTransaction,
 };
 
 fn base_seed(id: &str, name: &str) -> SeedRecurringSource {
@@ -21,6 +21,27 @@ fn base_seed(id: &str, name: &str) -> SeedRecurringSource {
         next_ordinal: 1,
         amount: 1000,
         transaction_type: "expense",
+    }
+}
+
+fn update_from_document(document: &RecurringTransactionDocument) -> UpdateRecurringTransaction {
+    UpdateRecurringTransaction {
+        recurring_transaction_id: document.recurring_transaction.id.clone(),
+        expected_revision: document.recurring_transaction.revision,
+        name: document.recurring_transaction.name.clone(),
+        schedule: document.schedule.rule.clone(),
+        next_scheduled_local: document
+            .occurrence_summary
+            .next_scheduled_local
+            .unwrap_or(document.schedule.first_scheduled_local),
+        total_occurrences: document.recurring_transaction.total_occurrences,
+        template: RecurringTemplateInput {
+            description: document.template.description.clone(),
+            amount: document.template.amount,
+            transaction_type: document.template.transaction_type.clone(),
+            transaction_category_id: document.template.transaction_category_id.clone(),
+            notes: document.template.notes.clone(),
+        },
     }
 }
 
@@ -46,19 +67,15 @@ async fn schedule_edit_retains_overdue_under_prior_revision() {
     )
     .await;
 
+    let before = service.get_document("rt-sched").await.expect("doc");
     let boundary = local(2026, 5, 1, 9, 0);
-    let outcome = service
-        .edit_schedule(EditRecurringSchedule {
-            recurring_transaction_id: "rt-sched".into(),
-            expected_revision: 1,
-            schedule: ScheduleRule::Interval {
-                every: 1,
-                unit: ScheduleIntervalUnit::Month,
-            },
-            next_scheduled_local: boundary,
-        })
-        .await
-        .expect("edit schedule");
+    let mut input = update_from_document(&before);
+    input.schedule = ScheduleRule::Interval {
+        every: 1,
+        unit: ScheduleIntervalUnit::Month,
+    };
+    input.next_scheduled_local = boundary;
+    let outcome = service.update(input).await.expect("edit schedule");
     let RecurringMutationOutcome::Succeeded { document } = outcome else {
         panic!("expected Succeeded");
     };
@@ -129,20 +146,15 @@ async fn template_edit_is_future_only() {
     let first_txn = before.links.occurrences.items[0].transaction_id.clone();
     let old_amount = before.template.amount;
 
-    let outcome = service
-        .edit_template(EditRecurringTemplate {
-            recurring_transaction_id: "rt-tmpl".into(),
-            expected_revision: before.recurring_transaction.revision,
-            template: RecurringTemplateInput {
-                description: Some("Updated".into()),
-                amount: 2500,
-                transaction_type: "expense".into(),
-                transaction_category_id: None,
-                notes: None,
-            },
-        })
-        .await
-        .expect("edit template");
+    let mut input = update_from_document(&before);
+    input.template = RecurringTemplateInput {
+        description: Some("Updated".into()),
+        amount: 2500,
+        transaction_type: "expense".into(),
+        transaction_category_id: None,
+        notes: None,
+    };
+    let outcome = service.update(input).await.expect("edit template");
     let RecurringMutationOutcome::Succeeded { document } = outcome else {
         panic!("expected Succeeded");
     };
@@ -182,14 +194,10 @@ async fn count_edit_can_become_indefinite() {
     seed.total_occurrences = Some(10);
     seed_source(&repo, seed).await;
 
-    let outcome = service
-        .edit_count(EditRecurringCount {
-            recurring_transaction_id: "rt-indef".into(),
-            expected_revision: 1,
-            total_occurrences: None,
-        })
-        .await
-        .expect("to indefinite");
+    let before = service.get_document("rt-indef").await.expect("doc");
+    let mut input = update_from_document(&before);
+    input.total_occurrences = None;
+    let outcome = service.update(input).await.expect("to indefinite");
     match outcome {
         RecurringMutationOutcome::Succeeded { document } => {
             assert_eq!(document.recurring_transaction.total_occurrences, None);
@@ -208,14 +216,10 @@ async fn count_edit_completes_when_equal_to_fulfilled() {
     seed.total_occurrences = Some(10);
     seed_source(&repo, seed).await;
 
-    let outcome = service
-        .edit_count(EditRecurringCount {
-            recurring_transaction_id: "rt-count".into(),
-            expected_revision: 1,
-            total_occurrences: Some(3),
-        })
-        .await
-        .expect("complete");
+    let before = service.get_document("rt-count").await.expect("doc");
+    let mut input = update_from_document(&before);
+    input.total_occurrences = Some(3);
+    let outcome = service.update(input).await.expect("complete");
     match outcome {
         RecurringMutationOutcome::Succeeded { document } => {
             assert_eq!(
@@ -237,13 +241,9 @@ async fn count_rejects_below_fulfilled() {
     seed.fulfilled_count = 4;
     seed_source(&repo, seed).await;
 
-    let error = service
-        .edit_count(EditRecurringCount {
-            recurring_transaction_id: "rt-low".into(),
-            expected_revision: 1,
-            total_occurrences: Some(2),
-        })
-        .await
-        .expect_err("below fulfilled");
+    let before = service.get_document("rt-low").await.expect("doc");
+    let mut input = update_from_document(&before);
+    input.total_occurrences = Some(2);
+    let error = service.update(input).await.expect_err("below fulfilled");
     assert!(error.to_string().contains("fulfilled"));
 }

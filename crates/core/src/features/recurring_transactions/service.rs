@@ -7,10 +7,7 @@ use super::document::{
     RecurringTransactionDocument, TransactionRecurringProvenance, budget_impact_unavailable,
     failures_section, links_section, occurrence_summary, visible_source_link,
 };
-use super::edit::{
-    EditRecurringCount, EditRecurringSchedule, EditRecurringTemplate, RecurringMutationOutcome,
-    RenameRecurringTransaction,
-};
+use super::edit::{RecurringMutationOutcome, UpdateRecurringTransaction};
 use super::models::{
     DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringLifecycle,
     RecurringOccurrencePage, RecurringTransaction,
@@ -262,26 +259,8 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         Ok(RecurringCreateOutcome::Succeeded { document })
     }
 
-    async fn rename(&self, input: RenameRecurringTransaction) -> Result<RecurringMutationOutcome> {
-        self.rename_inner(input).await
-    }
-
-    async fn edit_schedule(
-        &self,
-        input: EditRecurringSchedule,
-    ) -> Result<RecurringMutationOutcome> {
-        self.edit_schedule_inner(input).await
-    }
-
-    async fn edit_template(
-        &self,
-        input: EditRecurringTemplate,
-    ) -> Result<RecurringMutationOutcome> {
-        self.edit_template_inner(input).await
-    }
-
-    async fn edit_count(&self, input: EditRecurringCount) -> Result<RecurringMutationOutcome> {
-        self.edit_count_inner(input).await
+    async fn update(&self, input: UpdateRecurringTransaction) -> Result<RecurringMutationOutcome> {
+        self.update_inner(input).await
     }
 
     async fn adopt(&self, mut input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {

@@ -4,10 +4,7 @@ use super::document::{
     RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult,
     RecurringTransactionDocument, TransactionRecurringProvenance,
 };
-use super::edit::{
-    EditRecurringCount, EditRecurringSchedule, EditRecurringTemplate, RecurringMutationOutcome,
-    RenameRecurringTransaction,
-};
+use super::edit::{RecurringMutationOutcome, UpdateRecurringTransaction};
 use super::models::{
     RecurringFailurePage, RecurringFeedPage, RecurringGenerationFailure, RecurringOccurrence,
     RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
@@ -95,26 +92,15 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         input: NewRecurringTransaction,
     ) -> Result<RecurringTransaction>;
 
-    async fn rename_recurring_transaction(
+    async fn update_recurring_transaction(
         &self,
-        recurring_transaction_id: String,
-        expected_revision: i32,
-        name: String,
+        input: UpdateRecurringTransaction,
+        observed_local: NaiveDateTime,
+        apply_name: bool,
+        apply_schedule: bool,
+        apply_template: bool,
+        apply_count: bool,
     ) -> Result<RecurringTransaction>;
-
-    async fn edit_recurring_schedule(
-        &self,
-        input: EditRecurringSchedule,
-    ) -> Result<RecurringTransaction>;
-
-    async fn edit_recurring_template(
-        &self,
-        input: EditRecurringTemplate,
-        effective_from_local: NaiveDateTime,
-    ) -> Result<RecurringTransaction>;
-
-    async fn edit_recurring_count(&self, input: EditRecurringCount)
-    -> Result<RecurringTransaction>;
 
     async fn find_visible_transaction_date(&self, transaction_id: &str) -> Result<NaiveDateTime>;
 
@@ -158,15 +144,7 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
 
     async fn create(&self, input: NewRecurringTransaction) -> Result<RecurringCreateOutcome>;
 
-    async fn rename(&self, input: RenameRecurringTransaction) -> Result<RecurringMutationOutcome>;
-
-    async fn edit_schedule(&self, input: EditRecurringSchedule)
-    -> Result<RecurringMutationOutcome>;
-
-    async fn edit_template(&self, input: EditRecurringTemplate)
-    -> Result<RecurringMutationOutcome>;
-
-    async fn edit_count(&self, input: EditRecurringCount) -> Result<RecurringMutationOutcome>;
+    async fn update(&self, input: UpdateRecurringTransaction) -> Result<RecurringMutationOutcome>;
 
     async fn adopt(&self, input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome>;
 }

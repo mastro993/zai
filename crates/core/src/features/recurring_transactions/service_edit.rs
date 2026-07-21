@@ -1,8 +1,7 @@
 use super::create::{RecurringTemplateInput, normalize_recurring_name};
 use super::edit::{
-    EditRecurringCount, EditRecurringSchedule, EditRecurringTemplate, RecurringMutationOutcome,
-    RenameRecurringTransaction, UNCHANGED_GENERATION_BLOCKED, UNCHANGED_NOT_EDITABLE,
-    UNCHANGED_SAME_VALUE, configuration_edit_allowed, rename_allowed,
+    RecurringMutationOutcome, UNCHANGED_GENERATION_BLOCKED, UNCHANGED_NOT_EDITABLE,
+    UNCHANGED_SAME_VALUE, UpdateRecurringTransaction, configuration_edit_allowed, rename_allowed,
 };
 use super::models::{
     RecurringLifecycle, RecurringScheduleRevision, RecurringTemplateRevision, RecurringTransaction,
@@ -13,22 +12,22 @@ use super::traits::RecurringTransactionsServiceTrait;
 use crate::{Error, Result};
 
 impl RecurringTransactionsService {
-    pub(super) async fn rename_inner(
+    pub(super) async fn update_inner(
         &self,
-        input: RenameRecurringTransaction,
+        mut input: UpdateRecurringTransaction,
     ) -> Result<RecurringMutationOutcome> {
-        let name = input.validate()?;
+        let name = input.validate_name()?;
+        input.name = name;
+        input.validate_template()?;
+
+        let observed_local = self.clock.sample();
         let recurring = self
             .repository
             .get_recurring_transaction(&input.recurring_transaction_id)
             .await?;
+        self.ensure_visible(&recurring)?;
+        input.validate_count(recurring.fulfilled_count)?;
 
-        if recurring.lifecycle == RecurringLifecycle::Tombstoned || recurring.deleted_at.is_some() {
-            return Err(Error::NotFound(format!(
-                "Recurring transaction {} not found",
-                recurring.id
-            )));
-        }
         if !rename_allowed(recurring.lifecycle) {
             let document = self.get_document(&recurring.id).await?;
             return Ok(RecurringMutationOutcome::Unchanged {
@@ -37,72 +36,32 @@ impl RecurringTransactionsService {
             });
         }
 
-        if recurring.revision != input.expected_revision {
-            if names_equal(&recurring.name, &name) {
-                let document = self.get_document(&recurring.id).await?;
-                return Ok(RecurringMutationOutcome::AlreadyApplied { document });
-            }
-            return Err(Error::RevisionConflict {
-                current_revision: i64::from(recurring.revision),
-            });
-        }
-
-        if names_equal(&recurring.name, &name) {
-            let document = self.get_document(&recurring.id).await?;
-            return Ok(RecurringMutationOutcome::Unchanged {
-                document,
-                reason: UNCHANGED_SAME_VALUE.to_string(),
-            });
-        }
-
-        self.repository
-            .rename_recurring_transaction(recurring.id.clone(), input.expected_revision, name)
-            .await?;
-        let document = self.get_document(&recurring.id).await?;
-        Ok(RecurringMutationOutcome::Succeeded { document })
-    }
-
-    pub(super) async fn edit_schedule_inner(
-        &self,
-        input: EditRecurringSchedule,
-    ) -> Result<RecurringMutationOutcome> {
-        let observed_local = self.clock.sample();
-        let recurring = self
-            .repository
-            .get_recurring_transaction(&input.recurring_transaction_id)
-            .await?;
-        self.ensure_visible(&recurring)?;
-
         let generation_blocked = self
             .repository
             .find_unresolved_failure(&recurring.id)
             .await?
             .is_some();
-        if !configuration_edit_allowed(recurring.lifecycle, generation_blocked) {
-            return self
-                .unchanged_or_conflict(
-                    &recurring,
-                    input.expected_revision,
-                    UNCHANGED_NOT_EDITABLE,
-                    generation_blocked,
-                )
-                .await;
-        }
+        let config_allowed = configuration_edit_allowed(recurring.lifecycle, generation_blocked);
 
+        let open_schedule = self.require_open_schedule(&recurring.id).await?;
+        let open_template = self.require_open_template(&recurring.id).await?;
         let head = self.repository.get_occurrence_head(&recurring.id).await?;
-        let earliest_allowed_next = head
+
+        let name_changed = !names_equal(&recurring.name, &input.name);
+        let current_next = head
             .as_ref()
             .map(|value| value.next_scheduled_local)
-            .unwrap_or(observed_local);
-        input.validate(observed_local, earliest_allowed_next)?;
-
-        let open = self.require_open_schedule(&recurring.id).await?;
-        let same_schedule = open.rule == input.schedule
-            && open.first_scheduled_local == input.next_scheduled_local
-            && open.effective_until_local.is_none();
+            .unwrap_or(open_schedule.first_scheduled_local);
+        let same_schedule = open_schedule.rule == input.schedule
+            && open_schedule.effective_until_local.is_none()
+            && current_next == input.next_scheduled_local;
+        let schedule_changed = !same_schedule;
+        let template_changed = !templates_equal(&open_template, &input.template);
+        let count_changed = recurring.total_occurrences != input.total_occurrences;
+        let config_changed = schedule_changed || template_changed || count_changed;
 
         if recurring.revision != input.expected_revision {
-            if same_schedule {
+            if !name_changed && !config_changed {
                 let document = self.get_document(&recurring.id).await?;
                 return Ok(RecurringMutationOutcome::AlreadyApplied { document });
             }
@@ -111,7 +70,7 @@ impl RecurringTransactionsService {
             });
         }
 
-        if same_schedule {
+        if !name_changed && !config_changed {
             let document = self.get_document(&recurring.id).await?;
             return Ok(RecurringMutationOutcome::Unchanged {
                 document,
@@ -119,120 +78,47 @@ impl RecurringTransactionsService {
             });
         }
 
-        let _ = scheduled_local_at(&input.schedule, input.next_scheduled_local, 1)?;
-        self.repository
-            .edit_recurring_schedule(input.clone())
-            .await?;
-        let document = self.get_document(&recurring.id).await?;
-        self.request_processing_wake();
-        Ok(RecurringMutationOutcome::Succeeded { document })
-    }
-
-    pub(super) async fn edit_template_inner(
-        &self,
-        input: EditRecurringTemplate,
-    ) -> Result<RecurringMutationOutcome> {
-        input.validate()?;
-        let observed_local = self.clock.sample();
-        let recurring = self
-            .repository
-            .get_recurring_transaction(&input.recurring_transaction_id)
-            .await?;
-        self.ensure_visible(&recurring)?;
-
-        let generation_blocked = self
-            .repository
-            .find_unresolved_failure(&recurring.id)
-            .await?
-            .is_some();
-        if !configuration_edit_allowed(recurring.lifecycle, generation_blocked) {
-            return self
-                .unchanged_or_conflict(
-                    &recurring,
-                    input.expected_revision,
-                    UNCHANGED_NOT_EDITABLE,
-                    generation_blocked,
-                )
-                .await;
-        }
-
-        let open = self.require_open_template(&recurring.id).await?;
-        let same_template = templates_equal(&open, &input.template);
-
-        if recurring.revision != input.expected_revision {
-            if same_template {
-                let document = self.get_document(&recurring.id).await?;
-                return Ok(RecurringMutationOutcome::AlreadyApplied { document });
-            }
-            return Err(Error::RevisionConflict {
-                current_revision: i64::from(recurring.revision),
-            });
-        }
-
-        if same_template {
+        if config_changed && !config_allowed {
+            let reason = if generation_blocked
+                && matches!(
+                    recurring.lifecycle,
+                    RecurringLifecycle::Active | RecurringLifecycle::Paused
+                ) {
+                UNCHANGED_GENERATION_BLOCKED
+            } else {
+                UNCHANGED_NOT_EDITABLE
+            };
             let document = self.get_document(&recurring.id).await?;
             return Ok(RecurringMutationOutcome::Unchanged {
                 document,
-                reason: UNCHANGED_SAME_VALUE.to_string(),
+                reason: reason.to_string(),
             });
+        }
+
+        if config_allowed && schedule_changed {
+            let earliest_allowed_next = head
+                .as_ref()
+                .map(|value| value.next_scheduled_local)
+                .unwrap_or(observed_local);
+            input.validate_schedule(observed_local, earliest_allowed_next)?;
+            let _ = scheduled_local_at(&input.schedule, input.next_scheduled_local, 1)?;
         }
 
         self.repository
-            .edit_recurring_template(input, observed_local)
+            .update_recurring_transaction(
+                input.clone(),
+                observed_local,
+                name_changed,
+                schedule_changed && config_allowed,
+                template_changed && config_allowed,
+                count_changed && config_allowed,
+            )
             .await?;
+
         let document = self.get_document(&recurring.id).await?;
-        Ok(RecurringMutationOutcome::Succeeded { document })
-    }
-
-    pub(super) async fn edit_count_inner(
-        &self,
-        input: EditRecurringCount,
-    ) -> Result<RecurringMutationOutcome> {
-        let recurring = self
-            .repository
-            .get_recurring_transaction(&input.recurring_transaction_id)
-            .await?;
-        self.ensure_visible(&recurring)?;
-        input.validate(recurring.fulfilled_count)?;
-
-        let generation_blocked = self
-            .repository
-            .find_unresolved_failure(&recurring.id)
-            .await?
-            .is_some();
-        if !configuration_edit_allowed(recurring.lifecycle, generation_blocked) {
-            return self
-                .unchanged_or_conflict(
-                    &recurring,
-                    input.expected_revision,
-                    UNCHANGED_NOT_EDITABLE,
-                    generation_blocked,
-                )
-                .await;
+        if (schedule_changed || count_changed) && config_allowed {
+            self.request_processing_wake();
         }
-
-        let same_count = recurring.total_occurrences == input.total_occurrences;
-        if recurring.revision != input.expected_revision {
-            if same_count {
-                let document = self.get_document(&recurring.id).await?;
-                return Ok(RecurringMutationOutcome::AlreadyApplied { document });
-            }
-            return Err(Error::RevisionConflict {
-                current_revision: i64::from(recurring.revision),
-            });
-        }
-
-        if same_count {
-            let document = self.get_document(&recurring.id).await?;
-            return Ok(RecurringMutationOutcome::Unchanged {
-                document,
-                reason: UNCHANGED_SAME_VALUE.to_string(),
-            });
-        }
-
-        self.repository.edit_recurring_count(input).await?;
-        let document = self.get_document(&recurring.id).await?;
-        self.request_processing_wake();
         Ok(RecurringMutationOutcome::Succeeded { document })
     }
 
@@ -244,34 +130,6 @@ impl RecurringTransactionsService {
             )));
         }
         Ok(())
-    }
-
-    async fn unchanged_or_conflict(
-        &self,
-        recurring: &RecurringTransaction,
-        expected_revision: i32,
-        not_editable_reason: &str,
-        generation_blocked: bool,
-    ) -> Result<RecurringMutationOutcome> {
-        if recurring.revision != expected_revision {
-            return Err(Error::RevisionConflict {
-                current_revision: i64::from(recurring.revision),
-            });
-        }
-        let reason = if generation_blocked
-            && matches!(
-                recurring.lifecycle,
-                RecurringLifecycle::Active | RecurringLifecycle::Paused
-            ) {
-            UNCHANGED_GENERATION_BLOCKED
-        } else {
-            not_editable_reason
-        };
-        let document = self.get_document(&recurring.id).await?;
-        Ok(RecurringMutationOutcome::Unchanged {
-            document,
-            reason: reason.to_string(),
-        })
     }
 
     async fn require_open_schedule(&self, id: &str) -> Result<RecurringScheduleRevision> {
