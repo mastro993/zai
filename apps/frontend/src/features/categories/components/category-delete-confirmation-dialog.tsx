@@ -7,7 +7,8 @@ function CategoryDeleteConfirmationDialog({
   category,
   open,
   hasChildren,
-  isDeleting,
+  isActionPending,
+  pendingLabel,
   onOpenChange,
   onOpenChangeComplete,
   onDelete,
@@ -17,7 +18,8 @@ function CategoryDeleteConfirmationDialog({
   category: TransactionCategory | null;
   open: boolean;
   hasChildren: boolean;
-  isDeleting: boolean;
+  isActionPending: boolean;
+  pendingLabel: string;
   onOpenChange: (open: boolean) => void;
   onOpenChangeComplete: (open: boolean) => void;
   onDelete: () => void;
@@ -35,20 +37,30 @@ function CategoryDeleteConfirmationDialog({
           ? "This category has child categories. Choose what should happen to them."
           : "This will permanently delete this category."
       }
-      isActionPending={isDeleting}
+      isActionPending={isActionPending}
     >
       {hasChildren ? (
         <>
-          <Button variant="destructive" size="sm" disabled={isDeleting} onClick={onDeleteChildren}>
-            {isDeleting ? "Deleting..." : "Delete children"}
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={isActionPending}
+            onClick={onDeleteChildren}
+          >
+            {isActionPending ? pendingLabel : "Delete children"}
           </Button>
-          <Button variant="outline" size="sm" disabled={isDeleting} onClick={onPromoteChildren}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isActionPending}
+            onClick={onPromoteChildren}
+          >
             Promote children
           </Button>
         </>
       ) : (
-        <Button variant="destructive" size="sm" disabled={isDeleting} onClick={onDelete}>
-          {isDeleting ? "Deleting..." : "Delete category"}
+        <Button variant="destructive" size="sm" disabled={isActionPending} onClick={onDelete}>
+          {isActionPending ? pendingLabel : "Delete category"}
         </Button>
       )}
     </ConfirmationDialog>

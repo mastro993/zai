@@ -83,6 +83,19 @@ pub struct TransactionCategory {
     pub parent: Option<Box<Self>>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecurringCategoryImpact {
+    pub recurring_transaction_id: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CategoryDeletionPreview {
+    pub affected_recurring_transactions: Vec<RecurringCategoryImpact>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum CategoryChildrenDeleteStrategy {

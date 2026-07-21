@@ -250,3 +250,41 @@ async fn indirectly_covered_deletion_requires_confirmation_then_rebuilds_budget(
     assert!(repo.get_category(&child.id).await.is_err());
     assert!(repo.get_category(&root.id).await.is_ok());
 }
+
+#[tokio::test]
+async fn block_delete_rechecks_children_inside_writer() {
+    let temp_db = TempDb::new();
+    let repo = setup_test_repo(temp_db.path());
+    let parent = repo
+        .create_category(NewTransactionCategory {
+            name: "Parent".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            role: None,
+            id: Some(Uuid::new_v4().to_string()),
+        })
+        .await
+        .expect("parent");
+    repo.create_category(NewTransactionCategory {
+        name: "Child".to_string(),
+        parent_id: Some(parent.id.clone()),
+        description: None,
+        color: None,
+        role: None,
+        id: Some(Uuid::new_v4().to_string()),
+    })
+    .await
+    .expect("child");
+
+    let error = repo
+        .delete_categories(
+            vec![&parent.id],
+            CategoryChildrenDeleteStrategy::Block,
+            false,
+        )
+        .await
+        .expect_err("block strategy must reject live children");
+    assert!(matches!(error, Error::Conflict(_)));
+    assert!(repo.get_category(&parent.id).await.is_ok());
+}

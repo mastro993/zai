@@ -1,6 +1,7 @@
 use super::models::{
-    CategoryChildrenDeleteStrategy, CategoryRole, NewTransactionCategory, TransactionCategory,
-    TransactionCategoryUpdate, normalize_category_name, normalize_optional_color,
+    CategoryChildrenDeleteStrategy, CategoryDeletionPreview, CategoryRole, NewTransactionCategory,
+    TransactionCategory, TransactionCategoryUpdate, normalize_category_name,
+    normalize_optional_color,
 };
 use super::traits::{TransactionCategoriesRepositoryTrait, TransactionCategoriesServiceTrait};
 use crate::errors::{Error, Result};
@@ -153,6 +154,27 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
     ) -> Result<TransactionCategory> {
         self.prepare_category_update(&mut category).await?;
         self.repository.update_category(category).await
+    }
+
+    async fn preview_delete_categories(
+        &self,
+        category_ids: Vec<&str>,
+        children_strategy: CategoryChildrenDeleteStrategy,
+    ) -> Result<CategoryDeletionPreview> {
+        if children_strategy == CategoryChildrenDeleteStrategy::Block {
+            for category_id in &category_ids {
+                if self.repository.category_has_children(category_id).await? {
+                    return Err(Error::Conflict(
+                        "Choose whether to delete or promote child categories before deleting this category"
+                            .to_string(),
+                    ));
+                }
+            }
+        }
+
+        self.repository
+            .preview_delete_categories(category_ids, children_strategy)
+            .await
     }
 
     async fn delete_categories(
@@ -423,6 +445,16 @@ mod tests {
                 parent: None,
             };
             Ok(category)
+        }
+
+        async fn preview_delete_categories(
+            &self,
+            _ids: Vec<&str>,
+            _children_strategy: CategoryChildrenDeleteStrategy,
+        ) -> Result<CategoryDeletionPreview> {
+            Ok(CategoryDeletionPreview {
+                affected_recurring_transactions: Vec::new(),
+            })
         }
 
         async fn delete_categories(

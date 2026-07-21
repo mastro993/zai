@@ -11,12 +11,35 @@ use zai_core::{Error, Result};
 
 use super::models::TransactionCategoryRow;
 use super::read::category_from_row;
+use super::recurring;
 use super::repository::TransactionCategoriesRepository;
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_budgets_by_ids};
 use crate::budgets::category_impact::analyze_deletion;
 use crate::budgets::timeline::{BudgetPeriodTimeline, SourceChange};
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{transaction_categories, transactions};
+
+pub(super) async fn preview_delete_categories(
+    repository: &TransactionCategoriesRepository,
+    ids: Vec<&str>,
+    children_strategy: CategoryChildrenDeleteStrategy,
+) -> Result<zai_core::features::transaction_categories::models::CategoryDeletionPreview> {
+    let owned_ids = ids.iter().map(|&id| id.to_string()).collect::<Vec<_>>();
+    let now = repository.clock.sample();
+    repository
+        .writer
+        .exec(move |conn| {
+            let impact = analyze_deletion(conn, &owned_ids, children_strategy, now)?;
+            if !impact.blocked_category_ids.is_empty() {
+                return Err(StorageError::CoreError(Error::CategoryDeletionBlocked {
+                    category_ids: impact.blocked_category_ids,
+                    affected_budgets: impact.affected_budgets,
+                }));
+            }
+            recurring::preview(conn, &impact.ids_to_delete)
+        })
+        .await
+}
 
 pub(super) async fn delete_categories(
     repository: &TransactionCategoriesRepository,
@@ -60,6 +83,8 @@ pub(super) async fn delete_categories(
                 let before = snapshot_budgets_by_ids(conn, &affected_ids, now)?;
                 let ids_to_delete = impact.ids_to_delete;
 
+                recurring::uncategorize_unfulfilled(conn, &ids_to_delete, now)?;
+
                 if children_strategy == CategoryChildrenDeleteStrategy::Promote {
                     diesel::update(
                         transaction_categories::table
@@ -85,7 +110,12 @@ pub(super) async fn delete_categories(
                 diesel::update(
                     transactions::table.filter(
                         transactions::transaction_category_id.eq_any(&ids_to_delete),
-                    ),
+                    ).filter(diesel::dsl::not(diesel::dsl::exists(
+                        crate::schema::recurring_occurrences::table.filter(
+                            crate::schema::recurring_occurrences::transaction_id
+                                .eq(transactions::id),
+                        ),
+                    ))),
                 )
                 .set((
                     transactions::transaction_category_id.eq(None::<String>),

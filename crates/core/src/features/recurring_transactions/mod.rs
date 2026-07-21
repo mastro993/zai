@@ -19,9 +19,10 @@ mod traits;
 
 pub use adopt::*;
 pub use alerts::{
-    RECURRING_GENERATION_FAILURE_PRODUCER_KEY, RECURRING_OCCURRENCE_PRODUCER_KEY,
-    RECURRING_PROCESS_DELAY_OCCURRENCE_KEY, RECURRING_PROCESS_DELAY_PRODUCER_KEY,
-    build_generated_occurrence_alert, build_process_delay_alert, occurrence_identity_key,
+    INVALID_CATEGORY_ERROR_CODE, RECURRING_GENERATION_FAILURE_PRODUCER_KEY,
+    RECURRING_OCCURRENCE_PRODUCER_KEY, RECURRING_PROCESS_DELAY_OCCURRENCE_KEY,
+    RECURRING_PROCESS_DELAY_PRODUCER_KEY, build_generated_occurrence_alert,
+    build_generation_failure_alert, build_process_delay_alert, occurrence_identity_key,
 };
 pub use contention::{
     CONTENTION_RETRY_DELAYS_MS, CONTENTION_TOTAL_BUDGET, ContentionRetryDecision,

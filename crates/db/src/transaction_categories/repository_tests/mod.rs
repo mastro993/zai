@@ -81,3 +81,4 @@ mod import;
 mod metadata;
 mod mutations;
 mod read;
+mod recurring_delete;

@@ -4,6 +4,7 @@ import type { CommandResult } from "@/commands/shared";
 import type { CategoryImportPayload } from "../lib/category-import";
 import type {
   CategoryChildrenDeleteStrategy,
+  CategoryDeletionPreview,
   CategoryFormValues,
   CategoryRole,
   TransactionCategory,
@@ -66,6 +67,16 @@ export const deleteTransactionCategories = (
     categoryIds,
     childrenStrategy,
     ...(confirmBudgetImpact ? { confirmBudgetImpact: true } : {}),
+  });
+};
+
+export const previewDeleteTransactionCategories = (
+  categoryIds: Array<string>,
+  childrenStrategy: CategoryChildrenDeleteStrategy = "block",
+): CommandResult<CategoryDeletionPreview> => {
+  return invokeDecodedCommand(CATEGORY_COMMANDS.preview_delete_transaction_categories, {
+    categoryIds,
+    childrenStrategy,
   });
 };
 

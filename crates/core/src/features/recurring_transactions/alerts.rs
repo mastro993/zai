@@ -10,6 +10,7 @@ pub const RECURRING_OCCURRENCE_RICH_VERSION: u32 = 1;
 pub const RECURRING_GENERATION_FAILURE_PRODUCER_KEY: &str = "recurring.generation_failure";
 pub const RECURRING_PROCESS_DELAY_PRODUCER_KEY: &str = "recurring.process_delay";
 pub const RECURRING_PROCESS_DELAY_OCCURRENCE_KEY: &str = "process";
+pub const INVALID_CATEGORY_ERROR_CODE: &str = "invalid_category";
 
 pub fn occurrence_identity_key(
     recurring_transaction_id: &str,
@@ -110,6 +111,27 @@ pub fn build_process_delay_alert() -> Result<NewDomainAlert> {
         title: "Recurring processing delayed".to_string(),
         body: "Zai could not finish recurring catch-up because the local database was busy. Processing will retry automatically."
             .to_string(),
+        destination: Some(DomainAlertDestination::RecurringTransactions),
+        data: None,
+    })
+}
+
+pub fn build_generation_failure_alert(
+    recurring_transaction_id: &str,
+    schedule_revision_id: &str,
+    ordinal: i32,
+) -> Result<NewDomainAlert> {
+    Ok(NewDomainAlert {
+        id: None,
+        producer_key: RECURRING_GENERATION_FAILURE_PRODUCER_KEY.to_string(),
+        occurrence_key: occurrence_identity_key(
+            recurring_transaction_id,
+            schedule_revision_id,
+            ordinal,
+        ),
+        severity: DomainAlertSeverity::Critical,
+        title: "Recurring transaction needs attention".to_string(),
+        body: "Zai could not generate a scheduled recurring transaction because its definition contains an invalid reference or value. Repair it before retrying.".to_string(),
         destination: Some(DomainAlertDestination::RecurringTransactions),
         data: None,
     })

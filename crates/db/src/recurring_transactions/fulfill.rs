@@ -5,12 +5,12 @@ use super::fulfill_head::{
     heal_stale_head_after_existing_occurrence,
 };
 use super::fulfill_select::{find_next_eligible_due_head, has_eligible_due_occurrence};
+use super::fulfill_validation::{GenerationValidation, validate_generation_inputs};
 use super::models::{
     RecurringOccurrenceHeadRow, RecurringOccurrenceRow, RecurringTransactionRow,
     build_recurring_transaction,
 };
 use super::queries::find_unresolved_failure;
-use super::revisions::{find_schedule_revision_at, find_template_revision_at};
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budgets};
 use crate::budgets::timeline::{BudgetPeriodTimeline, SourceChange};
 use crate::domain_alerts::{insert_domain_alert, resolve_domain_alert};
@@ -30,7 +30,6 @@ use zai_core::features::budgets::alerts::BudgetAlertMode;
 use zai_core::features::domain_alerts::{AlertInsertOutcome, CommittedOutcome};
 use zai_core::features::recurring_transactions::{
     FulfillmentKind, ProcessOneOutcome, RecurringLifecycle, build_generated_occurrence_alert,
-    scheduled_local_at,
 };
 use zai_core::features::transactions::models::NewTransaction;
 
@@ -107,48 +106,15 @@ fn fulfill_generated_occurrence(
         ));
     }
 
-    let schedule = find_schedule_revision_at(
-        conn,
-        &head.recurring_transaction_id,
-        head.next_scheduled_local,
-    )
-    .map_err(StorageError::from)?
-    .ok_or_else(|| {
-        StorageError::CoreError(Error::Repository(format!(
-            "Missing schedule revision for {}",
-            head.recurring_transaction_id
-        )))
-    })?;
-    if schedule.id != head.schedule_revision_id {
-        return Err(StorageError::CoreError(Error::Repository(
-            "Occurrence head schedule revision does not match effective revision".to_string(),
-        )));
-    }
-
-    let template = find_template_revision_at(
-        conn,
-        &head.recurring_transaction_id,
-        head.next_scheduled_local,
-    )
-    .map_err(StorageError::from)?
-    .ok_or_else(|| {
-        StorageError::CoreError(Error::Repository(format!(
-            "Missing template revision for {}",
-            head.recurring_transaction_id
-        )))
-    })?;
-
-    let scheduled_local = scheduled_local_at(
-        &schedule.rule,
-        schedule.first_scheduled_local,
-        head.next_ordinal,
-    )
-    .map_err(StorageError::CoreError)?;
-    if scheduled_local != head.next_scheduled_local {
-        return Err(StorageError::CoreError(Error::Repository(
-            "Occurrence head scheduled local does not match schedule calculation".to_string(),
-        )));
-    }
+    let validation = validate_generation_inputs(conn, head, now)?;
+    let (schedule, template, scheduled_local) = match validation {
+        GenerationValidation::Ready {
+            schedule,
+            template,
+            scheduled_local,
+        } => (schedule, template, scheduled_local),
+        GenerationValidation::Failed(outcome) => return Ok(outcome),
+    };
 
     let fulfillment_position = recurring.fulfilled_count + 1;
     if let Some(total) = recurring.total_occurrences
@@ -170,9 +136,6 @@ fn fulfill_generated_occurrence(
         transaction_category_id: template.transaction_category_id.clone(),
         notes: template.notes.clone(),
     };
-    new_transaction
-        .validate()
-        .map_err(StorageError::CoreError)?;
     let transaction_row: TransactionRow = new_transaction.into();
 
     diesel::insert_into(transactions::table)
