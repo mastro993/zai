@@ -39,7 +39,6 @@ pub fn adopt_existing_transaction(
 
     let create_input = NewRecurringTransaction {
         id: input.id.clone(),
-        name: input.name.clone(),
         schedule: input.schedule.clone(),
         first_scheduled_local: transaction.transaction_date,
         total_occurrences: input.total_occurrences,

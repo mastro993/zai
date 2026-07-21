@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct RecurringFeedItem {
     pub recurring_transaction: RecurringTransaction,
+    pub description: String,
     pub next_scheduled_local: Option<NaiveDateTime>,
     pub needs_attention: bool,
 }
@@ -94,7 +95,7 @@ pub enum RecurringAdoptOutcome {
 #[serde(rename_all = "camelCase")]
 pub struct RecurringSourceLink {
     pub id: String,
-    pub name: String,
+    pub description: String,
     pub lifecycle: RecurringLifecycle,
 }
 
@@ -106,13 +107,16 @@ pub struct TransactionRecurringProvenance {
     pub source: Option<RecurringSourceLink>,
 }
 
-pub fn visible_source_link(recurring: &RecurringTransaction) -> Option<RecurringSourceLink> {
+pub fn visible_source_link(
+    recurring: &RecurringTransaction,
+    description: &str,
+) -> Option<RecurringSourceLink> {
     if recurring.lifecycle == RecurringLifecycle::Tombstoned || recurring.deleted_at.is_some() {
         return None;
     }
     Some(RecurringSourceLink {
         id: recurring.id.clone(),
-        name: recurring.name.clone(),
+        description: description.to_string(),
         lifecycle: recurring.lifecycle,
     })
 }

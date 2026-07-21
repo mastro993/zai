@@ -1,7 +1,7 @@
 use super::adopt::{
     AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, count_later_due_occurrences,
 };
-use super::create::{NewRecurringTransaction, normalize_recurring_name};
+use super::create::{NewRecurringTransaction, normalize_template_description};
 use super::document::{
     RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedItem, RecurringFeedResult,
     RecurringTransactionDocument, TransactionRecurringProvenance, budget_impact_unavailable,
@@ -9,8 +9,8 @@ use super::document::{
 };
 use super::edit::{RecurringMutationOutcome, UpdateRecurringTransaction};
 use super::models::{
-    DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringLifecycle,
-    RecurringOccurrencePage, RecurringTransaction,
+    DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringFeedEntry,
+    RecurringLifecycle, RecurringOccurrencePage, RecurringTransaction,
 };
 use super::process::{ProcessingSliceOutcome, ProcessingWorkBudget};
 use super::process_slice::run_processing_slice;
@@ -140,7 +140,11 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         let page = self.repository.list_feed(limit, cursor).await?;
 
         let mut items = Vec::with_capacity(page.items.len());
-        for recurring_transaction in page.items {
+        for RecurringFeedEntry {
+            recurring_transaction,
+            description,
+        } in page.items
+        {
             let next_scheduled_local = self
                 .repository
                 .get_occurrence_head(&recurring_transaction.id)
@@ -153,6 +157,7 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
                 .is_some();
             items.push(RecurringFeedItem {
                 recurring_transaction,
+                description,
                 next_scheduled_local,
                 needs_attention,
             });
@@ -205,9 +210,19 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
             .repository
             .get_recurring_transaction(&occurrence.recurring_transaction_id)
             .await?;
+        let template = self
+            .repository
+            .find_open_template_revision(&recurring.id)
+            .await?
+            .ok_or_else(|| {
+                Error::Repository(format!(
+                    "Missing template revision for recurring transaction {}",
+                    recurring.id
+                ))
+            })?;
         Ok(Some(TransactionRecurringProvenance {
             occurrence,
-            source: visible_source_link(&recurring),
+            source: visible_source_link(&recurring, &template.description),
         }))
     }
 
@@ -243,15 +258,12 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
     }
 
     async fn create(&self, mut input: NewRecurringTransaction) -> Result<RecurringCreateOutcome> {
-        let observed_local = self.clock.sample();
-        input.name = normalize_recurring_name(&input.name);
+        input.template.description = normalize_template_description(&input.template.description);
         input.id = Some(Self::assign_id(input.id)?);
-        input.validate(observed_local)?;
-
         let first_scheduled_local =
             scheduled_local_at(&input.schedule, input.first_scheduled_local, 1)?;
         input.first_scheduled_local = first_scheduled_local;
-        input.validate(observed_local)?;
+        input.validate()?;
 
         let created = self.repository.create_recurring_transaction(input).await?;
         let document = self.compose_document(created).await?;
@@ -265,7 +277,7 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
 
     async fn adopt(&self, mut input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {
         let observed_local = self.clock.sample();
-        input.name = normalize_recurring_name(&input.name);
+        input.template.description = normalize_template_description(&input.template.description);
         input.id = Some(Self::assign_id(input.id)?);
         input.validate_inputs()?;
 

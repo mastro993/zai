@@ -8,7 +8,6 @@ use crate::schema::{
     recurring_transactions,
 };
 use diesel::prelude::*;
-use diesel::result::{DatabaseErrorKind, Error as DieselError};
 use diesel::sqlite::SqliteConnection;
 use uuid::Uuid;
 use zai_core::Error;
@@ -36,7 +35,6 @@ pub fn create_recurring_transaction(
     diesel::insert_into(recurring_transactions::table)
         .values(RecurringTransactionRow {
             id: id.clone(),
-            name: input.name.clone(),
             lifecycle: "active".to_string(),
             total_occurrences: input.total_occurrences,
             fulfilled_count: 0,
@@ -48,7 +46,7 @@ pub fn create_recurring_transaction(
             deleted_at: None,
         })
         .execute(conn)
-        .map_err(map_recurring_insert_error)?;
+        .into_storage()?;
 
     diesel::insert_into(recurring_schedule_revisions::table)
         .values(RecurringScheduleRevisionRow {
@@ -157,16 +155,5 @@ fn schedule_columns(rule: &ScheduleRule) -> (Option<i32>, Option<String>, Option
             (Some(*every), Some(unit.as_str().to_string()), None)
         }
         ScheduleRule::MonthlyDay { day } => (None, None, Some(*day)),
-    }
-}
-
-fn map_recurring_insert_error(error: DieselError) -> StorageError {
-    match error {
-        DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-            StorageError::CoreError(Error::NameConflict(
-                "A recurring transaction with this name already exists".to_string(),
-            ))
-        }
-        error => StorageError::from(error),
     }
 }

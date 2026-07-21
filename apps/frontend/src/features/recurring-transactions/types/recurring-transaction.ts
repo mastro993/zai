@@ -63,7 +63,6 @@ export const scheduleRuleSchema = z.discriminatedUnion("type", [
 ]);
 
 export const recurringFormSchema = withPrivilegedRejection({
-  name: z.string().trim().min(1, "Name is required"),
   scheduleKind: z.enum(["interval", "monthlyDay"]),
   intervalEvery: z.string().trim().default("1"),
   intervalUnit: z.enum(SCHEDULE_INTERVAL_UNITS).default("month"),
@@ -71,7 +70,7 @@ export const recurringFormSchema = withPrivilegedRejection({
   firstScheduledLocal: z.string().min(1, "First occurrence is required"),
   totalMode: z.enum(["indefinite", "finite"]).default("indefinite"),
   totalOccurrences: z.string().trim().optional(),
-  description: z.string().trim().optional(),
+  description: z.string().trim().min(1, "Description is required"),
   amount: amountInputSchema,
   transactionType: z.enum(TRANSACTION_TYPES).default("expense"),
   transactionCategoryId: z.string().optional(),
@@ -110,7 +109,6 @@ export const recurringFormSchema = withPrivilegedRejection({
 
 export const recurringTransactionSchema = z.object({
   id: z.string().min(1),
-  name: z.string().min(1),
   lifecycle: z.enum(RECURRING_LIFECYCLES),
   totalOccurrences: z.number().int().nullable(),
   fulfilledCount: z.number().int().nonnegative(),
@@ -138,7 +136,7 @@ export const recurringTemplateRevisionSchema = z.object({
   sequence: z.number().int().positive(),
   effectiveFromLocal: z.string(),
   effectiveUntilLocal: z.string().nullable().optional(),
-  description: z.string().nullable().optional(),
+  description: z.string().trim().min(1),
   amount: z.number().int().nonnegative(),
   transactionType: z.enum(TRANSACTION_TYPES),
   transactionCategoryId: z.string().nullable().optional(),
@@ -154,6 +152,7 @@ export const recurringOccurrenceHeadSchema = z.object({
 
 export const recurringFeedItemSchema = z.object({
   recurringTransaction: recurringTransactionSchema,
+  description: z.string().trim().min(1),
   nextScheduledLocal: z.string().nullable().optional(),
   needsAttention: z.boolean(),
 });
@@ -259,7 +258,7 @@ export const transactionRecurringProvenanceSchema = z.object({
   source: z
     .object({
       id: z.string().min(1),
-      name: z.string().min(1),
+      description: z.string().trim().min(1),
       lifecycle: z.enum(RECURRING_LIFECYCLES),
     })
     .nullable()
@@ -267,12 +266,11 @@ export const transactionRecurringProvenanceSchema = z.object({
 });
 
 export const newRecurringTransactionSchema = withPrivilegedRejection({
-  name: z.string().min(1),
   schedule: scheduleRuleSchema,
   firstScheduledLocal: z.string().min(1),
   totalOccurrences: z.number().int().positive().nullable().optional(),
   template: z.object({
-    description: z.string().nullable().optional(),
+    description: z.string().trim().min(1),
     amount: z.number().int().nonnegative(),
     transactionType: z.enum(TRANSACTION_TYPES),
     transactionCategoryId: z.string().nullable().optional(),
@@ -281,14 +279,13 @@ export const newRecurringTransactionSchema = withPrivilegedRejection({
 });
 
 export const adoptRecurringFormSchema = withPrivilegedRejection({
-  name: z.string().trim().min(1, "Name is required"),
   scheduleKind: z.enum(["interval", "monthlyDay"]),
   intervalEvery: z.string().trim().default("1"),
   intervalUnit: z.enum(SCHEDULE_INTERVAL_UNITS).default("month"),
   monthlyDay: z.string().trim().default("1"),
   totalMode: z.enum(["indefinite", "finite"]).default("indefinite"),
   totalOccurrences: z.string().trim().optional(),
-  description: z.string().trim().optional(),
+  description: z.string().trim().min(1, "Description is required"),
   amount: amountInputSchema,
   transactionType: z.enum(TRANSACTION_TYPES).default("expense"),
   transactionCategoryId: z.string().optional(),

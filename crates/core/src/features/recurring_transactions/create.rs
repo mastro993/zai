@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecurringTemplateInput {
-    pub description: Option<String>,
+    pub description: String,
     pub amount: i32,
     pub transaction_type: String,
     pub transaction_category_id: Option<String>,
@@ -19,7 +19,6 @@ pub struct RecurringTemplateInput {
 pub struct NewRecurringTransaction {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    pub name: String,
     pub schedule: ScheduleRule,
     pub first_scheduled_local: NaiveDateTime,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -28,18 +27,8 @@ pub struct NewRecurringTransaction {
 }
 
 impl NewRecurringTransaction {
-    pub fn validate(&self, observed_local: NaiveDateTime) -> Result<()> {
-        if normalize_recurring_name(&self.name).is_empty() {
-            return Err(Error::InvalidData(
-                "Recurring transaction name cannot be empty".to_string(),
-            ));
-        }
+    pub fn validate(&self) -> Result<()> {
         validate_schedule_rule(&self.schedule)?;
-        if self.first_scheduled_local < observed_local {
-            return Err(Error::InvalidData(
-                "First occurrence cannot be before creation".to_string(),
-            ));
-        }
         if let Some(total) = self.total_occurrences
             && total < 1
         {
@@ -54,6 +43,11 @@ impl NewRecurringTransaction {
 
 impl RecurringTemplateInput {
     pub fn validate(&self) -> Result<()> {
+        if normalize_template_description(&self.description).is_empty() {
+            return Err(Error::InvalidData(
+                "Recurring transaction description cannot be empty".to_string(),
+            ));
+        }
         if self.amount < 0 {
             return Err(Error::InvalidData(
                 "Template amount cannot be negative".to_string(),
@@ -69,8 +63,8 @@ impl RecurringTemplateInput {
     }
 }
 
-pub fn normalize_recurring_name(name: &str) -> String {
-    name.trim().to_string()
+pub fn normalize_template_description(description: &str) -> String {
+    description.trim().to_string()
 }
 
 #[cfg(test)]
@@ -89,7 +83,6 @@ mod tests {
     fn valid_new() -> NewRecurringTransaction {
         NewRecurringTransaction {
             id: None,
-            name: "  Rent  ".to_string(),
             schedule: ScheduleRule::Interval {
                 every: 1,
                 unit: ScheduleIntervalUnit::Month,
@@ -97,7 +90,7 @@ mod tests {
             first_scheduled_local: observed(),
             total_occurrences: None,
             template: RecurringTemplateInput {
-                description: Some("Monthly rent".to_string()),
+                description: "  Rent  ".to_string(),
                 amount: 120_000,
                 transaction_type: "expense".to_string(),
                 transaction_category_id: None,
@@ -108,24 +101,24 @@ mod tests {
 
     #[test]
     fn accepts_valid_from_scratch_create() {
-        assert!(valid_new().validate(observed()).is_ok());
+        assert!(valid_new().validate().is_ok());
     }
 
     #[test]
-    fn rejects_first_occurrence_before_creation() {
+    fn accepts_first_occurrence_in_the_past() {
         let mut input = valid_new();
-        input.first_scheduled_local = observed() - chrono::Duration::seconds(1);
-        let error = input.validate(observed()).unwrap_err();
-        assert!(error.to_string().contains("before creation"));
+        input.first_scheduled_local = observed() - chrono::Duration::days(90);
+        assert!(input.validate().is_ok());
     }
 
     #[test]
-    fn rejects_empty_name_and_non_positive_total() {
+    fn rejects_empty_description_and_non_positive_total() {
         let mut input = valid_new();
-        input.name = "   ".to_string();
-        assert!(input.validate(observed()).is_err());
+        input.template.description = "   ".to_string();
+        let error = input.validate().unwrap_err();
+        assert!(error.to_string().contains("description"));
         input = valid_new();
         input.total_occurrences = Some(0);
-        assert!(input.validate(observed()).is_err());
+        assert!(input.validate().is_err());
     }
 }

@@ -96,7 +96,6 @@ diesel::table! {
 diesel::table! {
     recurring_transactions (id) {
         id -> Text,
-        name -> Text,
         lifecycle -> Text,
         total_occurrences -> Nullable<Integer>,
         fulfilled_count -> Integer,
@@ -130,7 +129,7 @@ diesel::table! {
         sequence -> Integer,
         effective_from_local -> Timestamp,
         effective_until_local -> Nullable<Timestamp>,
-        description -> Nullable<Text>,
+        description -> Text,
         amount -> Integer,
         transaction_type -> Text,
         transaction_category_id -> Nullable<Text>,

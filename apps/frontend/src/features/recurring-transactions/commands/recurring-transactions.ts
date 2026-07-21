@@ -85,12 +85,11 @@ export const createRecurringTransaction = (
 ): CommandResult<RecurringCreateOutcome> => {
   return invokeDecodedCommand(RECURRING_COMMANDS.create_recurring_transaction, {
     newRecurringTransaction: {
-      name: values.name,
       schedule: buildScheduleRule(values),
       firstScheduledLocal: toBackendLocal(values.firstScheduledLocal),
       totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
       template: {
-        description: values.description || null,
+        description: values.description,
         amount: values.amount,
         transactionType: values.transactionType,
         transactionCategoryId: values.transactionCategoryId || null,
@@ -120,11 +119,10 @@ export const adoptRecurringTransaction = (
   return invokeDecodedCommand(RECURRING_COMMANDS.adopt_recurring_transaction, {
     request: {
       transactionId,
-      name: values.name,
       schedule: buildScheduleRule(values),
       totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
       template: {
-        description: values.description || null,
+        description: values.description,
         amount: values.amount,
         transactionType: values.transactionType,
         transactionCategoryId: values.transactionCategoryId || null,
@@ -142,12 +140,11 @@ export const updateRecurringTransaction = (
     input: {
       recurringTransactionId: document.recurringTransaction.id,
       expectedRevision: document.recurringTransaction.revision,
-      name: values.name,
       schedule: buildScheduleRule(values),
       nextScheduledLocal: toBackendLocal(values.firstScheduledLocal),
       totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
       template: {
-        description: values.description || null,
+        description: values.description,
         amount: values.amount,
         transactionType: values.transactionType,
         transactionCategoryId: values.transactionCategoryId || null,

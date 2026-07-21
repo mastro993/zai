@@ -10,7 +10,6 @@ use crate::schema::{
 };
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
-use diesel::result::{DatabaseErrorKind, Error as DieselError};
 use diesel::sqlite::SqliteConnection;
 use uuid::Uuid;
 use zai_core::Error;
@@ -23,7 +22,6 @@ pub fn update_recurring_transaction(
     conn: &mut SqliteConnection,
     input: UpdateRecurringTransaction,
     observed_local: NaiveDateTime,
-    apply_name: bool,
     apply_schedule: bool,
     apply_template: bool,
     apply_count: bool,
@@ -44,17 +42,6 @@ pub fn update_recurring_transaction(
     if apply_count {
         apply_count_change(conn, &recurring, &input, now)?;
     }
-    if apply_name {
-        diesel::update(
-            recurring_transactions::table
-                .filter(recurring_transactions::id.eq(&recurring.id))
-                .filter(recurring_transactions::revision.eq(input.expected_revision)),
-        )
-        .set(recurring_transactions::name.eq(&input.name))
-        .execute(conn)
-        .map_err(map_name_conflict)?;
-    }
-
     bump_revision(conn, &recurring.id, input.expected_revision, now)?;
     load_recurring(conn, &recurring.id)
 }
@@ -333,15 +320,4 @@ fn load_head(
         .first::<RecurringOccurrenceHeadRow>(conn)
         .optional()
         .into_storage()
-}
-
-fn map_name_conflict(error: DieselError) -> StorageError {
-    match error {
-        DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-            StorageError::CoreError(Error::NameConflict(
-                "A recurring transaction with this name already exists".to_string(),
-            ))
-        }
-        error => StorageError::from(error),
-    }
 }

@@ -15,7 +15,6 @@ use zai_core::{Error, Result};
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct RecurringTransactionRow {
     pub id: String,
-    pub name: String,
     pub lifecycle: String,
     pub total_occurrences: Option<i32>,
     pub fulfilled_count: i32,
@@ -51,7 +50,7 @@ pub struct RecurringTemplateRevisionRow {
     pub sequence: i32,
     pub effective_from_local: NaiveDateTime,
     pub effective_until_local: Option<NaiveDateTime>,
-    pub description: Option<String>,
+    pub description: String,
     pub amount: i32,
     pub transaction_type: String,
     pub transaction_category_id: Option<String>,
@@ -116,7 +115,6 @@ pub fn build_recurring_transaction(row: RecurringTransactionRow) -> Result<Recur
         .map_err(|_| Error::Repository("Invalid recurring lifecycle".to_string()))?;
     Ok(RecurringTransaction {
         id: row.id,
-        name: row.name,
         lifecycle,
         total_occurrences: row.total_occurrences,
         fulfilled_count: row.fulfilled_count,

@@ -11,10 +11,10 @@ use zai_core::features::recurring_transactions::{
     UpdateRecurringTransaction,
 };
 
-fn base_seed(id: &str, name: &str) -> SeedRecurringSource {
+fn base_seed(id: &str, description: &str) -> SeedRecurringSource {
     SeedRecurringSource {
         id: id.into(),
-        name: name.into(),
+        description: description.into(),
         lifecycle: "active",
         total_occurrences: Some(12),
         fulfilled_count: 0,
@@ -31,7 +31,6 @@ fn update_from_document(document: &RecurringTransactionDocument) -> UpdateRecurr
     UpdateRecurringTransaction {
         recurring_transaction_id: document.recurring_transaction.id.clone(),
         expected_revision: document.recurring_transaction.revision,
-        name: document.recurring_transaction.name.clone(),
         schedule: document.schedule.rule.clone(),
         next_scheduled_local: document
             .occurrence_summary
@@ -49,7 +48,7 @@ fn update_from_document(document: &RecurringTransactionDocument) -> UpdateRecurr
 }
 
 #[tokio::test]
-async fn generation_blocked_blocks_config_but_allows_rename() {
+async fn generation_blocked_blocks_configuration_edits() {
     let observed = local(2026, 7, 21, 10, 0);
     let (_db, service, repo, _lock) = setup_service(observed).await;
     let (schedule_id, _) = seed_source(&repo, base_seed("rt-block", "Blocked")).await;
@@ -88,13 +87,8 @@ async fn generation_blocked_blocks_config_but_allows_rename() {
         .expect("seed failure");
 
     let before = service.get_document("rt-block").await.expect("doc");
-    let mut rename = update_from_document(&before);
-    rename.name = "Still renameable".into();
-    let rename = service.update(rename).await.expect("rename while blocked");
-    assert!(matches!(rename, RecurringMutationOutcome::Succeeded { .. }));
-
-    let after = service.get_document("rt-block").await.expect("after");
-    let mut count = update_from_document(&after);
+    let mut count = update_from_document(&before);
+    count.template.description = "Still changed".into();
     count.total_occurrences = None;
     let count = service.update(count).await.expect("blocked count");
     match count {
@@ -113,11 +107,11 @@ async fn revision_conflict_when_stale_and_different() {
     let before = service.get_document("rt-conflict").await.expect("doc");
 
     let mut first = update_from_document(&before);
-    first.name = "First".into();
+    first.template.description = "First".into();
     service.update(first).await.expect("first");
 
     let mut stale = update_from_document(&before);
-    stale.name = "Second".into();
+    stale.template.description = "Second".into();
     let error = service.update(stale).await.expect_err("stale");
     assert!(matches!(
         error,
@@ -135,7 +129,7 @@ async fn schedule_property_monthly_day_and_leap_year_clamp() {
         &repo,
         SeedRecurringSource {
             id: "rt-leap".into(),
-            name: "Leap".into(),
+            description: "Leap".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
