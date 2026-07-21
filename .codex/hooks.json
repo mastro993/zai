@@ -1,5 +1,18 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \".agents/hooks/install.sh\"",
+            "timeout": 300,
+            "statusMessage": "Installing dependencies"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|apply_patch",
@@ -14,7 +27,7 @@
             "type": "command",
             "command": "bash \".agents/hooks/format.sh\"",
             "timeout": 120,
-            "statusMessage": "Formatting"
+            "statusMessage": "Format and lint autofix"
           }
         ]
       }
