@@ -8,7 +8,7 @@ import { useRef, useState } from "react";
 import { Drawer } from "@/components/ui/drawer";
 import type { CommandError } from "@/commands/errors";
 
-import { RecurringCreateDrawer } from "../recurring-create-drawer";
+import { RecurringFormDrawer } from "../recurring-form-drawer";
 import type {
   RecurringCreateOutcome,
   RecurringFormValues,
@@ -35,7 +35,8 @@ function Harness({
         New recurring
       </button>
       <Drawer open={open} onOpenChange={setOpen} swipeDirection="right">
-        <RecurringCreateDrawer
+        <RecurringFormDrawer
+          mode={{ type: "create" }}
           open={open}
           onOpenChange={setOpen}
           onSubmit={onSubmit}
@@ -47,7 +48,7 @@ function Harness({
   );
 }
 
-describe("RecurringCreateDrawer", () => {
+describe("RecurringFormDrawer", () => {
   it("submits a valid create and returns focus to the trigger", async () => {
     const onSubmit = vi.fn(async (values: RecurringFormValues) => {
       expect(values.name).toBe("Gym");
@@ -115,5 +116,73 @@ describe("RecurringCreateDrawer", () => {
     await waitFor(() => {
       expect(document.activeElement).toBe(screen.getByRole("button", { name: "New recurring" }));
     });
+  });
+
+  it("opens in edit mode with document values and save label", () => {
+    const document = {
+      recurringTransaction: {
+        id: "rt-1",
+        name: "Rent",
+        lifecycle: "active",
+        totalOccurrences: 12,
+        fulfilledCount: 2,
+        revision: 3,
+        lifecycleChangedAt: "2026-07-21T10:00:00",
+        createdAt: "2026-07-21T10:00:00",
+        updatedAt: "2026-07-21T10:00:00",
+      },
+      schedule: {
+        id: "sch-1",
+        recurringTransactionId: "rt-1",
+        sequence: 1,
+        effectiveFromLocal: "2026-01-01T09:00:00",
+        firstScheduledLocal: "2026-01-01T09:00:00",
+        rule: { type: "interval" as const, every: 1, unit: "month" as const },
+      },
+      template: {
+        id: "tpl-1",
+        recurringTransactionId: "rt-1",
+        sequence: 1,
+        effectiveFromLocal: "2026-01-01T09:00:00",
+        amount: 120_000,
+        transactionType: "expense" as const,
+        description: "Monthly rent",
+      },
+      occurrenceSummary: {
+        fulfilledCount: 2,
+        totalOccurrences: 12,
+        needsAttention: false,
+        nextScheduledLocal: "2026-03-01T09:00:00",
+      },
+      links: {
+        state: "ready" as const,
+        occurrences: { items: [] },
+      },
+      failures: {
+        state: "ready" as const,
+        history: { items: [] },
+      },
+      budgetImpact: {
+        state: "unavailable" as const,
+        message: "Budget impact is not available yet",
+      },
+    } satisfies RecurringTransactionDocument;
+
+    render(
+      <Drawer open swipeDirection="right">
+        <RecurringFormDrawer
+          mode={{ type: "edit", document }}
+          open
+          onOpenChange={() => undefined}
+          onSubmit={async () => Result.succeed({ outcome: "succeeded", document })}
+          categories={[]}
+        />
+      </Drawer>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Edit recurring transaction" })).toBeTruthy();
+    expect(screen.getByLabelText("Name")).toHaveProperty("value", "Rent");
+    expect(screen.getByLabelText("Next occurrence")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
   });
 });

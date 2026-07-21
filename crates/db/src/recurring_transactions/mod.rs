@@ -1,6 +1,16 @@
+mod adopt;
+#[cfg(test)]
+mod adopt_tests;
 #[cfg(any(test, feature = "failpoints"))]
 pub mod crash_child;
 mod create;
+mod edit;
+#[cfg(test)]
+mod edit_policy_tests;
+#[cfg(test)]
+mod edit_revision_tests;
+#[cfg(test)]
+mod edit_tests;
 #[cfg(any(test, feature = "failpoints"))]
 pub(crate) mod failpoints;
 mod fulfill;

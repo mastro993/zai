@@ -1,17 +1,23 @@
+mod adopt;
 mod alerts;
 mod contention;
 mod create;
 mod document;
+mod edit;
 mod events;
 mod models;
 mod process;
+pub mod process_failpoints;
+mod process_slice;
 mod schedule;
 mod service;
+mod service_edit;
 mod supervisor;
 #[cfg(test)]
 mod supervisor_tests;
 mod traits;
 
+pub use adopt::*;
 pub use alerts::{
     RECURRING_GENERATION_FAILURE_PRODUCER_KEY, RECURRING_OCCURRENCE_PRODUCER_KEY,
     RECURRING_PROCESS_DELAY_OCCURRENCE_KEY, RECURRING_PROCESS_DELAY_PRODUCER_KEY,
@@ -23,6 +29,7 @@ pub use contention::{
 };
 pub use create::*;
 pub use document::*;
+pub use edit::*;
 pub use events::{
     DEFAULT_RECURRING_PROCESSING_EVENT_CAPACITY, RECURRING_PROCESSING_EVENT_NAME,
     RECURRING_PROCESSING_EVENT_VERSION, RecurringProcessingEvent, RecurringProcessingEventBus,
@@ -36,7 +43,7 @@ pub use process::{
     ProcessingSliceOutcome, ProcessingStopReason, ProcessingWorkBudget,
 };
 pub use schedule::{scheduled_local_at, validate_schedule_rule};
-pub use service::{RecurringTransactionsService, process_failpoints};
+pub use service::RecurringTransactionsService;
 pub use supervisor::{
     CLOCK_FALLBACK_WAKE, RecurringProcessDelayAlerts, RecurringProcessingStatus,
     RecurringProcessingSupervisor, RecurringProcessingSupervisorHandle, RecurringSupervisorHeads,

@@ -1,5 +1,10 @@
+use super::adopt::{AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest};
 use super::create::NewRecurringTransaction;
-use super::document::{RecurringCreateOutcome, RecurringFeedResult, RecurringTransactionDocument};
+use super::document::{
+    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult,
+    RecurringTransactionDocument, TransactionRecurringProvenance,
+};
+use super::edit::{RecurringMutationOutcome, UpdateRecurringTransaction};
 use super::models::{
     RecurringFailurePage, RecurringFeedPage, RecurringGenerationFailure, RecurringOccurrence,
     RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
@@ -87,6 +92,24 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         input: NewRecurringTransaction,
     ) -> Result<RecurringTransaction>;
 
+    async fn update_recurring_transaction(
+        &self,
+        input: UpdateRecurringTransaction,
+        observed_local: NaiveDateTime,
+        apply_name: bool,
+        apply_schedule: bool,
+        apply_template: bool,
+        apply_count: bool,
+    ) -> Result<RecurringTransaction>;
+
+    async fn find_visible_transaction_date(&self, transaction_id: &str) -> Result<NaiveDateTime>;
+
+    async fn adopt_existing_transaction(
+        &self,
+        input: AdoptRecurringTransaction,
+        observed_local: NaiveDateTime,
+    ) -> Result<RecurringTransaction>;
+
     async fn has_eligible_due_work(&self, observed_local: NaiveDateTime) -> Result<bool>;
 
     async fn process_one_due_occurrence(
@@ -105,7 +128,25 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
 
     async fn get_document(&self, id: &str) -> Result<RecurringTransactionDocument>;
 
+    async fn list_linked_occurrences(
+        &self,
+        recurring_transaction_id: &str,
+        limit: Option<i64>,
+        cursor: Option<String>,
+    ) -> Result<RecurringOccurrencePage>;
+
+    async fn get_transaction_provenance(
+        &self,
+        transaction_id: &str,
+    ) -> Result<Option<TransactionRecurringProvenance>>;
+
+    async fn preview_adoption(&self, input: AdoptionPreviewRequest) -> Result<AdoptionPreview>;
+
     async fn create(&self, input: NewRecurringTransaction) -> Result<RecurringCreateOutcome>;
+
+    async fn update(&self, input: UpdateRecurringTransaction) -> Result<RecurringMutationOutcome>;
+
+    async fn adopt(&self, input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome>;
 }
 
 /// Internal occurrence processor used by trusted Rust orchestration.
@@ -115,7 +156,7 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
 pub trait RecurringOccurrenceProcessor: Send + Sync {
     async fn process_due(
         &self,
-        observed_local: NaiveDateTime,
+        observed_local: chrono::NaiveDateTime,
         work_budget: ProcessingWorkBudget,
         cancelled: Option<&AtomicBool>,
     ) -> Result<ProcessingSliceOutcome>;

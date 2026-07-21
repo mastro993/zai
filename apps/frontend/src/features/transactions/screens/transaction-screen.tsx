@@ -15,6 +15,7 @@ import { TransactionPagination } from "../components/transaction-pagination";
 import { TransactionSelectionBar } from "../components/transaction-selection-bar";
 import { TransactionTable } from "../components/transaction-table";
 import { TransactionTypeFilter } from "../components/transaction-type-filter";
+import { RecurringAdoptDrawer } from "@/features/recurring-transactions/components/recurring-adopt-drawer";
 import { useTransactionActions } from "../hooks/use-transaction-actions";
 import {
   useTransactionListController,
@@ -137,6 +138,9 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
             }}
             onSelectAllMatching={actions.selectAllMatchingTransactions}
             onEdit={actions.openFormDrawer}
+            onAdopt={(transaction, trigger) => {
+              void actions.openAdoptDrawer(transaction, trigger);
+            }}
             onDelete={actions.openDeleteDialog}
           />
           <TransactionPagination
@@ -208,6 +212,30 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
             categories={controller.categories}
             open={actions.isFormDrawerOpen}
             onSubmit={actions.submitTransaction}
+            recurringProvenance={actions.editProvenance}
+          />
+        ) : null}
+      </Drawer>
+
+      <Drawer
+        open={actions.isAdoptDrawerOpen}
+        onOpenChange={actions.setIsAdoptDrawerOpen}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            actions.setAdoptTransaction(null);
+          }
+        }}
+        swipeDirection="right"
+      >
+        {actions.adoptTransaction ? (
+          <RecurringAdoptDrawer
+            key={actions.adoptTransaction.id}
+            open={actions.isAdoptDrawerOpen}
+            transaction={actions.adoptTransaction}
+            categories={controller.categories}
+            onOpenChange={actions.setIsAdoptDrawerOpen}
+            onSubmit={actions.submitAdopt}
+            returnFocusRef={actions.adoptButtonRef}
           />
         ) : null}
       </Drawer>
