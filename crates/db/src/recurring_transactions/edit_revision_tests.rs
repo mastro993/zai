@@ -46,6 +46,89 @@ fn update_from_document(document: &RecurringTransactionDocument) -> UpdateRecurr
 }
 
 #[tokio::test]
+async fn schedule_rule_edit_with_same_next_succeeds() {
+    let observed = local(2026, 7, 21, 12, 0);
+    let (_db, service, repo, _lock) = setup_service(observed).await;
+    seed_source(
+        &repo,
+        SeedRecurringSource {
+            id: "rt-same-next".into(),
+            name: "Same next".into(),
+            lifecycle: "active",
+            total_occurrences: None,
+            fulfilled_count: 0,
+            revision: 1,
+            first_scheduled_local: local(2026, 8, 1, 9, 0),
+            next_scheduled_local: local(2026, 8, 1, 9, 0),
+            next_ordinal: 1,
+            amount: 100,
+            transaction_type: "expense",
+        },
+    )
+    .await;
+
+    let before = service.get_document("rt-same-next").await.expect("doc");
+    let mut input = update_from_document(&before);
+    input.schedule = ScheduleRule::Interval {
+        every: 2,
+        unit: ScheduleIntervalUnit::Week,
+    };
+    let outcome = service
+        .update(input)
+        .await
+        .expect("schedule rule edit with same next");
+    let RecurringMutationOutcome::Succeeded { document } = outcome else {
+        panic!("expected Succeeded");
+    };
+    assert_eq!(
+        document.schedule.rule,
+        ScheduleRule::Interval {
+            every: 2,
+            unit: ScheduleIntervalUnit::Week,
+        }
+    );
+    assert_eq!(
+        document.head.as_ref().map(|h| h.next_scheduled_local),
+        Some(local(2026, 8, 1, 9, 0))
+    );
+}
+
+#[tokio::test]
+async fn template_edit_before_first_scheduled_succeeds() {
+    let observed = local(2026, 7, 21, 12, 0);
+    let (_db, service, repo, _lock) = setup_service(observed).await;
+    seed_source(
+        &repo,
+        SeedRecurringSource {
+            id: "rt-tmpl-early".into(),
+            name: "Template early".into(),
+            lifecycle: "active",
+            total_occurrences: None,
+            fulfilled_count: 0,
+            revision: 1,
+            first_scheduled_local: local(2026, 8, 1, 9, 0),
+            next_scheduled_local: local(2026, 8, 1, 9, 0),
+            next_ordinal: 1,
+            amount: 100,
+            transaction_type: "expense",
+        },
+    )
+    .await;
+
+    let before = service.get_document("rt-tmpl-early").await.expect("doc");
+    let mut input = update_from_document(&before);
+    input.template.amount = 2500;
+    let outcome = service
+        .update(input)
+        .await
+        .expect("template edit before first scheduled");
+    let RecurringMutationOutcome::Succeeded { document } = outcome else {
+        panic!("expected Succeeded");
+    };
+    assert_eq!(document.template.amount, 2500);
+}
+
+#[tokio::test]
 async fn schedule_edit_retains_overdue_under_prior_revision() {
     let observed = local(2026, 4, 1, 12, 0);
     let (_db, service, repo, _lock) = setup_service(observed).await;

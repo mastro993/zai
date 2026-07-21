@@ -75,30 +75,50 @@ fn apply_schedule_change(
     let boundary = input.next_scheduled_local;
     let first_scheduled_local =
         scheduled_local_at(&input.schedule, boundary, 1).map_err(StorageError::CoreError)?;
-
-    diesel::update(
-        recurring_schedule_revisions::table.filter(recurring_schedule_revisions::id.eq(&open.id)),
-    )
-    .set(recurring_schedule_revisions::effective_until_local.eq(Some(boundary)))
-    .execute(conn)
-    .into_storage()?;
-
     let (interval_every, interval_unit, monthly_day) = schedule_columns(&input.schedule);
-    let new_schedule_id = Uuid::new_v4().to_string();
-    diesel::insert_into(recurring_schedule_revisions::table)
-        .values(RecurringScheduleRevisionRow {
-            id: new_schedule_id.clone(),
-            recurring_transaction_id: recurring_transaction_id.to_string(),
-            sequence: open.sequence + 1,
-            effective_from_local: boundary,
-            effective_until_local: None,
-            first_scheduled_local,
-            interval_every,
-            interval_unit,
-            monthly_day,
-        })
+
+    // CHECK requires until > from; same-next edits must update the open segment in place.
+    let schedule_revision_id = if boundary <= open.effective_from_local {
+        diesel::update(
+            recurring_schedule_revisions::table
+                .filter(recurring_schedule_revisions::id.eq(&open.id)),
+        )
+        .set((
+            recurring_schedule_revisions::effective_from_local.eq(boundary),
+            recurring_schedule_revisions::first_scheduled_local.eq(first_scheduled_local),
+            recurring_schedule_revisions::interval_every.eq(interval_every),
+            recurring_schedule_revisions::interval_unit.eq(interval_unit),
+            recurring_schedule_revisions::monthly_day.eq(monthly_day),
+        ))
         .execute(conn)
         .into_storage()?;
+        open.id
+    } else {
+        diesel::update(
+            recurring_schedule_revisions::table
+                .filter(recurring_schedule_revisions::id.eq(&open.id)),
+        )
+        .set(recurring_schedule_revisions::effective_until_local.eq(Some(boundary)))
+        .execute(conn)
+        .into_storage()?;
+
+        let new_schedule_id = Uuid::new_v4().to_string();
+        diesel::insert_into(recurring_schedule_revisions::table)
+            .values(RecurringScheduleRevisionRow {
+                id: new_schedule_id.clone(),
+                recurring_transaction_id: recurring_transaction_id.to_string(),
+                sequence: open.sequence + 1,
+                effective_from_local: boundary,
+                effective_until_local: None,
+                first_scheduled_local,
+                interval_every,
+                interval_unit,
+                monthly_day,
+            })
+            .execute(conn)
+            .into_storage()?;
+        new_schedule_id
+    };
 
     if let Some(head) = load_head(conn, recurring_transaction_id)?
         && head.next_scheduled_local >= boundary
@@ -107,7 +127,7 @@ fn apply_schedule_change(
             recurring_occurrence_heads::recurring_transaction_id.eq(recurring_transaction_id),
         ))
         .set((
-            recurring_occurrence_heads::schedule_revision_id.eq(&new_schedule_id),
+            recurring_occurrence_heads::schedule_revision_id.eq(&schedule_revision_id),
             recurring_occurrence_heads::next_ordinal.eq(1),
             recurring_occurrence_heads::next_scheduled_local.eq(first_scheduled_local),
         ))
@@ -131,6 +151,24 @@ fn apply_template_change(
                 "Missing open template revision".to_string(),
             ))
         })?;
+
+    if effective_from_local <= open.effective_from_local {
+        diesel::update(
+            recurring_template_revisions::table
+                .filter(recurring_template_revisions::id.eq(&open.id)),
+        )
+        .set((
+            recurring_template_revisions::description.eq(&template.description),
+            recurring_template_revisions::amount.eq(template.amount),
+            recurring_template_revisions::transaction_type.eq(&template.transaction_type),
+            recurring_template_revisions::transaction_category_id
+                .eq(&template.transaction_category_id),
+            recurring_template_revisions::notes.eq(&template.notes),
+        ))
+        .execute(conn)
+        .into_storage()?;
+        return Ok(());
+    }
 
     diesel::update(
         recurring_template_revisions::table.filter(recurring_template_revisions::id.eq(&open.id)),
