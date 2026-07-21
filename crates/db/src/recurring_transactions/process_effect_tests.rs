@@ -6,9 +6,9 @@ use crate::schema::{domain_alerts, recurring_generation_failures, transactions};
 use diesel::prelude::*;
 use std::sync::atomic::Ordering;
 use zai_core::features::recurring_transactions::{
-    FulfillmentKind, ProcessingWorkBudget, RECURRING_OCCURRENCE_PRODUCER_KEY, RecurringLifecycle,
-    RecurringOccurrenceProcessor, RecurringTransactionsRepositoryTrait,
-    RecurringTransactionsServiceTrait,
+    FulfillmentKind, ProcessingWorkBudget, RECURRING_GENERATION_FAILURE_PRODUCER_KEY,
+    RECURRING_OCCURRENCE_PRODUCER_KEY, RecurringLifecycle, RecurringOccurrenceProcessor,
+    RecurringTransactionsRepositoryTrait, RecurringTransactionsServiceTrait,
 };
 
 #[tokio::test]
@@ -275,10 +275,10 @@ async fn repaired_failure_is_resolved_on_successful_fulfillment() {
     let schedule_for_failure = schedule_id.clone();
     writer
         .exec(move |conn| {
-            diesel::sql_query(
-                "INSERT INTO domain_alerts (id, producer_key, occurrence_key, severity, title, body, created_at, updated_at) \
-                 VALUES ('alert-repaired', 'recurring.generation_failure', 'rt-repaired|sched|1', 'critical', 'Blocked', 'Needs repair', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            )
+            diesel::sql_query(format!(
+                "INSERT INTO domain_alerts (id, producer_key, occurrence_key, severity, title, body, created_at, updated_at)                  VALUES ('alert-repaired', '{}', 'rt-repaired|sched|1', 'critical', 'Blocked', 'Needs repair', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                RECURRING_GENERATION_FAILURE_PRODUCER_KEY,
+            ))
             .execute(conn)
             .map_err(crate::errors::StorageError::from)?;
             diesel::insert_into(recurring_generation_failures::table)

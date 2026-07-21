@@ -1,5 +1,8 @@
+use super::fulfill_select::{
+    find_next_eligible_due_head, find_occurrence, heal_stale_head_after_existing_occurrence,
+};
 use super::models::{
-    RecurringOccurrenceHeadRow, RecurringOccurrenceRow, RecurringTransactionRow, build_occurrence,
+    RecurringOccurrenceHeadRow, RecurringOccurrenceRow, RecurringTransactionRow,
     build_recurring_transaction,
 };
 use super::queries::find_unresolved_failure;
@@ -21,8 +24,8 @@ use zai_core::Error;
 use zai_core::features::budgets::alerts::BudgetAlertMode;
 use zai_core::features::domain_alerts::{AlertInsertOutcome, CommittedOutcome};
 use zai_core::features::recurring_transactions::{
-    FulfillmentKind, ProcessOneOutcome, RecurringLifecycle, RecurringOccurrence,
-    build_generated_occurrence_alert, scheduled_local_at,
+    FulfillmentKind, ProcessOneOutcome, RecurringLifecycle, build_generated_occurrence_alert,
+    scheduled_local_at,
 };
 use zai_core::features::transactions::models::NewTransaction;
 
@@ -50,6 +53,7 @@ pub fn process_one_due_occurrence(
         &head.schedule_revision_id,
         head.next_ordinal,
     )? {
+        heal_stale_head_after_existing_occurrence(conn, &head, &existing, now)?;
         return Ok(CommittedOutcome::with_alert_outcomes(
             ProcessOneOutcome::AlreadyFulfilled(existing),
             [],
@@ -57,56 +61,6 @@ pub fn process_one_due_occurrence(
     }
 
     fulfill_generated_occurrence(conn, &head, observed_local, now)
-}
-
-fn find_next_eligible_due_head(
-    conn: &mut SqliteConnection,
-    observed_local: NaiveDateTime,
-) -> Result<Option<RecurringOccurrenceHeadRow>> {
-    let heads = recurring_occurrence_heads::table
-        .inner_join(recurring_transactions::table.on(
-            recurring_occurrence_heads::recurring_transaction_id.eq(recurring_transactions::id),
-        ))
-        .filter(recurring_occurrence_heads::next_scheduled_local.le(observed_local))
-        .filter(recurring_transactions::lifecycle.eq(RecurringLifecycle::Active.as_str()))
-        .filter(recurring_transactions::deleted_at.is_null())
-        .order((
-            recurring_occurrence_heads::next_scheduled_local.asc(),
-            recurring_occurrence_heads::recurring_transaction_id.asc(),
-        ))
-        .select(RecurringOccurrenceHeadRow::as_select())
-        .load::<RecurringOccurrenceHeadRow>(conn)
-        .into_storage()?;
-
-    for head in heads {
-        let blocking = find_unresolved_failure(conn, &head.recurring_transaction_id)
-            .map_err(StorageError::from)?
-            .filter(|failure| failure.repaired_at.is_none());
-        if blocking.is_some() {
-            continue;
-        }
-        return Ok(Some(head));
-    }
-    Ok(None)
-}
-
-fn find_occurrence(
-    conn: &mut SqliteConnection,
-    recurring_transaction_id: &str,
-    schedule_revision_id: &str,
-    ordinal: i32,
-) -> Result<Option<RecurringOccurrence>> {
-    let row = recurring_occurrences::table
-        .filter(recurring_occurrences::recurring_transaction_id.eq(recurring_transaction_id))
-        .filter(recurring_occurrences::schedule_revision_id.eq(schedule_revision_id))
-        .filter(recurring_occurrences::ordinal.eq(ordinal))
-        .select(RecurringOccurrenceRow::as_select())
-        .first::<RecurringOccurrenceRow>(conn)
-        .optional()
-        .into_storage()?;
-    row.map(build_occurrence)
-        .transpose()
-        .map_err(StorageError::from)
 }
 
 fn fulfill_generated_occurrence(
@@ -238,7 +192,6 @@ fn fulfill_generated_occurrence(
     };
     let recurring_alert_id = created_alert.id.clone();
 
-    // Generated fulfillment always links a normal occurrence alert.
     diesel::insert_into(recurring_occurrences::table)
         .values(RecurringOccurrenceRow {
             recurring_transaction_id: recurring.id.clone(),

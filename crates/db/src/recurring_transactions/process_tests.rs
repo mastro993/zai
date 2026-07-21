@@ -3,8 +3,8 @@ use super::seed::SeedRecurringSource;
 use crate::schema::recurring_generation_failures;
 use diesel::prelude::*;
 use zai_core::features::recurring_transactions::{
-    FulfillmentKind, ProcessingWorkBudget, RecurringOccurrenceProcessor,
-    RecurringTransactionsServiceTrait,
+    FulfillmentKind, ProcessingWorkBudget, RECURRING_GENERATION_FAILURE_PRODUCER_KEY,
+    RecurringOccurrenceProcessor, RecurringTransactionsServiceTrait,
 };
 
 #[tokio::test]
@@ -222,10 +222,10 @@ async fn open_failure_blocks_only_that_source() {
     let schedule_id = blocked_schedule.clone();
     writer
         .exec(move |conn| {
-            diesel::sql_query(
-                "INSERT INTO domain_alerts (id, producer_key, occurrence_key, severity, title, body, created_at, updated_at) \
-                 VALUES ('alert-block', 'recurring.generation_failure', 'rt-blocked|sched|1', 'critical', 'Blocked', 'Needs repair', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            )
+            diesel::sql_query(format!(
+                "INSERT INTO domain_alerts (id, producer_key, occurrence_key, severity, title, body, created_at, updated_at)                  VALUES ('alert-block', '{}', 'rt-blocked|sched|1', 'critical', 'Blocked', 'Needs repair', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                RECURRING_GENERATION_FAILURE_PRODUCER_KEY,
+            ))
             .execute(conn)
             .map_err(crate::errors::StorageError::from)?;
             diesel::insert_into(recurring_generation_failures::table)
