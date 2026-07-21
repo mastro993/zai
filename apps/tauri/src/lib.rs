@@ -179,17 +179,15 @@ pub fn run() {
         .expect("error while running tauri application");
 
     app.run(|app_handle, event| {
-        if let RunEvent::ExitRequested { .. } | RunEvent::Exit = event {
-            if let Some(handle) = app_handle.try_state::<zai_core::features::recurring_transactions::RecurringProcessingSupervisorHandle>()
-            {
-                handle.request_shutdown();
-            }
+        if let RunEvent::ExitRequested { .. } | RunEvent::Exit = event
+            && let Some(handle) = app_handle.try_state::<zai_core::features::recurring_transactions::RecurringProcessingSupervisorHandle>()
+        {
+            handle.request_shutdown();
         }
-        if let RunEvent::Resumed = event {
-            if let Some(handle) = app_handle.try_state::<zai_core::features::recurring_transactions::RecurringProcessingSupervisorHandle>()
-            {
-                handle.request_wake();
-            }
+        if let RunEvent::Resumed = event
+            && let Some(handle) = app_handle.try_state::<zai_core::features::recurring_transactions::RecurringProcessingSupervisorHandle>()
+        {
+            handle.request_wake();
         }
     });
 }
