@@ -138,7 +138,7 @@ export function RecurringEditDrawer({
   });
 
   return (
-    <DrawerContent>
+    <DrawerContent className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem] data-[swipe-axis=x]:w-[calc(100%-2rem)] sm:data-[swipe-axis=x]:w-96">
       <DrawerHeader>
         <DrawerTitle>{sectionTitle[section]}</DrawerTitle>
         <DrawerDescription>
@@ -336,10 +336,12 @@ export function RecurringEditDrawer({
           </FieldGroup>
         </FieldSet>
         <DrawerFooter>
-          <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
-            Save
+          <Button type="submit" disabled={isSubmitting || !open} aria-busy={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Save"}
           </Button>
-          <DrawerClose render={<Button type="button" variant="outline" />}>Cancel</DrawerClose>
+          <DrawerClose render={<Button type="button" variant="outline" disabled={isSubmitting} />}>
+            Cancel
+          </DrawerClose>
         </DrawerFooter>
       </form>
     </DrawerContent>

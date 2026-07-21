@@ -371,9 +371,11 @@ export function RecurringDocumentScreen({
             setEditSection(null);
           }
         }}
+        swipeDirection="right"
       >
         {editSection ? (
           <RecurringEditDrawer
+            key={editSection}
             open={editSection !== null}
             section={editSection}
             document={document}
