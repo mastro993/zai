@@ -1,7 +1,7 @@
 use super::models::{
-    FulfillmentKind, RecurringFailurePage, RecurringGenerationFailure, RecurringLifecycle,
-    RecurringOccurrence, RecurringOccurrenceHead, RecurringOccurrencePage,
-    RecurringScheduleRevision, RecurringTemplateRevision, RecurringTransaction,
+    RecurringFailurePage, RecurringGenerationFailure, RecurringLifecycle, RecurringOccurrence,
+    RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
+    RecurringTemplateRevision, RecurringTransaction,
 };
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -115,13 +115,6 @@ pub fn visible_source_link(recurring: &RecurringTransaction) -> Option<Recurring
         name: recurring.name.clone(),
         lifecycle: recurring.lifecycle,
     })
-}
-
-pub fn fulfillment_kind_label(kind: FulfillmentKind) -> &'static str {
-    match kind {
-        FulfillmentKind::Generated => "Generated",
-        FulfillmentKind::Adopted => "Adopted",
-    }
 }
 
 pub fn empty_occurrence_page() -> RecurringOccurrencePage {

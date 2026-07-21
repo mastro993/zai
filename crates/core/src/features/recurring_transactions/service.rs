@@ -102,15 +102,12 @@ impl RecurringTransactionsService {
         })
     }
 
-    fn assign_id(mut input_id: Option<String>) -> Result<String> {
+    fn assign_id(input_id: Option<String>) -> Result<String> {
         match input_id.as_deref().map(str::trim) {
             Some("") => Err(Error::InvalidData(
                 "Recurring transaction id cannot be blank".into(),
             )),
-            Some(id) => {
-                input_id = Some(id.to_string());
-                Ok(input_id.expect("id set"))
-            }
+            Some(id) => Ok(id.to_string()),
             None => Ok(Uuid::new_v4().to_string()),
         }
     }

@@ -61,9 +61,13 @@ export function useTransactionActions(controller: TransactionActionsController) 
     setIsFormDrawerOpen(true);
     if (mode.type === "edit") {
       void getTransactionRecurringProvenance(mode.transaction.id).then((result) => {
-        if (Result.isSuccess(result)) {
-          setEditProvenance(result.value);
+        if (Result.isFailure(result)) {
+          toast.error("Could not load recurring link", {
+            description: result.error.message,
+          });
+          return;
         }
+        setEditProvenance(result.value);
       });
     }
   };

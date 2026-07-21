@@ -37,22 +37,10 @@ pub struct AdoptionPreview {
 
 impl AdoptRecurringTransaction {
     pub fn validate_inputs(&self) -> Result<()> {
-        if self.transaction_id.trim().is_empty() {
-            return Err(Error::InvalidData(
-                "Transaction id cannot be blank".to_string(),
-            ));
-        }
+        validate_adopt_base(&self.transaction_id, &self.schedule, self.total_occurrences)?;
         if normalize_recurring_name(&self.name).is_empty() {
             return Err(Error::InvalidData(
                 "Recurring transaction name cannot be empty".to_string(),
-            ));
-        }
-        validate_schedule_rule(&self.schedule)?;
-        if let Some(total) = self.total_occurrences
-            && total < 1
-        {
-            return Err(Error::InvalidData(
-                "Finite total must be a positive integer".to_string(),
             ));
         }
         self.template.validate()?;
@@ -62,24 +50,31 @@ impl AdoptRecurringTransaction {
 
 impl AdoptionPreviewRequest {
     pub fn validate_inputs(&self) -> Result<()> {
-        if self.transaction_id.trim().is_empty() {
-            return Err(Error::InvalidData(
-                "Transaction id cannot be blank".to_string(),
-            ));
-        }
-        validate_schedule_rule(&self.schedule)?;
-        if let Some(total) = self.total_occurrences
-            && total < 1
-        {
-            return Err(Error::InvalidData(
-                "Finite total must be a positive integer".to_string(),
-            ));
-        }
-        Ok(())
+        validate_adopt_base(&self.transaction_id, &self.schedule, self.total_occurrences)
     }
 }
 
-/// Counts later due occurrences after occurrence one through `observed_local`.
+fn validate_adopt_base(
+    transaction_id: &str,
+    schedule: &ScheduleRule,
+    total_occurrences: Option<i32>,
+) -> Result<()> {
+    if transaction_id.trim().is_empty() {
+        return Err(Error::InvalidData(
+            "Transaction id cannot be blank".to_string(),
+        ));
+    }
+    validate_schedule_rule(schedule)?;
+    if let Some(total) = total_occurrences
+        && total < 1
+    {
+        return Err(Error::InvalidData(
+            "Finite total must be a positive integer".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 pub fn count_later_due_occurrences(
     rule: &ScheduleRule,
     first_scheduled_local: NaiveDateTime,
