@@ -7,6 +7,7 @@ use super::document::{
     RecurringTransactionDocument, TransactionRecurringProvenance, budget_impact_unavailable,
     failures_section, links_section, occurrence_summary, visible_source_link,
 };
+use super::edit::{RecurringMutationOutcome, UpdateRecurringTransaction};
 use super::models::{
     DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringLifecycle,
     RecurringOccurrencePage, RecurringTransaction,
@@ -25,8 +26,8 @@ use std::sync::atomic::AtomicBool;
 use uuid::Uuid;
 
 pub struct RecurringTransactionsService {
-    repository: Arc<dyn RecurringTransactionsRepositoryTrait>,
-    clock: Arc<dyn CalendarClock>,
+    pub(super) repository: Arc<dyn RecurringTransactionsRepositoryTrait>,
+    pub(super) clock: Arc<dyn CalendarClock>,
     wake: std::sync::RwLock<Option<Arc<dyn RecurringProcessingWake>>>,
 }
 
@@ -121,7 +122,7 @@ impl RecurringTransactionsService {
         }
     }
 
-    fn request_processing_wake(&self) {
+    pub(super) fn request_processing_wake(&self) {
         if let Some(wake) = self.wake.read().expect("wake lock").as_ref() {
             wake.request_wake();
         }
@@ -256,6 +257,10 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         let document = self.compose_document(created).await?;
         self.request_processing_wake();
         Ok(RecurringCreateOutcome::Succeeded { document })
+    }
+
+    async fn update(&self, input: UpdateRecurringTransaction) -> Result<RecurringMutationOutcome> {
+        self.update_inner(input).await
     }
 
     async fn adopt(&self, mut input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {

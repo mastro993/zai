@@ -5,6 +5,7 @@ import {
   recurringAdoptOutcomeSchema,
   recurringCreateOutcomeSchema,
   recurringFeedResultSchema,
+  recurringMutationOutcomeSchema,
   recurringOccurrencePageSchema,
   recurringTransactionDocumentSchema,
   transactionRecurringProvenanceSchema,
@@ -21,9 +22,13 @@ const backendCommand = <T>(
 });
 
 export const RECURRING_COMMANDS = {
-  get_recurring_transactions: backendCommand(
-    "get_recurring_transactions",
-    recurringFeedResultSchema,
+  adopt_recurring_transaction: backendCommand(
+    "adopt_recurring_transaction",
+    recurringAdoptOutcomeSchema,
+  ),
+  create_recurring_transaction: backendCommand(
+    "create_recurring_transaction",
+    recurringCreateOutcomeSchema,
   ),
   get_recurring_transaction: backendCommand(
     "get_recurring_transaction",
@@ -33,18 +38,18 @@ export const RECURRING_COMMANDS = {
     "get_recurring_transaction_occurrences",
     recurringOccurrencePageSchema,
   ),
+  get_recurring_transactions: backendCommand(
+    "get_recurring_transactions",
+    recurringFeedResultSchema,
+  ),
   get_transaction_recurring_provenance: backendCommand(
     "get_transaction_recurring_provenance",
     transactionRecurringProvenanceSchema.nullable(),
   ),
-  create_recurring_transaction: backendCommand(
-    "create_recurring_transaction",
-    recurringCreateOutcomeSchema,
-  ),
   preview_recurring_adoption: backendCommand("preview_recurring_adoption", adoptionPreviewSchema),
-  adopt_recurring_transaction: backendCommand(
-    "adopt_recurring_transaction",
-    recurringAdoptOutcomeSchema,
+  update_recurring_transaction: backendCommand(
+    "update_recurring_transaction",
+    recurringMutationOutcomeSchema,
   ),
 } as const;
 

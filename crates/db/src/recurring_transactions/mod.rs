@@ -2,6 +2,13 @@ mod adopt;
 #[cfg(test)]
 mod adopt_tests;
 mod create;
+mod edit;
+#[cfg(test)]
+mod edit_policy_tests;
+#[cfg(test)]
+mod edit_revision_tests;
+#[cfg(test)]
+mod edit_tests;
 mod fulfill;
 mod fulfill_head;
 mod fulfill_select;

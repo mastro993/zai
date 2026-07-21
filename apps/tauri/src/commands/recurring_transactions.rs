@@ -5,8 +5,9 @@ use tauri::State;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, NewRecurringTransaction,
-    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult, RecurringOccurrencePage,
-    RecurringTransactionDocument, TransactionRecurringProvenance,
+    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult, RecurringMutationOutcome,
+    RecurringOccurrencePage, RecurringTransactionDocument, TransactionRecurringProvenance,
+    UpdateRecurringTransaction,
 };
 
 use super::{CommandResult, command_error};
@@ -86,6 +87,22 @@ pub async fn create_recurring_transaction(
         .create(new_recurring_transaction)
         .await
         .map_err(|error| command_error("Failed to create recurring transaction", error))
+}
+
+#[tauri::command]
+pub async fn update_recurring_transaction(
+    input: UpdateRecurringTransaction,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringMutationOutcome> {
+    debug!(
+        "Updating recurring transaction {}...",
+        input.recurring_transaction_id
+    );
+    state
+        .recurring_transactions_service()
+        .update(input)
+        .await
+        .map_err(|error| command_error("Failed to update recurring transaction", error))
 }
 
 #[tauri::command]

@@ -11,8 +11,9 @@ use serde::Deserialize;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, NewRecurringTransaction,
-    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult, RecurringOccurrencePage,
-    RecurringTransactionDocument, TransactionRecurringProvenance,
+    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult, RecurringMutationOutcome,
+    RecurringOccurrencePage, RecurringTransactionDocument, TransactionRecurringProvenance,
+    UpdateRecurringTransaction,
 };
 
 use crate::api::error::{bad_request, command_error};
@@ -52,7 +53,7 @@ pub fn router() -> Router<Arc<ServiceContext>> {
         )
         .route(
             "/recurring-transactions/{recurring_transaction_id}",
-            get(get_recurring_transaction),
+            get(get_recurring_transaction).post(update_recurring_transaction),
         )
         .route(
             "/recurring-transactions/{recurring_transaction_id}/occurrences",
@@ -123,6 +124,21 @@ async fn create_recurring_transaction(
         .await
         .map(|outcome| (StatusCode::CREATED, Json(outcome)))
         .map_err(|error| command_error("Failed to create recurring transaction", error))
+}
+
+async fn update_recurring_transaction(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    payload: Result<Json<UpdateRecurringTransaction>, JsonRejection>,
+) -> RecurringResult<Json<RecurringMutationOutcome>> {
+    let Json(mut input) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    input.recurring_transaction_id = recurring_transaction_id;
+    context
+        .recurring_transactions_service()
+        .update(input)
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to update recurring transaction", error))
 }
 
 async fn preview_adoption(

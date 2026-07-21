@@ -1,13 +1,19 @@
-import { Link } from "@tanstack/react-router";
 import { Result } from "@praha/byethrow";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Drawer } from "@/components/ui/drawer";
 import { ScreenBase } from "@/components/screen-base";
 import { formatCurrencyFromMinor } from "@/lib/currency";
+import type { TransactionCategory } from "@/features/categories/types/model";
 
-import { getRecurringTransactionOccurrences } from "../commands/recurring-transactions";
+import {
+  getRecurringTransactionOccurrences,
+  updateRecurringTransaction,
+} from "../commands/recurring-transactions";
+import { RecurringFormDrawer } from "../components/recurring-form-drawer";
 import {
   formatFiniteProgress,
   formatLocalDateTime,
@@ -15,6 +21,7 @@ import {
   recurringLifecycleLabel,
 } from "../lib/recurring";
 import type {
+  RecurringFormValues,
   RecurringOccurrence,
   RecurringTransactionDocument,
 } from "../types/recurring-transaction";
@@ -45,6 +52,19 @@ function Section({
     </section>
   );
 }
+
+const canRename = (lifecycle: RecurringTransactionDocument["recurringTransaction"]["lifecycle"]) =>
+  lifecycle === "active" ||
+  lifecycle === "paused" ||
+  lifecycle === "stopped" ||
+  lifecycle === "completed";
+
+const canEditConfiguration = (document: RecurringTransactionDocument): boolean => {
+  const lifecycle = document.recurringTransaction.lifecycle;
+  return (
+    (lifecycle === "active" || lifecycle === "paused") && !document.occurrenceSummary.needsAttention
+  );
+};
 
 function OccurrenceLinks({
   recurringTransactionId,
@@ -116,7 +136,15 @@ function OccurrenceLinks({
   );
 }
 
-export function RecurringDocumentScreen({ document }: { document: RecurringTransactionDocument }) {
+export function RecurringDocumentScreen({
+  document: initialDocument,
+  categories,
+}: {
+  document: RecurringTransactionDocument;
+  categories: Array<TransactionCategory>;
+}) {
+  const [document, setDocument] = useState(initialDocument);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const {
     recurringTransaction,
     schedule,
@@ -130,13 +158,34 @@ export function RecurringDocumentScreen({ document }: { document: RecurringTrans
     occurrenceSummary.fulfilledCount,
     occurrenceSummary.totalOccurrences,
   );
+  const editable = canRename(recurringTransaction.lifecycle);
+  const configurationEditable = canEditConfiguration(document);
+
+  const submitEdit = async (values: RecurringFormValues) => {
+    const result = await updateRecurringTransaction(document, values);
+    if (Result.isSuccess(result)) {
+      setDocument(result.value.document);
+    }
+    return result;
+  };
 
   return (
     <ScreenBase
       actions={
-        <Button variant="outline" nativeButton={false} render={<Link to="/cash-flow/recurring" />}>
-          Back to feed
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {editable ? (
+            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+              Edit recurring transaction
+            </Button>
+          ) : null}
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link to="/cash-flow/recurring" />}
+          >
+            Back to feed
+          </Button>
+        </div>
       }
     >
       <div className="mx-auto w-full max-w-3xl space-y-2">
@@ -175,6 +224,11 @@ export function RecurringDocumentScreen({ document }: { document: RecurringTrans
               <dd>{formatLocalDateTime(schedule.firstScheduledLocal)}</dd>
             </div>
           </dl>
+          {!configurationEditable && occurrenceSummary.needsAttention ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Schedule, template, and count edits are unavailable while generation needs attention.
+            </p>
+          ) : null}
         </Section>
 
         <Section title="Template" state="ready" emptyMessage="">
@@ -192,6 +246,10 @@ export function RecurringDocumentScreen({ document }: { document: RecurringTrans
               <dd>{template.description || "—"}</dd>
             </div>
           </dl>
+        </Section>
+
+        <Section title="Count" state="ready" emptyMessage="">
+          <p className="text-sm">{progressLabel ?? "Indefinite"}</p>
         </Section>
 
         <Section title="Lifecycle" state="ready" emptyMessage="">
@@ -226,21 +284,41 @@ export function RecurringDocumentScreen({ document }: { document: RecurringTrans
           />
         </Section>
 
-        <Section title="Failures" state={failures.state} emptyMessage="No generation failures.">
-          <p className="text-sm">
-            {failures.unresolved
-              ? "There is an unresolved generation failure."
-              : `${failures.history.items.length} failure history entries.`}
-          </p>
+        <Section
+          title="Failures"
+          state={failures.state}
+          emptyMessage="No generation failures."
+          failureMessage={undefined}
+        >
+          {failures.unresolved ? (
+            <p role="status" className="text-sm">
+              Needs attention: repair required before schedule, template, or count edits.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">No open generation failure.</p>
+          )}
         </Section>
 
         <Section
           title="Budget impact"
           state={budgetImpact.state}
-          emptyMessage="No budget impact."
+          emptyMessage=""
           failureMessage={budgetImpact.message}
         />
       </div>
+
+      <Drawer open={isEditOpen} onOpenChange={setIsEditOpen} swipeDirection="right">
+        {isEditOpen ? (
+          <RecurringFormDrawer
+            mode={{ type: "edit", document }}
+            open={isEditOpen}
+            onOpenChange={setIsEditOpen}
+            onSubmit={submitEdit}
+            categories={categories}
+            configurationEditable={configurationEditable}
+          />
+        ) : null}
+      </Drawer>
     </ScreenBase>
   );
 }

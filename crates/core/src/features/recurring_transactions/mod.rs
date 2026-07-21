@@ -3,12 +3,14 @@ mod alerts;
 mod contention;
 mod create;
 mod document;
+mod edit;
 mod events;
 mod models;
 mod process;
 mod process_slice;
 mod schedule;
 mod service;
+mod service_edit;
 mod supervisor;
 #[cfg(test)]
 mod supervisor_tests;
@@ -26,6 +28,7 @@ pub use contention::{
 };
 pub use create::*;
 pub use document::*;
+pub use edit::*;
 pub use events::{
     DEFAULT_RECURRING_PROCESSING_EVENT_CAPACITY, RECURRING_PROCESSING_EVENT_NAME,
     RECURRING_PROCESSING_EVENT_VERSION, RecurringProcessingEvent, RecurringProcessingEventBus,

@@ -8,6 +8,7 @@ import type {
   RecurringCreateOutcome,
   RecurringFeedResult,
   RecurringFormValues,
+  RecurringMutationOutcome,
   RecurringOccurrencePage,
   RecurringTransactionDocument,
   ScheduleRule,
@@ -121,6 +122,29 @@ export const adoptRecurringTransaction = (
       transactionId,
       name: values.name,
       schedule: buildScheduleRule(values),
+      totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
+      template: {
+        description: values.description || null,
+        amount: values.amount,
+        transactionType: values.transactionType,
+        transactionCategoryId: values.transactionCategoryId || null,
+        notes: values.notes || null,
+      },
+    },
+  });
+};
+
+export const updateRecurringTransaction = (
+  document: RecurringTransactionDocument,
+  values: RecurringFormValues,
+): CommandResult<RecurringMutationOutcome> => {
+  return invokeDecodedCommand(RECURRING_COMMANDS.update_recurring_transaction, {
+    input: {
+      recurringTransactionId: document.recurringTransaction.id,
+      expectedRevision: document.recurringTransaction.revision,
+      name: values.name,
+      schedule: buildScheduleRule(values),
+      nextScheduledLocal: toBackendLocal(values.firstScheduledLocal),
       totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
       template: {
         description: values.description || null,

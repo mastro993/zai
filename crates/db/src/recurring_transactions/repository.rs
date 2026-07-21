@@ -4,6 +4,7 @@ use super::adopt::{
 use super::create::{
     create_recurring_transaction, find_open_schedule_revision, find_open_template_revision,
 };
+use super::edit::update_recurring_transaction;
 use super::fulfill::{
     has_eligible_due_work as query_has_eligible_due_work, process_one_due_occurrence,
 };
@@ -26,7 +27,7 @@ use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, NewRecurringTransaction, ProcessOneOutcome, RecurringFailurePage,
     RecurringFeedPage, RecurringGenerationFailure, RecurringOccurrence, RecurringOccurrenceHead,
     RecurringOccurrencePage, RecurringScheduleRevision, RecurringTemplateRevision,
-    RecurringTransaction, RecurringTransactionsRepositoryTrait,
+    RecurringTransaction, RecurringTransactionsRepositoryTrait, UpdateRecurringTransaction,
 };
 
 pub struct RecurringTransactionsRepository {
@@ -270,6 +271,30 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
     ) -> Result<RecurringTransaction> {
         self.writer
             .exec(move |conn| create_recurring_transaction(conn, input))
+            .await
+    }
+
+    async fn update_recurring_transaction(
+        &self,
+        input: UpdateRecurringTransaction,
+        observed_local: NaiveDateTime,
+        apply_name: bool,
+        apply_schedule: bool,
+        apply_template: bool,
+        apply_count: bool,
+    ) -> Result<RecurringTransaction> {
+        self.writer
+            .exec(move |conn| {
+                update_recurring_transaction(
+                    conn,
+                    input,
+                    observed_local,
+                    apply_name,
+                    apply_schedule,
+                    apply_template,
+                    apply_count,
+                )
+            })
             .await
     }
 

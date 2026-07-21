@@ -60,12 +60,15 @@ export const buildRecurringCommandRequestSpec = (
         body: newRecurringTransaction ?? {},
       };
     }
-    case "preview_recurring_adoption": {
-      const request = readRecord(args.request);
+    case "update_recurring_transaction": {
+      const input = readRecord(args.input) ?? {};
+      const recurringTransactionId = readString(input.recurringTransactionId);
       return {
         method: "POST",
-        path: "/recurring-transactions/adoption-preview",
-        body: request ?? {},
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}`
+          : "/recurring-transactions/__missing_recurring_transaction_id__",
+        body: input,
       };
     }
     case "adopt_recurring_transaction": {
@@ -73,6 +76,14 @@ export const buildRecurringCommandRequestSpec = (
       return {
         method: "POST",
         path: "/recurring-transactions/adopt",
+        body: request ?? {},
+      };
+    }
+    case "preview_recurring_adoption": {
+      const request = readRecord(args.request);
+      return {
+        method: "POST",
+        path: "/recurring-transactions/adoption-preview",
         body: request ?? {},
       };
     }

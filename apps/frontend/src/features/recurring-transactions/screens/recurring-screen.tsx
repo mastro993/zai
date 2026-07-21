@@ -10,7 +10,7 @@ import {
   createRecurringTransaction,
   getRecurringTransactions,
 } from "../commands/recurring-transactions";
-import { RecurringCreateDrawer } from "../components/recurring-create-drawer";
+import { RecurringFormDrawer } from "../components/recurring-form-drawer";
 import { RecurringOccurrenceCard } from "../components/recurring-occurrence-card";
 import type { RecurringFeedItem, RecurringFormValues } from "../types/recurring-transaction";
 
@@ -119,7 +119,8 @@ export function RecurringScreen({
       </div>
 
       <Drawer open={isCreateOpen} onOpenChange={setIsCreateOpen} swipeDirection="right">
-        <RecurringCreateDrawer
+        <RecurringFormDrawer
+          mode={{ type: "create" }}
           open={isCreateOpen}
           onOpenChange={setIsCreateOpen}
           onSubmit={submitCreate}

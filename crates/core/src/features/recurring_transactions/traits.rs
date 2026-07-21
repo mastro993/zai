@@ -4,6 +4,7 @@ use super::document::{
     RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult,
     RecurringTransactionDocument, TransactionRecurringProvenance,
 };
+use super::edit::{RecurringMutationOutcome, UpdateRecurringTransaction};
 use super::models::{
     RecurringFailurePage, RecurringFeedPage, RecurringGenerationFailure, RecurringOccurrence,
     RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
@@ -91,6 +92,16 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         input: NewRecurringTransaction,
     ) -> Result<RecurringTransaction>;
 
+    async fn update_recurring_transaction(
+        &self,
+        input: UpdateRecurringTransaction,
+        observed_local: NaiveDateTime,
+        apply_name: bool,
+        apply_schedule: bool,
+        apply_template: bool,
+        apply_count: bool,
+    ) -> Result<RecurringTransaction>;
+
     async fn find_visible_transaction_date(&self, transaction_id: &str) -> Result<NaiveDateTime>;
 
     async fn adopt_existing_transaction(
@@ -133,6 +144,8 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
 
     async fn create(&self, input: NewRecurringTransaction) -> Result<RecurringCreateOutcome>;
 
+    async fn update(&self, input: UpdateRecurringTransaction) -> Result<RecurringMutationOutcome>;
+
     async fn adopt(&self, input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome>;
 }
 
@@ -143,7 +156,7 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
 pub trait RecurringOccurrenceProcessor: Send + Sync {
     async fn process_due(
         &self,
-        observed_local: NaiveDateTime,
+        observed_local: chrono::NaiveDateTime,
         work_budget: ProcessingWorkBudget,
         cancelled: Option<&AtomicBool>,
     ) -> Result<ProcessingSliceOutcome>;
