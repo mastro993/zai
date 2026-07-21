@@ -14,7 +14,7 @@
             "type": "command",
             "command": "bash \".agents/hooks/format.sh\"",
             "timeout": 120,
-            "statusMessage": "Formatting"
+            "statusMessage": "Format and lint autofix"
           }
         ]
       }

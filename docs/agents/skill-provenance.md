@@ -30,7 +30,7 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 | Path | Role | Notes |
 | ---- | ---- | ----- |
 | `.agents/skills/` | Canonical shared skill store (real directories) | Primary copy for most skills; Codex Impeccable hook points here |
-| `.agents/hooks/` | Shared agent lifecycle hooks | `format.sh` + `check-gate.sh` used by Cursor, Claude Code, and Codex |
+| `.agents/hooks/` | Shared agent lifecycle hooks | `format.sh` (format + lint autofix) + `check-gate.sh` used by Cursor, Claude Code, and Codex |
 | `.claude/skills/` | Claude Code consumer tree | Most entries symlink into `.agents/skills/`; `byethrow` and `impeccable` are real copies |
 | `.claude/settings.json` | Claude Code project settings | Committed Stop / PostToolUse hooks → `.agents/hooks/` |
 | `.codex/` | Codex consumer config | `hooks.json` runs Impeccable + shared format/check-gate hooks |
@@ -44,9 +44,9 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 
 | Consumer config | Reads / executes | Target |
 | --------------- | ---------------- | ------ |
-| `.codex/hooks.json` | Impeccable + `.agents/hooks/{format,check-gate}.sh` | PostToolUse format/UI check; Stop → `pnpm check` (`decision: block`) |
-| `.claude/settings.json` | `.agents/hooks/{format,check-gate}.sh` | PostToolUse format; Stop → `pnpm check` (`decision: block`) |
-| `.cursor/hooks.json` | `.agents/hooks/{format,check-gate}.sh` | afterFileEdit format; stop → `pnpm check` (`followup_message`) |
+| `.codex/hooks.json` | Impeccable + `.agents/hooks/{format,check-gate}.sh` | PostToolUse format+lint autofix/UI check; Stop → `pnpm check` when check-relevant (`decision: block`) |
+| `.claude/settings.json` | `.agents/hooks/{format,check-gate}.sh` | PostToolUse format+lint autofix; Stop → `pnpm check` when check-relevant (`decision: block`) |
+| `.cursor/hooks.json` | `.agents/hooks/{format,check-gate}.sh` | afterFileEdit format+lint autofix; stop → `pnpm check` when check-relevant (`followup_message`) |
 | `.github/hooks/impeccable.json` | `node "$(git rev-parse --show-toplevel)/.github/skills/impeccable/scripts/hook.mjs"` | GitHub Impeccable tree |
 | Claude Code | `.claude/skills/*` | Symlinks to `.agents/skills/*` except real copies of `byethrow` and `impeccable` |
 | Agents / generic | `.agents/skills/*/SKILL.md` | Canonical skill docs; Impeccable scripts under `.agents/skills/impeccable/scripts/` |
@@ -70,9 +70,12 @@ Real copies (not symlinks):
 ## Executable tooling (verified)
 
 - Cursor / Claude / Codex shared hooks under `.agents/hooks/` are mode `+x`:
-  - `format.sh` runs `pnpm format` after edits
-  - `check-gate.sh` runs `pnpm check` on stop/completion. On failure it exits 0
-    with consumer-specific JSON so the agent must continue:
+  - `format.sh` runs `pnpm format` then `pnpm lint:fix` after every edit.
+    Lint autofix is fail-open (unfixed diagnostics do not fail the edit hook).
+  - `check-gate.sh` runs `pnpm check` on stop/completion only when the branch
+    has check-relevant code changes (`apps/`, `crates/`, lockfiles, toolchains).
+    Docs, markdown, agent hooks, and scripts alone do not trigger the gate.
+    On failure it exits 0 with consumer-specific JSON so the agent must continue:
     - Cursor: `{ "followup_message": "..." }` (non-zero hook exits are fail-open)
     - Claude Code / Codex: `{ "decision": "block", "reason": "..." }`
   - `.cursor/hooks/{format,check}.sh` are thin `exec` wrappers to the shared scripts
