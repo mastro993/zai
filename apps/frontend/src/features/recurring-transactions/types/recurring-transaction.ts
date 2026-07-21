@@ -266,55 +266,6 @@ export const transactionRecurringProvenanceSchema = z.object({
     .optional(),
 });
 
-export const recurringEditFormSchema = withPrivilegedRejection({
-  name: z.string().trim().min(1, "Name is required"),
-  scheduleKind: z.enum(["interval", "monthlyDay"]),
-  intervalEvery: z.string().trim().default("1"),
-  intervalUnit: z.enum(SCHEDULE_INTERVAL_UNITS).default("month"),
-  monthlyDay: z.string().trim().default("1"),
-  nextScheduledLocal: z.string().min(1, "Next occurrence is required"),
-  totalMode: z.enum(["indefinite", "finite"]).default("indefinite"),
-  totalOccurrences: z.string().trim().optional(),
-  description: z.string().trim().optional(),
-  amount: amountInputSchema,
-  transactionType: z.enum(TRANSACTION_TYPES).default("expense"),
-  transactionCategoryId: z.string().optional(),
-  notes: z.string().trim().optional(),
-  section: z.enum(["name", "schedule", "template", "count"]),
-}).superRefine((value, ctx) => {
-  if (value.section === "schedule") {
-    if (value.scheduleKind === "interval") {
-      const every = Number(value.intervalEvery);
-      if (!Number.isInteger(every) || every < 1) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Interval must be a positive whole number",
-          path: ["intervalEvery"],
-        });
-      }
-    } else {
-      const day = Number(value.monthlyDay);
-      if (!Number.isInteger(day) || day < 1 || day > 31) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Day must be between 1 and 31",
-          path: ["monthlyDay"],
-        });
-      }
-    }
-  }
-  if (value.section === "count" && value.totalMode === "finite") {
-    const total = Number(value.totalOccurrences);
-    if (!Number.isInteger(total) || total < 1) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Total must be a positive whole number",
-        path: ["totalOccurrences"],
-      });
-    }
-  }
-});
-
 export const newRecurringTransactionSchema = withPrivilegedRejection({
   name: z.string().min(1),
   schedule: scheduleRuleSchema,
@@ -376,8 +327,6 @@ export const adoptRecurringFormSchema = withPrivilegedRejection({
 
 export type RecurringFormInput = z.input<typeof recurringFormSchema>;
 export type RecurringFormValues = z.infer<typeof recurringFormSchema>;
-export type RecurringEditFormInput = z.input<typeof recurringEditFormSchema>;
-export type RecurringEditFormValues = z.infer<typeof recurringEditFormSchema>;
 export type AdoptRecurringFormInput = z.input<typeof adoptRecurringFormSchema>;
 export type AdoptRecurringFormValues = z.infer<typeof adoptRecurringFormSchema>;
 export type RecurringTransaction = z.infer<typeof recurringTransactionSchema>;

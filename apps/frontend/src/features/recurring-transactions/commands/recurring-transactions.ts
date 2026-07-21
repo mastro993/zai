@@ -1,3 +1,6 @@
+import { Result } from "@praha/byethrow";
+
+import type { CommandError } from "@/commands/errors";
 import { invokeDecodedCommand } from "@/commands/shared";
 import type { CommandResult } from "@/commands/shared";
 
@@ -6,7 +9,6 @@ import type {
   AdoptionPreview,
   RecurringAdoptOutcome,
   RecurringCreateOutcome,
-  RecurringEditFormValues,
   RecurringFeedResult,
   RecurringFormValues,
   RecurringMutationOutcome,
@@ -119,8 +121,8 @@ export const editRecurringSchedule = (
   recurringTransactionId: string,
   expectedRevision: number,
   values: Pick<
-    RecurringEditFormValues,
-    "scheduleKind" | "intervalEvery" | "intervalUnit" | "monthlyDay" | "nextScheduledLocal"
+    RecurringFormValues,
+    "scheduleKind" | "intervalEvery" | "intervalUnit" | "monthlyDay" | "firstScheduledLocal"
   >,
 ): CommandResult<RecurringMutationOutcome> => {
   return invokeDecodedCommand(RECURRING_COMMANDS.edit_recurring_schedule, {
@@ -128,7 +130,7 @@ export const editRecurringSchedule = (
       recurringTransactionId,
       expectedRevision,
       schedule: buildScheduleRule(values),
-      nextScheduledLocal: toBackendLocal(values.nextScheduledLocal),
+      nextScheduledLocal: toBackendLocal(values.firstScheduledLocal),
     },
   });
 };
@@ -150,7 +152,7 @@ export const editRecurringTemplate = (
   recurringTransactionId: string,
   expectedRevision: number,
   values: Pick<
-    RecurringEditFormValues,
+    RecurringFormValues,
     "description" | "amount" | "transactionType" | "transactionCategoryId" | "notes"
   >,
 ): CommandResult<RecurringMutationOutcome> => {
@@ -193,7 +195,7 @@ export const adoptRecurringTransaction = (
 export const editRecurringCount = (
   recurringTransactionId: string,
   expectedRevision: number,
-  values: Pick<RecurringEditFormValues, "totalMode" | "totalOccurrences">,
+  values: Pick<RecurringFormValues, "totalMode" | "totalOccurrences">,
 ): CommandResult<RecurringMutationOutcome> => {
   return invokeDecodedCommand(RECURRING_COMMANDS.edit_recurring_count, {
     input: {
@@ -201,5 +203,70 @@ export const editRecurringCount = (
       expectedRevision,
       totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
     },
+  });
+};
+
+export const updateRecurringTransaction = async (
+  document: RecurringTransactionDocument,
+  values: RecurringFormValues,
+  configurationEditable: boolean,
+): CommandResult<RecurringMutationOutcome> => {
+  const id = document.recurringTransaction.id;
+  let revision = document.recurringTransaction.revision;
+  let latestDocument = document;
+  let sawSucceeded = false;
+  let sawAlreadyApplied = false;
+  let unchangedReason: string | undefined;
+
+  const apply = (
+    result: Result.Result<RecurringMutationOutcome, CommandError>,
+  ): Result.Result<RecurringMutationOutcome, CommandError> => {
+    if (Result.isFailure(result)) {
+      return result;
+    }
+    latestDocument = result.value.document;
+    revision = latestDocument.recurringTransaction.revision;
+    if (result.value.outcome === "succeeded") {
+      sawSucceeded = true;
+    } else if (result.value.outcome === "alreadyApplied") {
+      sawAlreadyApplied = true;
+    } else {
+      unchangedReason = result.value.reason;
+    }
+    return result;
+  };
+
+  const renameResult = apply(await renameRecurringTransaction(id, revision, values.name));
+  if (Result.isFailure(renameResult)) {
+    return renameResult;
+  }
+
+  if (configurationEditable) {
+    const scheduleResult = apply(await editRecurringSchedule(id, revision, values));
+    if (Result.isFailure(scheduleResult)) {
+      return scheduleResult;
+    }
+
+    const templateResult = apply(await editRecurringTemplate(id, revision, values));
+    if (Result.isFailure(templateResult)) {
+      return templateResult;
+    }
+
+    const countResult = apply(await editRecurringCount(id, revision, values));
+    if (Result.isFailure(countResult)) {
+      return countResult;
+    }
+  }
+
+  if (sawSucceeded) {
+    return Result.succeed({ outcome: "succeeded", document: latestDocument });
+  }
+  if (sawAlreadyApplied) {
+    return Result.succeed({ outcome: "alreadyApplied", document: latestDocument });
+  }
+  return Result.succeed({
+    outcome: "unchanged",
+    document: latestDocument,
+    reason: unchangedReason ?? "same_value",
   });
 };

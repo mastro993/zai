@@ -9,17 +9,11 @@ import { ScreenBase } from "@/components/screen-base";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 import type { TransactionCategory } from "@/features/categories/types/model";
 
-import { getRecurringTransactionOccurrences } from "../commands/recurring-transactions";
 import {
-  editRecurringCount,
-  editRecurringSchedule,
-  editRecurringTemplate,
-  renameRecurringTransaction,
+  getRecurringTransactionOccurrences,
+  updateRecurringTransaction,
 } from "../commands/recurring-transactions";
-import {
-  RecurringEditDrawer,
-  type RecurringEditSection,
-} from "../components/recurring-edit-drawer";
+import { RecurringFormDrawer } from "../components/recurring-form-drawer";
 import {
   formatFiniteProgress,
   formatLocalDateTime,
@@ -27,8 +21,7 @@ import {
   recurringLifecycleLabel,
 } from "../lib/recurring";
 import type {
-  RecurringEditFormValues,
-  RecurringMutationOutcome,
+  RecurringFormValues,
   RecurringOccurrence,
   RecurringTransactionDocument,
 } from "../types/recurring-transaction";
@@ -39,21 +32,16 @@ function Section({
   children,
   emptyMessage,
   failureMessage,
-  action,
 }: {
   title: string;
   state: "ready" | "empty" | "unavailable";
   children?: React.ReactNode;
   emptyMessage: string;
   failureMessage?: string;
-  action?: React.ReactNode;
 }) {
   return (
     <section className="space-y-2 border-b border-border py-6 last:border-b-0" aria-label={title}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-medium">{title}</h2>
-        {action}
-      </div>
+      <h2 className="text-lg font-medium">{title}</h2>
       {state === "empty" ? <p className="text-sm text-muted-foreground">{emptyMessage}</p> : null}
       {state === "unavailable" ? (
         <p role="status" className="text-sm text-muted-foreground">
@@ -156,7 +144,7 @@ export function RecurringDocumentScreen({
   categories: Array<TransactionCategory>;
 }) {
   const [document, setDocument] = useState(initialDocument);
-  const [editSection, setEditSection] = useState<RecurringEditSection | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const {
     recurringTransaction,
     schedule,
@@ -170,25 +158,13 @@ export function RecurringDocumentScreen({
     occurrenceSummary.fulfilledCount,
     occurrenceSummary.totalOccurrences,
   );
+  const editable = canRename(recurringTransaction.lifecycle);
   const configurationEditable = canEditConfiguration(document);
 
-  const applyOutcome = (outcome: RecurringMutationOutcome) => {
-    setDocument(outcome.document);
-  };
-
-  const submitEdit = async (values: RecurringEditFormValues) => {
-    const id = recurringTransaction.id;
-    const revision = recurringTransaction.revision;
-    const result =
-      values.section === "name"
-        ? await renameRecurringTransaction(id, revision, values.name)
-        : values.section === "schedule"
-          ? await editRecurringSchedule(id, revision, values)
-          : values.section === "template"
-            ? await editRecurringTemplate(id, revision, values)
-            : await editRecurringCount(id, revision, values);
+  const submitEdit = async (values: RecurringFormValues) => {
+    const result = await updateRecurringTransaction(document, values, configurationEditable);
     if (Result.isSuccess(result)) {
-      applyOutcome(result.value);
+      setDocument(result.value.document);
     }
     return result;
   };
@@ -196,9 +172,20 @@ export function RecurringDocumentScreen({
   return (
     <ScreenBase
       actions={
-        <Button variant="outline" nativeButton={false} render={<Link to="/cash-flow/recurring" />}>
-          Back to feed
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {editable ? (
+            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+              Edit recurring transaction
+            </Button>
+          ) : null}
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link to="/cash-flow/recurring" />}
+          >
+            Back to feed
+          </Button>
+        </div>
       }
     >
       <div className="mx-auto w-full max-w-3xl space-y-2">
@@ -213,18 +200,7 @@ export function RecurringDocumentScreen({
           <p className="text-sm text-muted-foreground">Revision {recurringTransaction.revision}</p>
         </div>
 
-        <Section
-          title="Identity"
-          state="ready"
-          emptyMessage=""
-          action={
-            canRename(recurringTransaction.lifecycle) ? (
-              <Button variant="outline" size="sm" onClick={() => setEditSection("name")}>
-                Rename
-              </Button>
-            ) : null
-          }
-        >
+        <Section title="Identity" state="ready" emptyMessage="">
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground">Name</dt>
@@ -237,18 +213,7 @@ export function RecurringDocumentScreen({
           </dl>
         </Section>
 
-        <Section
-          title="Schedule"
-          state="ready"
-          emptyMessage=""
-          action={
-            configurationEditable ? (
-              <Button variant="outline" size="sm" onClick={() => setEditSection("schedule")}>
-                Edit
-              </Button>
-            ) : null
-          }
-        >
+        <Section title="Schedule" state="ready" emptyMessage="">
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground">Rule</dt>
@@ -261,23 +226,12 @@ export function RecurringDocumentScreen({
           </dl>
           {!configurationEditable && occurrenceSummary.needsAttention ? (
             <p role="status" className="text-sm text-muted-foreground">
-              Schedule edits are unavailable while generation needs attention.
+              Schedule, template, and count edits are unavailable while generation needs attention.
             </p>
           ) : null}
         </Section>
 
-        <Section
-          title="Template"
-          state="ready"
-          emptyMessage=""
-          action={
-            configurationEditable ? (
-              <Button variant="outline" size="sm" onClick={() => setEditSection("template")}>
-                Edit
-              </Button>
-            ) : null
-          }
-        >
+        <Section title="Template" state="ready" emptyMessage="">
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground">Amount</dt>
@@ -294,18 +248,7 @@ export function RecurringDocumentScreen({
           </dl>
         </Section>
 
-        <Section
-          title="Count"
-          state="ready"
-          emptyMessage=""
-          action={
-            configurationEditable ? (
-              <Button variant="outline" size="sm" onClick={() => setEditSection("count")}>
-                Edit
-              </Button>
-            ) : null
-          }
-        >
+        <Section title="Count" state="ready" emptyMessage="">
           <p className="text-sm">{progressLabel ?? "Indefinite"}</p>
         </Section>
 
@@ -364,28 +307,15 @@ export function RecurringDocumentScreen({
         />
       </div>
 
-      <Drawer
-        open={editSection !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditSection(null);
-          }
-        }}
-        swipeDirection="right"
-      >
-        {editSection ? (
-          <RecurringEditDrawer
-            key={editSection}
-            open={editSection !== null}
-            section={editSection}
-            document={document}
-            categories={categories}
-            onOpenChange={(open) => {
-              if (!open) {
-                setEditSection(null);
-              }
-            }}
+      <Drawer open={isEditOpen} onOpenChange={setIsEditOpen} swipeDirection="right">
+        {isEditOpen ? (
+          <RecurringFormDrawer
+            mode={{ type: "edit", document }}
+            open={isEditOpen}
+            onOpenChange={setIsEditOpen}
             onSubmit={submitEdit}
+            categories={categories}
+            configurationEditable={configurationEditable}
           />
         ) : null}
       </Drawer>
