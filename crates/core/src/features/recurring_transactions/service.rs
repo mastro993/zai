@@ -197,11 +197,10 @@ impl RecurringOccurrenceProcessor for RecurringTransactionsService {
             }
         }
 
-        let more_due_remaining = !self
+        let more_due_remaining = self
             .repository
-            .list_due_heads(observed_local, 1)
-            .await?
-            .is_empty();
+            .has_eligible_due_work(observed_local)
+            .await?;
         Ok(ProcessingSliceOutcome {
             committed,
             already_fulfilled,

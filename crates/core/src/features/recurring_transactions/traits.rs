@@ -81,6 +81,8 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         input: NewRecurringTransaction,
     ) -> Result<RecurringTransaction>;
 
+    async fn has_eligible_due_work(&self, observed_local: NaiveDateTime) -> Result<bool>;
+
     async fn process_one_due_occurrence(
         &self,
         observed_local: NaiveDateTime,

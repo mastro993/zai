@@ -1,9 +1,12 @@
 mod create;
 mod fulfill;
+mod fulfill_head;
 mod fulfill_select;
 mod models;
 #[cfg(test)]
 mod process_effect_tests;
+#[cfg(test)]
+mod process_heal_tests;
 #[cfg(test)]
 mod process_test_support;
 #[cfg(test)]

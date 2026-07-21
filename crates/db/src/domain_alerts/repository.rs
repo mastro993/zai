@@ -88,6 +88,9 @@ impl DomainAlertsRepository {
                 alert: Box::new(alert.clone()),
             });
         }
+        if outcome.alert_state_changed {
+            self.publish_state_changed();
+        }
     }
 
     fn publish_event(&self, event: DomainAlertEvent) {

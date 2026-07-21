@@ -33,7 +33,12 @@ fn committed_outcome_includes_only_created_alerts() {
     );
     assert_eq!(created.value, "feature-value");
     assert_eq!(created.created_alerts.len(), 1);
+    assert!(!created.alert_state_changed);
 
     let deduped = CommittedOutcome::new("feature-value", AlertInsertOutcome::AlreadyExists);
     assert!(deduped.created_alerts.is_empty());
+    assert!(!deduped.alert_state_changed);
+
+    let resolved = CommittedOutcome::with_alert_outcomes("ok", []).with_alert_state_changed();
+    assert!(resolved.alert_state_changed);
 }

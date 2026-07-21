@@ -1,6 +1,8 @@
-use super::fulfill_select::{
-    find_next_eligible_due_head, find_occurrence, heal_stale_head_after_existing_occurrence,
+use super::fulfill_head::{
+    complete_or_advance_after_fulfillment, find_occurrence,
+    heal_stale_head_after_existing_occurrence,
 };
+use super::fulfill_select::{find_next_eligible_due_head, has_eligible_due_occurrence};
 use super::models::{
     RecurringOccurrenceHeadRow, RecurringOccurrenceRow, RecurringTransactionRow,
     build_recurring_transaction,
@@ -12,8 +14,7 @@ use crate::budgets::timeline::{BudgetPeriodTimeline, SourceChange};
 use crate::domain_alerts::{insert_domain_alert, resolve_domain_alert};
 use crate::errors::{IntoStorage, Result, StorageError};
 use crate::schema::{
-    recurring_generation_failures, recurring_occurrence_heads, recurring_occurrences,
-    recurring_transactions, transactions,
+    recurring_generation_failures, recurring_occurrences, recurring_transactions, transactions,
 };
 use crate::transactions::models::TransactionRow;
 use chrono::NaiveDateTime;
@@ -34,6 +35,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(test)]
 pub static FAIL_AFTER_TRANSACTION_INSERT: AtomicBool = AtomicBool::new(false);
+
+pub fn has_eligible_due_work(
+    conn: &mut SqliteConnection,
+    observed_local: NaiveDateTime,
+) -> Result<bool> {
+    has_eligible_due_occurrence(conn, observed_local)
+}
 
 pub fn process_one_due_occurrence(
     conn: &mut SqliteConnection,
@@ -83,6 +91,12 @@ fn fulfill_generated_occurrence(
         ));
     }
     if head.next_scheduled_local > observed_local {
+        return Ok(CommittedOutcome::with_alert_outcomes(
+            ProcessOneOutcome::NoEligibleWork,
+            [],
+        ));
+    }
+    if source_has_unrepaired_blocking_failure(conn, &recurring.id)? {
         return Ok(CommittedOutcome::with_alert_outcomes(
             ProcessOneOutcome::NoEligibleWork,
             [],
@@ -208,65 +222,16 @@ fn fulfill_generated_occurrence(
         .execute(conn)
         .into_storage()?;
 
-    let new_fulfilled_count = fulfillment_position;
-    let completed = recurring
-        .total_occurrences
-        .is_some_and(|total| new_fulfilled_count == total);
+    complete_or_advance_after_fulfillment(
+        conn,
+        &recurring,
+        &schedule,
+        head.next_ordinal,
+        fulfillment_position,
+        now,
+    )?;
 
-    if completed {
-        diesel::delete(
-            recurring_occurrence_heads::table
-                .filter(recurring_occurrence_heads::recurring_transaction_id.eq(&recurring.id)),
-        )
-        .execute(conn)
-        .into_storage()?;
-
-        diesel::update(
-            recurring_transactions::table.filter(recurring_transactions::id.eq(&recurring.id)),
-        )
-        .set((
-            recurring_transactions::fulfilled_count.eq(new_fulfilled_count),
-            recurring_transactions::revision.eq(recurring.revision + 1),
-            recurring_transactions::lifecycle.eq(RecurringLifecycle::Completed.as_str()),
-            recurring_transactions::lifecycle_changed_at.eq(now),
-            recurring_transactions::updated_at.eq(now),
-            recurring_transactions::paused_at.eq(None::<NaiveDateTime>),
-        ))
-        .execute(conn)
-        .into_storage()?;
-    } else {
-        let next_ordinal = head.next_ordinal + 1;
-        let next_scheduled_local =
-            scheduled_local_at(&schedule.rule, schedule.first_scheduled_local, next_ordinal)
-                .map_err(StorageError::CoreError)?;
-        let next_schedule = find_schedule_revision_at(conn, &recurring.id, next_scheduled_local)
-            .map_err(StorageError::from)?
-            .unwrap_or(schedule);
-
-        diesel::update(
-            recurring_occurrence_heads::table
-                .filter(recurring_occurrence_heads::recurring_transaction_id.eq(&recurring.id)),
-        )
-        .set((
-            recurring_occurrence_heads::schedule_revision_id.eq(next_schedule.id),
-            recurring_occurrence_heads::next_ordinal.eq(next_ordinal),
-            recurring_occurrence_heads::next_scheduled_local.eq(next_scheduled_local),
-        ))
-        .execute(conn)
-        .into_storage()?;
-
-        diesel::update(
-            recurring_transactions::table.filter(recurring_transactions::id.eq(&recurring.id)),
-        )
-        .set((
-            recurring_transactions::fulfilled_count.eq(new_fulfilled_count),
-            recurring_transactions::revision.eq(recurring.revision + 1),
-            recurring_transactions::updated_at.eq(now),
-        ))
-        .execute(conn)
-        .into_storage()?;
-    }
-
+    let mut alert_state_changed = false;
     if let Some(failure) =
         find_unresolved_failure(conn, &recurring.id).map_err(StorageError::from)?
         && failure.schedule_revision_id == head.schedule_revision_id
@@ -290,7 +255,8 @@ fn fulfill_generated_occurrence(
         ))
         .execute(conn)
         .into_storage()?;
-        resolve_domain_alert(conn, &failure.generation_failure_alert_id)?;
+        let resolved = resolve_domain_alert(conn, &failure.generation_failure_alert_id)?;
+        alert_state_changed = resolved.changed;
     }
 
     BudgetPeriodTimeline::reconcile(
@@ -322,8 +288,21 @@ fn fulfill_generated_occurrence(
         ))
     })?;
 
-    Ok(CommittedOutcome::with_alert_outcomes(
+    let mut outcome = CommittedOutcome::with_alert_outcomes(
         ProcessOneOutcome::Committed(occurrence),
         alert_outcomes,
-    ))
+    );
+    if alert_state_changed {
+        outcome = outcome.with_alert_state_changed();
+    }
+    Ok(outcome)
+}
+
+fn source_has_unrepaired_blocking_failure(
+    conn: &mut SqliteConnection,
+    recurring_transaction_id: &str,
+) -> Result<bool> {
+    Ok(find_unresolved_failure(conn, recurring_transaction_id)
+        .map_err(StorageError::from)?
+        .is_some_and(|failure| failure.repaired_at.is_none()))
 }

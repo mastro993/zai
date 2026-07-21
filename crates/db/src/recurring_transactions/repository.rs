@@ -1,7 +1,9 @@
 use super::create::{
     create_recurring_transaction, find_open_schedule_revision, find_open_template_revision,
 };
-use super::fulfill::process_one_due_occurrence;
+use super::fulfill::{
+    has_eligible_due_work as query_has_eligible_due_work, process_one_due_occurrence,
+};
 use super::queries::{
     find_provenance_by_transaction, find_unresolved_failure, get_occurrence_head,
     get_recurring_transaction, list_due_heads, list_failure_history, list_feed, list_occurrences,
@@ -27,6 +29,7 @@ use zai_core::features::recurring_transactions::{
 pub struct RecurringTransactionsRepository {
     pool: Arc<DbPool>,
     writer: WriteHandle,
+    #[allow(dead_code)]
     clock: Arc<dyn CalendarClock>,
     alert_publisher: Arc<dyn DomainAlertEventPublisher>,
 }
@@ -255,18 +258,23 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
             .await
     }
 
+    async fn has_eligible_due_work(&self, observed_local: NaiveDateTime) -> Result<bool> {
+        let pool = Arc::clone(&self.pool);
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            query_has_eligible_due_work(&mut conn, observed_local).map_err(Into::into)
+        })
+        .await
+    }
+
     async fn process_one_due_occurrence(
         &self,
         observed_local: NaiveDateTime,
     ) -> Result<ProcessOneOutcome> {
-        let clock = Arc::clone(&self.clock);
         let publisher = Arc::clone(&self.alert_publisher);
         let outcome = self
             .writer
-            .exec(move |conn| {
-                let now = clock.sample();
-                process_one_due_occurrence(conn, observed_local, now)
-            })
+            .exec(move |conn| process_one_due_occurrence(conn, observed_local, observed_local))
             .await?;
         publish_created_alerts(publisher.as_ref(), &outcome);
         Ok(outcome.value)
