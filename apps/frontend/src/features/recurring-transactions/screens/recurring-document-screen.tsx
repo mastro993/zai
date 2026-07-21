@@ -9,6 +9,7 @@ import { ScreenBase } from "@/components/screen-base";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 import type { TransactionCategory } from "@/features/categories/types/model";
 
+import { getRecurringTransactionOccurrences } from "../commands/recurring-transactions";
 import {
   editRecurringCount,
   editRecurringSchedule,
@@ -28,6 +29,7 @@ import {
 import type {
   RecurringEditFormValues,
   RecurringMutationOutcome,
+  RecurringOccurrence,
   RecurringTransactionDocument,
 } from "../types/recurring-transaction";
 
@@ -75,6 +77,76 @@ const canEditConfiguration = (document: RecurringTransactionDocument): boolean =
     (lifecycle === "active" || lifecycle === "paused") && !document.occurrenceSummary.needsAttention
   );
 };
+
+function OccurrenceLinks({
+  recurringTransactionId,
+  initialItems,
+  initialNextCursor,
+}: {
+  recurringTransactionId: string;
+  initialItems: Array<RecurringOccurrence>;
+  initialNextCursor?: string | null;
+}) {
+  const [items, setItems] = useState(initialItems);
+  const [nextCursor, setNextCursor] = useState(initialNextCursor);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const loadMore = async () => {
+    if (!nextCursor || isLoadingMore) {
+      return;
+    }
+    setIsLoadingMore(true);
+    const result = await getRecurringTransactionOccurrences(recurringTransactionId, 50, nextCursor);
+    if (Result.isFailure(result)) {
+      setError(result.error.message);
+      setIsLoadingMore(false);
+      return;
+    }
+    setItems((current) => [...current, ...result.value.items]);
+    setNextCursor(result.value.nextCursor);
+    setIsLoadingMore(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      <ul className="space-y-2">
+        {items.map((occurrence) => (
+          <li key={`${occurrence.scheduleRevisionId}:${occurrence.ordinal}`}>
+            <Link
+              to="/cash-flow/transactions"
+              className="flex flex-wrap items-center justify-between gap-2 text-sm underline-offset-4 hover:underline"
+              aria-label={`Open transactions list for occurrence ${occurrence.fulfillmentPosition}`}
+            >
+              <span>
+                #{occurrence.fulfillmentPosition} · {formatLocalDateTime(occurrence.scheduledLocal)}{" "}
+                · {occurrence.transactionId}
+              </span>
+              <Badge variant="outline">
+                {occurrence.fulfillmentKind === "adopted" ? "Adopted" : "Generated"}
+              </Badge>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      {nextCursor ? (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void loadMore()}
+          disabled={isLoadingMore}
+        >
+          {isLoadingMore ? "Loading…" : "Load more linked transactions"}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
 
 export function RecurringDocumentScreen({
   document: initialDocument,
@@ -262,10 +334,11 @@ export function RecurringDocumentScreen({
           state={links.state}
           emptyMessage="No fulfilled transactions linked yet."
         >
-          <p className="text-sm">
-            {links.occurrences.items.length} linked occurrence
-            {links.occurrences.items.length === 1 ? "" : "s"}
-          </p>
+          <OccurrenceLinks
+            recurringTransactionId={recurringTransaction.id}
+            initialItems={links.occurrences.items}
+            initialNextCursor={links.occurrences.nextCursor}
+          />
         </Section>
 
         <Section

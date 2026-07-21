@@ -47,7 +47,25 @@ const documentFixture = {
     nextScheduledLocal: "2026-09-01T09:00:00",
     needsAttention: false,
   },
-  links: { state: "empty" as const, occurrences: { items: [] } },
+  links: {
+    state: "ready" as const,
+    occurrences: {
+      items: [
+        {
+          recurringTransactionId: "rt-1",
+          scheduleRevisionId: "sched-1",
+          ordinal: 1,
+          scheduledLocal: "2026-08-01T09:00:00",
+          templateRevisionId: "tmpl-1",
+          fulfilledAt: "2026-08-01T09:00:00",
+          fulfillmentPosition: 1,
+          transactionId: "txn-1",
+          fulfillmentKind: "adopted" as const,
+          recurringAlertId: null,
+        },
+      ],
+    },
+  },
   failures: { state: "empty" as const, history: { items: [] } },
   budgetImpact: {
     state: "unavailable" as const,
@@ -73,6 +91,9 @@ vi.mock("@/features/recurring-transactions/commands/recurring-transactions", asy
       ),
     ),
     getRecurringTransaction: vi.fn(() => Promise.resolve(Result.succeed(documentFixture))),
+    getRecurringTransactionOccurrences: vi.fn(() =>
+      Promise.resolve(Result.succeed(documentFixture.links.occurrences)),
+    ),
     createRecurringTransaction: vi.fn(() =>
       Promise.resolve(Result.succeed({ outcome: "succeeded", document: documentFixture })),
     ),
@@ -167,6 +188,7 @@ describe("recurring screen navigation", () => {
     expect(screen.getByLabelText("Lifecycle")).toBeTruthy();
     expect(screen.getByLabelText("Occurrence summary")).toBeTruthy();
     expect(screen.getByLabelText("Links")).toBeTruthy();
+    expect(screen.getByText(/Adopted/)).toBeTruthy();
     expect(screen.getByLabelText("Failures")).toBeTruthy();
     expect(screen.getByLabelText("Budget impact")).toBeTruthy();
     expect(screen.getByText("Back to feed")).toBeTruthy();

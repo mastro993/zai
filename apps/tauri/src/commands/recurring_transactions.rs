@@ -4,9 +4,10 @@ use log::debug;
 use tauri::State;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
-    EditRecurringCount, EditRecurringSchedule, EditRecurringTemplate, NewRecurringTransaction,
-    RecurringCreateOutcome, RecurringFeedResult, RecurringMutationOutcome,
-    RecurringTransactionDocument, RenameRecurringTransaction,
+    AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, EditRecurringCount,
+    EditRecurringSchedule, EditRecurringTemplate, NewRecurringTransaction, RecurringAdoptOutcome,
+    RecurringCreateOutcome, RecurringFeedResult, RecurringMutationOutcome, RecurringOccurrencePage,
+    RecurringTransactionDocument, RenameRecurringTransaction, TransactionRecurringProvenance,
 };
 
 use super::{CommandResult, command_error};
@@ -39,6 +40,40 @@ pub async fn get_recurring_transaction(
         .get_document(&recurring_transaction_id)
         .await
         .map_err(|error| command_error("Failed to load recurring transaction", error))
+}
+
+#[tauri::command]
+pub async fn get_recurring_transaction_occurrences(
+    recurring_transaction_id: String,
+    limit: Option<i64>,
+    cursor: Option<String>,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringOccurrencePage> {
+    debug!(
+        "Getting occurrences for recurring transaction {}...",
+        recurring_transaction_id
+    );
+    state
+        .recurring_transactions_service()
+        .list_linked_occurrences(&recurring_transaction_id, limit, cursor)
+        .await
+        .map_err(|error| command_error("Failed to load recurring occurrences", error))
+}
+
+#[tauri::command]
+pub async fn get_transaction_recurring_provenance(
+    transaction_id: String,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<Option<TransactionRecurringProvenance>> {
+    debug!(
+        "Getting recurring provenance for transaction {}...",
+        transaction_id
+    );
+    state
+        .recurring_transactions_service()
+        .get_transaction_provenance(&transaction_id)
+        .await
+        .map_err(|error| command_error("Failed to load transaction provenance", error))
 }
 
 #[tauri::command]
@@ -116,4 +151,30 @@ pub async fn edit_recurring_count(
         .edit_count(input)
         .await
         .map_err(|error| command_error("Failed to edit recurring count", error))
+}
+
+#[tauri::command]
+pub async fn preview_recurring_adoption(
+    request: AdoptionPreviewRequest,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<AdoptionPreview> {
+    debug!("Previewing recurring adoption...");
+    state
+        .recurring_transactions_service()
+        .preview_adoption(request)
+        .await
+        .map_err(|error| command_error("Failed to preview adoption", error))
+}
+
+#[tauri::command]
+pub async fn adopt_recurring_transaction(
+    request: AdoptRecurringTransaction,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringAdoptOutcome> {
+    debug!("Adopting transaction as recurring occurrence one...");
+    state
+        .recurring_transactions_service()
+        .adopt(request)
+        .await
+        .map_err(|error| command_error("Failed to adopt transaction", error))
 }

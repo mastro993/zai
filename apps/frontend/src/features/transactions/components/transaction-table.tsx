@@ -1,4 +1,4 @@
-import { Delete02Icon, PencilEdit02Icon } from "@hugeicons/core-free-icons";
+import { Delete02Icon, PencilEdit02Icon, RepeatIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useRef } from "react";
 
@@ -47,6 +47,7 @@ type TransactionTableProps = {
   onTogglePage: (selectAll: boolean) => void;
   onSelectAllMatching: () => void;
   onEdit: (mode: TransactionFormMode) => void;
+  onAdopt: (transaction: Transaction, trigger: HTMLButtonElement | null) => void;
   onDelete: (transaction: Transaction) => void;
 };
 
@@ -82,6 +83,7 @@ function TransactionTable({
   onTogglePage,
   onSelectAllMatching,
   onEdit,
+  onAdopt,
   onDelete,
 }: TransactionTableProps) {
   const tableRef = useRef<HTMLDivElement>(null);
@@ -209,6 +211,17 @@ function TransactionTable({
                   </span>
                 </TableCell>
                 <TableRowActions>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Adopt ${transactionLabel} as recurring`}
+                    title="Make recurring"
+                    onClick={(event) => {
+                      onAdopt(transaction, event.currentTarget);
+                    }}
+                  >
+                    <HugeiconsIcon icon={RepeatIcon} />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon-sm"

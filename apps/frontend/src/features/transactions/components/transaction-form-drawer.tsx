@@ -23,6 +23,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Link } from "@tanstack/react-router";
+
+import type { TransactionRecurringProvenance } from "@/features/recurring-transactions/types/recurring-transaction";
 
 import {
   combineDateTime,
@@ -99,11 +102,13 @@ function TransactionFormDrawer({
   categories,
   onSubmit,
   open = true,
+  recurringProvenance = null,
 }: {
   mode: TransactionFormMode;
   categories: Array<TransactionCategory>;
   onSubmit: (values: TransactionFormValues) => Promise<void>;
   open?: boolean;
+  recurringProvenance?: TransactionRecurringProvenance | null;
 }) {
   const form = useForm<TransactionFormInput, unknown, TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
@@ -116,12 +121,24 @@ function TransactionFormDrawer({
   const amountErrorId = "transaction-amount-error";
   const dateErrorId = "transaction-date-error";
   const typeErrorId = "transaction-type-error";
+  const visibleSource = recurringProvenance?.source;
 
   return (
     <DrawerContent className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem]">
       <DrawerHeader>
         <DrawerTitle>{title}</DrawerTitle>
         <DrawerDescription>{description}</DrawerDescription>
+        {visibleSource ? (
+          <p className="pt-2 text-sm">
+            <Link
+              to="/cash-flow/recurring/$recurringTransactionId"
+              params={{ recurringTransactionId: visibleSource.id }}
+              className="underline-offset-4 hover:underline"
+            >
+              Part of recurring: {visibleSource.name}
+            </Link>
+          </p>
+        ) : null}
       </DrawerHeader>
       <form
         className="flex min-h-0 flex-1 flex-col"

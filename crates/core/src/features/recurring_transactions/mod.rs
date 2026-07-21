@@ -1,3 +1,4 @@
+mod adopt;
 mod alerts;
 mod contention;
 mod create;
@@ -6,6 +7,7 @@ mod edit;
 mod events;
 mod models;
 mod process;
+mod process_slice;
 mod schedule;
 mod service;
 mod service_edit;
@@ -14,6 +16,7 @@ mod supervisor;
 mod supervisor_tests;
 mod traits;
 
+pub use adopt::*;
 pub use alerts::{
     RECURRING_GENERATION_FAILURE_PRODUCER_KEY, RECURRING_OCCURRENCE_PRODUCER_KEY,
     RECURRING_PROCESS_DELAY_OCCURRENCE_KEY, RECURRING_PROCESS_DELAY_PRODUCER_KEY,

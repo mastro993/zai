@@ -1,3 +1,6 @@
+mod adopt;
+#[cfg(test)]
+mod adopt_tests;
 mod create;
 mod edit;
 #[cfg(test)]
