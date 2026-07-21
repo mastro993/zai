@@ -24,6 +24,20 @@ fn populated_transaction(category_id: Option<String>) -> NewTransaction {
     }
 }
 
+fn seed_category(repo: &TransactionsRepository, category_id: &str) {
+    let conn = &mut get_connection(&repo.pool).expect("connection");
+    diesel::insert_into(transaction_categories::table)
+        .values((
+            transaction_categories::id.eq(category_id),
+            transaction_categories::name.eq("Food"),
+            transaction_categories::role.eq("spending"),
+            transaction_categories::created_at.eq(chrono::Utc::now().naive_utc()),
+            transaction_categories::updated_at.eq(chrono::Utc::now().naive_utc()),
+        ))
+        .execute(conn)
+        .expect("seed category");
+}
+
 fn update_transaction(
     created: &Transaction,
     description: Option<String>,
@@ -95,6 +109,7 @@ async fn update_transaction_clears_category_in_database() {
     let temp_db = TempDb::new();
     let repo = setup_test_repo(temp_db.path());
     let category_id = Uuid::new_v4().to_string();
+    seed_category(&repo, &category_id);
     let created = repo
         .create_transaction(populated_transaction(Some(category_id.clone())))
         .await
@@ -125,6 +140,7 @@ async fn update_transaction_clears_all_nullable_fields_in_database() {
     let temp_db = TempDb::new();
     let repo = setup_test_repo(temp_db.path());
     let category_id = Uuid::new_v4().to_string();
+    seed_category(&repo, &category_id);
     let created = repo
         .create_transaction(populated_transaction(Some(category_id)))
         .await

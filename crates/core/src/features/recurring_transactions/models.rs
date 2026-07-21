@@ -124,7 +124,6 @@ impl FromStr for FulfillmentKind {
 #[serde(rename_all = "camelCase")]
 pub struct RecurringTransaction {
     pub id: String,
-    pub name: String,
     pub lifecycle: RecurringLifecycle,
     pub total_occurrences: Option<i32>,
     pub fulfilled_count: i32,
@@ -201,7 +200,7 @@ pub struct RecurringTemplateRevision {
     pub sequence: i32,
     pub effective_from_local: NaiveDateTime,
     pub effective_until_local: Option<NaiveDateTime>,
-    pub description: Option<String>,
+    pub description: String,
     pub amount: i32,
     pub transaction_type: String,
     pub transaction_category_id: Option<String>,
@@ -211,8 +210,15 @@ pub struct RecurringTemplateRevision {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecurringFeedPage {
-    pub items: Vec<RecurringTransaction>,
+    pub items: Vec<RecurringFeedEntry>,
     pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecurringFeedEntry {
+    pub recurring_transaction: RecurringTransaction,
+    pub description: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -109,11 +109,13 @@ export function RecurringFormDrawer({
       reset(createRecurringFormDefaults());
     }
     onOpenChange(false);
-    queueMicrotask(() => returnFocusRef?.current?.focus());
   });
 
   return (
-    <DrawerContent className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem] data-[swipe-axis=x]:w-[calc(100%-2rem)] sm:data-[swipe-axis=x]:w-96">
+    <DrawerContent
+      className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem] data-[swipe-axis=x]:w-[calc(100%-2rem)] sm:data-[swipe-axis=x]:w-96"
+      finalFocus={returnFocusRef}
+    >
       <DrawerHeader>
         <DrawerTitle>{copy.title}</DrawerTitle>
         <DrawerDescription>{copy.description}</DrawerDescription>
@@ -124,18 +126,109 @@ export function RecurringFormDrawer({
             {configLocked ? (
               <FieldDescription>
                 Schedule, template, and count are locked while this source is stopped, completed, or
-                needs attention. Name can still be updated.
+                needs attention.
               </FieldDescription>
             ) : null}
 
-            <Field data-invalid={Boolean(errors.name)}>
-              <FieldLabel htmlFor="recurring-name">Name</FieldLabel>
-              <Input
-                id="recurring-name"
-                aria-invalid={Boolean(errors.name)}
-                {...register("name")}
+            <Field>
+              <FieldLabel>Type</FieldLabel>
+              <Controller
+                control={control}
+                name="transactionType"
+                render={({ field }) => (
+                  <ToggleGroup
+                    variant="outline"
+                    disabled={configLocked}
+                    value={[field.value ?? "expense"]}
+                    onValueChange={(value) => {
+                      if (value[0]) {
+                        field.onChange(value[0]);
+                      }
+                    }}
+                  >
+                    <ToggleGroupItem value="expense">Expense</ToggleGroupItem>
+                    <ToggleGroupItem value="income">Income</ToggleGroupItem>
+                  </ToggleGroup>
+                )}
               />
-              <FieldError>{errors.name?.message}</FieldError>
+            </Field>
+
+            <Field data-invalid={Boolean(errors.amount)}>
+              <FieldLabel htmlFor="recurring-amount">Amount</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <InputGroupText>€</InputGroupText>
+                </InputGroupAddon>
+                <Controller
+                  control={control}
+                  name="amount"
+                  render={({ field }) => (
+                    <InputGroupInput
+                      id="recurring-amount"
+                      inputMode="decimal"
+                      readOnly={configLocked}
+                      value={field.value}
+                      onChange={field.onChange}
+                      aria-invalid={Boolean(errors.amount)}
+                    />
+                  )}
+                />
+              </InputGroup>
+              <FieldError>{errors.amount?.message}</FieldError>
+            </Field>
+
+            <Field data-invalid={Boolean(errors.description)}>
+              <FieldLabel htmlFor="recurring-description">Description</FieldLabel>
+              <Input
+                id="recurring-description"
+                readOnly={configLocked}
+                aria-invalid={Boolean(errors.description)}
+                {...register("description")}
+              />
+              <FieldError>{errors.description?.message}</FieldError>
+            </Field>
+
+            <Field>
+              <FieldLabel>Category</FieldLabel>
+              {configLocked ? (
+                <Input
+                  id="recurring-category-locked"
+                  readOnly
+                  value={
+                    categories.find(
+                      (category) =>
+                        category.id ===
+                        (mode.type === "edit"
+                          ? mode.document.template.transactionCategoryId
+                          : undefined),
+                    )?.name ?? "Uncategorized"
+                  }
+                />
+              ) : (
+                <Controller
+                  control={control}
+                  name="transactionCategoryId"
+                  render={({ field }) => (
+                    <CategoryDrawerSelect
+                      id="recurring-category"
+                      mode="single"
+                      categories={categories}
+                      value={field.value ?? null}
+                      onChange={(value) => field.onChange(value ?? undefined)}
+                      placeholder="Uncategorized"
+                      ariaLabel="Transaction category"
+                      drawerTitle="Choose category"
+                      clearable
+                      parentOpen={open}
+                    />
+                  )}
+                />
+              )}
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="recurring-notes">Notes</FieldLabel>
+              <Input id="recurring-notes" readOnly={configLocked} {...register("notes")} />
             </Field>
 
             <Field>
@@ -260,105 +353,6 @@ export function RecurringFormDrawer({
                 <FieldError>{errors.totalOccurrences?.message}</FieldError>
               </Field>
             ) : null}
-
-            <Field data-invalid={Boolean(errors.amount)}>
-              <FieldLabel htmlFor="recurring-amount">Amount</FieldLabel>
-              <InputGroup>
-                <InputGroupAddon>
-                  <InputGroupText>€</InputGroupText>
-                </InputGroupAddon>
-                <Controller
-                  control={control}
-                  name="amount"
-                  render={({ field }) => (
-                    <InputGroupInput
-                      id="recurring-amount"
-                      inputMode="decimal"
-                      readOnly={configLocked}
-                      value={field.value}
-                      onChange={field.onChange}
-                      aria-invalid={Boolean(errors.amount)}
-                    />
-                  )}
-                />
-              </InputGroup>
-              <FieldError>{errors.amount?.message}</FieldError>
-            </Field>
-
-            <Field>
-              <FieldLabel>Type</FieldLabel>
-              <Controller
-                control={control}
-                name="transactionType"
-                render={({ field }) => (
-                  <ToggleGroup
-                    variant="outline"
-                    disabled={configLocked}
-                    value={[field.value ?? "expense"]}
-                    onValueChange={(value) => {
-                      if (value[0]) {
-                        field.onChange(value[0]);
-                      }
-                    }}
-                  >
-                    <ToggleGroupItem value="expense">Expense</ToggleGroupItem>
-                    <ToggleGroupItem value="income">Income</ToggleGroupItem>
-                  </ToggleGroup>
-                )}
-              />
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="recurring-description">Description</FieldLabel>
-              <Input
-                id="recurring-description"
-                readOnly={configLocked}
-                {...register("description")}
-              />
-            </Field>
-
-            <Field>
-              <FieldLabel>Category</FieldLabel>
-              {configLocked ? (
-                <Input
-                  id="recurring-category-locked"
-                  readOnly
-                  value={
-                    categories.find(
-                      (category) =>
-                        category.id ===
-                        (mode.type === "edit"
-                          ? mode.document.template.transactionCategoryId
-                          : undefined),
-                    )?.name ?? "Uncategorized"
-                  }
-                />
-              ) : (
-                <Controller
-                  control={control}
-                  name="transactionCategoryId"
-                  render={({ field }) => (
-                    <CategoryDrawerSelect
-                      id="recurring-category"
-                      mode="single"
-                      categories={categories}
-                      value={field.value ?? null}
-                      onChange={(value) => field.onChange(value ?? undefined)}
-                      placeholder="Uncategorized"
-                      ariaLabel="Transaction category"
-                      drawerTitle="Choose category"
-                      clearable
-                      parentOpen={open}
-                    />
-                  )}
-                />
-              )}
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="recurring-notes">Notes</FieldLabel>
-              <Input id="recurring-notes" readOnly={configLocked} {...register("notes")} />
-            </Field>
           </FieldGroup>
         </FieldSet>
         <DrawerFooter>

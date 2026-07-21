@@ -20,6 +20,7 @@
     "test": "pnpm --filter frontend test",
     "type-check": "tsc -b --noEmit",
     "lint": "pnpm --filter frontend lint",
+    "lint:fix": "pnpm --filter frontend lint:fix",
     "format": "pnpm --filter frontend format && cargo fmt --all",
     "format:check": "pnpm --filter frontend format:check && cargo fmt --all --check",
     "check:frontend": "pnpm --filter frontend check",

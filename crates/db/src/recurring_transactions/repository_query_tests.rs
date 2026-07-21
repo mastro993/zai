@@ -68,7 +68,7 @@ async fn feed_and_due_discovery_use_indexes_and_cursor_paging() {
     for index in 0..3 {
         let seed = SeedRecurringSource {
             id: format!("rt-{index}"),
-            name: format!("Rent {index}"),
+            description: format!("Rent {index}"),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -123,7 +123,7 @@ async fn provenance_and_failure_queries_are_indexed() {
 
     let seed = SeedRecurringSource {
         id: "rt-prov".into(),
-        name: "Salary".into(),
+        description: "Salary".into(),
         lifecycle: "active",
         total_occurrences: Some(12),
         fulfilled_count: 1,
@@ -244,7 +244,7 @@ async fn mutations_go_through_serialized_writer_only() {
 
     let seed = SeedRecurringSource {
         id: "rt-writer".into(),
-        name: "Writer path".into(),
+        description: "Writer path".into(),
         lifecycle: "active",
         total_occurrences: None,
         fulfilled_count: 0,
@@ -283,7 +283,6 @@ async fn create_persists_source_revisions_and_head_through_writer() {
     let created = repo
         .create_recurring_transaction(NewRecurringTransaction {
             id: Some("rt-create".into()),
-            name: "  Gym  ".into(),
             schedule: ScheduleRule::Interval {
                 every: 1,
                 unit: ScheduleIntervalUnit::Month,
@@ -291,7 +290,7 @@ async fn create_persists_source_revisions_and_head_through_writer() {
             first_scheduled_local: local(2026, 8, 1, 9, 0),
             total_occurrences: Some(12),
             template: RecurringTemplateInput {
-                description: Some("Membership".into()),
+                description: "Membership".into(),
                 amount: 4500,
                 transaction_type: "expense".into(),
                 transaction_category_id: None,
@@ -302,13 +301,13 @@ async fn create_persists_source_revisions_and_head_through_writer() {
         .expect("create");
 
     assert_eq!(writer.exec_count(), 1);
-    assert_eq!(created.name, "  Gym  ");
     assert_eq!(created.total_occurrences, Some(12));
     assert_eq!(created.fulfilled_count, 0);
 
     let feed = repo.list_feed(10, None).await.expect("feed");
     assert_eq!(feed.items.len(), 1);
-    assert_eq!(feed.items[0].id, "rt-create");
+    assert_eq!(feed.items[0].recurring_transaction.id, "rt-create");
+    assert_eq!(feed.items[0].description, "Membership");
 
     let head = repo
         .get_occurrence_head("rt-create")

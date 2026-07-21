@@ -4,6 +4,8 @@ mod errors;
 #[cfg(test)]
 mod migration_fixture_support;
 #[cfg(test)]
+mod migration_recurring_tests;
+#[cfg(test)]
 mod migration_tests;
 #[cfg(test)]
 mod migration_tests_released;

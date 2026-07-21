@@ -21,7 +21,7 @@ pub fn occurrence_identity_key(
 
 pub fn build_generated_occurrence_alert(
     recurring_transaction_id: &str,
-    recurring_name: &str,
+    recurring_description: &str,
     schedule_revision_id: &str,
     ordinal: i32,
     fulfillment_position: i32,
@@ -34,7 +34,9 @@ pub fn build_generated_occurrence_alert(
         Some(total) => {
             let remaining = (total - fulfillment_position).max(0);
             (
-                format!("{recurring_name} generated occurrence {fulfillment_position} of {total}"),
+                format!(
+                    "{recurring_description} generated occurrence {fulfillment_position} of {total}"
+                ),
                 format!(
                     "Zai created occurrence {fulfillment_position} of {total} for this recurring transaction. {remaining} remaining."
                 ),
@@ -50,7 +52,7 @@ pub fn build_generated_occurrence_alert(
             )
         }
         None => (
-            format!("{recurring_name} generated an occurrence"),
+            format!("{recurring_description} generated an occurrence"),
             "Zai created a scheduled occurrence for this recurring transaction.".to_string(),
             build_rich_data(recurring_transaction_id, transaction_id, None),
         ),

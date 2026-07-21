@@ -51,14 +51,13 @@ function Harness({
 describe("RecurringFormDrawer", () => {
   it("submits a valid create and returns focus to the trigger", async () => {
     const onSubmit = vi.fn(async (values: RecurringFormValues) => {
-      expect(values.name).toBe("Gym");
+      expect(values.description).toBe("Gym");
       expect(values.amount).toBe(4500);
       return Result.succeed({
         outcome: "succeeded",
         document: {
           recurringTransaction: {
             id: "rt-1",
-            name: values.name,
             lifecycle: "active",
             totalOccurrences: null,
             fulfilledCount: 0,
@@ -82,6 +81,7 @@ describe("RecurringFormDrawer", () => {
             effectiveFromLocal: "2026-07-21T10:00:00",
             amount: values.amount,
             transactionType: values.transactionType,
+            description: values.description,
           },
           occurrenceSummary: {
             fulfilledCount: 0,
@@ -106,7 +106,7 @@ describe("RecurringFormDrawer", () => {
 
     render(<Harness onSubmit={onSubmit} />);
 
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Gym" } });
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Gym" } });
     fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "45.00" } });
     fireEvent.click(screen.getByRole("button", { name: "Create recurring transaction" }));
 
@@ -122,7 +122,6 @@ describe("RecurringFormDrawer", () => {
     const document = {
       recurringTransaction: {
         id: "rt-1",
-        name: "Rent",
         lifecycle: "active",
         totalOccurrences: 12,
         fulfilledCount: 2,
@@ -181,7 +180,7 @@ describe("RecurringFormDrawer", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Edit recurring transaction" })).toBeTruthy();
-    expect(screen.getByLabelText("Name")).toHaveProperty("value", "Rent");
+    expect(screen.getByLabelText("Description")).toHaveProperty("value", "Monthly rent");
     expect(screen.getByLabelText("Next occurrence")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
   });

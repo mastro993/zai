@@ -6,34 +6,31 @@ use super::models::{
 use crate::errors::IntoCore;
 use crate::schema::{
     recurring_generation_failures, recurring_occurrence_heads, recurring_occurrences,
-    recurring_transactions,
+    recurring_template_revisions, recurring_transactions,
 };
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use zai_core::features::recurring_transactions::{
-    MAX_FAILURE_LIMIT, MAX_FEED_LIMIT, RecurringFailurePage, RecurringFeedPage,
+    MAX_FAILURE_LIMIT, MAX_FEED_LIMIT, RecurringFailurePage, RecurringFeedEntry, RecurringFeedPage,
     RecurringGenerationFailure, RecurringOccurrence, RecurringOccurrenceHead,
     RecurringOccurrencePage, RecurringTransaction,
 };
 use zai_core::{Error, Result};
 
 pub fn normalize_feed_limit(limit: i64) -> Result<i64> {
-    if limit < 1 {
-        return Err(Error::InvalidData(
-            "Feed limit must be at least 1".to_string(),
-        ));
-    }
-    Ok(limit.min(MAX_FEED_LIMIT))
+    normalize_limit(limit, MAX_FEED_LIMIT, "Feed limit")
 }
 
 pub fn normalize_failure_limit(limit: i64) -> Result<i64> {
+    normalize_limit(limit, MAX_FAILURE_LIMIT, "Failure history limit")
+}
+
+fn normalize_limit(limit: i64, max: i64, label: &str) -> Result<i64> {
     if limit < 1 {
-        return Err(Error::InvalidData(
-            "Failure history limit must be at least 1".to_string(),
-        ));
+        return Err(Error::InvalidData(format!("{label} must be at least 1")));
     }
-    Ok(limit.min(MAX_FAILURE_LIMIT))
+    Ok(limit.min(max))
 }
 
 pub fn encode_feed_cursor(updated_at: NaiveDateTime, id: &str) -> String {
@@ -138,25 +135,38 @@ pub fn list_feed(
     }
 
     let rows = query
+        .inner_join(
+            recurring_template_revisions::table.on(
+                recurring_template_revisions::recurring_transaction_id
+                    .eq(recurring_transactions::id)
+                    .and(recurring_template_revisions::effective_until_local.is_null()),
+            ),
+        )
         .order((
             recurring_transactions::updated_at.desc(),
             recurring_transactions::id.desc(),
         ))
         .limit(limit + 1)
-        .select(RecurringTransactionRow::as_select())
-        .load::<RecurringTransactionRow>(conn)
+        .select((
+            RecurringTransactionRow::as_select(),
+            recurring_template_revisions::description,
+        ))
+        .load::<(RecurringTransactionRow, String)>(conn)
         .into_core()?;
 
     let has_more = rows.len() as i64 > limit;
     let mut items = Vec::new();
-    let mut last_row: Option<RecurringTransactionRow> = None;
+    let mut last_row: Option<(RecurringTransactionRow, String)> = None;
     for row in rows.into_iter().take(limit as usize) {
         last_row = Some(row.clone());
-        items.push(build_recurring_transaction(row)?);
+        items.push(RecurringFeedEntry {
+            recurring_transaction: build_recurring_transaction(row.0)?,
+            description: row.1,
+        });
     }
 
     let next_cursor = if has_more {
-        last_row.map(|row| encode_feed_cursor(row.updated_at, &row.id))
+        last_row.map(|(row, _)| encode_feed_cursor(row.updated_at, &row.id))
     } else {
         None
     };

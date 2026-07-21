@@ -163,7 +163,7 @@ fn fulfill_generated_occurrence(
     let transaction_id = Uuid::new_v4().to_string();
     let new_transaction = NewTransaction {
         id: Some(transaction_id.clone()),
-        description: template.description.clone(),
+        description: Some(template.description.clone()),
         amount: template.amount,
         transaction_date: scheduled_local,
         transaction_type: template.transaction_type.clone(),
@@ -197,7 +197,7 @@ fn fulfill_generated_occurrence(
 
     let alert = build_generated_occurrence_alert(
         &recurring.id,
-        &recurring.name,
+        &template.description,
         &schedule.id,
         head.next_ordinal,
         fulfillment_position,

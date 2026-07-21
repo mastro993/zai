@@ -16,7 +16,7 @@ async fn generated_transaction_retains_scheduled_local_after_late_catch_up() {
         &repo,
         SeedRecurringSource {
             id: "rt-late".into(),
-            name: "Late rent".into(),
+            description: "Late rent".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -70,7 +70,7 @@ async fn processes_due_work_in_scheduled_local_then_identity_order() {
         &repo,
         SeedRecurringSource {
             id: "rt-b".into(),
-            name: "Second".into(),
+            description: "Second".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -87,7 +87,7 @@ async fn processes_due_work_in_scheduled_local_then_identity_order() {
         &repo,
         SeedRecurringSource {
             id: "rt-a".into(),
-            name: "First".into(),
+            description: "First".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -104,7 +104,7 @@ async fn processes_due_work_in_scheduled_local_then_identity_order() {
         &repo,
         SeedRecurringSource {
             id: "rt-c".into(),
-            name: "Earlier".into(),
+            description: "Earlier".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -187,7 +187,7 @@ async fn open_failure_blocks_only_that_source() {
         &repo,
         SeedRecurringSource {
             id: "rt-blocked".into(),
-            name: "Blocked".into(),
+            description: "Blocked".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -204,7 +204,7 @@ async fn open_failure_blocks_only_that_source() {
         &repo,
         SeedRecurringSource {
             id: "rt-ok".into(),
-            name: "Healthy".into(),
+            description: "Healthy".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,
@@ -288,7 +288,7 @@ async fn advancing_across_schedule_revision_recomputes_under_new_rule() {
         &repo,
         SeedRecurringSource {
             id: "rt-rev".into(),
-            name: "Revision boundary".into(),
+            description: "Revision boundary".into(),
             lifecycle: "active",
             total_occurrences: None,
             fulfilled_count: 0,

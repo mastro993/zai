@@ -9,10 +9,10 @@ import {
 describe("recurring transaction schemas", () => {
   it("rejects privileged processing fields on create payloads", () => {
     const result = newRecurringTransactionSchema.safeParse({
-      name: "Rent",
       schedule: { type: "interval", every: 1, unit: "month" },
       firstScheduledLocal: "2026-08-01T09:00:00",
       template: {
+        description: "Rent",
         amount: 1000,
         transactionType: "expense",
       },
@@ -24,7 +24,6 @@ describe("recurring transaction schemas", () => {
 
   it("accepts a guided create form for interval and finite totals", () => {
     const result = recurringFormSchema.safeParse({
-      name: "Gym",
       scheduleKind: "interval",
       intervalEvery: "1",
       intervalUnit: "month",
@@ -33,6 +32,7 @@ describe("recurring transaction schemas", () => {
       totalMode: "finite",
       totalOccurrences: "12",
       amount: "45.00",
+      description: "Gym",
       transactionType: "expense",
     });
     expect(result.success).toBe(true);
@@ -45,7 +45,6 @@ describe("recurring transaction schemas", () => {
     const result = recurringTransactionDocumentSchema.safeParse({
       recurringTransaction: {
         id: "rt-1",
-        name: "Rent",
         lifecycle: "active",
         totalOccurrences: 12,
         fulfilledCount: 0,
@@ -69,6 +68,7 @@ describe("recurring transaction schemas", () => {
         effectiveFromLocal: "2026-08-01T09:00:00",
         amount: 120000,
         transactionType: "expense",
+        description: "Rent",
       },
       occurrenceSummary: {
         fulfilledCount: 0,

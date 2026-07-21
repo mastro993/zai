@@ -81,19 +81,31 @@ determine its contribution; a transaction may match while contributing nothing.
 
 **Recurring transaction**:
 A retained schedule and transaction template that produces linked transactions
-on due occurrences through its lifecycle.
-_Avoid_: Recurrent transaction, scheduled transaction
+on due occurrences through its lifecycle. It has no separate name; its
+user-facing label is the template description.
+_Avoid_: Recurrent transaction, scheduled transaction, recurring transaction
+name
 
-**Recurring transaction name**:
-The required, trimmed, case-insensitively unique name among non-tombstoned
-recurring transactions, independent from the optional description copied into
-generated transactions. A tombstone releases the name; stopped and completed
-history retains it.
+**Recurring transaction description**:
+The required, trimmed, non-empty description on the recurring transaction
+template. It is the only user-facing label for the recurring transaction and is
+copied into each generated transaction as that transaction's description.
+Descriptions need not be unique among recurring transactions.
+_Avoid_: Recurring transaction name, title
+
+**Recurring transaction creation**:
+Persisting a new recurring transaction from a transaction template plus a
+required schedule. Creation does not insert a transaction by itself; due
+occurrences, including the first when already due or in the past, are fulfilled
+through generation, including catch-up. The first scheduled occurrence may be
+past, present, or future. Automatically generated catch-up occurrences still
+create recurring occurrence alerts; adopted occurrences stay silent.
 
 **Catch-up generation**:
 The creation of every due, not-yet-created recurring transaction occurrence after
-Zai becomes able to process schedules again. Generated transactions retain their
-originally scheduled local date and time regardless of what initiates processing.
+Zai becomes able to process schedules again, stopping when a finite total is
+reached. Generated transactions retain their originally scheduled local date and
+time regardless of what initiates processing.
 
 **Scheduled occurrence**:
 A single due instance identified by a floating local calendar date and time,
@@ -108,6 +120,17 @@ calendar days, weeks, months, or years from its first scheduled occurrence.
 **Monthly-day recurrence**:
 A recurring transaction rule that schedules one occurrence on a selected day
 number of every month, independently of when the rule was created.
+
+**Recurring schedule**:
+The required timing rule for a recurring transaction: either an interval
+recurrence or a monthly-day recurrence, a first scheduled occurrence, and an
+optional finite total. These are the only schedule kinds.
+
+**Finite recurrence**:
+A recurring transaction limited to a configured total of N fulfilled
+occurrences, where N is a positive integer and the first occurrence counts as
+1 of N. Automatic generation and adopted occurrences both consume the total.
+Without a total, the recurrence is infinite.
 
 **Calendar-clamped occurrence**:
 An occurrence whose anchored day does not exist in its target month or year and
@@ -138,9 +161,12 @@ record and occurrence links remain only for data integrity and duplicate
 prevention; it can never generate occurrences or resume.
 
 **Recurring transaction template**:
-The transaction payload copied into future generated transactions. Template
-changes affect only future occurrences; each generated transaction remains an
-independently editable snapshot linked to its recurring transaction.
+The transaction payload copied into future generated transactions: required
+description, amount, type, optional category, and optional notes. It has no
+transaction date or time; each fulfillment takes those from its scheduled
+occurrence. Template changes affect only future occurrences; each generated
+transaction remains an independently editable snapshot linked to its recurring
+transaction.
 
 **Fulfilled occurrence**:
 A scheduled occurrence linked to exactly one transaction, either by automatic
