@@ -19,7 +19,7 @@ export const parseDomainAlertListPage = (value: unknown): DomainAlertListPage | 
 
 export const parseDomainAlertEvent = parseEvent;
 
-export const isUnreadAlert = (alert: DomainAlert): boolean => !alert.readAt;
+export const isUnreadAlert = (alert: DomainAlert): boolean => !alert.readAt && !alert.resolvedAt;
 
 export const isNavigableAlertDestination = (
   destination: DomainAlert["destination"],

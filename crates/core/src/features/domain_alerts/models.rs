@@ -86,7 +86,9 @@ pub struct DomainAlert {
     pub destination: Option<DomainAlertDestination>,
     pub data: Option<DomainAlertRichData>,
     pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
     pub read_at: Option<NaiveDateTime>,
+    pub resolved_at: Option<NaiveDateTime>,
 }
 
 impl NewDomainAlert {

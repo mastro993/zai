@@ -1,7 +1,7 @@
 use super::insert::insert_domain_alert;
 use super::lifecycle::{
     mark_all_domain_alerts_read, mark_domain_alert_read_with_outcome,
-    mark_domain_alert_unread_with_outcome,
+    mark_domain_alert_unread_with_outcome, resolve_domain_alert,
 };
 use super::list::{list_domain_alerts_from_pool, unread_domain_alert_count_from_pool};
 use crate::connection::DbPool;
@@ -115,6 +115,18 @@ impl DomainAlertsRepository {
         let outcome = self
             .writer
             .exec(move |conn| mark_domain_alert_unread_with_outcome(conn, &id))
+            .await?;
+        if outcome.changed {
+            self.publish_state_changed();
+        }
+        Ok(outcome)
+    }
+
+    pub async fn resolve_with_outcome(&self, id: &str) -> Result<DomainAlertLifecycleOutcome> {
+        let id = id.to_string();
+        let outcome = self
+            .writer
+            .exec(move |conn| resolve_domain_alert(conn, &id))
             .await?;
         if outcome.changed {
             self.publish_state_changed();

@@ -10,7 +10,9 @@ const fixedAlerts = {
       title: "Budget warning",
       body: "Spending exceeded 80% of allowance.",
       createdAt: "2026-07-14T10:00:00",
+      updatedAt: "2026-07-14T10:00:00",
       readAt: null,
+      resolvedAt: null,
       destination: {
         type: "budget",
         budgetId: "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
@@ -396,6 +398,7 @@ test.describe("alerts ledger", () => {
                 occurrenceKey: "period-2",
                 title: "Older warning",
                 createdAt: "2026-07-13T10:00:00",
+                updatedAt: "2026-07-13T10:00:00",
               },
             ],
             nextCursor: null,

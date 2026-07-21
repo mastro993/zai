@@ -38,9 +38,12 @@ pub fn mark_domain_alert_read_with_outcome(
             .map_err(StorageError::CoreError);
     }
 
-    let read_at = chrono::Utc::now().naive_utc();
+    let now = chrono::Utc::now().naive_utc();
     diesel::update(domain_alerts::table.filter(domain_alerts::id.eq(id)))
-        .set(domain_alerts::read_at.eq(read_at))
+        .set((
+            domain_alerts::read_at.eq(now),
+            domain_alerts::updated_at.eq(now),
+        ))
         .execute(conn)
         .into_storage()?;
 
@@ -74,8 +77,12 @@ pub fn mark_domain_alert_unread_with_outcome(
             .map_err(StorageError::CoreError);
     }
 
+    let now = chrono::Utc::now().naive_utc();
     diesel::update(domain_alerts::table.filter(domain_alerts::id.eq(id)))
-        .set(domain_alerts::read_at.eq(None::<NaiveDateTime>))
+        .set((
+            domain_alerts::read_at.eq(None::<NaiveDateTime>),
+            domain_alerts::updated_at.eq(now),
+        ))
         .execute(conn)
         .into_storage()?;
 
@@ -89,10 +96,49 @@ pub fn mark_domain_alert_unread_with_outcome(
 }
 
 pub fn mark_all_domain_alerts_read(conn: &mut SqliteConnection) -> crate::errors::Result<i64> {
-    let read_at = chrono::Utc::now().naive_utc();
-    diesel::update(domain_alerts::table.filter(domain_alerts::read_at.is_null()))
-        .set(domain_alerts::read_at.eq(read_at))
+    let now = chrono::Utc::now().naive_utc();
+    diesel::update(
+        domain_alerts::table
+            .filter(domain_alerts::read_at.is_null())
+            .filter(domain_alerts::resolved_at.is_null()),
+    )
+    .set((
+        domain_alerts::read_at.eq(now),
+        domain_alerts::updated_at.eq(now),
+    ))
+    .execute(conn)
+    .into_storage()
+    .map(|affected| affected as i64)
+}
+
+pub fn resolve_domain_alert(
+    conn: &mut SqliteConnection,
+    id: &str,
+) -> crate::errors::Result<DomainAlertLifecycleOutcome> {
+    let row = load_alert_row(conn, id)?;
+    if row.resolved_at.is_some() {
+        return build_domain_alert(row)
+            .map(|alert| DomainAlertLifecycleOutcome {
+                alert,
+                changed: false,
+            })
+            .map_err(StorageError::CoreError);
+    }
+
+    let now = chrono::Utc::now().naive_utc();
+    diesel::update(domain_alerts::table.filter(domain_alerts::id.eq(id)))
+        .set((
+            domain_alerts::resolved_at.eq(now),
+            domain_alerts::updated_at.eq(now),
+        ))
         .execute(conn)
-        .into_storage()
-        .map(|affected| affected as i64)
+        .into_storage()?;
+
+    let updated = load_alert_row(conn, id)?;
+    build_domain_alert(updated)
+        .map(|alert| DomainAlertLifecycleOutcome {
+            alert,
+            changed: true,
+        })
+        .map_err(StorageError::CoreError)
 }

@@ -17,7 +17,9 @@ pub struct DomainAlertRow {
     pub destination: Option<String>,
     pub data: Option<String>,
     pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
     pub read_at: Option<NaiveDateTime>,
+    pub resolved_at: Option<NaiveDateTime>,
 }
 
 #[derive(Insertable, Debug, Clone)]
@@ -72,7 +74,9 @@ pub fn build_domain_alert(row: DomainAlertRow) -> Result<DomainAlert> {
         destination,
         data,
         created_at: row.created_at,
+        updated_at: row.updated_at,
         read_at: row.read_at,
+        resolved_at: row.resolved_at,
     })
 }
 

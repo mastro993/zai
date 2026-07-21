@@ -55,6 +55,8 @@ async fn insert_alert(repo: &DomainAlertsRepository, alert: NewDomainAlert) -> D
         destination: None,
         data: None,
         created_at: alert.created_at,
+        updated_at: alert.created_at,
+        resolved_at: None,
         read_at: alert.read_at,
     }
 }
@@ -71,7 +73,10 @@ async fn insert_alert_with_created_at(
     };
     let mut conn = SqliteConnection::establish(db_path).expect("connect");
     diesel::update(domain_alerts::table.filter(domain_alerts::id.eq(created.id)))
-        .set(domain_alerts::created_at.eq(created_at))
+        .set((
+            domain_alerts::created_at.eq(created_at),
+            domain_alerts::updated_at.eq(created_at),
+        ))
         .execute(&mut conn)
         .expect("set created_at");
 }

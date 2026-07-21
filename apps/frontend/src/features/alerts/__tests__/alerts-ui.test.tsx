@@ -56,6 +56,7 @@ const sampleAlert: DomainAlert = {
   title: "Budget warning",
   body: "Spending exceeded 80% of allowance.",
   createdAt: "2026-07-14T10:00:00",
+  updatedAt: "2026-07-14T10:00:00",
   readAt: null,
 };
 
