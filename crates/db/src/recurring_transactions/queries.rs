@@ -338,3 +338,32 @@ pub fn list_unresolved_failures(
         .into_core()?;
     Ok(rows.into_iter().map(build_generation_failure).collect())
 }
+
+pub fn find_unresolved_failure(
+    conn: &mut SqliteConnection,
+    recurring_transaction_id: &str,
+) -> Result<Option<RecurringGenerationFailure>> {
+    let row = recurring_generation_failures::table
+        .filter(
+            recurring_generation_failures::recurring_transaction_id.eq(recurring_transaction_id),
+        )
+        .filter(recurring_generation_failures::resolved_at.is_null())
+        .select(RecurringGenerationFailureRow::as_select())
+        .first::<RecurringGenerationFailureRow>(conn)
+        .optional()
+        .into_core()?;
+    Ok(row.map(build_generation_failure))
+}
+
+pub fn get_occurrence_head(
+    conn: &mut SqliteConnection,
+    recurring_transaction_id: &str,
+) -> Result<Option<RecurringOccurrenceHead>> {
+    let row = recurring_occurrence_heads::table
+        .filter(recurring_occurrence_heads::recurring_transaction_id.eq(recurring_transaction_id))
+        .select(RecurringOccurrenceHeadRow::as_select())
+        .first::<RecurringOccurrenceHeadRow>(conn)
+        .optional()
+        .into_core()?;
+    Ok(row.map(build_occurrence_head))
+}

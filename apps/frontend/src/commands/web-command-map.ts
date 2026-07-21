@@ -4,6 +4,7 @@ import {
 } from "@/features/alerts/commands/web-command-map";
 import { buildBudgetCommandRequestSpec } from "@/features/budgets/commands/web-command-map";
 import { buildCategoryCommandRequestSpec } from "@/features/categories/commands/web-command-map";
+import { buildRecurringCommandRequestSpec } from "@/features/recurring-transactions/commands/web-command-map";
 import {
   buildTransactionCommandRequestSpec,
   buildTransactionsListQuery,
@@ -25,6 +26,7 @@ const FEATURE_WEB_REQUEST_BUILDERS = [
   buildCategoryCommandRequestSpec,
   buildTransactionCommandRequestSpec,
   buildBudgetCommandRequestSpec,
+  buildRecurringCommandRequestSpec,
 ] as const;
 
 export const resolveCashFlowApiBaseUrl = (): string =>

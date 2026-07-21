@@ -1,3 +1,5 @@
+use super::create::NewRecurringTransaction;
+use super::document::{RecurringCreateOutcome, RecurringFeedResult, RecurringTransactionDocument};
 use super::models::{
     RecurringFailurePage, RecurringFeedPage, RecurringGenerationFailure, RecurringOccurrence,
     RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
@@ -39,7 +41,17 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
     async fn list_unresolved_failures(&self, limit: i64)
     -> Result<Vec<RecurringGenerationFailure>>;
 
+    async fn find_unresolved_failure(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<Option<RecurringGenerationFailure>>;
+
     async fn get_recurring_transaction(&self, id: &str) -> Result<RecurringTransaction>;
+
+    async fn get_occurrence_head(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<Option<RecurringOccurrenceHead>>;
 
     async fn find_schedule_revision_at(
         &self,
@@ -52,4 +64,32 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         recurring_transaction_id: &str,
         at_local: NaiveDateTime,
     ) -> Result<Option<RecurringTemplateRevision>>;
+
+    async fn find_open_schedule_revision(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<Option<RecurringScheduleRevision>>;
+
+    async fn find_open_template_revision(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<Option<RecurringTemplateRevision>>;
+
+    async fn create_recurring_transaction(
+        &self,
+        input: NewRecurringTransaction,
+    ) -> Result<RecurringTransaction>;
+}
+
+#[async_trait]
+pub trait RecurringTransactionsServiceTrait: Send + Sync {
+    async fn list_feed(
+        &self,
+        limit: Option<i64>,
+        cursor: Option<String>,
+    ) -> Result<RecurringFeedResult>;
+
+    async fn get_document(&self, id: &str) -> Result<RecurringTransactionDocument>;
+
+    async fn create(&self, input: NewRecurringTransaction) -> Result<RecurringCreateOutcome>;
 }

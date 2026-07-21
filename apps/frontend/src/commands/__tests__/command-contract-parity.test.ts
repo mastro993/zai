@@ -70,6 +70,7 @@ describe("command transport registry parity", () => {
       "apps/frontend/src/features/alerts/commands/web-command-map.ts",
       "apps/frontend/src/features/budgets/commands/web-command-map.ts",
       "apps/frontend/src/features/categories/commands/web-command-map.ts",
+      "apps/frontend/src/features/recurring-transactions/commands/web-command-map.ts",
       "apps/frontend/src/features/transactions/commands/web-command-map.ts",
     ]);
 
@@ -84,6 +85,7 @@ describe("command transport registry parity", () => {
     expect(toSortedArray(BACKEND_COMMAND_NAMES)).toEqual(
       toSortedArray([
         "create_budget",
+        "create_recurring_transaction",
         "create_transaction",
         "create_transaction_category",
         "delete_budget",
@@ -93,6 +95,8 @@ describe("command transport registry parity", () => {
         "get_budget",
         "get_budget_history",
         "get_budgets",
+        "get_recurring_transaction",
+        "get_recurring_transactions",
         "export_transactions_csv",
         "find_existing_duplicate_keys",
         "get_filtered_transaction_ids",
