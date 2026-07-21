@@ -7,6 +7,7 @@ mod edit;
 mod events;
 mod models;
 mod process;
+pub mod process_failpoints;
 mod process_slice;
 mod schedule;
 mod service;

@@ -2,8 +2,9 @@ use super::contention::{ContentionRetryDecision, next_contention_retry};
 use super::process::{
     ProcessOneOutcome, ProcessingSliceOutcome, ProcessingStopReason, ProcessingWorkBudget,
 };
+use super::process_failpoints;
 use super::traits::RecurringTransactionsRepositoryTrait;
-use crate::Result;
+use crate::{Error, Result};
 use chrono::NaiveDateTime;
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
@@ -23,8 +24,7 @@ pub async fn run_processing_slice(
 
     loop {
         if cancelled.is_some_and(|flag| flag.load(std::sync::atomic::Ordering::SeqCst)) {
-            let more_due_remaining = repository
-                .has_eligible_due_work(observed_local)
+            let more_due_remaining = more_due_remaining(repository, observed_local)
                 .await
                 .unwrap_or(true);
             return Ok(ProcessingSliceOutcome {
@@ -37,7 +37,7 @@ pub async fn run_processing_slice(
         }
 
         if committed + already_fulfilled >= max_occurrences {
-            let more_due_remaining = repository.has_eligible_due_work(observed_local).await?;
+            let more_due_remaining = more_due_remaining(repository, observed_local).await?;
             return Ok(ProcessingSliceOutcome {
                 committed,
                 already_fulfilled,
@@ -52,9 +52,13 @@ pub async fn run_processing_slice(
                 committed += 1;
                 contention_started = None;
                 contention_attempt = 0;
+                if process_failpoints::should_fail_after(committed) {
+                    return Err(Error::Repository(
+                        "Injected failure between occurrence slices".to_string(),
+                    ));
+                }
                 if slice_started.elapsed() >= work_budget.max_duration {
-                    let more_due_remaining =
-                        repository.has_eligible_due_work(observed_local).await?;
+                    let more_due_remaining = more_due_remaining(repository, observed_local).await?;
                     return Ok(ProcessingSliceOutcome {
                         committed,
                         already_fulfilled,
@@ -69,8 +73,7 @@ pub async fn run_processing_slice(
                 contention_started = None;
                 contention_attempt = 0;
                 if slice_started.elapsed() >= work_budget.max_duration {
-                    let more_due_remaining =
-                        repository.has_eligible_due_work(observed_local).await?;
+                    let more_due_remaining = more_due_remaining(repository, observed_local).await?;
                     return Ok(ProcessingSliceOutcome {
                         committed,
                         already_fulfilled,
@@ -97,8 +100,7 @@ pub async fn run_processing_slice(
                         tokio::time::sleep(delay).await;
                     }
                     ContentionRetryDecision::Exhausted => {
-                        let more_due_remaining = repository
-                            .has_eligible_due_work(observed_local)
+                        let more_due_remaining = more_due_remaining(repository, observed_local)
                             .await
                             .unwrap_or(true);
                         return Ok(ProcessingSliceOutcome {
@@ -113,5 +115,17 @@ pub async fn run_processing_slice(
             }
             Err(error) => return Err(error),
         }
+    }
+}
+
+async fn more_due_remaining(
+    repository: &dyn RecurringTransactionsRepositoryTrait,
+    observed_local: NaiveDateTime,
+) -> Result<bool> {
+    match repository.has_eligible_due_work(observed_local).await {
+        Ok(value) => Ok(value),
+        // Concurrent BEGIN IMMEDIATE can surface Busy on the follow-up due-head read.
+        Err(error) if error.is_transient_contention() => Ok(true),
+        Err(error) => Err(error),
     }
 }
