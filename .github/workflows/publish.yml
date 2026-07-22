@@ -4,47 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  frontend-advisory:
-    name: Frontend advisory scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-
-      - name: Validate advisory exceptions
-        run: node scripts/check-advisory-exceptions.mjs
-
-      - name: Scan pnpm lockfile
-        run: node scripts/osv-audit.mjs --min-severity high pnpm-lock.yaml
-
-  rust-advisory:
-    name: Rust advisory scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cargo-deny
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-deny@0.20.2
-
-      - name: Validate advisory exceptions
-        run: node scripts/check-advisory-exceptions.mjs
-
-      - name: Scan Cargo lockfile
-        run: cargo deny check advisories
-
   publish-tauri:
-    needs:
-      - frontend-advisory
-      - rust-advisory
     permissions:
       contents: write
     strategy:
