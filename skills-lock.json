@@ -1,18 +1,6 @@
 {
   "version": 1,
   "skills": {
-    "cavecrew": {
-      "source": "JuliusBrussee/caveman",
-      "sourceType": "github",
-      "skillPath": "skills/cavecrew/SKILL.md",
-      "computedHash": "c5527c994fbd4c22b36714e3b124a0f167a533d114ab164fb1d35e2123533917"
-    },
-    "diagnosing-bugs": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
-      "computedHash": "fd6c99466b7ba43be624e6e66ed6d7af2796ded7218f24c83820823977819e22"
-    },
     "heroui-migration": {
       "source": "heroui-inc/heroui",
       "sourceType": "github",
@@ -23,12 +11,6 @@
       "sourceType": "github",
       "skillPath": "skills/heroui-react/SKILL.md",
       "computedHash": "c9e1bb41fbc3cee782faae08bd465ae05cd685a6ed7cc3392464fdf29b3ab467"
-    },
-    "improve": {
-      "source": "shadcn/improve",
-      "sourceType": "github",
-      "skillPath": "skills/improve/SKILL.md",
-      "computedHash": "39a9358732dcff385e9e4d3e60b4547856f834e54a58b35e455aa9bd49928c13"
     },
     "react-hook-form": {
       "source": "pproenca/dot-skills",
