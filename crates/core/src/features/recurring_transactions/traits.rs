@@ -14,6 +14,7 @@ use super::models::{
     RecurringTemplateRevision, RecurringTransaction,
 };
 use super::process::{ProcessOneOutcome, ProcessingSliceOutcome, ProcessingWorkBudget};
+use super::projection::{BudgetProjectionQuery, BudgetProjectionResult};
 use super::repair::{
     GenerationFailureDiagnostics, PreviewRecurringGenerationRepair, RecurringRecoveryOutcome,
     RecurringRepairPreview, RepairRecurringGenerationFailure, RetryRecurringGenerationFailure,
@@ -144,6 +145,14 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
     ) -> Result<(i32, bool)>;
 
     async fn current_schema_version(&self) -> Result<String>;
+
+    async fn load_budget_projection_input(
+        &self,
+        observed_local: NaiveDateTime,
+        horizon_months: u32,
+        include_paused_budgets: bool,
+        focus_recurring_transaction_id: Option<String>,
+    ) -> Result<super::projection::ProjectionComputeInput>;
 }
 
 #[async_trait]
@@ -210,6 +219,9 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
         limit: Option<i64>,
         cursor: Option<String>,
     ) -> Result<RecurringFailurePage>;
+
+    async fn project_budgets(&self, query: BudgetProjectionQuery)
+    -> Result<BudgetProjectionResult>;
 }
 
 /// Internal occurrence processor used by trusted Rust orchestration.

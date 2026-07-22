@@ -2,6 +2,7 @@ import type { CommandDescriptor } from "@/commands/command-descriptor";
 
 import {
   adoptionPreviewSchema,
+  budgetProjectionResultSchema,
   generationFailureDiagnosticsSchema,
   recurringAdoptOutcomeSchema,
   recurringCreateOutcomeSchema,
@@ -54,6 +55,10 @@ export const RECURRING_COMMANDS = {
   get_recurring_transactions: backendCommand(
     "get_recurring_transactions",
     recurringFeedResultSchema,
+  ),
+  get_recurring_budget_projections: backendCommand(
+    "get_recurring_budget_projections",
+    budgetProjectionResultSchema,
   ),
   get_transaction_recurring_provenance: backendCommand(
     "get_transaction_recurring_provenance",

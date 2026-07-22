@@ -152,6 +152,7 @@ pub fn run() {
             commands::recurring_transactions::get_recurring_transactions,
             commands::recurring_transactions::get_recurring_transaction,
             commands::recurring_transactions::get_recurring_transaction_occurrences,
+            commands::recurring_transactions::get_recurring_budget_projections,
             commands::recurring_transactions::get_transaction_recurring_provenance,
             commands::recurring_transactions::create_recurring_transaction,
             commands::recurring_transactions::update_recurring_transaction,

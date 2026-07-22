@@ -14,6 +14,7 @@ use super::queries::{
     get_occurrence_head, get_recurring_transaction, list_due_heads, list_failure_history,
     list_feed, list_occurrences, list_unresolved_failures,
 };
+use super::queries_projection::read_schema_version;
 use super::repair::{apply_generation_repair, preview_template_field_repair};
 use super::repository::{
     RecurringTransactionsRepository, is_competing_fulfillment_unique_violation,
@@ -23,11 +24,10 @@ use crate::blocking::run_blocking;
 use crate::connection::get_connection;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use diesel::sql_types::Text;
-use diesel::{QueryableByName, RunQueryDsl, sql_query};
 use std::sync::Arc;
 use zai_core::Result;
 use zai_core::features::domain_alerts::publish_created_alerts;
+use zai_core::features::recurring_transactions::projection::ProjectionComputeInput;
 use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, NewRecurringTransaction, ProcessOneOutcome, RecurringFailurePage,
     RecurringFeedPage, RecurringGenerationFailure, RecurringLifecycleCommand,
@@ -365,19 +365,28 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
         let pool = Arc::clone(&self.pool);
         run_blocking(move || {
             let mut conn = get_connection(&pool)?;
-            #[derive(QueryableByName)]
-            struct SchemaVersionRow {
-                #[diesel(sql_type = Text)]
-                version: String,
-            }
-            let row = sql_query(
-                "SELECT version FROM __diesel_schema_migrations ORDER BY version DESC LIMIT 1",
+            read_schema_version(&mut conn)
+        })
+        .await
+    }
+
+    async fn load_budget_projection_input(
+        &self,
+        observed_local: NaiveDateTime,
+        horizon_months: u32,
+        include_paused_budgets: bool,
+        focus_recurring_transaction_id: Option<String>,
+    ) -> Result<ProjectionComputeInput> {
+        let pool = Arc::clone(&self.pool);
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            super::queries_projection::load_projection_compute_input(
+                &mut conn,
+                observed_local,
+                horizon_months,
+                include_paused_budgets,
+                focus_recurring_transaction_id,
             )
-            .get_result::<SchemaVersionRow>(&mut conn)
-            .map_err(|error| {
-                zai_core::Error::Database(zai_core::DatabaseError::QueryFailed(error.to_string()))
-            })?;
-            Ok(row.version)
         })
         .await
     }

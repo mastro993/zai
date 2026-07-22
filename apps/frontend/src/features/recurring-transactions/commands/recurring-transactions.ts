@@ -4,6 +4,7 @@ import type { CommandResult } from "@/commands/shared";
 import type {
   AdoptRecurringFormValues,
   AdoptionPreview,
+  BudgetProjectionResult,
   GenerationFailureDiagnostics,
   RecurringAdoptOutcome,
   RecurringCreateOutcome,
@@ -26,6 +27,18 @@ const toBackendLocal = (value: string): string => {
     return `${value}:00`;
   }
   return value;
+};
+
+export const getRecurringBudgetProjections = (input: {
+  horizonMonths: number;
+  includePausedBudgets?: boolean;
+  focusRecurringTransactionId?: string;
+}): CommandResult<BudgetProjectionResult> => {
+  return invokeDecodedCommand(RECURRING_COMMANDS.get_recurring_budget_projections, {
+    horizonMonths: input.horizonMonths,
+    includePausedBudgets: input.includePausedBudgets ?? false,
+    focusRecurringTransactionId: input.focusRecurringTransactionId,
+  });
 };
 
 export const buildScheduleRule = (

@@ -40,7 +40,10 @@ mod process_lifecycle_race_tests;
 mod process_test_support;
 #[cfg(test)]
 mod process_tests;
+#[cfg(test)]
+mod projection_tests;
 mod queries;
+mod queries_projection;
 mod repair;
 #[cfg(test)]
 mod repair_tests;

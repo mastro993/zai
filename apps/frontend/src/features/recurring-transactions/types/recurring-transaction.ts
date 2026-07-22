@@ -12,6 +12,7 @@ import {
   TRANSACTION_TYPES,
 } from "./recurring-constants";
 import { recurringFailuresSectionSchema } from "./recurring-failure";
+import { budgetProjectionResultSchema } from "./budget-projection";
 
 export {
   RECURRING_LIFECYCLES,
@@ -19,6 +20,13 @@ export {
   SECTION_STATES,
   TRANSACTION_TYPES,
 } from "./recurring-constants";
+export {
+  budgetPeriodForecastSchema,
+  budgetProjectionResultSchema,
+  projectedOccurrenceAttributionSchema,
+  projectionSourceErrorSchema,
+  type BudgetProjectionResult,
+} from "./budget-projection";
 export {
   generationFailureDiagnosticsSchema,
   recurringFailurePageSchema,
@@ -210,6 +218,7 @@ export const recurringLinksSectionSchema = z.object({
 export const recurringBudgetImpactSectionSchema = z.object({
   state: z.enum(SECTION_STATES),
   message: z.string().optional(),
+  projection: budgetProjectionResultSchema.optional(),
 });
 
 export const recurringTransactionDocumentSchema = withPrivilegedRejection({

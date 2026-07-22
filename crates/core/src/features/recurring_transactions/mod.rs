@@ -10,11 +10,13 @@ mod models;
 mod process;
 pub mod process_failpoints;
 mod process_slice;
+pub mod projection;
 mod repair;
 mod schedule;
 mod service;
 mod service_edit;
 mod service_lifecycle;
+mod service_projection;
 mod service_recovery;
 mod supervisor;
 #[cfg(test)]
@@ -47,6 +49,12 @@ pub use models::*;
 pub use process::{
     DEFAULT_PROCESS_MAX_DURATION, DEFAULT_PROCESS_MAX_OCCURRENCES, ProcessOneOutcome,
     ProcessingSliceOutcome, ProcessingStopReason, ProcessingWorkBudget,
+};
+pub use projection::{
+    BudgetPeriodForecast, BudgetProjectionQuery, BudgetProjectionResult,
+    ProjectedOccurrenceAttribution, ProjectionSourceError, ProjectionSourceErrorKind,
+    ProjectionWindow, compute_budget_projection, exclusive_through_local, projection_window,
+    signed_contribution,
 };
 pub use repair::*;
 pub use schedule::{advance_head_past_observation, scheduled_local_at, validate_schedule_rule};
