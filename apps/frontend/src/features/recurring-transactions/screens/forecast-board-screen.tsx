@@ -91,7 +91,7 @@ export function ForecastBoardScreen({ initialProjection }: ForecastBoardScreenPr
                 void refresh(horizonMonths, checked === true);
               }}
             />
-            <Label htmlFor="include-paused-budgets">Include paused budgets</Label>
+            <Label htmlFor="include-paused-budgets">Include paused budgets or history</Label>
           </div>
         </div>
       }

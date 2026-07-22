@@ -278,7 +278,9 @@ describe("forecast board screen", () => {
     expect(screen.getByText(/Coverage full period/)).toBeTruthy();
     expect(screen.getByText(/Coverage partial/)).toBeTruthy();
     expect(screen.getByLabelText("Horizon")).toBeTruthy();
-    expect(screen.getByRole("checkbox", { name: "Include paused budgets" })).toBeTruthy();
+    expect(
+      screen.getByRole("checkbox", { name: "Include paused budgets or history" }),
+    ).toBeTruthy();
   });
 
   it("moves focus across matrix cells with arrow keys", async () => {
@@ -341,7 +343,7 @@ describe("forecast board screen", () => {
     });
 
     projectionState.mode = "refreshFail";
-    fireEvent.click(screen.getByRole("checkbox", { name: "Include paused budgets" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Include paused budgets or history" }));
     expect(await screen.findByText("Refresh failed")).toBeTruthy();
     expect(screen.getByRole("table", { name: "Budget forecast matrix" })).toBeTruthy();
   });
