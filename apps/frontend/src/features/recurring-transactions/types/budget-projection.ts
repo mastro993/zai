@@ -57,4 +57,6 @@ export const budgetProjectionResultSchema = z.object({
   sourceErrors: z.array(projectionSourceErrorSchema),
 });
 
+export type ProjectionSourceErrorKind = z.infer<typeof projectionSourceErrorKindSchema>;
+export type BudgetPeriodForecast = z.infer<typeof budgetPeriodForecastSchema>;
 export type BudgetProjectionResult = z.infer<typeof budgetProjectionResultSchema>;

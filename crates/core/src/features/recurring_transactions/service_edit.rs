@@ -89,10 +89,7 @@ impl RecurringTransactionsService {
             description_changed && rename_allowed && !config_changed
         };
 
-        if (config_changed && !config_allowed)
-            || (description_changed && !rename_allowed)
-            || (description_changed && config_changed && !config_allowed)
-        {
+        if (config_changed && !config_allowed) || (description_changed && !rename_allowed) {
             let reason = if generation_blocked
                 && matches!(
                     recurring.lifecycle,

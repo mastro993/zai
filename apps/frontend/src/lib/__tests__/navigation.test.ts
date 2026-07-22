@@ -27,12 +27,20 @@ describe("resolveScreenBreadcrumbs", () => {
 });
 
 describe("cash flow navigation", () => {
-  it("places recurring between budgets and categories", () => {
+  it("places forecast between recurring and categories", () => {
     expect(cashFlowNavigation?.subItems?.map((item) => item.title)).toEqual([
       "Transactions",
       "Budgets",
       "Recurring",
+      "Forecast",
       "Categories",
+    ]);
+  });
+
+  it("resolves forecast breadcrumbs", () => {
+    expect(resolveScreenBreadcrumbs("/cash-flow/forecast")).toEqual([
+      { label: "Cash flow", href: "/cash-flow" },
+      { label: "Forecast" },
     ]);
   });
 });
