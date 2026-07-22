@@ -2,6 +2,13 @@ import { invokeDecodedCommand } from "@/commands/shared";
 import type { CommandResult } from "@/commands/shared";
 
 import type {
+  RecurringBulkAction,
+  RecurringBulkExecuteResult,
+  RecurringBulkItem,
+  RecurringBulkPreflight,
+  RecurringMatchingIds,
+} from "../types/recurring-bulk";
+import type {
   AdoptRecurringFormValues,
   AdoptionPreview,
   GenerationFailureDiagnostics,
@@ -294,5 +301,27 @@ export const retryRecurringGenerationFailure = (
       recurringTransactionId,
       expectedRevision,
     },
+  });
+};
+
+export const getMatchingRecurringTransactionIds = (): CommandResult<RecurringMatchingIds> => {
+  return invokeDecodedCommand(RECURRING_COMMANDS.get_matching_recurring_transaction_ids, {});
+};
+
+export const preflightRecurringBulk = (
+  action: RecurringBulkAction,
+  items: Array<RecurringBulkItem>,
+): CommandResult<RecurringBulkPreflight> => {
+  return invokeDecodedCommand(RECURRING_COMMANDS.preflight_recurring_bulk, {
+    request: { action, items },
+  });
+};
+
+export const executeRecurringBulk = (
+  action: RecurringBulkAction,
+  items: Array<RecurringBulkItem>,
+): CommandResult<RecurringBulkExecuteResult> => {
+  return invokeDecodedCommand(RECURRING_COMMANDS.execute_recurring_bulk, {
+    request: { action, items },
   });
 };

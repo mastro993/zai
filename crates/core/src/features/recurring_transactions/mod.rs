@@ -1,5 +1,6 @@
 mod adopt;
 mod alerts;
+mod bulk;
 mod contention;
 mod create;
 mod document;
@@ -13,6 +14,7 @@ mod process_slice;
 mod repair;
 mod schedule;
 mod service;
+mod service_bulk;
 mod service_edit;
 mod service_lifecycle;
 mod service_recovery;
@@ -28,6 +30,7 @@ pub use alerts::{
     RECURRING_PROCESS_DELAY_PRODUCER_KEY, build_generated_occurrence_alert,
     build_generation_failure_alert, build_process_delay_alert, occurrence_identity_key,
 };
+pub use bulk::*;
 pub use contention::{
     CONTENTION_RETRY_DELAYS_MS, CONTENTION_TOTAL_BUDGET, ContentionRetryDecision,
     next_contention_retry,

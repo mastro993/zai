@@ -1,6 +1,9 @@
 use super::adopt::{
     AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, count_later_due_occurrences,
 };
+use super::bulk::{
+    RecurringBulkExecuteResult, RecurringBulkPreflight, RecurringBulkRequest, RecurringMatchingIds,
+};
 use super::create::{NewRecurringTransaction, normalize_template_description};
 use super::document::{
     RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedItem, RecurringFeedResult,
@@ -54,7 +57,7 @@ impl RecurringTransactionsService {
         *self.wake.write().expect("wake lock") = Some(wake);
     }
 
-    async fn compose_document(
+    pub(super) async fn compose_document(
         &self,
         recurring: RecurringTransaction,
     ) -> Result<RecurringTransactionDocument> {
@@ -130,7 +133,7 @@ impl RecurringTransactionsService {
         })
     }
 
-    fn assign_id(input_id: Option<String>) -> Result<String> {
+    pub(super) fn assign_id(input_id: Option<String>) -> Result<String> {
         match input_id.as_deref().map(str::trim) {
             Some("") => Err(Error::InvalidData(
                 "Recurring transaction id cannot be blank".into(),
@@ -352,30 +355,26 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
             .await
     }
 
-    async fn adopt(&self, mut input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {
-        let observed_local = self.clock.sample();
-        input.template.description = normalize_template_description(&input.template.description);
-        input.id = Some(Self::assign_id(input.id)?);
-        input.validate_inputs()?;
+    async fn list_matching_ids(&self) -> Result<RecurringMatchingIds> {
+        self.list_matching_ids_inner().await
+    }
 
-        let created = self
-            .repository
-            .adopt_existing_transaction(input, observed_local)
-            .await?;
+    async fn preflight_bulk(
+        &self,
+        request: RecurringBulkRequest,
+    ) -> Result<RecurringBulkPreflight> {
+        self.preflight_bulk_inner(request).await
+    }
 
-        let _catch_up = self
-            .process_due(observed_local, ProcessingWorkBudget::default_slice(), None)
-            .await?;
-        self.request_processing_wake();
+    async fn execute_bulk(
+        &self,
+        request: RecurringBulkRequest,
+    ) -> Result<RecurringBulkExecuteResult> {
+        self.execute_bulk_inner(request).await
+    }
 
-        let document = self
-            .compose_document(
-                self.repository
-                    .get_recurring_transaction(&created.id)
-                    .await?,
-            )
-            .await?;
-        Ok(RecurringAdoptOutcome::Succeeded { document })
+    async fn adopt(&self, input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {
+        self.adopt_inner(input).await
     }
 }
 

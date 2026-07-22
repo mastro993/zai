@@ -9,6 +9,7 @@ use super::fulfill::{
     has_eligible_due_work as query_has_eligible_due_work, process_one_due_occurrence,
 };
 use super::lifecycle::apply_lifecycle_command;
+use super::matching::list_matching_ids;
 use super::queries::{
     earliest_active_head_after, find_provenance_by_transaction, find_unresolved_failure,
     get_occurrence_head, get_recurring_transaction, list_due_heads, list_failure_history,
@@ -31,10 +32,10 @@ use zai_core::features::domain_alerts::publish_created_alerts;
 use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, NewRecurringTransaction, ProcessOneOutcome, RecurringFailurePage,
     RecurringFeedPage, RecurringGenerationFailure, RecurringLifecycleCommand,
-    RecurringLifecycleUpdate, RecurringOccurrence, RecurringOccurrenceHead,
-    RecurringOccurrencePage, RecurringScheduleRevision, RecurringTemplateInput,
-    RecurringTemplateRevision, RecurringTransaction, RecurringTransactionsRepositoryTrait,
-    UpdateRecurringTransaction,
+    RecurringLifecycleUpdate, RecurringMatchingIdentity, RecurringOccurrence,
+    RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
+    RecurringTemplateInput, RecurringTemplateRevision, RecurringTransaction,
+    RecurringTransactionsRepositoryTrait, UpdateRecurringTransaction,
 };
 
 #[async_trait]
@@ -44,6 +45,15 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
         run_blocking(move || {
             let mut conn = get_connection(&pool)?;
             list_feed(&mut conn, limit, cursor.as_deref())
+        })
+        .await
+    }
+
+    async fn list_matching_ids(&self) -> Result<Vec<RecurringMatchingIdentity>> {
+        let pool = Arc::clone(&self.pool);
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            list_matching_ids(&mut conn)
         })
         .await
     }
