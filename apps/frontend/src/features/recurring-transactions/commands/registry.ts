@@ -7,6 +7,7 @@ import {
 } from "../types/recurring-bulk";
 import {
   adoptionPreviewSchema,
+  budgetProjectionResultSchema,
   generationFailureDiagnosticsSchema,
   recurringAdoptOutcomeSchema,
   recurringCreateOutcomeSchema,
@@ -59,6 +60,10 @@ export const RECURRING_COMMANDS = {
   get_recurring_transactions: backendCommand(
     "get_recurring_transactions",
     recurringFeedResultSchema,
+  ),
+  get_recurring_budget_projections: backendCommand(
+    "get_recurring_budget_projections",
+    budgetProjectionResultSchema,
   ),
   get_matching_recurring_transaction_ids: backendCommand(
     "get_matching_recurring_transaction_ids",

@@ -102,6 +102,7 @@ describe("command transport registry parity", () => {
         "get_budgets",
         "get_filtered_transaction_ids",
         "get_matching_recurring_transaction_ids",
+        "get_recurring_budget_projections",
         "get_recurring_generation_failure_diagnostics",
         "get_recurring_transaction",
         "get_recurring_transaction_failure_history",

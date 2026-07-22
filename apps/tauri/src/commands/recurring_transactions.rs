@@ -4,11 +4,11 @@ use log::debug;
 use tauri::State;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
-    AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest,
-    GenerationFailureDiagnostics, NewRecurringTransaction, PreviewRecurringGenerationRepair,
-    RecurringAdoptOutcome, RecurringBulkExecuteResult, RecurringBulkPreflight,
-    RecurringBulkRequest, RecurringCreateOutcome, RecurringFailurePage, RecurringFeedResult,
-    RecurringLifecycleOutcome, RecurringLifecycleUpdate, RecurringMatchingIds,
+    AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, BudgetProjectionQuery,
+    BudgetProjectionResult, GenerationFailureDiagnostics, NewRecurringTransaction,
+    PreviewRecurringGenerationRepair, RecurringAdoptOutcome, RecurringBulkExecuteResult,
+    RecurringBulkPreflight, RecurringBulkRequest, RecurringCreateOutcome, RecurringFailurePage,
+    RecurringFeedResult, RecurringLifecycleOutcome, RecurringLifecycleUpdate, RecurringMatchingIds,
     RecurringMutationOutcome, RecurringOccurrencePage, RecurringRecoveryOutcome,
     RecurringRepairPreview, RecurringTransactionDocument, RepairRecurringGenerationFailure,
     RetryRecurringGenerationFailure, TransactionRecurringProvenance, UpdateRecurringTransaction,
@@ -283,6 +283,25 @@ pub async fn get_recurring_transaction_failure_history(
         .list_failure_history(&recurring_transaction_id, limit, cursor)
         .await
         .map_err(|error| command_error("Failed to load failure history", error))
+}
+
+#[tauri::command]
+pub async fn get_recurring_budget_projections(
+    horizon_months: u32,
+    include_paused_budgets: Option<bool>,
+    focus_recurring_transaction_id: Option<String>,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<BudgetProjectionResult> {
+    debug!("Getting recurring budget projections...");
+    state
+        .recurring_transactions_service()
+        .project_budgets(BudgetProjectionQuery {
+            horizon_months,
+            include_paused_budgets: include_paused_budgets.unwrap_or(false),
+            focus_recurring_transaction_id,
+        })
+        .await
+        .map_err(|error| command_error("Failed to load budget projections", error))
 }
 
 #[tauri::command]

@@ -43,6 +43,20 @@ export const buildRecurringCommandRequestSpec = (
         },
       };
     }
+    case "get_recurring_budget_projections": {
+      const horizonMonths = readNumber(args.horizonMonths, 3);
+      const includePausedBudgets = args.includePausedBudgets === true;
+      const focusRecurringTransactionId = readString(args.focusRecurringTransactionId);
+      return {
+        method: "GET",
+        path: "/recurring-transactions/budget-projections",
+        query: {
+          horizonMonths: String(horizonMonths),
+          includePausedBudgets: includePausedBudgets ? "true" : "false",
+          ...(focusRecurringTransactionId ? { focusRecurringTransactionId } : {}),
+        },
+      };
+    }
     case "get_transaction_recurring_provenance": {
       const transactionId = readString(args.transactionId);
       return {

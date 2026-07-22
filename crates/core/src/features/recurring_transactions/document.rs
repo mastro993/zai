@@ -64,6 +64,8 @@ pub struct RecurringBudgetImpactSection {
     pub state: RecurringSectionState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub projection: Option<super::projection::BudgetProjectionResult>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -184,6 +186,7 @@ pub fn budget_impact_unavailable() -> RecurringBudgetImpactSection {
         message: Some(
             "Budget impact will appear once forecast projections are available.".to_string(),
         ),
+        projection: None,
     }
 }
 

@@ -7,19 +7,19 @@ use super::bulk::{
 use super::create::{NewRecurringTransaction, normalize_template_description};
 use super::document::{
     RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedItem, RecurringFeedResult,
-    RecurringTransactionDocument, TransactionRecurringProvenance, budget_impact_unavailable,
-    failures_section_with_waiting, links_section, occurrence_summary, visible_source_link,
+    RecurringTransactionDocument, TransactionRecurringProvenance, visible_source_link,
 };
 use super::edit::{RecurringMutationOutcome, UpdateRecurringTransaction};
 use super::lifecycle::{
     RecurringLifecycleCommand, RecurringLifecycleOutcome, RecurringLifecycleUpdate,
 };
 use super::models::{
-    DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringFailurePage,
-    RecurringFeedEntry, RecurringLifecycle, RecurringOccurrencePage, RecurringTransaction,
+    DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringFailurePage, RecurringFeedEntry,
+    RecurringLifecycle, RecurringOccurrencePage,
 };
 use super::process::{ProcessingSliceOutcome, ProcessingWorkBudget};
 use super::process_slice::run_processing_slice;
+use super::projection::BudgetProjectionQuery;
 use super::repair::{
     GenerationFailureDiagnostics, PreviewRecurringGenerationRepair, RecurringRecoveryOutcome,
     RecurringRepairPreview, RepairRecurringGenerationFailure, RetryRecurringGenerationFailure,
@@ -55,82 +55,6 @@ impl RecurringTransactionsService {
 
     pub fn attach_wake(&self, wake: Arc<dyn RecurringProcessingWake>) {
         *self.wake.write().expect("wake lock") = Some(wake);
-    }
-
-    pub(super) async fn compose_document(
-        &self,
-        recurring: RecurringTransaction,
-    ) -> Result<RecurringTransactionDocument> {
-        if recurring.lifecycle == RecurringLifecycle::Tombstoned || recurring.deleted_at.is_some() {
-            return Err(Error::NotFound(format!(
-                "Recurring transaction {} not found",
-                recurring.id
-            )));
-        }
-
-        let schedule = self
-            .repository
-            .find_open_schedule_revision(&recurring.id)
-            .await?
-            .ok_or_else(|| {
-                Error::Repository(format!(
-                    "Missing schedule revision for recurring transaction {}",
-                    recurring.id
-                ))
-            })?;
-        let template = self
-            .repository
-            .find_open_template_revision(&recurring.id)
-            .await?
-            .ok_or_else(|| {
-                Error::Repository(format!(
-                    "Missing template revision for recurring transaction {}",
-                    recurring.id
-                ))
-            })?;
-
-        let head = self
-            .repository
-            .get_occurrence_head(&recurring.id)
-            .await?
-            .filter(|value| value.recurring_transaction_id == recurring.id);
-
-        let unresolved = self
-            .repository
-            .find_unresolved_failure(&recurring.id)
-            .await?;
-        let needs_attention = unresolved.is_some();
-        let waiting_count = match unresolved.as_ref() {
-            Some(failure) => {
-                self.waiting_count_for_failure(
-                    &recurring.id,
-                    failure.ordinal,
-                    recurring.total_occurrences,
-                )
-                .await?
-            }
-            None => 0,
-        };
-
-        let links = self
-            .repository
-            .list_occurrences(&recurring.id, DEFAULT_FEED_LIMIT, None)
-            .await?;
-        let history = self
-            .repository
-            .list_failure_history(&recurring.id, DEFAULT_FAILURE_LIMIT, None)
-            .await?;
-
-        Ok(RecurringTransactionDocument {
-            occurrence_summary: occurrence_summary(&recurring, head.as_ref(), needs_attention),
-            links: links_section(links),
-            failures: failures_section_with_waiting(unresolved, history, waiting_count),
-            budget_impact: budget_impact_unavailable(),
-            recurring_transaction: recurring,
-            schedule,
-            template,
-            head,
-        })
     }
 
     pub(super) fn assign_id(input_id: Option<String>) -> Result<String> {
@@ -353,6 +277,13 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
     ) -> Result<RecurringFailurePage> {
         self.list_failure_history_inner(recurring_transaction_id, limit, cursor)
             .await
+    }
+
+    async fn project_budgets(
+        &self,
+        query: BudgetProjectionQuery,
+    ) -> Result<super::projection::BudgetProjectionResult> {
+        self.compute_projection(query).await
     }
 
     async fn list_matching_ids(&self) -> Result<RecurringMatchingIds> {
