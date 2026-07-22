@@ -5,17 +5,32 @@ import {
   prepareAmountForValidation,
 } from "@/features/transactions/lib/transaction";
 
-export const RECURRING_LIFECYCLES = [
-  "active",
-  "paused",
-  "stopped",
-  "completed",
-  "tombstoned",
-] as const;
+import {
+  RECURRING_LIFECYCLES,
+  SCHEDULE_INTERVAL_UNITS,
+  SECTION_STATES,
+  TRANSACTION_TYPES,
+} from "./recurring-constants";
+import { recurringFailuresSectionSchema } from "./recurring-failure";
 
-export const SCHEDULE_INTERVAL_UNITS = ["day", "week", "month", "year"] as const;
-export const TRANSACTION_TYPES = ["expense", "income"] as const;
-export const SECTION_STATES = ["ready", "empty", "unavailable"] as const;
+export {
+  RECURRING_LIFECYCLES,
+  SCHEDULE_INTERVAL_UNITS,
+  SECTION_STATES,
+  TRANSACTION_TYPES,
+} from "./recurring-constants";
+export {
+  generationFailureDiagnosticsSchema,
+  recurringFailurePageSchema,
+  recurringFailuresSectionSchema,
+  recurringGenerationFailureSchema,
+  recurringRecoveryActionSchema,
+  recurringRepairPreviewSchema,
+  type GenerationFailureDiagnostics,
+  type RecurringFailurePage,
+  type RecurringGenerationFailure,
+  type RecurringRepairPreview,
+} from "./recurring-failure";
 
 const privilegedForbiddenShape = {
   zone: z.never().optional(),
@@ -192,59 +207,6 @@ export const recurringLinksSectionSchema = z.object({
   occurrences: recurringOccurrencePageSchema,
 });
 
-export const recurringGenerationFailureSchema = z.object({
-  recurringTransactionId: z.string().min(1),
-  scheduleRevisionId: z.string().min(1),
-  ordinal: z.number().int().positive(),
-  errorCode: z.string().min(1),
-  causeCategory: z.string().min(1),
-  repairFieldKey: z.string().nullable().optional(),
-  correlationId: z.string().min(1),
-  failedScheduledLocal: z.string(),
-  firstFailedAt: z.string(),
-  lastFailedAt: z.string(),
-  attemptCount: z.number().int().positive(),
-  repairedAt: z.string().nullable().optional(),
-  repairRevision: z.number().int().positive().nullable().optional(),
-  resolvedAt: z.string().nullable().optional(),
-  resolutionKind: z.string().nullable().optional(),
-  generationFailureAlertId: z.string().min(1),
-});
-
-export const recurringFailurePageSchema = z.object({
-  items: z.array(recurringGenerationFailureSchema),
-  nextCursor: z.string().nullable().optional(),
-});
-
-export const recurringRecoveryActionSchema = z.enum(["repair", "retry", "copyDiagnostics"]);
-
-export const recurringFailuresSectionSchema = z.object({
-  state: z.enum(SECTION_STATES),
-  unresolved: recurringGenerationFailureSchema.nullable().optional(),
-  waitingCount: z.number().int().nonnegative(),
-  nextAction: recurringRecoveryActionSchema.nullable().optional(),
-  history: recurringFailurePageSchema,
-});
-
-export const recurringRepairPreviewSchema = z.object({
-  repairFieldKey: z.string().min(1),
-  affectedUnfulfilledSegmentCount: z.number().int().nonnegative(),
-  includesFutureTemplate: z.boolean(),
-  nextAction: recurringRecoveryActionSchema,
-});
-
-export const generationFailureDiagnosticsSchema = z
-  .object({
-    errorCode: z.string().min(1),
-    appVersion: z.string().min(1),
-    schemaVersion: z.string().min(1),
-    firstFailedAt: z.string(),
-    lastFailedAt: z.string(),
-    typedState: z.string().min(1),
-    correlationId: z.string().min(1),
-  })
-  .strict();
-
 export const recurringBudgetImpactSectionSchema = z.object({
   state: z.enum(SECTION_STATES),
   message: z.string().optional(),
@@ -398,11 +360,7 @@ export type RecurringAdoptOutcome = z.infer<typeof recurringAdoptOutcomeSchema>;
 export type AdoptionPreview = z.infer<typeof adoptionPreviewSchema>;
 export type RecurringOccurrence = z.infer<typeof recurringOccurrenceSchema>;
 export type RecurringOccurrencePage = z.infer<typeof recurringOccurrencePageSchema>;
-export type RecurringGenerationFailure = z.infer<typeof recurringGenerationFailureSchema>;
-export type RecurringFailurePage = z.infer<typeof recurringFailurePageSchema>;
-export type RecurringRepairPreview = z.infer<typeof recurringRepairPreviewSchema>;
 export type RecurringRecoveryOutcome = z.infer<typeof recurringRecoveryOutcomeSchema>;
-export type GenerationFailureDiagnostics = z.infer<typeof generationFailureDiagnosticsSchema>;
 export type TransactionRecurringProvenance = z.infer<typeof transactionRecurringProvenanceSchema>;
 export type ScheduleRule = z.infer<typeof scheduleRuleSchema>;
 export type RecurringLifecycle = (typeof RECURRING_LIFECYCLES)[number];
