@@ -1,6 +1,9 @@
 use super::adopt::{
     AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, count_later_due_occurrences,
 };
+use super::bulk::{
+    RecurringBulkExecuteResult, RecurringBulkPreflight, RecurringBulkRequest, RecurringMatchingIds,
+};
 use super::create::{NewRecurringTransaction, normalize_template_description};
 use super::document::{
     RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedItem, RecurringFeedResult,
@@ -350,6 +353,24 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
     ) -> Result<RecurringFailurePage> {
         self.list_failure_history_inner(recurring_transaction_id, limit, cursor)
             .await
+    }
+
+    async fn list_matching_ids(&self) -> Result<RecurringMatchingIds> {
+        self.list_matching_ids_inner().await
+    }
+
+    async fn preflight_bulk(
+        &self,
+        request: RecurringBulkRequest,
+    ) -> Result<RecurringBulkPreflight> {
+        self.preflight_bulk_inner(request).await
+    }
+
+    async fn execute_bulk(
+        &self,
+        request: RecurringBulkRequest,
+    ) -> Result<RecurringBulkExecuteResult> {
+        self.execute_bulk_inner(request).await
     }
 
     async fn adopt(&self, mut input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {

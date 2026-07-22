@@ -1,6 +1,8 @@
 mod adopt;
 #[cfg(test)]
 mod adopt_tests;
+#[cfg(test)]
+mod bulk_tests;
 #[cfg(any(test, feature = "failpoints"))]
 pub mod crash_child;
 mod create;

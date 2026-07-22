@@ -1,6 +1,11 @@
 import type { CommandDescriptor } from "@/commands/command-descriptor";
 
 import {
+  recurringBulkExecuteResultSchema,
+  recurringBulkPreflightSchema,
+  recurringMatchingIdsSchema,
+} from "../types/recurring-bulk";
+import {
   adoptionPreviewSchema,
   generationFailureDiagnosticsSchema,
   recurringAdoptOutcomeSchema,
@@ -55,6 +60,10 @@ export const RECURRING_COMMANDS = {
     "get_recurring_transactions",
     recurringFeedResultSchema,
   ),
+  get_matching_recurring_transaction_ids: backendCommand(
+    "get_matching_recurring_transaction_ids",
+    recurringMatchingIdsSchema,
+  ),
   get_transaction_recurring_provenance: backendCommand(
     "get_transaction_recurring_provenance",
     transactionRecurringProvenanceSchema.nullable(),
@@ -67,6 +76,14 @@ export const RECURRING_COMMANDS = {
   preview_recurring_generation_repair: backendCommand(
     "preview_recurring_generation_repair",
     recurringRepairPreviewSchema,
+  ),
+  preflight_recurring_bulk: backendCommand(
+    "preflight_recurring_bulk",
+    recurringBulkPreflightSchema,
+  ),
+  execute_recurring_bulk: backendCommand(
+    "execute_recurring_bulk",
+    recurringBulkExecuteResultSchema,
   ),
   repair_recurring_generation_failure: backendCommand(
     "repair_recurring_generation_failure",
