@@ -58,6 +58,11 @@ export function RecurringBulkReviewDialog({
     preflight.dueCatchUp > 0 ? `${preflight.dueCatchUp} due occurrences to catch up.` : null,
     preflight.waiting > 0 ? `${preflight.waiting} waiting due occurrences.` : null,
     preflight.repairNeeded > 0 ? `${preflight.repairNeeded} repair needed.` : null,
+    preflight.unchangedItems.length > 0
+      ? `Unchanged: ${preflight.unchangedItems
+          .map((item) => item.reason.replaceAll("_", " "))
+          .join(", ")}.`
+      : null,
     copy.extra,
     copy.irreversible ? "This action cannot be undone." : null,
   ]
@@ -79,8 +84,19 @@ export function RecurringBulkReviewDialog({
         aria-busy={isPending}
         onClick={onConfirm}
       >
-        {isPending ? "Working..." : "Confirm"}
+        {isPending ? "Working..." : copy.irreversible ? actionLabel(action) : "Confirm"}
       </Button>
     </ConfirmationDialog>
   );
+}
+
+function actionLabel(action: RecurringBulkAction): string {
+  switch (action) {
+    case "stop":
+      return "Stop";
+    case "delete":
+      return "Delete";
+    default:
+      return "Confirm";
+  }
 }

@@ -174,29 +174,6 @@ pub fn list_feed(
     Ok(RecurringFeedPage { items, next_cursor })
 }
 
-pub fn list_matching_ids(
-    conn: &mut SqliteConnection,
-) -> Result<Vec<zai_core::features::recurring_transactions::RecurringMatchingIdentity>> {
-    use zai_core::features::recurring_transactions::RecurringMatchingIdentity;
-
-    let rows = recurring_transactions::table
-        .filter(recurring_transactions::deleted_at.is_null())
-        .order((
-            recurring_transactions::updated_at.desc(),
-            recurring_transactions::id.desc(),
-        ))
-        .select((recurring_transactions::id, recurring_transactions::revision))
-        .load::<(String, i32)>(conn)
-        .into_core()?;
-    Ok(rows
-        .into_iter()
-        .map(|(id, revision)| RecurringMatchingIdentity {
-            recurring_transaction_id: id,
-            expected_revision: revision,
-        })
-        .collect())
-}
-
 pub fn list_due_heads(
     conn: &mut SqliteConnection,
     observed_local: NaiveDateTime,

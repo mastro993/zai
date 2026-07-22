@@ -1,4 +1,6 @@
+use super::adopt::AdoptRecurringTransaction;
 use super::create::normalize_template_description;
+use super::document::RecurringAdoptOutcome;
 use super::edit::{
     RecurringMutationOutcome, UNCHANGED_GENERATION_BLOCKED, UNCHANGED_NOT_EDITABLE,
     UNCHANGED_SAME_VALUE, UpdateRecurringTransaction, configuration_edit_allowed,
@@ -7,9 +9,10 @@ use super::lifecycle::description_edit_allowed;
 use super::models::{
     RecurringLifecycle, RecurringScheduleRevision, RecurringTemplateRevision, RecurringTransaction,
 };
+use super::process::ProcessingWorkBudget;
 use super::schedule::scheduled_local_at;
 use super::service::RecurringTransactionsService;
-use super::traits::RecurringTransactionsServiceTrait;
+use super::traits::{RecurringOccurrenceProcessor, RecurringTransactionsServiceTrait};
 use crate::{Error, Result};
 
 impl RecurringTransactionsService {
@@ -170,5 +173,34 @@ impl RecurringTransactionsService {
                     "Missing template revision for recurring transaction {id}"
                 ))
             })
+    }
+
+    pub(super) async fn adopt_inner(
+        &self,
+        mut input: AdoptRecurringTransaction,
+    ) -> Result<RecurringAdoptOutcome> {
+        let observed_local = self.clock.sample();
+        input.template.description = normalize_template_description(&input.template.description);
+        input.id = Some(Self::assign_id(input.id)?);
+        input.validate_inputs()?;
+
+        let created = self
+            .repository
+            .adopt_existing_transaction(input, observed_local)
+            .await?;
+
+        let _catch_up = self
+            .process_due(observed_local, ProcessingWorkBudget::default_slice(), None)
+            .await?;
+        self.request_processing_wake();
+
+        let document = self
+            .compose_document(
+                self.repository
+                    .get_recurring_transaction(&created.id)
+                    .await?,
+            )
+            .await?;
+        Ok(RecurringAdoptOutcome::Succeeded { document })
     }
 }

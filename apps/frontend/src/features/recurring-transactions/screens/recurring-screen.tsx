@@ -344,6 +344,9 @@ export function RecurringScreen({
       <RecurringBulkResultDialog
         open={resultOpen}
         result={bulkResult}
+        labels={
+          new Map(items.map((item) => [item.recurringTransaction.id, item.description] as const))
+        }
         refreshFailed={refreshFailed}
         onOpenChange={setResultOpen}
         onRetryRefresh={async () => {

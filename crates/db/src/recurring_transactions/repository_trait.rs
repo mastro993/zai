@@ -9,10 +9,11 @@ use super::fulfill::{
     has_eligible_due_work as query_has_eligible_due_work, process_one_due_occurrence,
 };
 use super::lifecycle::apply_lifecycle_command;
+use super::matching::list_matching_ids;
 use super::queries::{
     earliest_active_head_after, find_provenance_by_transaction, find_unresolved_failure,
     get_occurrence_head, get_recurring_transaction, list_due_heads, list_failure_history,
-    list_feed, list_matching_ids, list_occurrences, list_unresolved_failures,
+    list_feed, list_occurrences, list_unresolved_failures,
 };
 use super::repair::{apply_generation_repair, preview_template_field_repair};
 use super::repository::{

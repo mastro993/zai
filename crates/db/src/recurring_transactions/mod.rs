@@ -27,6 +27,7 @@ mod lifecycle_edge_tests;
 mod lifecycle_test_support;
 #[cfg(test)]
 mod lifecycle_tests;
+mod matching;
 mod models;
 #[cfg(test)]
 mod process_contention_tests;
