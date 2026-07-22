@@ -33,6 +33,7 @@ export const navigationItems = [
       { title: "Transactions", to: "/cash-flow/transactions" },
       { title: "Budgets", to: "/cash-flow/budgets" },
       { title: "Recurring", to: "/cash-flow/recurring" },
+      { title: "Forecast", to: "/cash-flow/forecast" },
       { title: "Categories", to: "/cash-flow/categories" },
     ],
   },
