@@ -5,6 +5,7 @@ mod create;
 mod document;
 mod edit;
 mod events;
+mod lifecycle;
 mod models;
 mod process;
 pub mod process_failpoints;
@@ -12,6 +13,7 @@ mod process_slice;
 mod schedule;
 mod service;
 mod service_edit;
+mod service_lifecycle;
 mod supervisor;
 #[cfg(test)]
 mod supervisor_tests;
@@ -38,12 +40,13 @@ pub use events::{
     RecurringProcessingFinishState, RecurringProcessingPublicationError,
     deserialize_recurring_processing_event, serialize_recurring_processing_event,
 };
+pub use lifecycle::*;
 pub use models::*;
 pub use process::{
     DEFAULT_PROCESS_MAX_DURATION, DEFAULT_PROCESS_MAX_OCCURRENCES, ProcessOneOutcome,
     ProcessingSliceOutcome, ProcessingStopReason, ProcessingWorkBudget,
 };
-pub use schedule::{scheduled_local_at, validate_schedule_rule};
+pub use schedule::{advance_head_past_observation, scheduled_local_at, validate_schedule_rule};
 pub use service::RecurringTransactionsService;
 pub use supervisor::{
     CLOCK_FALLBACK_WAKE, RecurringProcessDelayAlerts, RecurringProcessingStatus,

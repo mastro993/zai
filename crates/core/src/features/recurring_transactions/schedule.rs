@@ -50,6 +50,37 @@ pub fn scheduled_local_at(
     }
 }
 
+/// Advances from a known head slot until the next scheduled local is strictly
+/// after `observed_local`, without creating occurrences. Returns the first
+/// unfulfilled slot after the observation (ordinal + scheduled local).
+pub fn advance_head_past_observation(
+    rule: &ScheduleRule,
+    first_scheduled_local: NaiveDateTime,
+    mut next_ordinal: i32,
+    mut next_scheduled_local: NaiveDateTime,
+    observed_local: NaiveDateTime,
+) -> Result<(i32, NaiveDateTime)> {
+    if next_ordinal < 1 {
+        return Err(Error::InvalidData(
+            "Occurrence ordinal must be at least 1".to_string(),
+        ));
+    }
+    let mut guard = 0_u32;
+    while next_scheduled_local <= observed_local {
+        guard = guard.saturating_add(1);
+        if guard > 100_000 {
+            return Err(Error::InvalidData(
+                "Pause skip exceeded safe advancement bound".to_string(),
+            ));
+        }
+        next_ordinal = next_ordinal.checked_add(1).ok_or_else(|| {
+            Error::InvalidData("Occurrence ordinal overflow while skipping".to_string())
+        })?;
+        next_scheduled_local = scheduled_local_at(rule, first_scheduled_local, next_ordinal)?;
+    }
+    Ok((next_ordinal, next_scheduled_local))
+}
+
 pub fn validate_schedule_rule(rule: &ScheduleRule) -> Result<()> {
     match rule {
         ScheduleRule::Interval { every, unit: _ } => {
@@ -203,6 +234,34 @@ mod tests {
             scheduled_local_at(&rule, first, 3).unwrap(),
             dt(2024, 3, 31, 12, 0)
         );
+    }
+
+    #[test]
+    fn advance_head_past_observation_skips_due_slots() {
+        let rule = ScheduleRule::Interval {
+            every: 1,
+            unit: ScheduleIntervalUnit::Day,
+        };
+        let first = dt(2026, 1, 1, 9, 0);
+        let observed = dt(2026, 1, 3, 12, 0);
+        let (ordinal, scheduled) =
+            advance_head_past_observation(&rule, first, 1, first, observed).unwrap();
+        assert_eq!(ordinal, 4);
+        assert_eq!(scheduled, dt(2026, 1, 4, 9, 0));
+    }
+
+    #[test]
+    fn advance_head_past_observation_noop_when_already_future() {
+        let rule = ScheduleRule::Interval {
+            every: 1,
+            unit: ScheduleIntervalUnit::Day,
+        };
+        let first = dt(2026, 1, 10, 9, 0);
+        let observed = dt(2026, 1, 3, 12, 0);
+        let (ordinal, scheduled) =
+            advance_head_past_observation(&rule, first, 1, first, observed).unwrap();
+        assert_eq!(ordinal, 1);
+        assert_eq!(scheduled, first);
     }
 
     #[test]

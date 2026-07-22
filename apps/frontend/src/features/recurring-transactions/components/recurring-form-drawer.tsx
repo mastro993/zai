@@ -56,6 +56,7 @@ interface RecurringFormDrawerProps {
   ) => Promise<Result.Result<RecurringCreateOutcome | RecurringMutationOutcome, CommandError>>;
   categories: Array<TransactionCategory>;
   configurationEditable?: boolean;
+  descriptionEditable?: boolean;
   returnFocusRef?: React.RefObject<HTMLElement | null>;
 }
 
@@ -66,11 +67,13 @@ export function RecurringFormDrawer({
   onSubmit,
   categories,
   configurationEditable = true,
+  descriptionEditable = true,
   returnFocusRef,
 }: RecurringFormDrawerProps) {
   const copy = getRecurringFormCopy(mode);
   const isEdit = mode.type === "edit";
   const configLocked = isEdit && !configurationEditable;
+  const descriptionLocked = isEdit && !descriptionEditable;
   const {
     control,
     register,
@@ -125,8 +128,9 @@ export function RecurringFormDrawer({
           <FieldGroup>
             {configLocked ? (
               <FieldDescription>
-                Schedule, template, and count are locked while this source is stopped, completed, or
-                needs attention.
+                Schedule, template amount/type/category/notes, and count are locked while this
+                source is stopped, completed, or needs attention. Description rename remains
+                available when the source is still visible.
               </FieldDescription>
             ) : null}
 
@@ -181,7 +185,7 @@ export function RecurringFormDrawer({
               <FieldLabel htmlFor="recurring-description">Description</FieldLabel>
               <Input
                 id="recurring-description"
-                readOnly={configLocked}
+                readOnly={descriptionLocked}
                 aria-invalid={Boolean(errors.description)}
                 {...register("description")}
               />

@@ -1,6 +1,6 @@
 import { Result } from "@praha/byethrow";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   updateRecurringTransaction,
 } from "../commands/recurring-transactions";
 import { RecurringFormDrawer } from "../components/recurring-form-drawer";
+import { RecurringLifecycleActions } from "../components/recurring-lifecycle-actions";
 import {
   formatFiniteProgress,
   formatLocalDateTime,
@@ -57,6 +58,16 @@ const canEditConfiguration = (document: RecurringTransactionDocument): boolean =
   const lifecycle = document.recurringTransaction.lifecycle;
   return (
     (lifecycle === "active" || lifecycle === "paused") && !document.occurrenceSummary.needsAttention
+  );
+};
+
+const canRename = (document: RecurringTransactionDocument): boolean => {
+  const lifecycle = document.recurringTransaction.lifecycle;
+  return (
+    lifecycle === "active" ||
+    lifecycle === "paused" ||
+    lifecycle === "stopped" ||
+    lifecycle === "completed"
   );
 };
 
@@ -139,6 +150,8 @@ export function RecurringDocumentScreen({
 }) {
   const [document, setDocument] = useState(initialDocument);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [lifecycleError, setLifecycleError] = useState<string>();
+  const editButtonRef = useRef<HTMLButtonElement | null>(null);
   const {
     recurringTransaction,
     schedule,
@@ -153,7 +166,9 @@ export function RecurringDocumentScreen({
     occurrenceSummary.totalOccurrences,
   );
   const configurationEditable = canEditConfiguration(document);
-  const editable = configurationEditable;
+  const renameAllowed = canRename(document);
+  const editable = configurationEditable || renameAllowed;
+  const lifecycle = recurringTransaction.lifecycle;
 
   const submitEdit = async (values: RecurringFormValues) => {
     const result = await updateRecurringTransaction(document, values);
@@ -168,10 +183,15 @@ export function RecurringDocumentScreen({
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {editable ? (
-            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
-              Edit recurring transaction
+            <Button ref={editButtonRef} variant="outline" onClick={() => setIsEditOpen(true)}>
+              {configurationEditable ? "Edit recurring transaction" : "Rename"}
             </Button>
           ) : null}
+          <RecurringLifecycleActions
+            document={document}
+            onDocumentChange={setDocument}
+            onLifecycleError={setLifecycleError}
+          />
           <Button
             variant="outline"
             nativeButton={false}
@@ -192,6 +212,14 @@ export function RecurringDocumentScreen({
             ) : null}
           </div>
           <p className="text-sm text-muted-foreground">Revision {recurringTransaction.revision}</p>
+          {lifecycleError ? (
+            <p
+              role="alert"
+              className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+            >
+              {lifecycleError}
+            </p>
+          ) : null}
         </div>
 
         <Section title="Identity" state="ready" emptyMessage="">
@@ -202,7 +230,9 @@ export function RecurringDocumentScreen({
             </div>
             <div>
               <dt className="text-muted-foreground">Lifecycle</dt>
-              <dd>{recurringLifecycleLabel[recurringTransaction.lifecycle]}</dd>
+              <dd>
+                <span role="status">{recurringLifecycleLabel[recurringTransaction.lifecycle]}</span>
+              </dd>
             </div>
           </dl>
         </Section>
@@ -220,7 +250,8 @@ export function RecurringDocumentScreen({
           </dl>
           {!configurationEditable && occurrenceSummary.needsAttention ? (
             <p role="status" className="text-sm text-muted-foreground">
-              Schedule, template, and count edits are unavailable while generation needs attention.
+              Schedule, template, count, pause, stop, and delete are unavailable while generation
+              needs attention.
             </p>
           ) : null}
         </Section>
@@ -251,6 +282,11 @@ export function RecurringDocumentScreen({
             {recurringLifecycleLabel[recurringTransaction.lifecycle]} since{" "}
             {formatLocalDateTime(recurringTransaction.lifecycleChangedAt)}
           </p>
+          {lifecycle === "stopped" || lifecycle === "completed" ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              This source is immutable except for rename.
+            </p>
+          ) : null}
         </Section>
 
         <Section title="Occurrence summary" state="ready" emptyMessage="">
@@ -286,7 +322,8 @@ export function RecurringDocumentScreen({
         >
           {failures.unresolved ? (
             <p role="status" className="text-sm">
-              Needs attention: repair required before schedule, template, or count edits.
+              Needs attention: repair required before schedule, template, count, or lifecycle
+              changes.
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">No open generation failure.</p>
@@ -310,6 +347,8 @@ export function RecurringDocumentScreen({
             onSubmit={submitEdit}
             categories={categories}
             configurationEditable={configurationEditable}
+            descriptionEditable={renameAllowed}
+            returnFocusRef={editButtonRef}
           />
         ) : null}
       </Drawer>

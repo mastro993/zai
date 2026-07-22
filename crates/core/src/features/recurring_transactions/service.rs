@@ -8,6 +8,9 @@ use super::document::{
     failures_section, links_section, occurrence_summary, visible_source_link,
 };
 use super::edit::{RecurringMutationOutcome, UpdateRecurringTransaction};
+use super::lifecycle::{
+    RecurringLifecycleCommand, RecurringLifecycleOutcome, RecurringLifecycleUpdate,
+};
 use super::models::{
     DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringFeedEntry,
     RecurringLifecycle, RecurringOccurrencePage, RecurringTransaction,
@@ -273,6 +276,26 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
 
     async fn update(&self, input: UpdateRecurringTransaction) -> Result<RecurringMutationOutcome> {
         self.update_inner(input).await
+    }
+
+    async fn pause(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome> {
+        self.apply_lifecycle(RecurringLifecycleCommand::Pause, input)
+            .await
+    }
+
+    async fn resume(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome> {
+        self.apply_lifecycle(RecurringLifecycleCommand::Resume, input)
+            .await
+    }
+
+    async fn stop(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome> {
+        self.apply_lifecycle(RecurringLifecycleCommand::Stop, input)
+            .await
+    }
+
+    async fn delete(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome> {
+        self.apply_lifecycle(RecurringLifecycleCommand::Delete, input)
+            .await
     }
 
     async fn adopt(&self, mut input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {

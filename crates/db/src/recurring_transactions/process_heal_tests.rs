@@ -11,7 +11,7 @@ use zai_core::features::recurring_transactions::{
 #[tokio::test]
 async fn stale_head_with_existing_occurrence_heals_as_already_fulfilled() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let (schedule_id, template_id) = seed_source(
         &repo,
         SeedRecurringSource {
@@ -91,7 +91,7 @@ async fn stale_head_with_existing_occurrence_heals_as_already_fulfilled() {
 #[tokio::test]
 async fn more_due_remaining_ignores_heads_blocked_by_unrepaired_failure() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         SeedRecurringSource {

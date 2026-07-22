@@ -5,9 +5,9 @@ use tauri::State;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, NewRecurringTransaction,
-    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult, RecurringMutationOutcome,
-    RecurringOccurrencePage, RecurringTransactionDocument, TransactionRecurringProvenance,
-    UpdateRecurringTransaction,
+    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult, RecurringLifecycleOutcome,
+    RecurringLifecycleUpdate, RecurringMutationOutcome, RecurringOccurrencePage,
+    RecurringTransactionDocument, TransactionRecurringProvenance, UpdateRecurringTransaction,
 };
 
 use super::{CommandResult, command_error};
@@ -129,4 +129,72 @@ pub async fn adopt_recurring_transaction(
         .adopt(request)
         .await
         .map_err(|error| command_error("Failed to adopt transaction", error))
+}
+
+#[tauri::command]
+pub async fn pause_recurring_transaction(
+    recurring_transaction_id: String,
+    expected_revision: i32,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringLifecycleOutcome> {
+    debug!("Pausing recurring transaction {recurring_transaction_id}...");
+    state
+        .recurring_transactions_service()
+        .pause(RecurringLifecycleUpdate {
+            recurring_transaction_id,
+            expected_revision,
+        })
+        .await
+        .map_err(|error| command_error("Failed to pause recurring transaction", error))
+}
+
+#[tauri::command]
+pub async fn resume_recurring_transaction(
+    recurring_transaction_id: String,
+    expected_revision: i32,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringLifecycleOutcome> {
+    debug!("Resuming recurring transaction {recurring_transaction_id}...");
+    state
+        .recurring_transactions_service()
+        .resume(RecurringLifecycleUpdate {
+            recurring_transaction_id,
+            expected_revision,
+        })
+        .await
+        .map_err(|error| command_error("Failed to resume recurring transaction", error))
+}
+
+#[tauri::command]
+pub async fn stop_recurring_transaction(
+    recurring_transaction_id: String,
+    expected_revision: i32,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringLifecycleOutcome> {
+    debug!("Stopping recurring transaction {recurring_transaction_id}...");
+    state
+        .recurring_transactions_service()
+        .stop(RecurringLifecycleUpdate {
+            recurring_transaction_id,
+            expected_revision,
+        })
+        .await
+        .map_err(|error| command_error("Failed to stop recurring transaction", error))
+}
+
+#[tauri::command]
+pub async fn delete_recurring_transaction(
+    recurring_transaction_id: String,
+    expected_revision: i32,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringLifecycleOutcome> {
+    debug!("Deleting recurring transaction {recurring_transaction_id}...");
+    state
+        .recurring_transactions_service()
+        .delete(RecurringLifecycleUpdate {
+            recurring_transaction_id,
+            expected_revision,
+        })
+        .await
+        .map_err(|error| command_error("Failed to delete recurring transaction", error))
 }

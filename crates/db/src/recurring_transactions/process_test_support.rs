@@ -35,7 +35,6 @@ impl ManualClock {
         }
     }
 
-    #[allow(dead_code)]
     pub fn set(&self, current: NaiveDateTime) {
         *self.current.lock().expect("clock lock") = current;
     }
@@ -85,13 +84,14 @@ pub async fn setup_service(
     TempDb,
     RecurringTransactionsService,
     Arc<super::RecurringTransactionsRepository>,
+    Arc<ManualClock>,
     AsyncMutexGuard<'static, ()>,
 ) {
     let guard = PROCESS_TEST_LOCK.lock().await;
     reset_failpoints();
     let temp_db = TempDb::new();
-    let (service, repo) = open_service(temp_db.path(), observed);
-    (temp_db, service, repo, guard)
+    let (service, repo, clock) = open_service(temp_db.path(), observed);
+    (temp_db, service, repo, clock, guard)
 }
 
 pub fn open_service(
@@ -100,6 +100,7 @@ pub fn open_service(
 ) -> (
     RecurringTransactionsService,
     Arc<super::RecurringTransactionsRepository>,
+    Arc<ManualClock>,
 ) {
     open_service_with_options(db_path, observed, true)
 }
@@ -111,6 +112,7 @@ pub fn open_service_with_options(
 ) -> (
     RecurringTransactionsService,
     Arc<super::RecurringTransactionsRepository>,
+    Arc<ManualClock>,
 ) {
     if run_migrations_on_open {
         prepare_sqlite_file(db_path);
@@ -120,18 +122,21 @@ pub fn open_service_with_options(
         run_migrations(&pool).expect("migrations");
     }
     let writer = spawn_writer(pool.as_ref().clone()).expect("writer");
-    let clock: Arc<dyn CalendarClock> = Arc::new(ManualClock::new(observed));
+    let clock = Arc::new(ManualClock::new(observed));
     let bus = DomainAlertEventBus::new();
     let repo = Arc::new(
         super::RecurringTransactionsRepository::new_with_clock_and_publisher(
             Arc::clone(&pool),
             writer,
-            Arc::clone(&clock),
+            Arc::clone(&clock) as Arc<dyn CalendarClock>,
             bus,
         ),
     );
-    let service = RecurringTransactionsService::new(Arc::clone(&repo) as Arc<_>, clock);
-    (service, repo)
+    let service = RecurringTransactionsService::new(
+        Arc::clone(&repo) as Arc<_>,
+        Arc::clone(&clock) as Arc<_>,
+    );
+    (service, repo, clock)
 }
 
 fn prepare_sqlite_file(db_path: &str) {
@@ -169,8 +174,8 @@ pub async fn setup_dual_services(
         drop(bootstrap);
     }
 
-    let (app_service, app_repo) = open_service_with_options(&path, observed_app, false);
-    let (daemon_service, daemon_repo) = open_service_with_options(&path, observed_daemon, false);
+    let (app_service, app_repo, _) = open_service_with_options(&path, observed_app, false);
+    let (daemon_service, daemon_repo, _) = open_service_with_options(&path, observed_daemon, false);
 
     let app = LabeledProcessor::new("app", Arc::new(app_service));
     let daemon = LabeledProcessor::new("daemon", Arc::new(daemon_service));

@@ -12,7 +12,7 @@ use zai_core::features::recurring_transactions::{
 #[tokio::test]
 async fn synthetic_pause_before_process_yields_no_fulfillment() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         default_seed("rt-paused", "Paused", local(2026, 2, 1, 9, 0)),
@@ -46,7 +46,7 @@ async fn synthetic_pause_before_process_yields_no_fulfillment() {
 #[tokio::test]
 async fn synthetic_stop_before_process_yields_no_fulfillment() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         default_seed("rt-stopped", "Stopped", local(2026, 2, 1, 9, 0)),
@@ -76,7 +76,7 @@ async fn synthetic_stop_before_process_yields_no_fulfillment() {
 #[tokio::test]
 async fn synthetic_edit_revalidation_rejects_stale_head_schedule() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         default_seed("rt-edit", "Edit", local(2026, 2, 1, 9, 0)),
@@ -116,7 +116,7 @@ async fn synthetic_edit_revalidation_rejects_stale_head_schedule() {
 #[tokio::test]
 async fn synthetic_repair_clear_allows_fulfillment() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let (schedule_id, _) = seed_source(
         &repo,
         default_seed("rt-repair", "Repair", local(2026, 2, 1, 9, 0)),
@@ -181,7 +181,7 @@ async fn synthetic_repair_clear_allows_fulfillment() {
 #[tokio::test]
 async fn cancellation_between_commits_keeps_completed_occurrence() {
     let observed = local(2026, 3, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         SeedRecurringSource {

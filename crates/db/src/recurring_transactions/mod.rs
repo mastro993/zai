@@ -18,6 +18,13 @@ mod fulfill_head;
 mod fulfill_select;
 mod fulfill_validation;
 mod generation_failure;
+mod lifecycle;
+#[cfg(test)]
+mod lifecycle_edge_tests;
+#[cfg(test)]
+mod lifecycle_test_support;
+#[cfg(test)]
+mod lifecycle_tests;
 mod models;
 #[cfg(test)]
 mod process_contention_tests;
