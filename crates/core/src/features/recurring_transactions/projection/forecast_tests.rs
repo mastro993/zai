@@ -238,3 +238,78 @@ fn partial_period_beyond_through_withholds_status() {
     assert_eq!(feb.covered_until, dt(2026, 2, 20, 12, 0));
     assert!(feb.status.is_none());
 }
+
+#[test]
+fn fulfilling_projected_occurrence_preserves_combined_forecast() {
+    let observed = dt(2026, 1, 5, 12, 0);
+    let food = budget("b1", "Food");
+    let source = source("r1", dt(2026, 1, 15, 9, 0), 1);
+    let projected = compute_budget_projection(ProjectionComputeInput {
+        observed_local: observed,
+        horizon_months: 1,
+        budgets: vec![ProjectionBudgetInput {
+            scope_category_ids: food.category_ids.clone(),
+            warning_percentage: food.warning_percentage,
+            budget: food.clone(),
+            stale: false,
+        }],
+        sources: vec![source.clone()],
+        category_roles: HashMap::from([("food".to_string(), CategoryRole::Spending)]),
+        category_hierarchy: vec![CategoryHierarchy {
+            id: "food".to_string(),
+            parent_id: None,
+        }],
+        actual_spending: HashMap::new(),
+        focus_recurring_transaction_id: None,
+    })
+    .unwrap();
+
+    let mut after_fulfill_budget = food.clone();
+    after_fulfill_budget.current_period.net_budget_spending += 2_000;
+    after_fulfill_budget.current_period.remaining_allowance -= 2_000;
+    let mut after_source = source;
+    after_source.recurring.fulfilled_count = 1;
+    after_source.head.next_ordinal = 2;
+    after_source.head.next_scheduled_local = dt(2026, 2, 15, 9, 0);
+    after_source.open_schedule.first_scheduled_local = dt(2026, 1, 15, 9, 0);
+
+    let mut actual = HashMap::new();
+    actual.insert((food.id.clone(), food.current_period.start), 1_000 + 2_000);
+    let after = compute_budget_projection(ProjectionComputeInput {
+        observed_local: observed,
+        horizon_months: 1,
+        budgets: vec![ProjectionBudgetInput {
+            scope_category_ids: after_fulfill_budget.category_ids.clone(),
+            warning_percentage: after_fulfill_budget.warning_percentage,
+            budget: after_fulfill_budget,
+            stale: false,
+        }],
+        sources: vec![after_source],
+        category_roles: HashMap::from([("food".to_string(), CategoryRole::Spending)]),
+        category_hierarchy: vec![CategoryHierarchy {
+            id: "food".to_string(),
+            parent_id: None,
+        }],
+        actual_spending: actual,
+        focus_recurring_transaction_id: None,
+    })
+    .unwrap();
+
+    let before_jan = projected
+        .periods
+        .iter()
+        .find(|p| p.period_start == dt(2026, 1, 1, 0, 0))
+        .unwrap();
+    let after_jan = after
+        .periods
+        .iter()
+        .find(|p| p.period_start == dt(2026, 1, 1, 0, 0))
+        .unwrap();
+    assert_eq!(
+        before_jan.forecast_net_budget_spending,
+        after_jan.forecast_net_budget_spending
+    );
+    assert_eq!(before_jan.projected_delta, 2_000);
+    assert_eq!(after_jan.projected_delta, 0);
+    assert_eq!(after_jan.actual_net_budget_spending, 3_000);
+}
