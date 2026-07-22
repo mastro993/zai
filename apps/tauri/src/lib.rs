@@ -170,6 +170,7 @@ pub fn run() {
             commands::transaction_categories::get_transaction_categories,
             commands::transaction_categories::create_transaction_category,
             commands::transaction_categories::update_transaction_category,
+            commands::transaction_categories::preview_delete_transaction_categories,
             commands::transaction_categories::delete_transaction_categories,
             commands::transaction_categories::import_transaction_categories,
             commands::transactions::get_transactions,

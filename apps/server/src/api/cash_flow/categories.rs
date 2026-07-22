@@ -10,8 +10,8 @@ use axum::{
 use serde::Deserialize;
 use zai_app::ServiceContext;
 use zai_core::features::transaction_categories::models::{
-    CategoryChildrenDeleteStrategy, CategoryRole, NewTransactionCategory, TransactionCategory,
-    TransactionCategoryUpdate,
+    CategoryChildrenDeleteStrategy, CategoryDeletionPreview, CategoryRole, NewTransactionCategory,
+    TransactionCategory, TransactionCategoryUpdate,
 };
 
 use crate::api::error::{bad_request, command_error};
@@ -54,6 +54,10 @@ type CategoryResult<T> = Result<T, (StatusCode, Json<crate::api::error::ApiError
 pub fn router() -> Router<Arc<ServiceContext>> {
     Router::new()
         .route("/categories", get(list_categories).post(create_category))
+        .route(
+            "/categories/bulk-delete/preview",
+            post(preview_bulk_delete_categories),
+        )
         .route("/categories/bulk-delete", post(bulk_delete_categories))
         .route("/categories/import", post(import_categories))
         .route(
@@ -162,6 +166,29 @@ pub async fn bulk_delete_categories(
         .await
         .map(Json)
         .map_err(|error| command_error("Failed to delete transaction categories", error))
+}
+
+pub async fn preview_bulk_delete_categories(
+    State(context): State<Arc<ServiceContext>>,
+    payload: Result<Json<BulkDeleteCategoriesRequest>, JsonRejection>,
+) -> CategoryResult<Json<CategoryDeletionPreview>> {
+    let Json(request) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    let category_id_refs = request
+        .category_ids
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>();
+    context
+        .transaction_categories_service()
+        .preview_delete_categories(
+            category_id_refs,
+            request
+                .children_strategy
+                .unwrap_or(CategoryChildrenDeleteStrategy::Block),
+        )
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to preview transaction category deletion", error))
 }
 
 pub async fn import_categories(

@@ -19,6 +19,8 @@ import { CategoryBudgetImpactConfirmationDialog } from "../components/category-b
 import { CategoryFormDrawer } from "../components/category-form-drawer";
 import { CategoryImportDialog } from "../components/category-import-dialog";
 import { CategoryList, CategoryListSkeleton } from "../components/category-list";
+import { CategoryRecurringImpactConfirmationDialog } from "../components/category-recurring-impact-confirmation-dialog";
+import { useCategoryDeletion } from "../hooks/use-category-deletion";
 import type { CategoryFormMode } from "../types/category-types";
 import type {
   CategoryChildrenDeleteStrategy,
@@ -51,12 +53,9 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
   const [categories, setCategories] = useState(initialCategories);
   const [formMode, setFormMode] = useState<CategoryFormMode | null>(null);
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<TransactionCategory | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [pendingBudgetImpact, setPendingBudgetImpact] = useState<PendingBudgetImpact | null>(null);
   const [isConfirmingBudgetImpact, setIsConfirmingBudgetImpact] = useState(false);
@@ -87,14 +86,27 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
     return true;
   };
 
+  const {
+    pendingDelete,
+    isDeleteDialogOpen,
+    isDeleting,
+    isPreviewingDelete,
+    pendingRecurringImpact,
+    isConfirmingRecurringImpact,
+    openDeleteDialog,
+    previewCategoryDeletion,
+    confirmRecurringImpact,
+    setIsDeleteDialogOpen,
+    setPendingRecurringImpact,
+    handleDeleteDialogOpenChangeComplete,
+  } = useCategoryDeletion({
+    loadCategories,
+    onBudgetImpact: setPendingBudgetImpact,
+  });
+
   const openFormDrawer = (mode: CategoryFormMode) => {
     setFormMode(mode);
     setIsFormDrawerOpen(true);
-  };
-
-  const openDeleteDialog = (category: TransactionCategory) => {
-    setPendingDelete(category);
-    setIsDeleteDialogOpen(true);
   };
 
   const exportCategoryCsv = async () => {
@@ -150,49 +162,6 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
     }
   };
 
-  const deleteCategory = async (
-    category: TransactionCategory,
-    childrenStrategy: CategoryChildrenDeleteStrategy,
-    confirmBudgetImpact = false,
-  ) => {
-    setIsDeleting(true);
-    const result = await deleteTransactionCategories(
-      [category.id],
-      childrenStrategy,
-      confirmBudgetImpact,
-    );
-
-    if (Result.isFailure(result)) {
-      const budgets = getAffectedBudgets(result.error);
-      if (result.error.code === "budgetImpactConfirmationRequired" && budgets.length > 0) {
-        setIsDeleteDialogOpen(false);
-        setPendingBudgetImpact({
-          type: "delete",
-          category,
-          childrenStrategy,
-          budgets,
-        });
-        setIsDeleting(false);
-        return;
-      }
-      if (result.error.code === "categoryDeletionBlocked") {
-        toast.error("Category deletion blocked", { description: result.error.message });
-      } else {
-        toast.error("Failed to delete category", { description: result.error.message });
-      }
-      setIsDeleteDialogOpen(false);
-      setIsDeleting(false);
-      return;
-    }
-
-    setIsDeleteDialogOpen(false);
-    const didLoadCategories = await loadCategories();
-    setIsDeleting(false);
-    if (didLoadCategories) {
-      toast.success("Category deleted");
-    }
-  };
-
   const confirmBudgetImpact = async () => {
     if (!pendingBudgetImpact) {
       return;
@@ -221,7 +190,6 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
     setPendingBudgetImpact(null);
     setIsConfirmingBudgetImpact(false);
     setIsDeleteDialogOpen(false);
-    setIsDeleting(false);
     if (pendingBudgetImpact.type === "update") {
       setIsFormDrawerOpen(false);
     }
@@ -262,28 +230,38 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
         category={pendingDelete}
         open={isDeleteDialogOpen}
         hasChildren={pendingDelete ? getChildren(categories, pendingDelete.id).length > 0 : false}
-        isDeleting={isDeleting}
+        isActionPending={isDeleting || isPreviewingDelete}
+        pendingLabel={isPreviewingDelete ? "Checking..." : "Deleting..."}
         onOpenChange={setIsDeleteDialogOpen}
-        onOpenChangeComplete={(open) => {
-          if (!open) {
-            setPendingDelete(null);
-          }
-        }}
+        onOpenChangeComplete={handleDeleteDialogOpenChangeComplete}
         onDelete={() => {
           if (pendingDelete) {
-            void deleteCategory(pendingDelete, "block");
+            void previewCategoryDeletion(pendingDelete, "block");
           }
         }}
         onDeleteChildren={() => {
           if (pendingDelete) {
-            void deleteCategory(pendingDelete, "delete");
+            void previewCategoryDeletion(pendingDelete, "delete");
           }
         }}
         onPromoteChildren={() => {
           if (pendingDelete) {
-            void deleteCategory(pendingDelete, "promote");
+            void previewCategoryDeletion(pendingDelete, "promote");
           }
         }}
+      />
+
+      <CategoryRecurringImpactConfirmationDialog
+        category={pendingRecurringImpact?.category ?? null}
+        preview={pendingRecurringImpact?.preview ?? null}
+        open={pendingRecurringImpact !== null}
+        isConfirming={isConfirmingRecurringImpact || isDeleting}
+        onOpenChange={(open) => {
+          if (!open && !isConfirmingRecurringImpact && !isDeleting) {
+            setPendingRecurringImpact(null);
+          }
+        }}
+        onConfirm={() => void confirmRecurringImpact()}
       />
 
       <CategoryBudgetImpactConfirmationDialog

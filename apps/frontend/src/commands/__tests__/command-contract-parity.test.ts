@@ -118,6 +118,7 @@ describe("command transport registry parity", () => {
         "mark_all_alerts_read",
         "pause_budget",
         "pause_recurring_transaction",
+        "preview_delete_transaction_categories",
         "preview_recurring_adoption",
         "resume_budget",
         "resume_recurring_transaction",

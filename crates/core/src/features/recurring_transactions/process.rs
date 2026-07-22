@@ -53,6 +53,7 @@ pub struct ProcessingSliceOutcome {
 pub enum ProcessOneOutcome {
     Committed(RecurringOccurrence),
     AlreadyFulfilled(RecurringOccurrence),
+    GenerationFailed,
     NoEligibleWork,
 }
 

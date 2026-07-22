@@ -201,6 +201,42 @@ async fn direct_current_budget_selection_blocks_category_deletion() {
 }
 
 #[tokio::test]
+async fn preview_reports_budget_impact_before_delete() {
+    let temp_db = TempDb::new();
+    let repo = setup_test_repo(temp_db.path());
+    let budgets = BudgetsRepository::new(Arc::clone(&repo.pool), repo.writer.clone());
+    let category = repo
+        .create_category(NewTransactionCategory {
+            name: "Food".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            role: Some(CategoryRole::Spending),
+            id: Some("food-preview".to_string()),
+        })
+        .await
+        .expect("category");
+    budgets
+        .create_budget(new_scoped_budget(&category.id))
+        .await
+        .expect("budget");
+
+    let preview = repo
+        .preview_delete_categories(vec![&category.id], CategoryChildrenDeleteStrategy::Block)
+        .await
+        .expect("preview should expose the blocking budget");
+
+    assert_eq!(
+        preview.affected_budgets,
+        vec![BudgetImpact {
+            id: "budget-1".to_string(),
+            name: "Food budget".to_string(),
+        }]
+    );
+    assert!(preview.blocked_by_current_budget);
+}
+
+#[tokio::test]
 async fn indirectly_covered_deletion_requires_confirmation_then_rebuilds_budget() {
     let temp_db = TempDb::new();
     let repo = setup_test_repo(temp_db.path());
@@ -249,4 +285,42 @@ async fn indirectly_covered_deletion_requires_confirmation_then_rebuilds_budget(
         .expect("confirmed deletion");
     assert!(repo.get_category(&child.id).await.is_err());
     assert!(repo.get_category(&root.id).await.is_ok());
+}
+
+#[tokio::test]
+async fn block_delete_rechecks_children_inside_writer() {
+    let temp_db = TempDb::new();
+    let repo = setup_test_repo(temp_db.path());
+    let parent = repo
+        .create_category(NewTransactionCategory {
+            name: "Parent".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            role: None,
+            id: Some(Uuid::new_v4().to_string()),
+        })
+        .await
+        .expect("parent");
+    repo.create_category(NewTransactionCategory {
+        name: "Child".to_string(),
+        parent_id: Some(parent.id.clone()),
+        description: None,
+        color: None,
+        role: None,
+        id: Some(Uuid::new_v4().to_string()),
+    })
+    .await
+    .expect("child");
+
+    let error = repo
+        .delete_categories(
+            vec![&parent.id],
+            CategoryChildrenDeleteStrategy::Block,
+            false,
+        )
+        .await
+        .expect_err("block strategy must reject live children");
+    assert!(matches!(error, Error::Conflict(_)));
+    assert!(repo.get_category(&parent.id).await.is_ok());
 }

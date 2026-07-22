@@ -1,6 +1,6 @@
 use super::process_test_support::{local, seed_source, setup_service};
 use super::seed::SeedRecurringSource;
-use crate::schema::recurring_generation_failures;
+use crate::schema::{recurring_generation_failures, transaction_categories};
 use diesel::prelude::*;
 use zai_core::features::recurring_transactions::{
     FulfillmentKind, ProcessingWorkBudget, RECURRING_GENERATION_FAILURE_PRODUCER_KEY,
@@ -278,6 +278,119 @@ async fn open_failure_blocks_only_that_source() {
             .items
             .is_empty()
     );
+}
+
+#[tokio::test]
+async fn invalid_deleted_category_records_failure_and_other_sources_continue() {
+    let observed = local(2026, 2, 10, 12, 0);
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
+    let (_, invalid_template) = seed_source(
+        &repo,
+        SeedRecurringSource {
+            id: "rt-invalid-category".into(),
+            description: "Invalid category".into(),
+            lifecycle: "active",
+            total_occurrences: None,
+            fulfilled_count: 0,
+            revision: 1,
+            first_scheduled_local: local(2026, 2, 1, 9, 0),
+            next_scheduled_local: local(2026, 2, 1, 9, 0),
+            next_ordinal: 1,
+            amount: 100,
+            transaction_type: "expense",
+        },
+    )
+    .await;
+    seed_source(
+        &repo,
+        SeedRecurringSource {
+            id: "rt-healthy-after-invalid".into(),
+            description: "Healthy".into(),
+            lifecycle: "active",
+            total_occurrences: None,
+            fulfilled_count: 0,
+            revision: 1,
+            first_scheduled_local: local(2026, 2, 2, 9, 0),
+            next_scheduled_local: local(2026, 2, 2, 9, 0),
+            next_ordinal: 1,
+            amount: 100,
+            transaction_type: "expense",
+        },
+    )
+    .await;
+
+    let writer = repo.writer().clone();
+    writer
+        .exec(move |conn| {
+            let category_now = chrono::Utc::now().naive_utc();
+            diesel::insert_into(transaction_categories::table)
+                .values((
+                    transaction_categories::id.eq("deleted-category"),
+                    transaction_categories::parent_id.eq(None::<String>),
+                    transaction_categories::name.eq("Deleted"),
+                    transaction_categories::description.eq(None::<String>),
+                    transaction_categories::color.eq(None::<String>),
+                    transaction_categories::role.eq("spending"),
+                    transaction_categories::created_at.eq(category_now),
+                    transaction_categories::updated_at.eq(category_now),
+                    transaction_categories::deleted_at.eq(Some(category_now)),
+                ))
+                .execute(conn)
+                .map_err(crate::errors::StorageError::from)?;
+            diesel::update(
+                crate::schema::recurring_template_revisions::table
+                    .filter(crate::schema::recurring_template_revisions::id.eq(invalid_template)),
+            )
+            .set(
+                crate::schema::recurring_template_revisions::transaction_category_id
+                    .eq(Some("deleted-category".to_string())),
+            )
+            .execute(conn)
+            .map_err(crate::errors::StorageError::from)?;
+            Ok(())
+        })
+        .await
+        .expect("invalid category seed");
+
+    let outcome = service
+        .process_due(observed, ProcessingWorkBudget::occurrences(5), None)
+        .await
+        .expect("deterministic failure should be committed");
+    assert_eq!(outcome.committed, 1);
+
+    let invalid = service
+        .get_document("rt-invalid-category")
+        .await
+        .expect("invalid source");
+    let failure = invalid.failures.unresolved.expect("failure");
+    assert_eq!(failure.error_code, "invalid_category");
+    assert_eq!(
+        failure.repair_field_key.as_deref(),
+        Some("transaction_category_id")
+    );
+    assert!(invalid.links.occurrences.items.is_empty());
+
+    let healthy = service
+        .get_document("rt-healthy-after-invalid")
+        .await
+        .expect("healthy source");
+    assert_eq!(healthy.links.occurrences.items.len(), 1);
+
+    let pool = repo.pool().clone();
+    let failure_alerts = tokio::task::spawn_blocking(move || {
+        let mut conn = crate::connection::get_connection(&pool).expect("connection");
+        crate::schema::domain_alerts::table
+            .filter(
+                crate::schema::domain_alerts::producer_key
+                    .eq(RECURRING_GENERATION_FAILURE_PRODUCER_KEY),
+            )
+            .count()
+            .get_result::<i64>(&mut conn)
+            .expect("failure alerts")
+    })
+    .await
+    .expect("join");
+    assert_eq!(failure_alerts, 1);
 }
 
 #[tokio::test]

@@ -83,6 +83,20 @@ pub async fn run_processing_slice(
                     });
                 }
             }
+            Ok(ProcessOneOutcome::GenerationFailed) => {
+                contention_started = None;
+                contention_attempt = 0;
+                if slice_started.elapsed() >= work_budget.max_duration {
+                    let more_due_remaining = more_due_remaining(repository, observed_local).await?;
+                    return Ok(ProcessingSliceOutcome {
+                        committed,
+                        already_fulfilled,
+                        more_due_remaining,
+                        stop_reason: ProcessingStopReason::BudgetExhausted,
+                        observed_local,
+                    });
+                }
+            }
             Ok(ProcessOneOutcome::NoEligibleWork) => {
                 return Ok(ProcessingSliceOutcome {
                     committed,

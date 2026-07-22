@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { CommandDescriptor } from "@/commands/command-descriptor";
 
-import { categorySchema } from "../types/model";
+import { categoryDeletionPreviewSchema, categorySchema } from "../types/model";
 
 const categoryArraySchema = z.array(categorySchema);
 
@@ -24,6 +24,10 @@ export const CATEGORY_COMMANDS = {
   delete_transaction_categories: backendCommand(
     "delete_transaction_categories",
     categoryArraySchema,
+  ),
+  preview_delete_transaction_categories: backendCommand(
+    "preview_delete_transaction_categories",
+    categoryDeletionPreviewSchema,
   ),
   import_transaction_categories: backendCommand(
     "import_transaction_categories",

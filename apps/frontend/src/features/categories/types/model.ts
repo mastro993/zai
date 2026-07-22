@@ -80,8 +80,25 @@ export const categorySchema = categoryBaseSchema.extend({
   parent: categoryBaseSchema.nullable().optional(),
 });
 
+const recurringCategoryImpactSchema = z.object({
+  recurringTransactionId: z.string().min(1),
+  description: z.string().min(1),
+});
+
+const budgetImpactSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+});
+
+export const categoryDeletionPreviewSchema = z.object({
+  affectedRecurringTransactions: z.array(recurringCategoryImpactSchema),
+  affectedBudgets: z.array(budgetImpactSchema),
+  blockedByCurrentBudget: z.boolean(),
+});
+
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 export type CategoryColor = (typeof CATEGORY_COLORS)[number];
 export type CategoryRole = z.infer<typeof categoryRoleSchema>;
 export type TransactionCategory = z.infer<typeof categorySchema>;
 export type CategoryChildrenDeleteStrategy = "block" | "promote" | "delete";
+export type CategoryDeletionPreview = z.infer<typeof categoryDeletionPreviewSchema>;

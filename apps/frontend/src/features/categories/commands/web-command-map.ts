@@ -64,6 +64,20 @@ export const buildCategoryCommandRequestSpec = (
         },
       };
     }
+    case "preview_delete_transaction_categories": {
+      const categoryIds = readStringArray(args.categoryIds);
+      if (!categoryIds) {
+        throw new CommandError("preview_delete_transaction_categories requires categoryIds");
+      }
+      return {
+        method: "POST",
+        path: "/categories/bulk-delete/preview",
+        body: {
+          categoryIds,
+          ...(args.childrenStrategy ? { childrenStrategy: args.childrenStrategy } : {}),
+        },
+      };
+    }
     case "import_transaction_categories": {
       const categories = args.categories;
       if (!Array.isArray(categories)) {
