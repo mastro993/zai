@@ -10,7 +10,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getRecurringBudgetProjections } from "../commands/recurring-transactions";
 import { ForecastCellDetail } from "../components/forecast-cell-detail";
 import { ForecastMatrixTable } from "../components/forecast-matrix-table";
-import { buildForecastMatrix, formatProjectionSourceErrorKind } from "../lib/forecast-matrix";
+import {
+  buildForecastMatrix,
+  FORECAST_HORIZON_MONTHS,
+  formatProjectionSourceErrorKind,
+} from "../lib/forecast-matrix";
 import type { BudgetPeriodForecast, BudgetProjectionResult } from "../types/budget-projection";
 
 const DEFAULT_HORIZON_MONTHS = 6;
@@ -71,8 +75,8 @@ export function ForecastBoardScreen({ initialProjection }: ForecastBoardScreenPr
             <input
               aria-label="Horizon"
               className="w-28 accent-foreground"
-              max={12}
-              min={1}
+              max={FORECAST_HORIZON_MONTHS.max}
+              min={FORECAST_HORIZON_MONTHS.min}
               type="range"
               value={horizonMonths}
               disabled={isUpdating}

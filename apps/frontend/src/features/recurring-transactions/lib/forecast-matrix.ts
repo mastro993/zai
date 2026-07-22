@@ -4,6 +4,8 @@ import type {
   ProjectionSourceErrorKind,
 } from "../types/budget-projection";
 
+export const FORECAST_HORIZON_MONTHS = { min: 1, max: 12 } as const;
+
 export interface ForecastMatrixColumn {
   periodStart: string;
   periodEnd: string;
