@@ -11,11 +11,10 @@ pre-commit:
       glob:
         - "apps/frontend/src/*.{ts,tsx}"
         - "apps/frontend/src/**/*.{ts,tsx}"
-      exclude:
-        - "apps/frontend/src/routeTree.gen.ts"
       run: pnpm exec oxlint {staged_files}
     frontend-routes:
       glob:
         - "apps/frontend/src/routes/*"
         - "apps/frontend/src/routes/**/*"
+        - "apps/frontend/src/routeTree.gen.ts"
       run: pnpm --filter frontend check:routes
