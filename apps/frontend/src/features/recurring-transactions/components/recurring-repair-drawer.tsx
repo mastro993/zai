@@ -56,12 +56,14 @@ const amountSchema = z
   )
   .pipe(z.number().int().max(MAX_TRANSACTION_AMOUNT_MINOR, "Amount exceeds supported maximum"));
 
-const categoryRepairSchema = z.object({
-  transactionCategoryId: z.string().optional(),
-});
+interface RepairFormValues {
+  transactionCategoryId?: string;
+  amount: string;
+}
 
-const amountRepairSchema = z.object({
-  amount: amountSchema,
+const repairFormSchema = z.object({
+  transactionCategoryId: z.string().optional(),
+  amount: z.string(),
 });
 
 interface RecurringRepairDrawerProps {
@@ -99,16 +101,14 @@ export function RecurringRepairDrawer({
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(isCategory ? categoryRepairSchema : amountRepairSchema),
-    defaultValues: isCategory
-      ? {
-          transactionCategoryId: document.template.transactionCategoryId ?? undefined,
-        }
-      : {
-          amount: (document.template.amount / 100).toFixed(2),
-        },
+  } = useForm<RepairFormValues>({
+    resolver: zodResolver(repairFormSchema),
+    defaultValues: {
+      transactionCategoryId: document.template.transactionCategoryId ?? undefined,
+      amount: (document.template.amount / 100).toFixed(2),
+    },
   });
 
   const closeAndReturnFocus = () => {
@@ -117,12 +117,25 @@ export function RecurringRepairDrawer({
   };
 
   const onPreview = handleSubmit(async (values) => {
+    let amount = document.template.amount;
+    if (!isCategory) {
+      const parsedAmount = amountSchema.safeParse(values.amount);
+      if (!parsedAmount.success) {
+        setError("amount", {
+          type: "manual",
+          message: parsedAmount.error.issues[0]?.message ?? "Enter a valid amount",
+        });
+        return;
+      }
+      amount = parsedAmount.data;
+    }
+
     const templateValues: PreparedTemplateValues = {
       description: document.template.description,
-      amount: isCategory ? document.template.amount : (values as { amount: number }).amount,
+      amount,
       transactionType: document.template.transactionType,
       transactionCategoryId: isCategory
-        ? (values as { transactionCategoryId?: string }).transactionCategoryId
+        ? values.transactionCategoryId
         : (document.template.transactionCategoryId ?? undefined),
       notes: document.template.notes ?? undefined,
     };
@@ -198,9 +211,7 @@ export function RecurringRepairDrawer({
                     />
                   )}
                 />
-                <FieldError>
-                  {errors.transactionCategoryId?.message as string | undefined}
-                </FieldError>
+                <FieldError>{errors.transactionCategoryId?.message}</FieldError>
               </Field>
             ) : (
               <Field>
@@ -226,7 +237,7 @@ export function RecurringRepairDrawer({
                     )}
                   />
                 </InputGroup>
-                <FieldError>{errors.amount?.message as string | undefined}</FieldError>
+                <FieldError>{errors.amount?.message}</FieldError>
                 <p className="text-sm text-muted-foreground">
                   Current value {formatCurrencyFromMinor(document.template.amount, "EUR")}
                 </p>
