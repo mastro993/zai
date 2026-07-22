@@ -82,14 +82,18 @@ pub enum RecurringRecoveryOutcome {
     },
 }
 
+pub fn validate_expected_revision(expected_revision: i32) -> Result<()> {
+    if expected_revision < 1 {
+        return Err(Error::InvalidData(
+            "Expected revision must be at least 1".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 impl RepairRecurringGenerationFailure {
     pub fn validate_revision(&self) -> Result<()> {
-        if self.expected_revision < 1 {
-            return Err(Error::InvalidData(
-                "Expected revision must be at least 1".to_string(),
-            ));
-        }
-        Ok(())
+        validate_expected_revision(self.expected_revision)
     }
 
     pub fn validate_template(&self) -> Result<()> {
@@ -103,12 +107,7 @@ impl RepairRecurringGenerationFailure {
 
 impl RetryRecurringGenerationFailure {
     pub fn validate_revision(&self) -> Result<()> {
-        if self.expected_revision < 1 {
-            return Err(Error::InvalidData(
-                "Expected revision must be at least 1".to_string(),
-            ));
-        }
-        Ok(())
+        validate_expected_revision(self.expected_revision)
     }
 }
 

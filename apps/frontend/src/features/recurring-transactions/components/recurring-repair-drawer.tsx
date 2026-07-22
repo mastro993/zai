@@ -34,7 +34,10 @@ import {
   repairRecurringGenerationFailure,
 } from "../commands/recurring-transactions";
 import { formatLocalDateTime } from "../lib/recurring";
-import type { RecurringTransactionDocument } from "../types/recurring-transaction";
+import type {
+  RecurringRepairPreview,
+  RecurringTransactionDocument,
+} from "../types/recurring-transaction";
 
 const amountSchema = z
   .string()
@@ -71,6 +74,14 @@ interface RecurringRepairDrawerProps {
   returnFocusRef?: React.RefObject<HTMLElement | null>;
 }
 
+interface PreparedTemplateValues {
+  description: string;
+  amount: number;
+  transactionType: "expense" | "income";
+  transactionCategoryId?: string;
+  notes?: string;
+}
+
 export function RecurringRepairDrawer({
   document,
   repairFieldKey,
@@ -82,7 +93,9 @@ export function RecurringRepairDrawer({
 }: RecurringRepairDrawerProps) {
   const unresolved = document.failures.unresolved;
   const isCategory = repairFieldKey === "transaction_category_id";
-  const [previewText, setPreviewText] = useState<string>();
+  const [preview, setPreview] = useState<RecurringRepairPreview>();
+  const [prepared, setPrepared] = useState<PreparedTemplateValues>();
+  const [isConfirming, setIsConfirming] = useState(false);
   const {
     control,
     handleSubmit,
@@ -98,8 +111,13 @@ export function RecurringRepairDrawer({
         },
   });
 
-  const submit = handleSubmit(async (values) => {
-    const templateValues = {
+  const closeAndReturnFocus = () => {
+    onOpenChange(false);
+    queueMicrotask(() => returnFocusRef?.current?.focus());
+  };
+
+  const onPreview = handleSubmit(async (values) => {
+    const templateValues: PreparedTemplateValues = {
       description: document.template.description,
       amount: isCategory ? document.template.amount : (values as { amount: number }).amount,
       transactionType: document.template.transactionType,
@@ -109,22 +127,22 @@ export function RecurringRepairDrawer({
       notes: document.template.notes ?? undefined,
     };
 
-    const preview = await previewRecurringGenerationRepair(
-      document,
-      repairFieldKey,
-      templateValues,
-    );
-    if (Result.isFailure(preview)) {
-      toast.error(preview.error.message);
+    const result = await previewRecurringGenerationRepair(document, repairFieldKey, templateValues);
+    if (Result.isFailure(result)) {
+      toast.error(result.error.message);
       return;
     }
-    setPreviewText(
-      `Updates ${preview.value.affectedUnfulfilledSegmentCount} unfulfilled segment${
-        preview.value.affectedUnfulfilledSegmentCount === 1 ? "" : "s"
-      }${preview.value.includesFutureTemplate ? ", including the future template" : ""}.`,
-    );
+    setPrepared(templateValues);
+    setPreview(result.value);
+  });
 
-    const result = await repairRecurringGenerationFailure(document, repairFieldKey, templateValues);
+  const onConfirm = async () => {
+    if (!prepared || !preview) {
+      return;
+    }
+    setIsConfirming(true);
+    const result = await repairRecurringGenerationFailure(document, repairFieldKey, prepared);
+    setIsConfirming(false);
     if (Result.isFailure(result)) {
       toast.error(result.error.message);
       return;
@@ -135,9 +153,8 @@ export function RecurringRepairDrawer({
       return;
     }
     onDocumentChange(result.value.document);
-    onOpenChange(false);
-    queueMicrotask(() => returnFocusRef?.current?.focus());
-  });
+    closeAndReturnFocus();
+  };
 
   return (
     <DrawerContent>
@@ -151,7 +168,7 @@ export function RecurringRepairDrawer({
       </DrawerHeader>
       <form
         className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4"
-        onSubmit={submit}
+        onSubmit={onPreview}
         aria-hidden={!open}
       >
         <FieldSet>
@@ -168,7 +185,11 @@ export function RecurringRepairDrawer({
                       mode="single"
                       categories={categories}
                       value={field.value ?? null}
-                      onChange={(value) => field.onChange(value ?? undefined)}
+                      onChange={(value) => {
+                        setPreview(undefined);
+                        setPrepared(undefined);
+                        field.onChange(value ?? undefined);
+                      }}
                       placeholder="Uncategorized"
                       ariaLabel="Repair category"
                       drawerTitle="Choose category"
@@ -196,6 +217,11 @@ export function RecurringRepairDrawer({
                         {...field}
                         inputMode="decimal"
                         aria-invalid={Boolean(errors.amount)}
+                        onChange={(event) => {
+                          setPreview(undefined);
+                          setPrepared(undefined);
+                          field.onChange(event);
+                        }}
                       />
                     )}
                   />
@@ -208,20 +234,33 @@ export function RecurringRepairDrawer({
             )}
           </FieldGroup>
         </FieldSet>
-        {previewText ? (
-          <p role="status" className="text-sm text-muted-foreground">
-            {previewText}
+        {preview ? (
+          <p role="status" className="text-sm">
+            Preview: updates {preview.affectedUnfulfilledSegmentCount} unfulfilled segment
+            {preview.affectedUnfulfilledSegmentCount === 1 ? "" : "s"}
+            {preview.includesFutureTemplate ? ", including the future template" : ""}. Confirm to
+            persist and retry in order.
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Repair & retry previews qualifying unfulfilled segments, then persists and retries in
-            order.
+            Preview the repair across unfulfilled segments before confirming Repair &amp; retry.
           </p>
         )}
         <DrawerFooter>
-          <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
-            {isSubmitting ? "Repairing…" : "Repair & retry"}
-          </Button>
+          {preview ? (
+            <Button
+              type="button"
+              disabled={isConfirming}
+              aria-busy={isConfirming}
+              onClick={() => void onConfirm()}
+            >
+              {isConfirming ? "Repairing…" : "Repair & retry"}
+            </Button>
+          ) : (
+            <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+              {isSubmitting ? "Previewing…" : "Preview repair"}
+            </Button>
+          )}
           <DrawerClose
             render={<Button type="button" variant="outline" />}
             onClick={() => queueMicrotask(() => returnFocusRef?.current?.focus())}

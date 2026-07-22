@@ -151,7 +151,13 @@ impl RecurringTransactionsService {
             )
             .await?;
 
-        let _ = self.invoke_ordered_retry().await;
+        // Repair is already durable; ordered retry may still park on an unrelated
+        // failure. Surface operational retry errors, then always return post-repair state.
+        if let Err(error) = self.invoke_ordered_retry().await {
+            if !matches!(error, Error::Repository(_)) {
+                return Err(error);
+            }
+        }
         let document = self.get_document(&input.recurring_transaction_id).await?;
         Ok(RecurringRecoveryOutcome::Succeeded { document })
     }
@@ -200,7 +206,11 @@ impl RecurringTransactionsService {
             });
         }
 
-        let _ = self.invoke_ordered_retry().await;
+        if let Err(error) = self.invoke_ordered_retry().await {
+            if !matches!(error, Error::Repository(_)) {
+                return Err(error);
+            }
+        }
         let document = self.get_document(&recurring.id).await?;
         Ok(RecurringRecoveryOutcome::Succeeded { document })
     }
