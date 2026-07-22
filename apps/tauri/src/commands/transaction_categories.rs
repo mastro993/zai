@@ -4,8 +4,8 @@ use log::debug;
 use tauri::State;
 use zai_app::ServiceContext;
 use zai_core::features::transaction_categories::models::{
-    CategoryChildrenDeleteStrategy, NewTransactionCategory, TransactionCategory,
-    TransactionCategoryUpdate,
+    CategoryChildrenDeleteStrategy, CategoryDeletionPreview, NewTransactionCategory,
+    TransactionCategory, TransactionCategoryUpdate,
 };
 
 use super::{CommandResult, command_error};
@@ -101,6 +101,28 @@ pub async fn delete_transaction_categories(
         )
         .await
         .map_err(|error| command_error("Failed to delete transaction categories", error))
+}
+
+#[tauri::command]
+pub async fn preview_delete_transaction_categories(
+    category_ids: Vec<String>,
+    children_strategy: Option<CategoryChildrenDeleteStrategy>,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<CategoryDeletionPreview> {
+    debug!(
+        "Previewing deletion of {} transaction categories [{}]...",
+        category_ids.len(),
+        category_ids.join(", ")
+    );
+    let category_id_refs = category_ids.iter().map(String::as_str).collect();
+    state
+        .transaction_categories_service()
+        .preview_delete_categories(
+            category_id_refs,
+            children_strategy.unwrap_or(CategoryChildrenDeleteStrategy::Block),
+        )
+        .await
+        .map_err(|error| command_error("Failed to preview transaction category deletion", error))
 }
 
 #[tauri::command]

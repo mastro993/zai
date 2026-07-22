@@ -123,6 +123,47 @@ async fn list_categories_returns_empty_array() {
 }
 
 #[tokio::test]
+async fn preview_category_deletion_returns_budget_impact_shape() {
+    let app = CategoryTestApp::new();
+    let (_, category) = app
+        .post_json(
+            "/api/cash-flow/categories",
+            json!({ "name": "Food", "role": "spending" }),
+        )
+        .await;
+    let category_id = category["id"].as_str().expect("category id");
+    let (budget_status, budget) = app
+        .post_json(
+            "/api/cash-flow/budgets",
+            json!({
+                "name": "Food budget",
+                "baseAllowance": 10000,
+                "categoryIds": [category_id]
+            }),
+        )
+        .await;
+    assert_eq!(budget_status, StatusCode::CREATED);
+    let budget_id = budget["id"].as_str().expect("budget id");
+
+    let (status, body) = app
+        .post_json(
+            "/api/cash-flow/categories/bulk-delete/preview",
+            json!({ "categoryIds": [category_id], "childrenStrategy": "block" }),
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body,
+        json!({
+            "affectedRecurringTransactions": [],
+            "affectedBudgets": [{ "id": budget_id, "name": "Food budget" }],
+            "blockedByCurrentBudget": true,
+        })
+    );
+}
+
+#[tokio::test]
 async fn create_root_category_returns_created_category() {
     let app = CategoryTestApp::new();
     let (status, body) = app

@@ -7,8 +7,8 @@ use zai_core::Result;
 use zai_core::features::budgets::traits::CalendarClock;
 use zai_core::features::domain_alerts::DomainAlertEventPublisher;
 use zai_core::features::transaction_categories::models::{
-    CategoryChildrenDeleteStrategy, NewTransactionCategory, TransactionCategory,
-    TransactionCategoryUpdate,
+    CategoryChildrenDeleteStrategy, CategoryDeletionPreview, NewTransactionCategory,
+    TransactionCategory, TransactionCategoryUpdate,
 };
 use zai_core::features::transaction_categories::traits::TransactionCategoriesRepositoryTrait;
 
@@ -101,6 +101,14 @@ impl TransactionCategoriesRepositoryTrait for TransactionCategoriesRepository {
         updated_category: TransactionCategoryUpdate,
     ) -> Result<TransactionCategory> {
         mutations::update_category(self, updated_category).await
+    }
+
+    async fn preview_delete_categories(
+        &self,
+        ids: Vec<&str>,
+        children_strategy: CategoryChildrenDeleteStrategy,
+    ) -> Result<CategoryDeletionPreview> {
+        delete::preview_delete_categories(self, ids, children_strategy).await
     }
 
     async fn delete_categories(

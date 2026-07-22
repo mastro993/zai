@@ -152,6 +152,24 @@ fn ids_to_delete(
     ids.dedup();
 
     if children_strategy
+        == zai_core::features::transaction_categories::models::CategoryChildrenDeleteStrategy::Block
+    {
+        let has_live_child = transaction_categories::table
+            .filter(transaction_categories::parent_id.eq_any(&ids))
+            .filter(transaction_categories::deleted_at.is_null())
+            .select(transaction_categories::id)
+            .first::<String>(conn)
+            .optional()
+            .into_storage()?;
+        if has_live_child.is_some() {
+            return Err(StorageError::CoreError(Error::Conflict(
+                "Choose whether to delete or promote child categories before deleting this category"
+                    .to_string(),
+            )));
+        }
+    }
+
+    if children_strategy
         == zai_core::features::transaction_categories::models::CategoryChildrenDeleteStrategy::Delete
     {
         let child_ids = transaction_categories::table
