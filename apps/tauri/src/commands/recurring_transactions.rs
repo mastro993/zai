@@ -6,8 +6,9 @@ use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, BudgetProjectionQuery,
     BudgetProjectionResult, GenerationFailureDiagnostics, NewRecurringTransaction,
-    PreviewRecurringGenerationRepair, RecurringAdoptOutcome, RecurringCreateOutcome,
-    RecurringFailurePage, RecurringFeedResult, RecurringLifecycleOutcome, RecurringLifecycleUpdate,
+    PreviewRecurringGenerationRepair, RecurringAdoptOutcome, RecurringBulkExecuteResult,
+    RecurringBulkPreflight, RecurringBulkRequest, RecurringCreateOutcome, RecurringFailurePage,
+    RecurringFeedResult, RecurringLifecycleOutcome, RecurringLifecycleUpdate, RecurringMatchingIds,
     RecurringMutationOutcome, RecurringOccurrencePage, RecurringRecoveryOutcome,
     RecurringRepairPreview, RecurringTransactionDocument, RepairRecurringGenerationFailure,
     RetryRecurringGenerationFailure, TransactionRecurringProvenance, UpdateRecurringTransaction,
@@ -301,4 +302,42 @@ pub async fn get_recurring_budget_projections(
         })
         .await
         .map_err(|error| command_error("Failed to load budget projections", error))
+}
+
+#[tauri::command]
+pub async fn get_matching_recurring_transaction_ids(
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringMatchingIds> {
+    debug!("Resolving matching recurring transaction ids...");
+    state
+        .recurring_transactions_service()
+        .list_matching_ids()
+        .await
+        .map_err(|error| command_error("Failed to resolve matching recurring ids", error))
+}
+
+#[tauri::command]
+pub async fn preflight_recurring_bulk(
+    request: RecurringBulkRequest,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringBulkPreflight> {
+    debug!("Preflighting recurring bulk action...");
+    state
+        .recurring_transactions_service()
+        .preflight_bulk(request)
+        .await
+        .map_err(|error| command_error("Failed to preflight recurring bulk action", error))
+}
+
+#[tauri::command]
+pub async fn execute_recurring_bulk(
+    request: RecurringBulkRequest,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringBulkExecuteResult> {
+    debug!("Executing recurring bulk action...");
+    state
+        .recurring_transactions_service()
+        .execute_bulk(request)
+        .await
+        .map_err(|error| command_error("Failed to execute recurring bulk action", error))
 }

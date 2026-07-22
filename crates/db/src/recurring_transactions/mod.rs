@@ -1,6 +1,8 @@
 mod adopt;
 #[cfg(test)]
 mod adopt_tests;
+#[cfg(test)]
+mod bulk_tests;
 #[cfg(any(test, feature = "failpoints"))]
 pub mod crash_child;
 mod create;
@@ -25,6 +27,7 @@ mod lifecycle_edge_tests;
 mod lifecycle_test_support;
 #[cfg(test)]
 mod lifecycle_tests;
+mod matching;
 mod models;
 #[cfg(test)]
 mod process_contention_tests;

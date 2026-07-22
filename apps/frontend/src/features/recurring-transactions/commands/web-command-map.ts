@@ -174,6 +174,27 @@ export const buildRecurringCommandRequestSpec = (
         body: { expectedRevision },
       };
     }
+    case "get_matching_recurring_transaction_ids":
+      return {
+        method: "GET",
+        path: "/recurring-transactions/ids",
+      };
+    case "preflight_recurring_bulk": {
+      const request = readRecord(args.request) ?? {};
+      return {
+        method: "POST",
+        path: "/recurring-transactions/bulk/preflight",
+        body: request,
+      };
+    }
+    case "execute_recurring_bulk": {
+      const request = readRecord(args.request) ?? {};
+      return {
+        method: "POST",
+        path: "/recurring-transactions/bulk/execute",
+        body: request,
+      };
+    }
     default:
       return undefined;
   }

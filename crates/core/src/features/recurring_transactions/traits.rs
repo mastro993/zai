@@ -1,4 +1,8 @@
 use super::adopt::{AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest};
+use super::bulk::{
+    RecurringBulkExecuteResult, RecurringBulkPreflight, RecurringBulkRequest,
+    RecurringMatchingIdentity, RecurringMatchingIds,
+};
 use super::create::{NewRecurringTransaction, RecurringTemplateInput};
 use super::document::{
     RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult,
@@ -27,6 +31,8 @@ use std::sync::atomic::AtomicBool;
 #[async_trait]
 pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
     async fn list_feed(&self, limit: i64, cursor: Option<String>) -> Result<RecurringFeedPage>;
+
+    async fn list_matching_ids(&self) -> Result<Vec<RecurringMatchingIdentity>>;
 
     async fn list_due_heads(
         &self,
@@ -222,6 +228,16 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
 
     async fn project_budgets(&self, query: BudgetProjectionQuery)
     -> Result<BudgetProjectionResult>;
+
+    async fn list_matching_ids(&self) -> Result<RecurringMatchingIds>;
+
+    async fn preflight_bulk(&self, request: RecurringBulkRequest)
+    -> Result<RecurringBulkPreflight>;
+
+    async fn execute_bulk(
+        &self,
+        request: RecurringBulkRequest,
+    ) -> Result<RecurringBulkExecuteResult>;
 }
 
 /// Internal occurrence processor used by trusted Rust orchestration.
