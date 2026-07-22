@@ -9,9 +9,10 @@ use zai_core::features::recurring_transactions::{
     PreviewRecurringGenerationRepair, RecurringAdoptOutcome, RecurringBulkExecuteResult,
     RecurringBulkPreflight, RecurringBulkRequest, RecurringCreateOutcome, RecurringFailurePage,
     RecurringFeedResult, RecurringLifecycleOutcome, RecurringLifecycleUpdate, RecurringMatchingIds,
-    RecurringMutationOutcome, RecurringOccurrencePage, RecurringRecoveryOutcome,
-    RecurringRepairPreview, RecurringTransactionDocument, RepairRecurringGenerationFailure,
-    RetryRecurringGenerationFailure, TransactionRecurringProvenance, UpdateRecurringTransaction,
+    RecurringMutationOutcome, RecurringOccurrencePage, RecurringProcessingStatusView,
+    RecurringRecoveryOutcome, RecurringRepairPreview, RecurringTransactionDocument,
+    RepairRecurringGenerationFailure, RetryRecurringGenerationFailure,
+    TransactionRecurringProvenance, UpdateRecurringTransaction,
 };
 
 use super::{CommandResult, command_error};
@@ -340,4 +341,14 @@ pub async fn execute_recurring_bulk(
         .execute_bulk(request)
         .await
         .map_err(|error| command_error("Failed to execute recurring bulk action", error))
+}
+
+#[tauri::command]
+pub async fn get_recurring_processing_status(
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringProcessingStatusView> {
+    debug!("Getting recurring processing status...");
+    Ok(RecurringProcessingStatusView {
+        status: state.recurring_processing_supervisor().status(),
+    })
 }

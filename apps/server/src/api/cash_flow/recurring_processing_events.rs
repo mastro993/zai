@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::{
-    Router,
+    Json, Router,
     extract::State,
     response::sse::{Event, KeepAlive, Sse},
     routing::get,
@@ -12,14 +12,27 @@ use futures_util::stream::{Stream, StreamExt};
 use tokio_stream::wrappers::BroadcastStream;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
-    RecurringProcessingEvent, serialize_recurring_processing_event,
+    RecurringProcessingEvent, RecurringProcessingStatusView, serialize_recurring_processing_event,
 };
 
 pub fn router() -> Router<Arc<ServiceContext>> {
-    Router::new().route(
-        "/recurring-processing/events",
-        get(recurring_processing_events),
-    )
+    Router::new()
+        .route(
+            "/recurring-processing/events",
+            get(recurring_processing_events),
+        )
+        .route(
+            "/recurring-processing/status",
+            get(recurring_processing_status),
+        )
+}
+
+async fn recurring_processing_status(
+    State(context): State<Arc<ServiceContext>>,
+) -> Json<RecurringProcessingStatusView> {
+    Json(RecurringProcessingStatusView {
+        status: context.recurring_processing_supervisor().status(),
+    })
 }
 
 async fn recurring_processing_events(

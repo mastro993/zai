@@ -57,6 +57,11 @@ export const buildRecurringCommandRequestSpec = (
         },
       };
     }
+    case "get_recurring_processing_status":
+      return {
+        method: "GET",
+        path: "/recurring-processing/status",
+      };
     case "get_transaction_recurring_provenance": {
       const transactionId = readString(args.transactionId);
       return {

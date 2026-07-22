@@ -27,6 +27,7 @@ import type {
   ScheduleRule,
   TransactionRecurringProvenance,
 } from "../types/recurring-transaction";
+import type { RecurringProcessingStatusView } from "../types/recurring-processing-status";
 import { RECURRING_COMMANDS } from "./registry";
 
 const toBackendLocal = (value: string): string => {
@@ -337,4 +338,8 @@ export const executeRecurringBulk = (
   return invokeDecodedCommand(RECURRING_COMMANDS.execute_recurring_bulk, {
     request: { action, items },
   });
+};
+
+export const getRecurringProcessingStatus = (): CommandResult<RecurringProcessingStatusView> => {
+  return invokeDecodedCommand(RECURRING_COMMANDS.get_recurring_processing_status, {});
 };

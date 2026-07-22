@@ -18,3 +18,6 @@ export const joinWebApiUrl = (origin: string, ...pathSegments: Array<string>): s
 
 export const resolveAlertsEventUrl = (): string =>
   joinWebApiUrl(resolveWebApiOrigin(), "api/alerts/events");
+
+export const resolveRecurringProcessingEventUrl = (): string =>
+  joinWebApiUrl(resolveWebApiOrigin(), "api/cash-flow/recurring-processing/events");

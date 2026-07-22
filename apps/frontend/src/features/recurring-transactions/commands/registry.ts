@@ -21,6 +21,7 @@ import {
   recurringTransactionDocumentSchema,
   transactionRecurringProvenanceSchema,
 } from "../types/recurring-transaction";
+import { recurringProcessingStatusViewSchema } from "../types/recurring-processing-status";
 
 const backendCommand = <T>(
   name: string,
@@ -64,6 +65,10 @@ export const RECURRING_COMMANDS = {
   get_recurring_budget_projections: backendCommand(
     "get_recurring_budget_projections",
     budgetProjectionResultSchema,
+  ),
+  get_recurring_processing_status: backendCommand(
+    "get_recurring_processing_status",
+    recurringProcessingStatusViewSchema,
   ),
   get_matching_recurring_transaction_ids: backendCommand(
     "get_matching_recurring_transaction_ids",
