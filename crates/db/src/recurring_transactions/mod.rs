@@ -16,6 +16,9 @@ pub(crate) mod failpoints;
 mod fulfill;
 mod fulfill_head;
 mod fulfill_select;
+mod lifecycle;
+#[cfg(test)]
+mod lifecycle_tests;
 mod models;
 #[cfg(test)]
 mod process_contention_tests;

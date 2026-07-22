@@ -134,7 +134,7 @@ async fn competing_processors_different_observations_loser_reselects() {
 #[tokio::test]
 async fn retry_after_winner_is_idempotent() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         default_seed("rt-retry", "Retry", local(2026, 2, 1, 9, 0)),
@@ -188,7 +188,7 @@ async fn selection_revalidation_after_peer_fulfillment() {
 #[tokio::test(start_paused = true, flavor = "current_thread")]
 async fn contention_exhaustion_is_operational_delay_not_source_failure() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (temp_db, service, repo, _lock) = setup_service(observed).await;
+    let (temp_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         default_seed("rt-busy", "Busy", local(2026, 2, 1, 9, 0)),
@@ -237,7 +237,7 @@ async fn contention_exhaustion_is_operational_delay_not_source_failure() {
     hold.wait();
     locker.join().expect("locker");
 
-    let (service2, _) = super::process_test_support::open_service(&db_path, observed);
+    let (service2, _, _) = super::process_test_support::open_service(&db_path, observed);
     let caught_up = service2
         .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await

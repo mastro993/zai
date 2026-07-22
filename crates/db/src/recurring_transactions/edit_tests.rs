@@ -45,7 +45,7 @@ fn update_from_document(document: &RecurringTransactionDocument) -> UpdateRecurr
 #[tokio::test]
 async fn template_description_update_is_idempotent_on_replay() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(&repo, base_seed("rt-description", "Old description")).await;
     let before = service.get_document("rt-description").await.expect("doc");
 
@@ -75,7 +75,7 @@ async fn template_description_update_is_idempotent_on_replay() {
 #[tokio::test]
 async fn template_description_unchanged_when_same_value() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(&repo, base_seed("rt-same", "Same")).await;
     let before = service.get_document("rt-same").await.expect("doc");
 
@@ -94,7 +94,7 @@ async fn template_description_unchanged_when_same_value() {
 #[tokio::test]
 async fn stopped_source_rejects_configuration_edits() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let mut seed = base_seed("rt-stopped", "Stopped");
     seed.lifecycle = "stopped";
     seed_source(&repo, seed).await;

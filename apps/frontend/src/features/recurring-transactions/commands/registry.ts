@@ -5,6 +5,7 @@ import {
   recurringAdoptOutcomeSchema,
   recurringCreateOutcomeSchema,
   recurringFeedResultSchema,
+  recurringLifecycleOutcomeSchema,
   recurringMutationOutcomeSchema,
   recurringOccurrencePageSchema,
   recurringTransactionDocumentSchema,
@@ -46,7 +47,23 @@ export const RECURRING_COMMANDS = {
     "get_transaction_recurring_provenance",
     transactionRecurringProvenanceSchema.nullable(),
   ),
+  pause_recurring_transaction: backendCommand(
+    "pause_recurring_transaction",
+    recurringLifecycleOutcomeSchema,
+  ),
   preview_recurring_adoption: backendCommand("preview_recurring_adoption", adoptionPreviewSchema),
+  resume_recurring_transaction: backendCommand(
+    "resume_recurring_transaction",
+    recurringLifecycleOutcomeSchema,
+  ),
+  stop_recurring_transaction: backendCommand(
+    "stop_recurring_transaction",
+    recurringLifecycleOutcomeSchema,
+  ),
+  tombstone_recurring_transaction: backendCommand(
+    "tombstone_recurring_transaction",
+    recurringLifecycleOutcomeSchema,
+  ),
   update_recurring_transaction: backendCommand(
     "update_recurring_transaction",
     recurringMutationOutcomeSchema,

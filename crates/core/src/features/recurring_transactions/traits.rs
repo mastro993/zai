@@ -5,6 +5,9 @@ use super::document::{
     RecurringTransactionDocument, TransactionRecurringProvenance,
 };
 use super::edit::{RecurringMutationOutcome, UpdateRecurringTransaction};
+use super::lifecycle::{
+    RecurringLifecycleCommand, RecurringLifecycleOutcome, RecurringLifecycleUpdate,
+};
 use super::models::{
     RecurringFailurePage, RecurringFeedPage, RecurringGenerationFailure, RecurringOccurrence,
     RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
@@ -101,6 +104,13 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         apply_count: bool,
     ) -> Result<RecurringTransaction>;
 
+    async fn apply_lifecycle_command(
+        &self,
+        command: RecurringLifecycleCommand,
+        update: RecurringLifecycleUpdate,
+        observed_local: NaiveDateTime,
+    ) -> Result<RecurringTransaction>;
+
     async fn find_visible_transaction_date(&self, transaction_id: &str) -> Result<NaiveDateTime>;
 
     async fn adopt_existing_transaction(
@@ -146,6 +156,15 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
     async fn update(&self, input: UpdateRecurringTransaction) -> Result<RecurringMutationOutcome>;
 
     async fn adopt(&self, input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome>;
+
+    async fn pause(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome>;
+
+    async fn resume(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome>;
+
+    async fn stop(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome>;
+
+    async fn tombstone(&self, input: RecurringLifecycleUpdate)
+    -> Result<RecurringLifecycleOutcome>;
 }
 
 /// Internal occurrence processor used by trusted Rust orchestration.

@@ -87,6 +87,21 @@ export const buildRecurringCommandRequestSpec = (
         body: request ?? {},
       };
     }
+    case "pause_recurring_transaction":
+    case "resume_recurring_transaction":
+    case "stop_recurring_transaction":
+    case "tombstone_recurring_transaction": {
+      const recurringTransactionId = readString(args.recurringTransactionId);
+      const expectedRevision = readNumber(args.expectedRevision, 0);
+      const suffix = command.slice(0, command.indexOf("_recurring_transaction"));
+      return {
+        method: "POST",
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}/${suffix}`
+          : `/recurring-transactions/__missing_recurring_transaction_id__/${suffix}`,
+        body: { expectedRevision },
+      };
+    }
     default:
       return undefined;
   }

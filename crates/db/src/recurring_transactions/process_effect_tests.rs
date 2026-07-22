@@ -14,7 +14,7 @@ use zai_core::features::recurring_transactions::{
 #[tokio::test]
 async fn fulfillment_rolls_back_atomically_when_side_effect_fails() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         SeedRecurringSource {
@@ -76,7 +76,7 @@ async fn fulfillment_rolls_back_atomically_when_side_effect_fails() {
 #[tokio::test]
 async fn finite_source_completes_and_idempotent_replay_creates_nothing() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         SeedRecurringSource {
@@ -159,7 +159,7 @@ async fn finite_source_completes_and_idempotent_replay_creates_nothing() {
 #[tokio::test]
 async fn indefinite_alert_omits_counts_and_adopted_rules_forbid_alert() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         SeedRecurringSource {
@@ -242,7 +242,7 @@ async fn indefinite_alert_omits_counts_and_adopted_rules_forbid_alert() {
 #[tokio::test]
 async fn repaired_failure_is_resolved_on_successful_fulfillment() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let (schedule_id, _) = seed_source(
         &repo,
         SeedRecurringSource {

@@ -240,6 +240,7 @@ export const recurringMutationOutcomeSchema = z.discriminatedUnion("outcome", [
   }),
 ]);
 
+export const recurringLifecycleOutcomeSchema = recurringMutationOutcomeSchema;
 export const recurringAdoptOutcomeSchema = z.discriminatedUnion("outcome", [
   z.object({
     outcome: z.literal("succeeded"),
@@ -332,6 +333,7 @@ export type RecurringFeedResult = z.infer<typeof recurringFeedResultSchema>;
 export type RecurringTransactionDocument = z.infer<typeof recurringTransactionDocumentSchema>;
 export type RecurringCreateOutcome = z.infer<typeof recurringCreateOutcomeSchema>;
 export type RecurringMutationOutcome = z.infer<typeof recurringMutationOutcomeSchema>;
+export type RecurringLifecycleOutcome = z.infer<typeof recurringLifecycleOutcomeSchema>;
 export type RecurringAdoptOutcome = z.infer<typeof recurringAdoptOutcomeSchema>;
 export type AdoptionPreview = z.infer<typeof adoptionPreviewSchema>;
 export type RecurringOccurrence = z.infer<typeof recurringOccurrenceSchema>;

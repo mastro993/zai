@@ -11,9 +11,9 @@ use serde::Deserialize;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, NewRecurringTransaction,
-    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult, RecurringMutationOutcome,
-    RecurringOccurrencePage, RecurringTransactionDocument, TransactionRecurringProvenance,
-    UpdateRecurringTransaction,
+    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult, RecurringLifecycleOutcome,
+    RecurringLifecycleUpdate, RecurringMutationOutcome, RecurringOccurrencePage,
+    RecurringTransactionDocument, TransactionRecurringProvenance, UpdateRecurringTransaction,
 };
 
 use crate::api::error::{bad_request, command_error};
@@ -58,6 +58,22 @@ pub fn router() -> Router<Arc<ServiceContext>> {
         .route(
             "/recurring-transactions/{recurring_transaction_id}/occurrences",
             get(list_recurring_occurrences),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/pause",
+            axum::routing::post(pause_recurring_transaction),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/resume",
+            axum::routing::post(resume_recurring_transaction),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/stop",
+            axum::routing::post(stop_recurring_transaction),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/tombstone",
+            axum::routing::post(tombstone_recurring_transaction),
         )
 }
 
@@ -165,4 +181,78 @@ async fn adopt_recurring_transaction(
         .await
         .map(|outcome| (StatusCode::CREATED, Json(outcome)))
         .map_err(|error| command_error("Failed to adopt transaction", error))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LifecycleBody {
+    expected_revision: i32,
+}
+
+async fn pause_recurring_transaction(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    payload: Result<Json<LifecycleBody>, JsonRejection>,
+) -> RecurringResult<Json<RecurringLifecycleOutcome>> {
+    let Json(body) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    context
+        .recurring_transactions_service()
+        .pause(RecurringLifecycleUpdate {
+            recurring_transaction_id,
+            expected_revision: body.expected_revision,
+        })
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to pause recurring transaction", error))
+}
+
+async fn resume_recurring_transaction(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    payload: Result<Json<LifecycleBody>, JsonRejection>,
+) -> RecurringResult<Json<RecurringLifecycleOutcome>> {
+    let Json(body) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    context
+        .recurring_transactions_service()
+        .resume(RecurringLifecycleUpdate {
+            recurring_transaction_id,
+            expected_revision: body.expected_revision,
+        })
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to resume recurring transaction", error))
+}
+
+async fn stop_recurring_transaction(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    payload: Result<Json<LifecycleBody>, JsonRejection>,
+) -> RecurringResult<Json<RecurringLifecycleOutcome>> {
+    let Json(body) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    context
+        .recurring_transactions_service()
+        .stop(RecurringLifecycleUpdate {
+            recurring_transaction_id,
+            expected_revision: body.expected_revision,
+        })
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to stop recurring transaction", error))
+}
+
+async fn tombstone_recurring_transaction(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    payload: Result<Json<LifecycleBody>, JsonRejection>,
+) -> RecurringResult<Json<RecurringLifecycleOutcome>> {
+    let Json(body) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    context
+        .recurring_transactions_service()
+        .tombstone(RecurringLifecycleUpdate {
+            recurring_transaction_id,
+            expected_revision: body.expected_revision,
+        })
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to delete recurring transaction", error))
 }

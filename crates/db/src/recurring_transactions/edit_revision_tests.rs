@@ -47,7 +47,7 @@ fn update_from_document(document: &RecurringTransactionDocument) -> UpdateRecurr
 #[tokio::test]
 async fn schedule_rule_edit_with_same_next_succeeds() {
     let observed = local(2026, 7, 21, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         SeedRecurringSource {
@@ -95,7 +95,7 @@ async fn schedule_rule_edit_with_same_next_succeeds() {
 #[tokio::test]
 async fn template_edit_before_first_scheduled_succeeds() {
     let observed = local(2026, 7, 21, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         SeedRecurringSource {
@@ -130,7 +130,7 @@ async fn template_edit_before_first_scheduled_succeeds() {
 #[tokio::test]
 async fn schedule_edit_retains_overdue_under_prior_revision() {
     let observed = local(2026, 4, 1, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         SeedRecurringSource {
@@ -200,7 +200,7 @@ async fn schedule_edit_retains_overdue_under_prior_revision() {
 #[tokio::test]
 async fn template_edit_is_future_only() {
     let observed = local(2026, 2, 1, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         SeedRecurringSource {
@@ -270,7 +270,7 @@ async fn template_edit_is_future_only() {
 #[tokio::test]
 async fn count_edit_can_become_indefinite() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let mut seed = base_seed("rt-indef", "Indef");
     seed.fulfilled_count = 2;
     seed.total_occurrences = Some(10);
@@ -292,7 +292,7 @@ async fn count_edit_can_become_indefinite() {
 #[tokio::test]
 async fn count_edit_completes_when_equal_to_fulfilled() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let mut seed = base_seed("rt-count", "Count");
     seed.fulfilled_count = 3;
     seed.total_occurrences = Some(10);
@@ -318,7 +318,7 @@ async fn count_edit_completes_when_equal_to_fulfilled() {
 #[tokio::test]
 async fn count_rejects_below_fulfilled() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let mut seed = base_seed("rt-low", "Low");
     seed.fulfilled_count = 4;
     seed_source(&repo, seed).await;

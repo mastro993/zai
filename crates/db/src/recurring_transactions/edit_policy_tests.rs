@@ -50,7 +50,7 @@ fn update_from_document(document: &RecurringTransactionDocument) -> UpdateRecurr
 #[tokio::test]
 async fn generation_blocked_blocks_configuration_edits() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let (schedule_id, _) = seed_source(&repo, base_seed("rt-block", "Blocked")).await;
 
     let writer = repo.writer().clone();
@@ -102,7 +102,7 @@ async fn generation_blocked_blocks_configuration_edits() {
 #[tokio::test]
 async fn revision_conflict_when_stale_and_different() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(&repo, base_seed("rt-conflict", "Conflict")).await;
     let before = service.get_document("rt-conflict").await.expect("doc");
 
@@ -124,7 +124,7 @@ async fn revision_conflict_when_stale_and_different() {
 #[tokio::test]
 async fn schedule_property_monthly_day_and_leap_year_clamp() {
     let observed = local(2024, 2, 1, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         SeedRecurringSource {
@@ -181,7 +181,7 @@ async fn schedule_property_monthly_day_and_leap_year_clamp() {
 #[tokio::test]
 async fn paused_source_remains_editable_without_generation_block() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(&repo, base_seed("rt-paused", "Paused")).await;
     repo.writer()
         .clone()

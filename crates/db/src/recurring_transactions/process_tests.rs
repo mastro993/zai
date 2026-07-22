@@ -11,7 +11,7 @@ use zai_core::features::recurring_transactions::{
 async fn generated_transaction_retains_scheduled_local_after_late_catch_up() {
     let scheduled = local(2026, 1, 15, 9, 0);
     let observed = local(2026, 3, 1, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let (schedule_id, _) = seed_source(
         &repo,
         SeedRecurringSource {
@@ -64,7 +64,7 @@ async fn generated_transaction_retains_scheduled_local_after_late_catch_up() {
 #[tokio::test]
 async fn processes_due_work_in_scheduled_local_then_identity_order() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
 
     seed_source(
         &repo,
@@ -182,7 +182,7 @@ async fn processes_due_work_in_scheduled_local_then_identity_order() {
 #[tokio::test]
 async fn open_failure_blocks_only_that_source() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let (blocked_schedule, _) = seed_source(
         &repo,
         SeedRecurringSource {
@@ -283,7 +283,7 @@ async fn open_failure_blocks_only_that_source() {
 #[tokio::test]
 async fn advancing_across_schedule_revision_recomputes_under_new_rule() {
     let observed = local(2026, 4, 1, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let (old_schedule, _) = seed_source(
         &repo,
         SeedRecurringSource {

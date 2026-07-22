@@ -50,7 +50,7 @@ fn crash_child_exe() -> PathBuf {
 #[tokio::test]
 async fn failpoint_before_side_effects_leaves_zero_fulfillment() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         default_seed("rt-fp-before", "Before", local(2026, 2, 1, 9, 0)),
@@ -86,7 +86,7 @@ async fn failpoints_during_each_side_effect_roll_back() {
 
     for (index, site) in sites.into_iter().enumerate() {
         let observed = local(2026, 2, 10, 12, 0);
-        let (_db, service, repo, _lock) = setup_service(observed).await;
+        let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
         seed_source(
             &repo,
             default_seed(
@@ -124,7 +124,7 @@ async fn failpoints_during_each_side_effect_roll_back() {
 #[tokio::test]
 async fn failpoint_after_commit_before_reply_leaves_one_canonical_fulfillment() {
     let observed = local(2026, 2, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         default_seed("rt-fp-reply", "Reply", local(2026, 2, 1, 9, 0)),
@@ -155,7 +155,7 @@ async fn failpoint_after_commit_before_reply_leaves_one_canonical_fulfillment() 
 #[tokio::test]
 async fn failpoint_between_slices_keeps_completed_occurrence_only() {
     let observed = local(2026, 3, 10, 12, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         SeedRecurringSource {
@@ -197,7 +197,7 @@ async fn failpoint_between_slices_keeps_completed_occurrence_only() {
 
 async fn run_subprocess_failpoint(site: FulfillmentFailpoint, expected_after_crash: i64) {
     let observed = local(2026, 2, 10, 12, 0);
-    let (temp_db, _service, repo, _lock) = setup_service(observed).await;
+    let (temp_db, _service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         default_seed(
@@ -230,7 +230,7 @@ async fn run_subprocess_failpoint(site: FulfillmentFailpoint, expected_after_cra
         "effects after crash at {site:?}"
     );
 
-    let (service, repo2) = super::process_test_support::open_service(&db_path, observed);
+    let (service, repo2, _) = super::process_test_support::open_service(&db_path, observed);
     let replay = service
         .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
@@ -282,7 +282,7 @@ async fn subprocess_exit_after_commit_before_reply_leaves_one_effect() {
 #[tokio::test]
 async fn restart_after_between_slices_failure_keeps_complete_first_occurrence() {
     let observed = local(2026, 3, 10, 12, 0);
-    let (temp_db, service, repo, _lock) = setup_service(observed).await;
+    let (temp_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(
         &repo,
         SeedRecurringSource {
@@ -310,7 +310,7 @@ async fn restart_after_between_slices_failure_keeps_complete_first_occurrence() 
     assert_canonical_fulfillment(&repo, 1);
 
     let db_path = temp_db.path().to_string();
-    let (service2, repo2) = super::process_test_support::open_service(&db_path, observed);
+    let (service2, repo2, _) = super::process_test_support::open_service(&db_path, observed);
     let resume = service2
         .process_due(observed, ProcessingWorkBudget::occurrences(10), None)
         .await

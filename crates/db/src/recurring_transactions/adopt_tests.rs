@@ -59,7 +59,7 @@ async fn insert_transaction(
 #[tokio::test]
 async fn adopt_preserves_transaction_records_occurrence_one_without_alert_and_catch_up() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let txn_id = "txn-adopt-1";
     let first = local(2026, 4, 21, 10, 0);
     insert_transaction(&repo, txn_id, first, 120_000).await;
@@ -140,7 +140,7 @@ async fn adopt_preserves_transaction_records_occurrence_one_without_alert_and_ca
 #[tokio::test]
 async fn adopt_rejects_transaction_with_existing_provenance_including_tombstoned_source() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let txn_id = "txn-already";
     insert_transaction(&repo, txn_id, local(2026, 6, 1, 9, 0), 50).await;
 
@@ -189,7 +189,7 @@ async fn adopt_rejects_transaction_with_existing_provenance_including_tombstoned
 #[tokio::test]
 async fn tombstoning_adopted_transaction_keeps_occurrence_and_finite_count() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let txn_id = "txn-tombstone-adopted";
     insert_transaction(&repo, txn_id, local(2026, 7, 1, 9, 0), 80).await;
 
@@ -242,7 +242,7 @@ async fn tombstoning_adopted_transaction_keeps_occurrence_and_finite_count() {
 #[tokio::test]
 async fn provenance_hides_source_link_when_recurring_is_tombstoned() {
     let observed = local(2026, 7, 21, 10, 0);
-    let (_db, service, repo, _lock) = setup_service(observed).await;
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let txn_id = "txn-link";
     insert_transaction(&repo, txn_id, local(2026, 7, 10, 8, 0), 40).await;
 

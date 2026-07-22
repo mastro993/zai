@@ -8,6 +8,7 @@ import type {
   RecurringCreateOutcome,
   RecurringFeedResult,
   RecurringFormValues,
+  RecurringLifecycleOutcome,
   RecurringMutationOutcome,
   RecurringOccurrencePage,
   RecurringTransactionDocument,
@@ -152,4 +153,63 @@ export const updateRecurringTransaction = (
       },
     },
   });
+};
+
+const lifecycleCommand = (
+  command:
+    | typeof RECURRING_COMMANDS.pause_recurring_transaction
+    | typeof RECURRING_COMMANDS.resume_recurring_transaction
+    | typeof RECURRING_COMMANDS.stop_recurring_transaction
+    | typeof RECURRING_COMMANDS.tombstone_recurring_transaction,
+  recurringTransactionId: string,
+  expectedRevision: number,
+): CommandResult<RecurringLifecycleOutcome> => {
+  return invokeDecodedCommand(command, {
+    recurringTransactionId,
+    expectedRevision,
+  });
+};
+
+export const pauseRecurringTransaction = (
+  recurringTransactionId: string,
+  expectedRevision: number,
+): CommandResult<RecurringLifecycleOutcome> => {
+  return lifecycleCommand(
+    RECURRING_COMMANDS.pause_recurring_transaction,
+    recurringTransactionId,
+    expectedRevision,
+  );
+};
+
+export const resumeRecurringTransaction = (
+  recurringTransactionId: string,
+  expectedRevision: number,
+): CommandResult<RecurringLifecycleOutcome> => {
+  return lifecycleCommand(
+    RECURRING_COMMANDS.resume_recurring_transaction,
+    recurringTransactionId,
+    expectedRevision,
+  );
+};
+
+export const stopRecurringTransaction = (
+  recurringTransactionId: string,
+  expectedRevision: number,
+): CommandResult<RecurringLifecycleOutcome> => {
+  return lifecycleCommand(
+    RECURRING_COMMANDS.stop_recurring_transaction,
+    recurringTransactionId,
+    expectedRevision,
+  );
+};
+
+export const tombstoneRecurringTransaction = (
+  recurringTransactionId: string,
+  expectedRevision: number,
+): CommandResult<RecurringLifecycleOutcome> => {
+  return lifecycleCommand(
+    RECURRING_COMMANDS.tombstone_recurring_transaction,
+    recurringTransactionId,
+    expectedRevision,
+  );
 };

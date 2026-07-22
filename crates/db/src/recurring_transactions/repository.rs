@@ -8,6 +8,7 @@ use super::edit::update_recurring_transaction;
 use super::fulfill::{
     has_eligible_due_work as query_has_eligible_due_work, process_one_due_occurrence,
 };
+use super::lifecycle::apply_lifecycle_command;
 use super::queries::{
     earliest_active_head_after, find_provenance_by_transaction, find_unresolved_failure,
     get_occurrence_head, get_recurring_transaction, list_due_heads, list_failure_history,
@@ -25,7 +26,8 @@ use zai_core::features::budgets::traits::CalendarClock;
 use zai_core::features::domain_alerts::{DomainAlertEventPublisher, publish_created_alerts};
 use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, NewRecurringTransaction, ProcessOneOutcome, RecurringFailurePage,
-    RecurringFeedPage, RecurringGenerationFailure, RecurringOccurrence, RecurringOccurrenceHead,
+    RecurringFeedPage, RecurringGenerationFailure, RecurringLifecycleCommand,
+    RecurringLifecycleUpdate, RecurringOccurrence, RecurringOccurrenceHead,
     RecurringOccurrencePage, RecurringScheduleRevision, RecurringTemplateRevision,
     RecurringTransaction, RecurringTransactionsRepositoryTrait, UpdateRecurringTransaction,
 };
@@ -293,6 +295,18 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
                     apply_count,
                 )
             })
+            .await
+    }
+
+    async fn apply_lifecycle_command(
+        &self,
+        command: RecurringLifecycleCommand,
+        update: RecurringLifecycleUpdate,
+        observed_local: NaiveDateTime,
+    ) -> Result<RecurringTransaction> {
+        let now = chrono::Utc::now().naive_utc();
+        self.writer
+            .exec(move |conn| apply_lifecycle_command(conn, command, update, observed_local, now))
             .await
     }
 
