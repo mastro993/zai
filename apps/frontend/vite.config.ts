@@ -27,6 +27,9 @@ export default defineConfig(({ mode }) => ({
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
+      // Vitest loads this plugin; keep CLI `tsr generate` as the only writer so
+      // check:routes does not flake on nondeterministic sort order.
+      enableRouteGeneration: process.env.VITEST !== "true",
     }),
     tailwindcss(),
     viteReact(),
