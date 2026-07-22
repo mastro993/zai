@@ -3,6 +3,7 @@ use super::models::{
     RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
     RecurringTemplateRevision, RecurringTransaction,
 };
+use super::repair::RecurringRecoveryAction;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
@@ -51,6 +52,9 @@ pub struct RecurringLinksSection {
 pub struct RecurringFailuresSection {
     pub state: RecurringSectionState,
     pub unresolved: Option<RecurringGenerationFailure>,
+    pub waiting_count: i32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_action: Option<RecurringRecoveryAction>,
     pub history: RecurringFailurePage,
 }
 
@@ -148,7 +152,19 @@ pub fn failures_section(
     unresolved: Option<RecurringGenerationFailure>,
     history: RecurringFailurePage,
 ) -> RecurringFailuresSection {
-    let state = if unresolved.is_none() && history.items.is_empty() {
+    failures_section_with_waiting(unresolved, history, 0)
+}
+
+pub fn failures_section_with_waiting(
+    unresolved: Option<RecurringGenerationFailure>,
+    history: RecurringFailurePage,
+    waiting_count: i32,
+) -> RecurringFailuresSection {
+    let next_action = unresolved.as_ref().map(|failure| {
+        super::repair::recovery_action_for_failure(failure.repair_field_key.as_deref())
+    });
+    let has_unresolved = unresolved.is_some();
+    let state = if !has_unresolved && history.items.is_empty() {
         RecurringSectionState::Empty
     } else {
         RecurringSectionState::Ready
@@ -156,6 +172,8 @@ pub fn failures_section(
     RecurringFailuresSection {
         state,
         unresolved,
+        waiting_count: if has_unresolved { waiting_count } else { 0 },
+        next_action,
         history,
     }
 }

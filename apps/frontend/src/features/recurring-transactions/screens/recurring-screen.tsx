@@ -1,6 +1,7 @@
 import { Result } from "@praha/byethrow";
 import { useRef, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { ScreenBase } from "@/components/screen-base";
@@ -104,11 +105,32 @@ export function RecurringScreen({
             No recurring transactions yet. Create one to start scheduling cash flow.
           </p>
         ) : (
-          <div role="feed" aria-label="Recurring transactions">
-            {items.map((item) => (
-              <RecurringOccurrenceCard key={item.recurringTransaction.id} item={item} />
-            ))}
-          </div>
+          <>
+            {items.some((item) => item.needsAttention) ? (
+              <section className="space-y-2" aria-label="Needs attention">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-medium">Needs attention</h2>
+                  <Badge variant="destructive">
+                    {items.filter((item) => item.needsAttention).length}
+                  </Badge>
+                </div>
+                <div role="feed" aria-label="Recurring transactions needing attention">
+                  {items
+                    .filter((item) => item.needsAttention)
+                    .map((item) => (
+                      <RecurringOccurrenceCard key={item.recurringTransaction.id} item={item} />
+                    ))}
+                </div>
+              </section>
+            ) : null}
+            <div role="feed" aria-label="Recurring transactions">
+              {items
+                .filter((item) => !item.needsAttention)
+                .map((item) => (
+                  <RecurringOccurrenceCard key={item.recurringTransaction.id} item={item} />
+                ))}
+            </div>
+          </>
         )}
 
         {nextCursor ? (

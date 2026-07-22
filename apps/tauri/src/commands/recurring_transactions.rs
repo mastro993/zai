@@ -4,10 +4,13 @@ use log::debug;
 use tauri::State;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
-    AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, NewRecurringTransaction,
-    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult, RecurringLifecycleOutcome,
-    RecurringLifecycleUpdate, RecurringMutationOutcome, RecurringOccurrencePage,
-    RecurringTransactionDocument, TransactionRecurringProvenance, UpdateRecurringTransaction,
+    AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest,
+    GenerationFailureDiagnostics, NewRecurringTransaction, PreviewRecurringGenerationRepair,
+    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFailurePage, RecurringFeedResult,
+    RecurringLifecycleOutcome, RecurringLifecycleUpdate, RecurringMutationOutcome,
+    RecurringOccurrencePage, RecurringRecoveryOutcome, RecurringRepairPreview,
+    RecurringTransactionDocument, RepairRecurringGenerationFailure,
+    RetryRecurringGenerationFailure, TransactionRecurringProvenance, UpdateRecurringTransaction,
 };
 
 use super::{CommandResult, command_error};
@@ -197,4 +200,86 @@ pub async fn delete_recurring_transaction(
         })
         .await
         .map_err(|error| command_error("Failed to delete recurring transaction", error))
+}
+
+#[tauri::command]
+pub async fn preview_recurring_generation_repair(
+    request: PreviewRecurringGenerationRepair,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringRepairPreview> {
+    debug!(
+        "Previewing generation repair for {}...",
+        request.recurring_transaction_id
+    );
+    state
+        .recurring_transactions_service()
+        .preview_generation_repair(request)
+        .await
+        .map_err(|error| command_error("Failed to preview generation repair", error))
+}
+
+#[tauri::command]
+pub async fn repair_recurring_generation_failure(
+    input: RepairRecurringGenerationFailure,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringRecoveryOutcome> {
+    debug!(
+        "Repairing generation failure for {}...",
+        input.recurring_transaction_id
+    );
+    state
+        .recurring_transactions_service()
+        .repair_and_retry(input)
+        .await
+        .map_err(|error| command_error("Failed to repair generation failure", error))
+}
+
+#[tauri::command]
+pub async fn retry_recurring_generation_failure(
+    input: RetryRecurringGenerationFailure,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringRecoveryOutcome> {
+    debug!(
+        "Retrying generation for {}...",
+        input.recurring_transaction_id
+    );
+    state
+        .recurring_transactions_service()
+        .retry_generation(input)
+        .await
+        .map_err(|error| command_error("Failed to retry generation", error))
+}
+
+#[tauri::command]
+pub async fn get_recurring_generation_failure_diagnostics(
+    recurring_transaction_id: String,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<GenerationFailureDiagnostics> {
+    debug!(
+        "Copying generation failure diagnostics for {}...",
+        recurring_transaction_id
+    );
+    state
+        .recurring_transactions_service()
+        .generation_failure_diagnostics(&recurring_transaction_id)
+        .await
+        .map_err(|error| command_error("Failed to load generation failure diagnostics", error))
+}
+
+#[tauri::command]
+pub async fn get_recurring_transaction_failure_history(
+    recurring_transaction_id: String,
+    limit: Option<i64>,
+    cursor: Option<String>,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<RecurringFailurePage> {
+    debug!(
+        "Loading failure history for recurring transaction {}...",
+        recurring_transaction_id
+    );
+    state
+        .recurring_transactions_service()
+        .list_failure_history(&recurring_transaction_id, limit, cursor)
+        .await
+        .map_err(|error| command_error("Failed to load failure history", error))
 }

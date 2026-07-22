@@ -10,10 +10,12 @@ mod models;
 mod process;
 pub mod process_failpoints;
 mod process_slice;
+mod repair;
 mod schedule;
 mod service;
 mod service_edit;
 mod service_lifecycle;
+mod service_recovery;
 mod supervisor;
 #[cfg(test)]
 mod supervisor_tests;
@@ -46,6 +48,7 @@ pub use process::{
     DEFAULT_PROCESS_MAX_DURATION, DEFAULT_PROCESS_MAX_OCCURRENCES, ProcessOneOutcome,
     ProcessingSliceOutcome, ProcessingStopReason, ProcessingWorkBudget,
 };
+pub use repair::*;
 pub use schedule::{advance_head_past_observation, scheduled_local_at, validate_schedule_rule};
 pub use service::RecurringTransactionsService;
 pub use supervisor::{

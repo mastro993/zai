@@ -77,7 +77,7 @@ describe("recurring transaction schemas", () => {
         needsAttention: false,
       },
       links: { state: "empty", occurrences: { items: [] } },
-      failures: { state: "empty", history: { items: [] } },
+      failures: { state: "empty", waitingCount: 0, history: { items: [] } },
       budgetImpact: {
         state: "unavailable",
         message: "Budget impact will appear once forecast projections are available.",

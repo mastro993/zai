@@ -41,6 +41,7 @@ target
 
 # TanStack CLI scratch output
 .scratch
+apps/frontend/.tanstack/
 
 # PNPM
 .pnpm-store

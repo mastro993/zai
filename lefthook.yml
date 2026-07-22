@@ -16,4 +16,5 @@ pre-commit:
       glob:
         - "apps/frontend/src/routes/*"
         - "apps/frontend/src/routes/**/*"
+        - "apps/frontend/src/routeTree.gen.ts"
       run: pnpm --filter frontend check:routes

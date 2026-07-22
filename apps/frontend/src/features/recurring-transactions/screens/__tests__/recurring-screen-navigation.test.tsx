@@ -65,7 +65,7 @@ const documentFixture = {
       ],
     },
   },
-  failures: { state: "empty" as const, history: { items: [] } },
+  failures: { state: "empty" as const, waitingCount: 0, history: { items: [] } },
   budgetImpact: {
     state: "unavailable" as const,
     message: "Budget impact will appear once forecast projections are available.",

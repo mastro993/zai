@@ -5,17 +5,32 @@ import {
   prepareAmountForValidation,
 } from "@/features/transactions/lib/transaction";
 
-export const RECURRING_LIFECYCLES = [
-  "active",
-  "paused",
-  "stopped",
-  "completed",
-  "tombstoned",
-] as const;
+import {
+  RECURRING_LIFECYCLES,
+  SCHEDULE_INTERVAL_UNITS,
+  SECTION_STATES,
+  TRANSACTION_TYPES,
+} from "./recurring-constants";
+import { recurringFailuresSectionSchema } from "./recurring-failure";
 
-export const SCHEDULE_INTERVAL_UNITS = ["day", "week", "month", "year"] as const;
-export const TRANSACTION_TYPES = ["expense", "income"] as const;
-export const SECTION_STATES = ["ready", "empty", "unavailable"] as const;
+export {
+  RECURRING_LIFECYCLES,
+  SCHEDULE_INTERVAL_UNITS,
+  SECTION_STATES,
+  TRANSACTION_TYPES,
+} from "./recurring-constants";
+export {
+  generationFailureDiagnosticsSchema,
+  recurringFailurePageSchema,
+  recurringFailuresSectionSchema,
+  recurringGenerationFailureSchema,
+  recurringRecoveryActionSchema,
+  recurringRepairPreviewSchema,
+  type GenerationFailureDiagnostics,
+  type RecurringFailurePage,
+  type RecurringGenerationFailure,
+  type RecurringRepairPreview,
+} from "./recurring-failure";
 
 const privilegedForbiddenShape = {
   zone: z.never().optional(),
@@ -192,15 +207,6 @@ export const recurringLinksSectionSchema = z.object({
   occurrences: recurringOccurrencePageSchema,
 });
 
-export const recurringFailuresSectionSchema = z.object({
-  state: z.enum(SECTION_STATES),
-  unresolved: z.unknown().nullable().optional(),
-  history: z.object({
-    items: z.array(z.unknown()),
-    nextCursor: z.string().nullable().optional(),
-  }),
-});
-
 export const recurringBudgetImpactSectionSchema = z.object({
   state: z.enum(SECTION_STATES),
   message: z.string().optional(),
@@ -216,6 +222,22 @@ export const recurringTransactionDocumentSchema = withPrivilegedRejection({
   failures: recurringFailuresSectionSchema,
   budgetImpact: recurringBudgetImpactSectionSchema,
 });
+
+export const recurringRecoveryOutcomeSchema = z.discriminatedUnion("outcome", [
+  z.object({
+    outcome: z.literal("succeeded"),
+    document: recurringTransactionDocumentSchema,
+  }),
+  z.object({
+    outcome: z.literal("alreadyApplied"),
+    document: recurringTransactionDocumentSchema,
+  }),
+  z.object({
+    outcome: z.literal("unchanged"),
+    document: recurringTransactionDocumentSchema,
+    reason: z.string().min(1),
+  }),
+]);
 
 export const recurringCreateOutcomeSchema = z.discriminatedUnion("outcome", [
   z.object({
@@ -338,6 +360,7 @@ export type RecurringAdoptOutcome = z.infer<typeof recurringAdoptOutcomeSchema>;
 export type AdoptionPreview = z.infer<typeof adoptionPreviewSchema>;
 export type RecurringOccurrence = z.infer<typeof recurringOccurrenceSchema>;
 export type RecurringOccurrencePage = z.infer<typeof recurringOccurrencePageSchema>;
+export type RecurringRecoveryOutcome = z.infer<typeof recurringRecoveryOutcomeSchema>;
 export type TransactionRecurringProvenance = z.infer<typeof transactionRecurringProvenanceSchema>;
 export type ScheduleRule = z.infer<typeof scheduleRuleSchema>;
 export type RecurringLifecycle = (typeof RECURRING_LIFECYCLES)[number];
