@@ -102,6 +102,64 @@ export const buildRecurringCommandRequestSpec = (
         body: { expectedRevision },
       };
     }
+    case "get_recurring_transaction_failure_history": {
+      const recurringTransactionId = readString(args.recurringTransactionId);
+      const limit = readNumber(args.limit, 20);
+      const cursor = readString(args.cursor);
+      return {
+        method: "GET",
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}/failures`
+          : "/recurring-transactions/__missing_recurring_transaction_id__/failures",
+        query: {
+          limit: String(limit),
+          ...(cursor ? { cursor } : {}),
+        },
+      };
+    }
+    case "get_recurring_generation_failure_diagnostics": {
+      const recurringTransactionId = readString(args.recurringTransactionId);
+      return {
+        method: "GET",
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}/diagnostics`
+          : "/recurring-transactions/__missing_recurring_transaction_id__/diagnostics",
+      };
+    }
+    case "preview_recurring_generation_repair": {
+      const request = readRecord(args.request) ?? {};
+      const recurringTransactionId = readString(request.recurringTransactionId);
+      return {
+        method: "POST",
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}/repair/preview`
+          : "/recurring-transactions/__missing_recurring_transaction_id__/repair/preview",
+        body: request,
+      };
+    }
+    case "repair_recurring_generation_failure": {
+      const input = readRecord(args.input) ?? {};
+      const recurringTransactionId = readString(input.recurringTransactionId);
+      return {
+        method: "POST",
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}/repair`
+          : "/recurring-transactions/__missing_recurring_transaction_id__/repair",
+        body: input,
+      };
+    }
+    case "retry_recurring_generation_failure": {
+      const input = readRecord(args.input) ?? {};
+      const recurringTransactionId = readString(input.recurringTransactionId);
+      const expectedRevision = readNumber(input.expectedRevision, 0);
+      return {
+        method: "POST",
+        path: recurringTransactionId
+          ? `/recurring-transactions/${recurringTransactionId}/retry`
+          : "/recurring-transactions/__missing_recurring_transaction_id__/retry",
+        body: { expectedRevision },
+      };
+    }
     default:
       return undefined;
   }

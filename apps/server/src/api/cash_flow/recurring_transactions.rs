@@ -10,10 +10,13 @@ use axum::{
 use serde::Deserialize;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
-    AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest, NewRecurringTransaction,
-    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult, RecurringLifecycleOutcome,
-    RecurringLifecycleUpdate, RecurringMutationOutcome, RecurringOccurrencePage,
-    RecurringTransactionDocument, TransactionRecurringProvenance, UpdateRecurringTransaction,
+    AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest,
+    GenerationFailureDiagnostics, NewRecurringTransaction, PreviewRecurringGenerationRepair,
+    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFailurePage, RecurringFeedResult,
+    RecurringLifecycleOutcome, RecurringLifecycleUpdate, RecurringMutationOutcome,
+    RecurringOccurrencePage, RecurringRecoveryOutcome, RecurringRepairPreview,
+    RecurringTransactionDocument, RepairRecurringGenerationFailure,
+    RetryRecurringGenerationFailure, TransactionRecurringProvenance, UpdateRecurringTransaction,
 };
 
 use crate::api::error::{bad_request, command_error};
@@ -74,6 +77,26 @@ pub fn router() -> Router<Arc<ServiceContext>> {
         .route(
             "/recurring-transactions/{recurring_transaction_id}/delete",
             axum::routing::post(delete_recurring_transaction),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/failures",
+            get(list_failure_history),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/repair/preview",
+            axum::routing::post(preview_generation_repair),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/repair",
+            axum::routing::post(repair_generation_failure),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/retry",
+            axum::routing::post(retry_generation_failure),
+        )
+        .route(
+            "/recurring-transactions/{recurring_transaction_id}/diagnostics",
+            get(generation_failure_diagnostics),
         )
 }
 
@@ -255,4 +278,105 @@ async fn delete_recurring_transaction(
         .await
         .map(Json)
         .map_err(|error| command_error("Failed to delete recurring transaction", error))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FailureHistoryQuery {
+    #[serde(default = "default_failure_limit")]
+    limit: i64,
+    #[serde(default)]
+    cursor: Option<String>,
+}
+
+fn default_failure_limit() -> i64 {
+    20
+}
+
+async fn list_failure_history(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    query: Result<Query<FailureHistoryQuery>, QueryRejection>,
+) -> RecurringResult<Json<RecurringFailurePage>> {
+    let Query(query) = query.map_err(|rejection| bad_request(rejection.body_text()))?;
+    context
+        .recurring_transactions_service()
+        .list_failure_history(&recurring_transaction_id, Some(query.limit), query.cursor)
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to load failure history", error))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RepairBody {
+    expected_revision: i32,
+    repair_field_key: String,
+    template: zai_core::features::recurring_transactions::RecurringTemplateInput,
+}
+
+async fn preview_generation_repair(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    payload: Result<Json<RepairBody>, JsonRejection>,
+) -> RecurringResult<Json<RecurringRepairPreview>> {
+    let Json(body) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    context
+        .recurring_transactions_service()
+        .preview_generation_repair(PreviewRecurringGenerationRepair {
+            recurring_transaction_id,
+            repair_field_key: body.repair_field_key,
+            template: body.template,
+        })
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to preview generation repair", error))
+}
+
+async fn repair_generation_failure(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    payload: Result<Json<RepairBody>, JsonRejection>,
+) -> RecurringResult<Json<RecurringRecoveryOutcome>> {
+    let Json(body) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    context
+        .recurring_transactions_service()
+        .repair_and_retry(RepairRecurringGenerationFailure {
+            recurring_transaction_id,
+            expected_revision: body.expected_revision,
+            repair_field_key: body.repair_field_key,
+            template: body.template,
+        })
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to repair generation failure", error))
+}
+
+async fn retry_generation_failure(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+    payload: Result<Json<LifecycleBody>, JsonRejection>,
+) -> RecurringResult<Json<RecurringRecoveryOutcome>> {
+    let Json(body) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
+    context
+        .recurring_transactions_service()
+        .retry_generation(RetryRecurringGenerationFailure {
+            recurring_transaction_id,
+            expected_revision: body.expected_revision,
+        })
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to retry generation", error))
+}
+
+async fn generation_failure_diagnostics(
+    State(context): State<Arc<ServiceContext>>,
+    Path(recurring_transaction_id): Path<String>,
+) -> RecurringResult<Json<GenerationFailureDiagnostics>> {
+    context
+        .recurring_transactions_service()
+        .generation_failure_diagnostics(&recurring_transaction_id)
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to load generation failure diagnostics", error))
 }

@@ -1,3 +1,5 @@
+import { Alert02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { Link } from "@tanstack/react-router";
 
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +41,17 @@ export function RecurringOccurrenceCard({ item }: { item: RecurringFeedItem }) {
             <Badge variant={recurringTransaction.lifecycle === "active" ? "default" : "secondary"}>
               {recurringLifecycleLabel[recurringTransaction.lifecycle]}
             </Badge>
-            {needsAttention ? <Badge variant="destructive">Needs attention</Badge> : null}
+            {needsAttention ? (
+              <Badge variant="destructive" className="inline-flex items-center gap-1">
+                <HugeiconsIcon
+                  icon={Alert02Icon}
+                  strokeWidth={2}
+                  className="size-3.5"
+                  aria-hidden
+                />
+                Needs attention
+              </Badge>
+            ) : null}
           </div>
           <p className="text-sm text-muted-foreground">
             Next occurrence {formatLocalDateTime(nextScheduledLocal)}

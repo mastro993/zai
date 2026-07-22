@@ -14,12 +14,15 @@ use super::queries::{
     get_occurrence_head, get_recurring_transaction, list_due_heads, list_failure_history,
     list_feed, list_occurrences, list_unresolved_failures,
 };
+use super::repair::{apply_generation_repair, preview_template_field_repair};
 use super::revisions::{find_schedule_revision_at, find_template_revision_at};
 use crate::blocking::run_blocking;
 use crate::connection::{DbPool, get_connection};
 use crate::write_actor::WriteHandle;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
+use diesel::sql_types::Text;
+use diesel::{QueryableByName, RunQueryDsl, sql_query};
 use std::sync::Arc;
 use zai_core::Result;
 use zai_core::features::budgets::traits::CalendarClock;
@@ -28,8 +31,9 @@ use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, NewRecurringTransaction, ProcessOneOutcome, RecurringFailurePage,
     RecurringFeedPage, RecurringGenerationFailure, RecurringLifecycleCommand,
     RecurringLifecycleUpdate, RecurringOccurrence, RecurringOccurrenceHead,
-    RecurringOccurrencePage, RecurringScheduleRevision, RecurringTemplateRevision,
-    RecurringTransaction, RecurringTransactionsRepositoryTrait, UpdateRecurringTransaction,
+    RecurringOccurrencePage, RecurringScheduleRevision, RecurringTemplateInput,
+    RecurringTemplateRevision, RecurringTransaction, RecurringTransactionsRepositoryTrait,
+    UpdateRecurringTransaction,
 };
 
 pub struct RecurringTransactionsRepository {
@@ -362,6 +366,63 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
         };
         publish_created_alerts(publisher.as_ref(), &outcome);
         Ok(outcome.value)
+    }
+
+    async fn apply_generation_repair(
+        &self,
+        recurring_transaction_id: String,
+        expected_revision: i32,
+        repair_field_key: String,
+        template: RecurringTemplateInput,
+    ) -> Result<RecurringTransaction> {
+        let now = chrono::Utc::now().naive_utc();
+        self.writer
+            .exec(move |conn| {
+                apply_generation_repair(
+                    conn,
+                    &recurring_transaction_id,
+                    expected_revision,
+                    &repair_field_key,
+                    &template,
+                    now,
+                )
+                .map(|applied| applied.recurring)
+            })
+            .await
+    }
+
+    async fn preview_generation_repair(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<(i32, bool)> {
+        let pool = Arc::clone(&self.pool);
+        let recurring_transaction_id = recurring_transaction_id.to_string();
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            preview_template_field_repair(&mut conn, &recurring_transaction_id).map_err(Into::into)
+        })
+        .await
+    }
+
+    async fn current_schema_version(&self) -> Result<String> {
+        let pool = Arc::clone(&self.pool);
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            #[derive(QueryableByName)]
+            struct SchemaVersionRow {
+                #[diesel(sql_type = Text)]
+                version: String,
+            }
+            let row = sql_query(
+                "SELECT version FROM __diesel_schema_migrations ORDER BY version DESC LIMIT 1",
+            )
+            .get_result::<SchemaVersionRow>(&mut conn)
+            .map_err(|error| {
+                zai_core::Error::Database(zai_core::DatabaseError::QueryFailed(error.to_string()))
+            })?;
+            Ok(row.version)
+        })
+        .await
     }
 }
 

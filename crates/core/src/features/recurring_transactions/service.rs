@@ -5,18 +5,22 @@ use super::create::{NewRecurringTransaction, normalize_template_description};
 use super::document::{
     RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedItem, RecurringFeedResult,
     RecurringTransactionDocument, TransactionRecurringProvenance, budget_impact_unavailable,
-    failures_section, links_section, occurrence_summary, visible_source_link,
+    failures_section_with_waiting, links_section, occurrence_summary, visible_source_link,
 };
 use super::edit::{RecurringMutationOutcome, UpdateRecurringTransaction};
 use super::lifecycle::{
     RecurringLifecycleCommand, RecurringLifecycleOutcome, RecurringLifecycleUpdate,
 };
 use super::models::{
-    DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringFeedEntry,
-    RecurringLifecycle, RecurringOccurrencePage, RecurringTransaction,
+    DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringFailurePage,
+    RecurringFeedEntry, RecurringLifecycle, RecurringOccurrencePage, RecurringTransaction,
 };
 use super::process::{ProcessingSliceOutcome, ProcessingWorkBudget};
 use super::process_slice::run_processing_slice;
+use super::repair::{
+    GenerationFailureDiagnostics, PreviewRecurringGenerationRepair, RecurringRecoveryOutcome,
+    RecurringRepairPreview, RepairRecurringGenerationFailure, RetryRecurringGenerationFailure,
+};
 use super::schedule::scheduled_local_at;
 use super::traits::{
     RecurringOccurrenceProcessor, RecurringProcessingWake, RecurringTransactionsRepositoryTrait,
@@ -93,6 +97,17 @@ impl RecurringTransactionsService {
             .find_unresolved_failure(&recurring.id)
             .await?;
         let needs_attention = unresolved.is_some();
+        let waiting_count = match unresolved.as_ref() {
+            Some(failure) => {
+                self.waiting_count_for_failure(
+                    &recurring.id,
+                    failure.ordinal,
+                    recurring.total_occurrences,
+                )
+                .await?
+            }
+            None => 0,
+        };
 
         let links = self
             .repository
@@ -106,7 +121,7 @@ impl RecurringTransactionsService {
         Ok(RecurringTransactionDocument {
             occurrence_summary: occurrence_summary(&recurring, head.as_ref(), needs_attention),
             links: links_section(links),
-            failures: failures_section(unresolved, history),
+            failures: failures_section_with_waiting(unresolved, history, waiting_count),
             budget_impact: budget_impact_unavailable(),
             recurring_transaction: recurring,
             schedule,
@@ -295,6 +310,45 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
 
     async fn delete(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome> {
         self.apply_lifecycle(RecurringLifecycleCommand::Delete, input)
+            .await
+    }
+
+    async fn preview_generation_repair(
+        &self,
+        input: PreviewRecurringGenerationRepair,
+    ) -> Result<RecurringRepairPreview> {
+        self.preview_generation_repair_inner(input).await
+    }
+
+    async fn repair_and_retry(
+        &self,
+        input: RepairRecurringGenerationFailure,
+    ) -> Result<RecurringRecoveryOutcome> {
+        self.repair_and_retry_inner(input).await
+    }
+
+    async fn retry_generation(
+        &self,
+        input: RetryRecurringGenerationFailure,
+    ) -> Result<RecurringRecoveryOutcome> {
+        self.retry_generation_inner(input).await
+    }
+
+    async fn generation_failure_diagnostics(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<GenerationFailureDiagnostics> {
+        self.generation_failure_diagnostics_inner(recurring_transaction_id)
+            .await
+    }
+
+    async fn list_failure_history(
+        &self,
+        recurring_transaction_id: &str,
+        limit: Option<i64>,
+        cursor: Option<String>,
+    ) -> Result<RecurringFailurePage> {
+        self.list_failure_history_inner(recurring_transaction_id, limit, cursor)
             .await
     }
 

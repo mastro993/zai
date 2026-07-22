@@ -2,12 +2,16 @@ import type { CommandDescriptor } from "@/commands/command-descriptor";
 
 import {
   adoptionPreviewSchema,
+  generationFailureDiagnosticsSchema,
   recurringAdoptOutcomeSchema,
   recurringCreateOutcomeSchema,
+  recurringFailurePageSchema,
   recurringFeedResultSchema,
   recurringLifecycleOutcomeSchema,
   recurringMutationOutcomeSchema,
   recurringOccurrencePageSchema,
+  recurringRecoveryOutcomeSchema,
+  recurringRepairPreviewSchema,
   recurringTransactionDocumentSchema,
   transactionRecurringProvenanceSchema,
 } from "../types/recurring-transaction";
@@ -39,6 +43,14 @@ export const RECURRING_COMMANDS = {
     "get_recurring_transaction_occurrences",
     recurringOccurrencePageSchema,
   ),
+  get_recurring_transaction_failure_history: backendCommand(
+    "get_recurring_transaction_failure_history",
+    recurringFailurePageSchema,
+  ),
+  get_recurring_generation_failure_diagnostics: backendCommand(
+    "get_recurring_generation_failure_diagnostics",
+    generationFailureDiagnosticsSchema,
+  ),
   get_recurring_transactions: backendCommand(
     "get_recurring_transactions",
     recurringFeedResultSchema,
@@ -52,6 +64,18 @@ export const RECURRING_COMMANDS = {
     recurringLifecycleOutcomeSchema,
   ),
   preview_recurring_adoption: backendCommand("preview_recurring_adoption", adoptionPreviewSchema),
+  preview_recurring_generation_repair: backendCommand(
+    "preview_recurring_generation_repair",
+    recurringRepairPreviewSchema,
+  ),
+  repair_recurring_generation_failure: backendCommand(
+    "repair_recurring_generation_failure",
+    recurringRecoveryOutcomeSchema,
+  ),
+  retry_recurring_generation_failure: backendCommand(
+    "retry_recurring_generation_failure",
+    recurringRecoveryOutcomeSchema,
+  ),
   resume_recurring_transaction: backendCommand(
     "resume_recurring_transaction",
     recurringLifecycleOutcomeSchema,

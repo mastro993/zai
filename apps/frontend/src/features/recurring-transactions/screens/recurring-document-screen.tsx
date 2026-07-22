@@ -13,6 +13,7 @@ import {
   getRecurringTransactionOccurrences,
   updateRecurringTransaction,
 } from "../commands/recurring-transactions";
+import { RecurringFailureBanner } from "../components/recurring-failure-banner";
 import { RecurringFormDrawer } from "../components/recurring-form-drawer";
 import { RecurringLifecycleActions } from "../components/recurring-lifecycle-actions";
 import {
@@ -222,6 +223,14 @@ export function RecurringDocumentScreen({
           ) : null}
         </div>
 
+        {occurrenceSummary.needsAttention ? (
+          <RecurringFailureBanner
+            document={document}
+            categories={categories}
+            onDocumentChange={setDocument}
+          />
+        ) : null}
+
         <Section title="Identity" state="ready" emptyMessage="">
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
@@ -321,9 +330,8 @@ export function RecurringDocumentScreen({
           failureMessage={undefined}
         >
           {failures.unresolved ? (
-            <p role="status" className="text-sm">
-              Needs attention: repair required before schedule, template, count, or lifecycle
-              changes.
+            <p role="status" className="text-sm text-muted-foreground">
+              Open failure details appear in the Needs attention banner above.
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">No open generation failure.</p>

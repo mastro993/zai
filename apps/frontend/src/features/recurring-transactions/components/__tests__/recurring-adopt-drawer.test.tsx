@@ -115,7 +115,7 @@ describe("RecurringAdoptDrawer", () => {
             needsAttention: false,
           },
           links: { state: "ready", occurrences: { items: [] } },
-          failures: { state: "empty", history: { items: [] } },
+          failures: { state: "empty", waitingCount: 0, history: { items: [] } },
           budgetImpact: { state: "unavailable", message: "n/a" },
         } satisfies RecurringTransactionDocument,
       } satisfies RecurringAdoptOutcome);

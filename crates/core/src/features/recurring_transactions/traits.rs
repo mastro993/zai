@@ -1,5 +1,5 @@
 use super::adopt::{AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest};
-use super::create::NewRecurringTransaction;
+use super::create::{NewRecurringTransaction, RecurringTemplateInput};
 use super::document::{
     RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult,
     RecurringTransactionDocument, TransactionRecurringProvenance,
@@ -14,6 +14,10 @@ use super::models::{
     RecurringTemplateRevision, RecurringTransaction,
 };
 use super::process::{ProcessOneOutcome, ProcessingSliceOutcome, ProcessingWorkBudget};
+use super::repair::{
+    GenerationFailureDiagnostics, PreviewRecurringGenerationRepair, RecurringRecoveryOutcome,
+    RecurringRepairPreview, RepairRecurringGenerationFailure, RetryRecurringGenerationFailure,
+};
 use crate::Result;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
@@ -125,6 +129,21 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         &self,
         observed_local: NaiveDateTime,
     ) -> Result<ProcessOneOutcome>;
+
+    async fn apply_generation_repair(
+        &self,
+        recurring_transaction_id: String,
+        expected_revision: i32,
+        repair_field_key: String,
+        template: RecurringTemplateInput,
+    ) -> Result<RecurringTransaction>;
+
+    async fn preview_generation_repair(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<(i32, bool)>;
+
+    async fn current_schema_version(&self) -> Result<String>;
 }
 
 #[async_trait]
@@ -164,6 +183,33 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
     async fn stop(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome>;
 
     async fn delete(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome>;
+
+    async fn preview_generation_repair(
+        &self,
+        input: PreviewRecurringGenerationRepair,
+    ) -> Result<RecurringRepairPreview>;
+
+    async fn repair_and_retry(
+        &self,
+        input: RepairRecurringGenerationFailure,
+    ) -> Result<RecurringRecoveryOutcome>;
+
+    async fn retry_generation(
+        &self,
+        input: RetryRecurringGenerationFailure,
+    ) -> Result<RecurringRecoveryOutcome>;
+
+    async fn generation_failure_diagnostics(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<GenerationFailureDiagnostics>;
+
+    async fn list_failure_history(
+        &self,
+        recurring_transaction_id: &str,
+        limit: Option<i64>,
+        cursor: Option<String>,
+    ) -> Result<RecurringFailurePage>;
 }
 
 /// Internal occurrence processor used by trusted Rust orchestration.

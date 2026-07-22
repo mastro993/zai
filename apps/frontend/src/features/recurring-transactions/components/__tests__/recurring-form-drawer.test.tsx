@@ -94,6 +94,7 @@ describe("RecurringFormDrawer", () => {
           },
           failures: {
             state: "ready",
+            waitingCount: 0,
             history: { items: [] },
           },
           budgetImpact: {
@@ -159,6 +160,7 @@ describe("RecurringFormDrawer", () => {
       },
       failures: {
         state: "ready" as const,
+        waitingCount: 0,
         history: { items: [] },
       },
       budgetImpact: {

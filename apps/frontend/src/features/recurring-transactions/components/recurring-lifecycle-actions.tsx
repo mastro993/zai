@@ -96,10 +96,11 @@ export function RecurringLifecycleActions({
   const canResume = lifecycle === "paused" && !needsAttention;
   const canStop = (lifecycle === "active" || lifecycle === "paused") && !needsAttention;
   const canDelete =
-    lifecycle === "active" ||
-    lifecycle === "paused" ||
-    lifecycle === "stopped" ||
-    lifecycle === "completed";
+    !needsAttention &&
+    (lifecycle === "active" ||
+      lifecycle === "paused" ||
+      lifecycle === "stopped" ||
+      lifecycle === "completed");
 
   const runLifecycle = async (kind: Exclude<ConfirmKind, null>) => {
     setLifecyclePending(true);

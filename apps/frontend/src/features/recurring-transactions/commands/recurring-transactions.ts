@@ -4,13 +4,17 @@ import type { CommandResult } from "@/commands/shared";
 import type {
   AdoptRecurringFormValues,
   AdoptionPreview,
+  GenerationFailureDiagnostics,
   RecurringAdoptOutcome,
   RecurringCreateOutcome,
+  RecurringFailurePage,
   RecurringFeedResult,
   RecurringFormValues,
   RecurringLifecycleOutcome,
   RecurringMutationOutcome,
   RecurringOccurrencePage,
+  RecurringRecoveryOutcome,
+  RecurringRepairPreview,
   RecurringTransactionDocument,
   ScheduleRule,
   TransactionRecurringProvenance,
@@ -212,4 +216,83 @@ export const deleteRecurringTransaction = (
     recurringTransactionId,
     expectedRevision,
   );
+};
+
+export const getRecurringTransactionFailureHistory = (
+  recurringTransactionId: string,
+  limit = 20,
+  cursor?: string,
+): CommandResult<RecurringFailurePage> => {
+  return invokeDecodedCommand(RECURRING_COMMANDS.get_recurring_transaction_failure_history, {
+    recurringTransactionId,
+    limit,
+    ...(cursor ? { cursor } : {}),
+  });
+};
+
+export const getRecurringGenerationFailureDiagnostics = (
+  recurringTransactionId: string,
+): CommandResult<GenerationFailureDiagnostics> => {
+  return invokeDecodedCommand(RECURRING_COMMANDS.get_recurring_generation_failure_diagnostics, {
+    recurringTransactionId,
+  });
+};
+
+export const previewRecurringGenerationRepair = (
+  document: RecurringTransactionDocument,
+  repairFieldKey: string,
+  values: Pick<
+    RecurringFormValues,
+    "description" | "amount" | "transactionType" | "transactionCategoryId" | "notes"
+  >,
+): CommandResult<RecurringRepairPreview> => {
+  return invokeDecodedCommand(RECURRING_COMMANDS.preview_recurring_generation_repair, {
+    request: {
+      recurringTransactionId: document.recurringTransaction.id,
+      repairFieldKey,
+      template: {
+        description: values.description,
+        amount: values.amount,
+        transactionType: values.transactionType,
+        transactionCategoryId: values.transactionCategoryId || null,
+        notes: values.notes || null,
+      },
+    },
+  });
+};
+
+export const repairRecurringGenerationFailure = (
+  document: RecurringTransactionDocument,
+  repairFieldKey: string,
+  values: Pick<
+    RecurringFormValues,
+    "description" | "amount" | "transactionType" | "transactionCategoryId" | "notes"
+  >,
+): CommandResult<RecurringRecoveryOutcome> => {
+  return invokeDecodedCommand(RECURRING_COMMANDS.repair_recurring_generation_failure, {
+    input: {
+      recurringTransactionId: document.recurringTransaction.id,
+      expectedRevision: document.recurringTransaction.revision,
+      repairFieldKey,
+      template: {
+        description: values.description,
+        amount: values.amount,
+        transactionType: values.transactionType,
+        transactionCategoryId: values.transactionCategoryId || null,
+        notes: values.notes || null,
+      },
+    },
+  });
+};
+
+export const retryRecurringGenerationFailure = (
+  recurringTransactionId: string,
+  expectedRevision: number,
+): CommandResult<RecurringRecoveryOutcome> => {
+  return invokeDecodedCommand(RECURRING_COMMANDS.retry_recurring_generation_failure, {
+    input: {
+      recurringTransactionId,
+      expectedRevision,
+    },
+  });
 };

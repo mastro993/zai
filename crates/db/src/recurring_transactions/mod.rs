@@ -41,6 +41,9 @@ mod process_test_support;
 #[cfg(test)]
 mod process_tests;
 mod queries;
+mod repair;
+#[cfg(test)]
+mod repair_tests;
 mod repository;
 #[cfg(test)]
 mod repository_query_tests;
