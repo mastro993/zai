@@ -82,10 +82,8 @@ impl RecurringTransactionsService {
         let apply_count = count_changed && config_allowed;
         let apply_template = if config_allowed {
             template_changed
-        } else if description_changed && rename_allowed && !config_changed {
-            true
         } else {
-            false
+            description_changed && rename_allowed && !config_changed
         };
 
         if (config_changed && !config_allowed)
