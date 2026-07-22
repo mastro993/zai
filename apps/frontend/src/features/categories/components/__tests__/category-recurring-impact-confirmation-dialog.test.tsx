@@ -21,6 +21,8 @@ const preview: CategoryDeletionPreview = {
     { recurringTransactionId: "recurring-1", description: "Rent" },
     { recurringTransactionId: "recurring-2", description: "Home insurance" },
   ],
+  affectedBudgets: [{ id: "budget-1", name: "Housing budget" }],
+  blockedByCurrentBudget: false,
 };
 
 describe("CategoryRecurringImpactConfirmationDialog", () => {
@@ -44,8 +46,31 @@ describe("CategoryRecurringImpactConfirmationDialog", () => {
 
     expect(screen.getByRole("status").textContent).toContain("Rent");
     expect(screen.getByRole("status").textContent).toContain("Home insurance");
+    expect(screen.getByRole("status").textContent).toContain("Housing budget");
 
     fireEvent.click(screen.getByRole("button", { name: "Continue and delete" }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("explains when a current budget blocks deletion", () => {
+    render(
+      <CategoryRecurringImpactConfirmationDialog
+        category={category}
+        preview={{
+          ...preview,
+          affectedRecurringTransactions: [],
+          blockedByCurrentBudget: true,
+        }}
+        open
+        isConfirming={false}
+        onOpenChange={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("status").textContent).toContain("Housing budget");
+    expect(screen.getByRole("status").textContent).toContain("Deletion blocked");
+    expect(screen.queryByRole("button", { name: "Continue and delete" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Close" })).toBeDefined();
   });
 });

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
-use crate::Error;
+use crate::{BudgetImpact, Error};
 
 const INVALID_COLOR_MESSAGE: &str =
     "Category color must be a valid hex color in the format #RRGGBB";
@@ -94,6 +94,8 @@ pub struct RecurringCategoryImpact {
 #[serde(rename_all = "camelCase")]
 pub struct CategoryDeletionPreview {
     pub affected_recurring_transactions: Vec<RecurringCategoryImpact>,
+    pub affected_budgets: Vec<BudgetImpact>,
+    pub blocked_by_current_budget: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

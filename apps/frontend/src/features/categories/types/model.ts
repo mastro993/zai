@@ -85,8 +85,15 @@ const recurringCategoryImpactSchema = z.object({
   description: z.string().min(1),
 });
 
+const budgetImpactSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+});
+
 export const categoryDeletionPreviewSchema = z.object({
   affectedRecurringTransactions: z.array(recurringCategoryImpactSchema),
+  affectedBudgets: z.array(budgetImpactSchema),
+  blockedByCurrentBudget: z.boolean(),
 });
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;

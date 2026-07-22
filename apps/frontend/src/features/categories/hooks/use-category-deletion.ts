@@ -65,6 +65,20 @@ export function useCategoryDeletion({
         return "budget";
       }
       if (result.error.code === "categoryDeletionBlocked") {
+        if (budgets.length > 0) {
+          setIsDeleteDialogOpen(false);
+          setPendingRecurringImpact({
+            category,
+            childrenStrategy,
+            preview: {
+              affectedRecurringTransactions: [],
+              affectedBudgets: budgets,
+              blockedByCurrentBudget: true,
+            },
+          });
+          setIsDeleting(false);
+          return "failed";
+        }
         toast.error("Category deletion blocked", { description: result.error.message });
       } else {
         toast.error("Failed to delete category", { description: result.error.message });
@@ -97,7 +111,11 @@ export function useCategoryDeletion({
       return;
     }
 
-    if (result.value.affectedRecurringTransactions.length > 0) {
+    if (
+      result.value.affectedRecurringTransactions.length > 0 ||
+      result.value.affectedBudgets.length > 0 ||
+      result.value.blockedByCurrentBudget
+    ) {
       setIsDeleteDialogOpen(false);
       setPendingRecurringImpact({ category, childrenStrategy, preview: result.value });
       return;
@@ -107,7 +125,7 @@ export function useCategoryDeletion({
   };
 
   const confirmRecurringImpact = async () => {
-    if (!pendingRecurringImpact) {
+    if (!pendingRecurringImpact || pendingRecurringImpact.preview.blockedByCurrentBudget) {
       return;
     }
 

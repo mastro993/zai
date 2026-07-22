@@ -454,6 +454,8 @@ mod tests {
         ) -> Result<CategoryDeletionPreview> {
             Ok(CategoryDeletionPreview {
                 affected_recurring_transactions: Vec::new(),
+                affected_budgets: Vec::new(),
+                blocked_by_current_budget: false,
             })
         }
 

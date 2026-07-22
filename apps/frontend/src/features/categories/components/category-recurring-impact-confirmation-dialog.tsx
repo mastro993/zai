@@ -19,13 +19,31 @@ function CategoryRecurringImpactConfirmationDialog({
   onConfirm: () => void;
 }) {
   const affected = preview?.affectedRecurringTransactions ?? [];
+  const budgets = preview?.affectedBudgets ?? [];
+  const isBlocked = preview?.blockedByCurrentBudget ?? false;
+  const hasRecurringImpact = affected.length > 0;
+  const description = isBlocked
+    ? "This category cannot be deleted because a current budget selects it directly."
+    : [
+        hasRecurringImpact ? "Future recurring occurrences will be uncategorized." : null,
+        budgets.length > 0 ? "Affected budgets will be recalculated." : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
 
   return (
     <ConfirmationDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={category ? `Delete ${category.name}?` : "Delete category?"}
-      description="Future occurrences from these recurring transactions will be uncategorized."
+      title={
+        isBlocked
+          ? "Category deletion blocked"
+          : category
+            ? `Delete ${category.name}?`
+            : "Delete category?"
+      }
+      description={description}
+      cancelLabel={isBlocked ? "Close" : "Cancel"}
       isActionPending={isConfirming}
     >
       <div
@@ -33,16 +51,33 @@ function CategoryRecurringImpactConfirmationDialog({
         role="status"
         aria-live="polite"
       >
-        <p className="mb-2 font-medium">Affected recurring transactions</p>
-        <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-          {affected.map((item) => (
-            <li key={item.recurringTransactionId}>{item.description}</li>
-          ))}
-        </ul>
+        {isBlocked ? <p className="mb-2 font-medium">Deletion blocked</p> : null}
+        {affected.length > 0 ? (
+          <div>
+            <p className="mb-2 font-medium">Affected recurring transactions</p>
+            <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+              {affected.map((item) => (
+                <li key={item.recurringTransactionId}>{item.description}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {budgets.length > 0 ? (
+          <div className={affected.length > 0 ? "mt-3" : undefined}>
+            <p className="mb-2 font-medium">Affected budgets</p>
+            <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+              {budgets.map((budget) => (
+                <li key={budget.id}>{budget.name}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
-      <Button variant="destructive" size="sm" disabled={isConfirming} onClick={onConfirm}>
-        {isConfirming ? "Deleting..." : "Continue and delete"}
-      </Button>
+      {!isBlocked ? (
+        <Button variant="destructive" size="sm" disabled={isConfirming} onClick={onConfirm}>
+          {isConfirming ? "Deleting..." : "Continue and delete"}
+        </Button>
+      ) : null}
     </ConfirmationDialog>
   );
 }

@@ -123,7 +123,7 @@ async fn list_categories_returns_empty_array() {
 }
 
 #[tokio::test]
-async fn preview_category_deletion_returns_recurring_impact_shape() {
+async fn preview_category_deletion_returns_budget_impact_shape() {
     let app = CategoryTestApp::new();
     let (_, category) = app
         .post_json(
@@ -132,6 +132,18 @@ async fn preview_category_deletion_returns_recurring_impact_shape() {
         )
         .await;
     let category_id = category["id"].as_str().expect("category id");
+    let (budget_status, budget) = app
+        .post_json(
+            "/api/cash-flow/budgets",
+            json!({
+                "name": "Food budget",
+                "baseAllowance": 10000,
+                "categoryIds": [category_id]
+            }),
+        )
+        .await;
+    assert_eq!(budget_status, StatusCode::CREATED);
+    let budget_id = budget["id"].as_str().expect("budget id");
 
     let (status, body) = app
         .post_json(
@@ -141,7 +153,14 @@ async fn preview_category_deletion_returns_recurring_impact_shape() {
         .await;
 
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(body, json!({ "affectedRecurringTransactions": [] }));
+    assert_eq!(
+        body,
+        json!({
+            "affectedRecurringTransactions": [],
+            "affectedBudgets": [{ "id": budget_id, "name": "Food budget" }],
+            "blockedByCurrentBudget": true,
+        })
+    );
 }
 
 #[tokio::test]

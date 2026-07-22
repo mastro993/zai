@@ -30,13 +30,10 @@ pub(super) async fn preview_delete_categories(
         .writer
         .exec(move |conn| {
             let impact = analyze_deletion(conn, &owned_ids, children_strategy, now)?;
-            if !impact.blocked_category_ids.is_empty() {
-                return Err(StorageError::CoreError(Error::CategoryDeletionBlocked {
-                    category_ids: impact.blocked_category_ids,
-                    affected_budgets: impact.affected_budgets,
-                }));
-            }
-            recurring::preview(conn, &impact.ids_to_delete)
+            let mut preview = recurring::preview(conn, &impact.ids_to_delete)?;
+            preview.affected_budgets = impact.affected_budgets;
+            preview.blocked_by_current_budget = !impact.blocked_category_ids.is_empty();
+            Ok(preview)
         })
         .await
 }

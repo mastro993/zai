@@ -4,8 +4,8 @@ use diesel::prelude::*;
 use diesel::r2d2::{self, Pool};
 use diesel::sqlite::SqliteConnection;
 use uuid::Uuid;
-use zai_core::Error;
 use zai_core::features::transaction_categories::traits::TransactionCategoriesRepositoryTrait;
+use zai_core::{BudgetImpact, Error};
 
 use super::TransactionCategoriesRepository;
 use crate::budgets::BudgetsRepository;

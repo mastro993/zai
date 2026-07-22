@@ -233,5 +233,7 @@ fn preview_rows(rows: &[AffectedTemplate]) -> CategoryDeletionPreview {
                 },
             )
             .collect(),
+        affected_budgets: Vec::new(),
+        blocked_by_current_budget: false,
     }
 }
