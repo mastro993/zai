@@ -11,7 +11,7 @@ pub enum RecurringLifecycleCommand {
     Pause,
     Resume,
     Stop,
-    Tombstone,
+    Delete,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,12 +53,12 @@ impl RecurringLifecycleCommand {
             Self::Pause => RecurringLifecycle::Paused,
             Self::Resume => RecurringLifecycle::Active,
             Self::Stop => RecurringLifecycle::Stopped,
-            Self::Tombstone => RecurringLifecycle::Tombstoned,
+            Self::Delete => RecurringLifecycle::Tombstoned,
         }
     }
 
     pub const fn requires_catch_up(self) -> bool {
-        matches!(self, Self::Pause | Self::Stop | Self::Tombstone)
+        matches!(self, Self::Pause | Self::Stop | Self::Delete)
     }
 
     pub const fn requires_pause_skip(self) -> bool {
@@ -77,7 +77,7 @@ pub fn transition_allowed(from: RecurringLifecycle, command: RecurringLifecycleC
                 RecurringLifecycle::Active | RecurringLifecycle::Paused
             )
         }
-        RecurringLifecycleCommand::Tombstone => matches!(
+        RecurringLifecycleCommand::Delete => matches!(
             from,
             RecurringLifecycle::Active
                 | RecurringLifecycle::Paused
@@ -117,7 +117,7 @@ mod tests {
             (RecurringLifecycle::Active, RecurringLifecycleCommand::Stop),
             (
                 RecurringLifecycle::Active,
-                RecurringLifecycleCommand::Tombstone,
+                RecurringLifecycleCommand::Delete,
             ),
             (
                 RecurringLifecycle::Paused,
@@ -126,15 +126,15 @@ mod tests {
             (RecurringLifecycle::Paused, RecurringLifecycleCommand::Stop),
             (
                 RecurringLifecycle::Paused,
-                RecurringLifecycleCommand::Tombstone,
+                RecurringLifecycleCommand::Delete,
             ),
             (
                 RecurringLifecycle::Stopped,
-                RecurringLifecycleCommand::Tombstone,
+                RecurringLifecycleCommand::Delete,
             ),
             (
                 RecurringLifecycle::Completed,
-                RecurringLifecycleCommand::Tombstone,
+                RecurringLifecycleCommand::Delete,
             ),
         ];
         for (from, command) in cases {
@@ -188,7 +188,7 @@ mod tests {
             ),
             (
                 RecurringLifecycle::Tombstoned,
-                RecurringLifecycleCommand::Tombstone,
+                RecurringLifecycleCommand::Delete,
             ),
         ];
         for (from, command) in cases {
@@ -200,10 +200,10 @@ mod tests {
     }
 
     #[test]
-    fn pause_stop_tombstone_require_catch_up_resume_requires_skip() {
+    fn pause_stop_delete_require_catch_up_resume_requires_skip() {
         assert!(RecurringLifecycleCommand::Pause.requires_catch_up());
         assert!(RecurringLifecycleCommand::Stop.requires_catch_up());
-        assert!(RecurringLifecycleCommand::Tombstone.requires_catch_up());
+        assert!(RecurringLifecycleCommand::Delete.requires_catch_up());
         assert!(!RecurringLifecycleCommand::Resume.requires_catch_up());
         assert!(RecurringLifecycleCommand::Resume.requires_pause_skip());
         assert!(!RecurringLifecycleCommand::Pause.requires_pause_skip());

@@ -163,8 +163,7 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
 
     async fn stop(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome>;
 
-    async fn tombstone(&self, input: RecurringLifecycleUpdate)
-    -> Result<RecurringLifecycleOutcome>;
+    async fn delete(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome>;
 }
 
 /// Internal occurrence processor used by trusted Rust orchestration.

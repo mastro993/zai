@@ -183,15 +183,15 @@ pub async fn stop_recurring_transaction(
 }
 
 #[tauri::command]
-pub async fn tombstone_recurring_transaction(
+pub async fn delete_recurring_transaction(
     recurring_transaction_id: String,
     expected_revision: i32,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringLifecycleOutcome> {
-    debug!("Tombstoning recurring transaction {recurring_transaction_id}...");
+    debug!("Deleting recurring transaction {recurring_transaction_id}...");
     state
         .recurring_transactions_service()
-        .tombstone(RecurringLifecycleUpdate {
+        .delete(RecurringLifecycleUpdate {
             recurring_transaction_id,
             expected_revision,
         })

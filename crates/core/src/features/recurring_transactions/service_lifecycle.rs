@@ -108,11 +108,11 @@ impl RecurringTransactionsService {
             .apply_lifecycle_command(command, commit, observed_local)
             .await?;
 
-        if command == RecurringLifecycleCommand::Tombstone {
+        if command == RecurringLifecycleCommand::Delete {
             self.request_processing_wake();
             return Ok(RecurringLifecycleOutcome::Succeeded {
                 document: self
-                    .compose_tombstone_ack(&update.recurring_transaction_id)
+                    .compose_delete_ack(&update.recurring_transaction_id)
                     .await?,
             });
         }
@@ -175,12 +175,13 @@ impl RecurringTransactionsService {
         Ok(head.next_scheduled_local <= observed_local)
     }
 
-    async fn compose_tombstone_ack(
+    async fn compose_delete_ack(
         &self,
         recurring_transaction_id: &str,
     ) -> Result<super::document::RecurringTransactionDocument> {
-        // Tombstones are invisible to get_document; return a minimal post-commit
-        // document assembled from retained rows for the command outcome only.
+        // Soft-deleted sources are invisible to get_document; return a
+        // minimal post-commit document assembled from retained rows for the
+        // command outcome only.
         let recurring = self
             .repository
             .get_recurring_transaction(recurring_transaction_id)

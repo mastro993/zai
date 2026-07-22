@@ -160,7 +160,7 @@ pub fn run() {
             commands::recurring_transactions::pause_recurring_transaction,
             commands::recurring_transactions::resume_recurring_transaction,
             commands::recurring_transactions::stop_recurring_transaction,
-            commands::recurring_transactions::tombstone_recurring_transaction,
+            commands::recurring_transactions::delete_recurring_transaction,
             commands::domain_alerts::list_alerts,
             commands::domain_alerts::get_unread_alert_count,
             commands::domain_alerts::mark_all_alerts_read,

@@ -5,10 +5,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 import {
+  deleteRecurringTransaction,
   pauseRecurringTransaction,
   resumeRecurringTransaction,
   stopRecurringTransaction,
-  tombstoneRecurringTransaction,
 } from "../commands/recurring-transactions";
 import { RecurringLifecycleConfirmDialog } from "./recurring-lifecycle-confirm-dialog";
 import { recurringLifecycleLabel } from "../lib/recurring";
@@ -17,7 +17,7 @@ import type {
   RecurringTransactionDocument,
 } from "../types/recurring-transaction";
 
-type ConfirmKind = "pause" | "resume" | "stop" | "tombstone" | null;
+type ConfirmKind = "pause" | "resume" | "stop" | "delete" | null;
 
 const lifecycleOutcomeMessage = (outcome: RecurringLifecycleOutcome): string | undefined => {
   if (outcome.outcome !== "unchanged") {
@@ -65,7 +65,7 @@ const confirmCopyFor = (
         actionLabel: "Stop",
         pendingLabel: "Stopping…",
       };
-    case "tombstone":
+    case "delete":
       return {
         title: "Delete this recurring transaction?",
         description:
@@ -94,7 +94,7 @@ export function RecurringLifecycleActions({
   const canPause = lifecycle === "active" && !needsAttention;
   const canResume = lifecycle === "paused" && !needsAttention;
   const canStop = (lifecycle === "active" || lifecycle === "paused") && !needsAttention;
-  const canTombstone =
+  const canDelete =
     lifecycle === "active" ||
     lifecycle === "paused" ||
     lifecycle === "stopped" ||
@@ -112,7 +112,7 @@ export function RecurringLifecycleActions({
           ? await resumeRecurringTransaction(id, revision)
           : kind === "stop"
             ? await stopRecurringTransaction(id, revision)
-            : await tombstoneRecurringTransaction(id, revision);
+            : await deleteRecurringTransaction(id, revision);
     setLifecyclePending(false);
     setConfirmKind(null);
     if (Result.isFailure(result)) {
@@ -129,7 +129,7 @@ export function RecurringLifecycleActions({
       onDocumentChange(result.value.document);
       return;
     }
-    if (kind === "tombstone") {
+    if (kind === "delete") {
       await navigate({ to: "/cash-flow/recurring" });
       return;
     }
@@ -170,12 +170,12 @@ export function RecurringLifecycleActions({
           Stop
         </Button>
       ) : null}
-      {canTombstone ? (
+      {canDelete ? (
         <Button
           variant="destructive"
           disabled={lifecyclePending}
           aria-busy={lifecyclePending}
-          onClick={() => setConfirmKind("tombstone")}
+          onClick={() => setConfirmKind("delete")}
         >
           Delete
         </Button>
@@ -188,7 +188,7 @@ export function RecurringLifecycleActions({
           actionLabel={confirmCopy.actionLabel}
           pendingLabel={confirmCopy.pendingLabel}
           isPending={lifecyclePending}
-          destructive={confirmKind === "tombstone" || confirmKind === "stop"}
+          destructive={confirmKind === "delete" || confirmKind === "stop"}
           onOpenChange={(open) => {
             if (!open && !lifecyclePending) {
               setConfirmKind(null);

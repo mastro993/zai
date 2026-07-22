@@ -160,7 +160,7 @@ const lifecycleCommand = (
     | typeof RECURRING_COMMANDS.pause_recurring_transaction
     | typeof RECURRING_COMMANDS.resume_recurring_transaction
     | typeof RECURRING_COMMANDS.stop_recurring_transaction
-    | typeof RECURRING_COMMANDS.tombstone_recurring_transaction,
+    | typeof RECURRING_COMMANDS.delete_recurring_transaction,
   recurringTransactionId: string,
   expectedRevision: number,
 ): CommandResult<RecurringLifecycleOutcome> => {
@@ -203,12 +203,12 @@ export const stopRecurringTransaction = (
   );
 };
 
-export const tombstoneRecurringTransaction = (
+export const deleteRecurringTransaction = (
   recurringTransactionId: string,
   expectedRevision: number,
 ): CommandResult<RecurringLifecycleOutcome> => {
   return lifecycleCommand(
-    RECURRING_COMMANDS.tombstone_recurring_transaction,
+    RECURRING_COMMANDS.delete_recurring_transaction,
     recurringTransactionId,
     expectedRevision,
   );

@@ -57,8 +57,8 @@ pub(super) fn apply_lifecycle_command(
         RecurringLifecycleCommand::Stop => {
             apply_stop(conn, &mut recurring, now)?;
         }
-        RecurringLifecycleCommand::Tombstone => {
-            apply_tombstone(conn, &mut recurring, now)?;
+        RecurringLifecycleCommand::Delete => {
+            apply_delete(conn, &mut recurring, now)?;
         }
     }
 
@@ -141,7 +141,7 @@ fn apply_stop(
     Ok(())
 }
 
-fn apply_tombstone(
+fn apply_delete(
     conn: &mut SqliteConnection,
     recurring: &mut RecurringTransaction,
     now: NaiveDateTime,
@@ -281,6 +281,6 @@ fn command_label(command: RecurringLifecycleCommand) -> &'static str {
         RecurringLifecycleCommand::Pause => "pause",
         RecurringLifecycleCommand::Resume => "resume",
         RecurringLifecycleCommand::Stop => "stop",
-        RecurringLifecycleCommand::Tombstone => "tombstone",
+        RecurringLifecycleCommand::Delete => "delete",
     }
 }

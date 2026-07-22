@@ -72,8 +72,8 @@ pub fn router() -> Router<Arc<ServiceContext>> {
             axum::routing::post(stop_recurring_transaction),
         )
         .route(
-            "/recurring-transactions/{recurring_transaction_id}/tombstone",
-            axum::routing::post(tombstone_recurring_transaction),
+            "/recurring-transactions/{recurring_transaction_id}/delete",
+            axum::routing::post(delete_recurring_transaction),
         )
 }
 
@@ -240,7 +240,7 @@ async fn stop_recurring_transaction(
         .map_err(|error| command_error("Failed to stop recurring transaction", error))
 }
 
-async fn tombstone_recurring_transaction(
+async fn delete_recurring_transaction(
     State(context): State<Arc<ServiceContext>>,
     Path(recurring_transaction_id): Path<String>,
     payload: Result<Json<LifecycleBody>, JsonRejection>,
@@ -248,7 +248,7 @@ async fn tombstone_recurring_transaction(
     let Json(body) = payload.map_err(|rejection| bad_request(rejection.body_text()))?;
     context
         .recurring_transactions_service()
-        .tombstone(RecurringLifecycleUpdate {
+        .delete(RecurringLifecycleUpdate {
             recurring_transaction_id,
             expected_revision: body.expected_revision,
         })

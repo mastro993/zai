@@ -14,16 +14,16 @@ use zai_core::features::recurring_transactions::{
 };
 
 #[tokio::test]
-async fn tombstone_retains_history_and_hides_document() {
+async fn delete_retains_history_and_hides_document() {
     let observed = local(2026, 2, 1, 10, 0);
     let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(&repo, base_seed("rt-tomb", "Tomb me")).await;
 
-    let tombstoned = service
-        .tombstone(lifecycle_update("rt-tomb", 1))
+    let deleted = service
+        .delete(lifecycle_update("rt-tomb", 1))
         .await
-        .expect("tombstone");
-    match tombstoned {
+        .expect("delete");
+    match deleted {
         RecurringLifecycleOutcome::Succeeded { document } => {
             assert_eq!(
                 document.recurring_transaction.lifecycle,
@@ -53,7 +53,7 @@ async fn tombstone_retains_history_and_hides_document() {
 }
 
 #[tokio::test]
-async fn tombstone_from_stopped_retains_occurrences() {
+async fn delete_from_stopped_retains_occurrences() {
     let observed = local(2026, 2, 1, 10, 0);
     let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     seed_source(&repo, base_seed("rt-stop-tomb", "Stop then tomb")).await;
@@ -69,21 +69,21 @@ async fn tombstone_from_stopped_retains_occurrences() {
     let fulfilled = stopped_doc.recurring_transaction.fulfilled_count;
     assert!(fulfilled >= 1);
 
-    let tombstoned = service
-        .tombstone(lifecycle_update(
+    let deleted = service
+        .delete(lifecycle_update(
             "rt-stop-tomb",
             stopped_doc.recurring_transaction.revision,
         ))
         .await
-        .expect("tombstone");
-    match tombstoned {
+        .expect("delete");
+    match deleted {
         RecurringLifecycleOutcome::Succeeded { document } => {
             assert_eq!(
                 document.recurring_transaction.lifecycle,
                 RecurringLifecycle::Tombstoned
             );
         }
-        other => panic!("expected tombstone Succeeded, got {other:?}"),
+        other => panic!("expected delete Succeeded, got {other:?}"),
     }
 
     let mut conn = get_connection(repo.pool()).expect("conn");

@@ -293,11 +293,8 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
             .await
     }
 
-    async fn tombstone(
-        &self,
-        input: RecurringLifecycleUpdate,
-    ) -> Result<RecurringLifecycleOutcome> {
-        self.apply_lifecycle(RecurringLifecycleCommand::Tombstone, input)
+    async fn delete(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome> {
+        self.apply_lifecycle(RecurringLifecycleCommand::Delete, input)
             .await
     }
 

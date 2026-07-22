@@ -90,7 +90,7 @@ export const buildRecurringCommandRequestSpec = (
     case "pause_recurring_transaction":
     case "resume_recurring_transaction":
     case "stop_recurring_transaction":
-    case "tombstone_recurring_transaction": {
+    case "delete_recurring_transaction": {
       const recurringTransactionId = readString(args.recurringTransactionId);
       const expectedRevision = readNumber(args.expectedRevision, 0);
       const suffix = command.slice(0, command.indexOf("_recurring_transaction"));

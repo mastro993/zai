@@ -60,8 +60,8 @@ export const RECURRING_COMMANDS = {
     "stop_recurring_transaction",
     recurringLifecycleOutcomeSchema,
   ),
-  tombstone_recurring_transaction: backendCommand(
-    "tombstone_recurring_transaction",
+  delete_recurring_transaction: backendCommand(
+    "delete_recurring_transaction",
     recurringLifecycleOutcomeSchema,
   ),
   update_recurring_transaction: backendCommand(
