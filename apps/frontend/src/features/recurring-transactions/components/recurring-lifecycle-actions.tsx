@@ -1,5 +1,5 @@
 import { Result } from "@praha/byethrow";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -86,6 +86,7 @@ export function RecurringLifecycleActions({
   onLifecycleError: (message: string | undefined) => void;
 }) {
   const navigate = useNavigate();
+  const router = useRouter();
   const [confirmKind, setConfirmKind] = useState<ConfirmKind>(null);
   const [lifecyclePending, setLifecyclePending] = useState(false);
   const { recurringTransaction, occurrenceSummary } = document;
@@ -130,6 +131,7 @@ export function RecurringLifecycleActions({
       return;
     }
     if (kind === "delete") {
+      router.clearCache({ filter: (match) => match.routeId === "/cash-flow/recurring/" });
       await navigate({ to: "/cash-flow/recurring" });
       return;
     }
