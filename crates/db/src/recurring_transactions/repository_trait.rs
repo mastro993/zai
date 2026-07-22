@@ -15,7 +15,6 @@ use super::queries::{
     get_occurrence_head, get_recurring_transaction, list_due_heads, list_failure_history,
     list_feed, list_occurrences, list_unresolved_failures,
 };
-use super::queries_projection::read_schema_version;
 use super::repair::{apply_generation_repair, preview_template_field_repair};
 use super::repository::{
     RecurringTransactionsRepository, is_competing_fulfillment_unique_violation,
@@ -372,12 +371,7 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
     }
 
     async fn current_schema_version(&self) -> Result<String> {
-        let pool = Arc::clone(&self.pool);
-        run_blocking(move || {
-            let mut conn = get_connection(&pool)?;
-            read_schema_version(&mut conn)
-        })
-        .await
+        self.read_current_schema_version().await
     }
 
     async fn load_budget_projection_input(
@@ -387,17 +381,12 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
         include_paused_budgets: bool,
         focus_recurring_transaction_id: Option<String>,
     ) -> Result<ProjectionComputeInput> {
-        let pool = Arc::clone(&self.pool);
-        run_blocking(move || {
-            let mut conn = get_connection(&pool)?;
-            super::queries_projection::load_projection_compute_input(
-                &mut conn,
-                observed_local,
-                horizon_months,
-                include_paused_budgets,
-                focus_recurring_transaction_id,
-            )
-        })
+        self.load_projection_compute_input(
+            observed_local,
+            horizon_months,
+            include_paused_budgets,
+            focus_recurring_transaction_id,
+        )
         .await
     }
 }

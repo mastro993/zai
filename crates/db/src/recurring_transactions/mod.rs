@@ -51,6 +51,7 @@ mod repair;
 #[cfg(test)]
 mod repair_tests;
 mod repository;
+mod repository_projection;
 #[cfg(test)]
 mod repository_query_tests;
 mod repository_trait;
