@@ -1,5 +1,5 @@
 import { Result } from "@praha/byethrow";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -11,14 +11,10 @@ import type { TransactionCategory } from "@/features/categories/types/model";
 
 import {
   getRecurringTransactionOccurrences,
-  pauseRecurringTransaction,
-  resumeRecurringTransaction,
-  stopRecurringTransaction,
-  tombstoneRecurringTransaction,
   updateRecurringTransaction,
 } from "../commands/recurring-transactions";
 import { RecurringFormDrawer } from "../components/recurring-form-drawer";
-import { RecurringLifecycleConfirmDialog } from "../components/recurring-lifecycle-confirm-dialog";
+import { RecurringLifecycleActions } from "../components/recurring-lifecycle-actions";
 import {
   formatFiniteProgress,
   formatLocalDateTime,
@@ -27,7 +23,6 @@ import {
 } from "../lib/recurring";
 import type {
   RecurringFormValues,
-  RecurringLifecycleOutcome,
   RecurringOccurrence,
   RecurringTransactionDocument,
 } from "../types/recurring-transaction";
@@ -74,19 +69,6 @@ const canRename = (document: RecurringTransactionDocument): boolean => {
     lifecycle === "stopped" ||
     lifecycle === "completed"
   );
-};
-
-const lifecycleOutcomeMessage = (outcome: RecurringLifecycleOutcome): string | undefined => {
-  if (outcome.outcome === "unchanged") {
-    if (outcome.reason === "generation_blocked") {
-      return "Repair the generation failure before changing lifecycle.";
-    }
-    if (outcome.reason === "invalid_transition") {
-      return "That lifecycle change is not allowed from the current state.";
-    }
-    return "No lifecycle change applied.";
-  }
-  return undefined;
 };
 
 function OccurrenceLinks({
@@ -159,8 +141,6 @@ function OccurrenceLinks({
   );
 }
 
-type ConfirmKind = "pause" | "resume" | "stop" | "tombstone" | null;
-
 export function RecurringDocumentScreen({
   document: initialDocument,
   categories,
@@ -168,11 +148,8 @@ export function RecurringDocumentScreen({
   document: RecurringTransactionDocument;
   categories: Array<TransactionCategory>;
 }) {
-  const navigate = useNavigate();
   const [document, setDocument] = useState(initialDocument);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [confirmKind, setConfirmKind] = useState<ConfirmKind>(null);
-  const [lifecyclePending, setLifecyclePending] = useState(false);
   const [lifecycleError, setLifecycleError] = useState<string>();
   const editButtonRef = useRef<HTMLButtonElement | null>(null);
   const {
@@ -192,15 +169,6 @@ export function RecurringDocumentScreen({
   const renameAllowed = canRename(document);
   const editable = configurationEditable || renameAllowed;
   const lifecycle = recurringTransaction.lifecycle;
-  const needsAttention = occurrenceSummary.needsAttention;
-  const canPause = lifecycle === "active" && !needsAttention;
-  const canResume = lifecycle === "paused" && !needsAttention;
-  const canStop = (lifecycle === "active" || lifecycle === "paused") && !needsAttention;
-  const canTombstone =
-    lifecycle === "active" ||
-    lifecycle === "paused" ||
-    lifecycle === "stopped" ||
-    lifecycle === "completed";
 
   const submitEdit = async (values: RecurringFormValues) => {
     const result = await updateRecurringTransaction(document, values);
@@ -209,77 +177,6 @@ export function RecurringDocumentScreen({
     }
     return result;
   };
-
-  const runLifecycle = async (kind: Exclude<ConfirmKind, null>) => {
-    setLifecyclePending(true);
-    setLifecycleError(undefined);
-    const id = recurringTransaction.id;
-    const revision = recurringTransaction.revision;
-    const result =
-      kind === "pause"
-        ? await pauseRecurringTransaction(id, revision)
-        : kind === "resume"
-          ? await resumeRecurringTransaction(id, revision)
-          : kind === "stop"
-            ? await stopRecurringTransaction(id, revision)
-            : await tombstoneRecurringTransaction(id, revision);
-    setLifecyclePending(false);
-    setConfirmKind(null);
-    if (Result.isFailure(result)) {
-      setLifecycleError(
-        result.error.code === "revisionConflict"
-          ? "Recurring transaction changed elsewhere. Reload it before changing lifecycle."
-          : result.error.message,
-      );
-      return;
-    }
-    const message = lifecycleOutcomeMessage(result.value);
-    if (message) {
-      setLifecycleError(message);
-      setDocument(result.value.document);
-      return;
-    }
-    if (kind === "tombstone") {
-      await navigate({ to: "/cash-flow/recurring" });
-      return;
-    }
-    setDocument(result.value.document);
-  };
-
-  const confirmCopy =
-    confirmKind === "pause"
-      ? {
-          title: "Pause this recurring transaction?",
-          description:
-            "Due work through now catches up first. Later due occurrences stay skipped until you resume, without consuming finite count.",
-          actionLabel: "Pause",
-          pendingLabel: "Pausing…",
-        }
-      : confirmKind === "resume"
-        ? {
-            title: "Resume this recurring transaction?",
-            description:
-              "Occurrences skipped while paused are not backfilled. The next due slot advances past the pause window.",
-            actionLabel: "Resume",
-            pendingLabel: "Resuming…",
-          }
-        : confirmKind === "stop"
-          ? {
-              title: "Stop this recurring transaction?",
-              description:
-                "Stop is irreversible. Due work through now catches up first. The source stays visible and renameable as history.",
-              actionLabel: "Stop",
-              pendingLabel: "Stopping…",
-            }
-          : confirmKind === "tombstone"
-            ? {
-                title: "Delete this recurring transaction?",
-                description:
-                  "This hides the source from every user-facing view. Occurrences, revisions, failures, alerts, and generated transactions remain retained and cannot be restored.",
-                actionLabel: "Delete",
-                pendingLabel: "Deleting…",
-              }
-            : null;
 
   return (
     <ScreenBase
@@ -290,46 +187,11 @@ export function RecurringDocumentScreen({
               {configurationEditable ? "Edit recurring transaction" : "Rename"}
             </Button>
           ) : null}
-          {canPause ? (
-            <Button
-              variant="outline"
-              disabled={lifecyclePending}
-              aria-busy={lifecyclePending}
-              onClick={() => setConfirmKind("pause")}
-            >
-              Pause
-            </Button>
-          ) : null}
-          {canResume ? (
-            <Button
-              variant="outline"
-              disabled={lifecyclePending}
-              aria-busy={lifecyclePending}
-              onClick={() => setConfirmKind("resume")}
-            >
-              Resume
-            </Button>
-          ) : null}
-          {canStop ? (
-            <Button
-              variant="outline"
-              disabled={lifecyclePending}
-              aria-busy={lifecyclePending}
-              onClick={() => setConfirmKind("stop")}
-            >
-              Stop
-            </Button>
-          ) : null}
-          {canTombstone ? (
-            <Button
-              variant="destructive"
-              disabled={lifecyclePending}
-              aria-busy={lifecyclePending}
-              onClick={() => setConfirmKind("tombstone")}
-            >
-              Delete
-            </Button>
-          ) : null}
+          <RecurringLifecycleActions
+            document={document}
+            onDocumentChange={setDocument}
+            onLifecycleError={setLifecycleError}
+          />
           <Button
             variant="outline"
             nativeButton={false}
@@ -490,24 +352,6 @@ export function RecurringDocumentScreen({
           />
         ) : null}
       </Drawer>
-
-      {confirmCopy && confirmKind ? (
-        <RecurringLifecycleConfirmDialog
-          open={confirmKind !== null}
-          title={confirmCopy.title}
-          description={confirmCopy.description}
-          actionLabel={confirmCopy.actionLabel}
-          pendingLabel={confirmCopy.pendingLabel}
-          isPending={lifecyclePending}
-          destructive={confirmKind === "tombstone" || confirmKind === "stop"}
-          onOpenChange={(open) => {
-            if (!open && !lifecyclePending) {
-              setConfirmKind(null);
-            }
-          }}
-          onConfirm={() => void runLifecycle(confirmKind)}
-        />
-      ) : null}
     </ScreenBase>
   );
 }

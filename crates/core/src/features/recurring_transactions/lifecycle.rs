@@ -4,7 +4,6 @@ use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 pub const UNCHANGED_INVALID_TRANSITION: &str = "invalid_transition";
-pub const UNCHANGED_ALREADY_IN_STATE: &str = "already_in_state";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

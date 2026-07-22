@@ -18,6 +18,10 @@ mod fulfill_head;
 mod fulfill_select;
 mod lifecycle;
 #[cfg(test)]
+mod lifecycle_edge_tests;
+#[cfg(test)]
+mod lifecycle_test_support;
+#[cfg(test)]
 mod lifecycle_tests;
 mod models;
 #[cfg(test)]

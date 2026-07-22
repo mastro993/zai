@@ -41,13 +41,6 @@ impl RecurringTransactionsService {
         }
 
         if !transition_allowed(recurring.lifecycle, command) {
-            if recurring.lifecycle == command.target_lifecycle() {
-                let document = self.get_document(&recurring.id).await?;
-                return Ok(RecurringLifecycleOutcome::Unchanged {
-                    document,
-                    reason: UNCHANGED_INVALID_TRANSITION.to_string(),
-                });
-            }
             let document = self.get_document(&recurring.id).await?;
             return Ok(RecurringLifecycleOutcome::Unchanged {
                 document,
