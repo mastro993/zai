@@ -271,10 +271,6 @@ fn forecast_budget_periods(
                 role,
                 budget.measurement_mode,
             );
-            if contribution == 0 && occurrence.transaction_type != "expense" {
-                // Still attribute zero-contribution matches only when in scope;
-                // expenses always contribute.
-            }
             projected_delta = projected_delta.checked_add(contribution).ok_or_else(|| {
                 crate::Error::CalculationOverflow("Budget calculation overflow".to_string())
             })?;
@@ -321,16 +317,8 @@ fn forecast_budget_periods(
             actual_net_budget_spending: actual,
             projected_delta,
             forecast_net_budget_spending: forecast_net,
-            effective_allowance: if emit_status {
-                Some(computed.effective_allowance)
-            } else {
-                None
-            },
-            remaining_allowance: if emit_status {
-                Some(computed.remaining_allowance)
-            } else {
-                None
-            },
+            effective_allowance: Some(computed.effective_allowance),
+            remaining_allowance: Some(computed.remaining_allowance),
             status: if emit_status {
                 Some(computed.status)
             } else {

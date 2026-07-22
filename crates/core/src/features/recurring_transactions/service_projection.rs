@@ -1,6 +1,6 @@
 use super::document::{
     RecurringBudgetImpactSection, RecurringSectionState, RecurringTransactionDocument,
-    budget_impact_unavailable, failures_section_with_waiting, links_section, occurrence_summary,
+    failures_section_with_waiting, links_section, occurrence_summary,
 };
 use super::models::{
     DEFAULT_FAILURE_LIMIT, DEFAULT_FEED_LIMIT, RecurringLifecycle, RecurringTransaction,
@@ -83,7 +83,11 @@ impl RecurringTransactionsService {
             .await
         {
             Ok(projection) => Self::budget_impact_from_projection(&projection, &recurring.id),
-            Err(_) => budget_impact_unavailable(),
+            Err(error) => RecurringBudgetImpactSection {
+                state: RecurringSectionState::Unavailable,
+                message: Some(error.to_string()),
+                projection: None,
+            },
         };
 
         Ok(RecurringTransactionDocument {

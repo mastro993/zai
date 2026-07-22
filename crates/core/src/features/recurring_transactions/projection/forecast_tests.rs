@@ -1,6 +1,9 @@
 use super::*;
 use crate::features::budgets::models::{BudgetCadence, BudgetMeasurementMode, BudgetStatus};
-use crate::features::recurring_transactions::models::{ScheduleIntervalUnit, ScheduleRule};
+use crate::features::recurring_transactions::models::{
+    RecurringGenerationFailure, ScheduleIntervalUnit, ScheduleRule,
+};
+use crate::features::recurring_transactions::projection::ProjectionSourceErrorKind;
 use chrono::NaiveDate;
 
 fn dt(year: i32, month: u32, day: u32, hour: u32, min: u32) -> NaiveDateTime {
@@ -312,4 +315,69 @@ fn fulfilling_projected_occurrence_preserves_combined_forecast() {
     assert_eq!(before_jan.projected_delta, 2_000);
     assert_eq!(after_jan.projected_delta, 0);
     assert_eq!(after_jan.actual_net_budget_spending, 3_000);
+}
+
+#[test]
+fn blocked_source_isolates_without_erasing_valid_contributions() {
+    let observed = dt(2026, 1, 5, 12, 0);
+    let food = budget("b1", "Food");
+    let mut blocked = source("blocked", dt(2026, 1, 15, 9, 0), 1);
+    blocked.unresolved_failure = Some(RecurringGenerationFailure {
+        recurring_transaction_id: "blocked".to_string(),
+        schedule_revision_id: "blocked-sched".to_string(),
+        ordinal: 1,
+        error_code: "invalidCategory".to_string(),
+        cause_category: "template".to_string(),
+        repair_field_key: Some("transactionCategoryId".to_string()),
+        correlation_id: "corr".to_string(),
+        failed_scheduled_local: dt(2026, 1, 15, 9, 0),
+        first_failed_at: dt(2026, 1, 1, 0, 0),
+        last_failed_at: dt(2026, 1, 1, 0, 0),
+        attempt_count: 1,
+        repaired_at: None,
+        repair_revision: None,
+        resolved_at: None,
+        resolution_kind: None,
+        generation_failure_alert_id: "alert".to_string(),
+    });
+    let valid = source("valid", dt(2026, 1, 16, 9, 0), 1);
+    let result = compute_budget_projection(ProjectionComputeInput {
+        observed_local: observed,
+        horizon_months: 1,
+        budgets: vec![ProjectionBudgetInput {
+            scope_category_ids: food.category_ids.clone(),
+            warning_percentage: food.warning_percentage,
+            budget: food,
+            stale: false,
+        }],
+        sources: vec![blocked, valid],
+        category_roles: HashMap::from([("food".to_string(), CategoryRole::Spending)]),
+        category_hierarchy: vec![CategoryHierarchy {
+            id: "food".to_string(),
+            parent_id: None,
+        }],
+        actual_spending: HashMap::new(),
+        focus_recurring_transaction_id: None,
+    })
+    .unwrap();
+    assert!(!result.complete);
+    assert!(
+        result
+            .source_errors
+            .iter()
+            .any(|e| e.kind == ProjectionSourceErrorKind::GenerationBlocked)
+    );
+    let jan = result
+        .periods
+        .iter()
+        .find(|p| p.period_start == dt(2026, 1, 1, 0, 0))
+        .unwrap();
+    assert_eq!(jan.projected_delta, 2_000);
+    assert!(
+        jan.attribution
+            .iter()
+            .all(|a| a.recurring_transaction_id == "valid")
+    );
+    assert!(jan.status.is_none());
+    assert_eq!(jan.remaining_allowance, Some(7_000));
 }
