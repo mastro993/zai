@@ -15,6 +15,7 @@ mod edit_revision_tests;
 mod edit_tests;
 #[cfg(any(test, feature = "failpoints"))]
 pub(crate) mod failpoints;
+mod feed;
 mod fulfill;
 mod fulfill_head;
 mod fulfill_select;
