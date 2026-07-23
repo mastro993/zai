@@ -27,7 +27,7 @@ export default defineConfig({
       env: {
         ZAI_DATA_DIR: dataDir,
       },
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 180_000,
     },
     {
@@ -36,7 +36,7 @@ export default defineConfig({
       env: {
         VITE_ZAI_API_ORIGIN: apiOrigin,
       },
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 180_000,
     },
   ],

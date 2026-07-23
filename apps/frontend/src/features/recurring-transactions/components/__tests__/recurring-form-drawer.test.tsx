@@ -119,7 +119,7 @@ describe("RecurringFormDrawer", () => {
     });
   });
 
-  it("opens in edit mode with document values and save label", () => {
+  it("opens in edit mode and preserves edits through submit rerenders", async () => {
     const document = {
       recurringTransaction: {
         id: "rt-1",
@@ -169,13 +169,18 @@ describe("RecurringFormDrawer", () => {
       },
     } satisfies RecurringTransactionDocument;
 
+    const onSubmit = vi.fn(async (values: RecurringFormValues) => {
+      expect(values.amount).toBe(125_000);
+      return Result.succeed({ outcome: "succeeded", document });
+    });
+
     render(
       <Drawer open swipeDirection="right">
         <RecurringFormDrawer
           mode={{ type: "edit", document }}
           open
           onOpenChange={() => undefined}
-          onSubmit={async () => Result.succeed({ outcome: "succeeded", document })}
+          onSubmit={onSubmit}
           categories={[]}
         />
       </Drawer>,
@@ -185,5 +190,12 @@ describe("RecurringFormDrawer", () => {
     expect(screen.getByLabelText("Description")).toHaveProperty("value", "Monthly rent");
     expect(screen.getByLabelText("Next occurrence")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "1250.00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
   });
 });
