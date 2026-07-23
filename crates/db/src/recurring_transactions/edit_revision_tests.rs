@@ -178,11 +178,21 @@ async fn schedule_edit_retains_overdue_under_prior_revision() {
         local(2026, 1, 1, 9, 0)
     );
 
-    let catch_up = service
+    let mut catch_up = service
         .process_due(observed, ProcessingWorkBudget::occurrences(10), None)
         .await
         .expect("catch up");
     assert!(catch_up.committed >= 1);
+    for _ in 0..10 {
+        if !catch_up.more_due_remaining {
+            break;
+        }
+        catch_up = service
+            .process_due(observed, ProcessingWorkBudget::occurrences(10), None)
+            .await
+            .expect("continue catch up");
+    }
+    assert!(!catch_up.more_due_remaining);
     let after = service.get_document("rt-sched").await.expect("after");
     let under_new = after
         .links
