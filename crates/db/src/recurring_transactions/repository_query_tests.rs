@@ -1,5 +1,6 @@
 use super::queries::{
-    find_provenance_by_transaction, list_due_heads, list_feed, list_unresolved_failures,
+    find_provenance_by_transaction, list_due_heads, list_failure_history, list_feed,
+    list_occurrences, list_unresolved_failures, normalize_failure_limit, normalize_feed_limit,
 };
 use super::seed::{SeedRecurringSource, seed_active_interval_source};
 use crate::connection::{create_pool, get_connection, run_migrations};
@@ -8,7 +9,7 @@ use crate::schema::{recurring_generation_failures, recurring_occurrences};
 use crate::sql_statement_counter::ConnectionStatementCounter;
 use crate::test_utils::TempDb;
 use crate::write_actor::spawn_writer;
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{Duration, NaiveDate, NaiveDateTime};
 use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sqlite::SqliteConnection;
@@ -58,6 +59,49 @@ fn assert_uses_index(plan: &[ExplainQueryPlanRow], index_name: &str) {
     );
 }
 
+fn seed_retained_history(
+    conn: &mut SqliteConnection,
+    recurring_transaction_id: &str,
+    schedule_revision_id: &str,
+    template_revision_id: &str,
+    count: i32,
+) {
+    for ordinal in 1..=count {
+        let scheduled_local = local(2026, 1, 1, 9, 0) + Duration::days(i64::from(ordinal - 1));
+        let scheduled_local = scheduled_local.format("%Y-%m-%d %H:%M:%S").to_string();
+        let transaction_id = format!("{recurring_transaction_id}-txn-{ordinal}");
+        diesel::sql_query(format!(
+            "INSERT INTO transactions (id, description, amount, transaction_date, transaction_type, created_at, updated_at) \
+             VALUES ('{transaction_id}', 'Retained history', 100, '{scheduled_local}', 'expense', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        ))
+        .execute(conn)
+        .expect("transaction history");
+        diesel::sql_query(format!(
+            "INSERT INTO recurring_occurrences \
+             (recurring_transaction_id, schedule_revision_id, ordinal, scheduled_local, template_revision_id, fulfilled_at, fulfillment_position, transaction_id, fulfillment_kind) \
+             VALUES ('{recurring_transaction_id}', '{schedule_revision_id}', {ordinal}, '{scheduled_local}', '{template_revision_id}', CURRENT_TIMESTAMP, {ordinal}, '{transaction_id}', 'adopted')"
+        ))
+        .execute(conn)
+        .expect("occurrence history");
+
+        let alert_id = format!("{recurring_transaction_id}-alert-{ordinal}");
+        let failure_at = scheduled_local.clone();
+        diesel::sql_query(format!(
+            "INSERT INTO domain_alerts (id, producer_key, occurrence_key, severity, title, body, created_at, updated_at) \
+             VALUES ('{alert_id}', 'recurring.generation_failure', '{recurring_transaction_id}|failure|{ordinal}', 'critical', 'Failure', 'Repaired', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        ))
+        .execute(conn)
+        .expect("failure alert history");
+        diesel::sql_query(format!(
+            "INSERT INTO recurring_generation_failures \
+             (recurring_transaction_id, schedule_revision_id, ordinal, error_code, cause_category, correlation_id, failed_scheduled_local, first_failed_at, last_failed_at, attempt_count, repaired_at, repair_revision, resolved_at, resolution_kind, generation_failure_alert_id) \
+             VALUES ('{recurring_transaction_id}', '{schedule_revision_id}', {ordinal}, 'invalid_category', 'template', 'correlation-{ordinal}', '{scheduled_local}', '{failure_at}', '{failure_at}', 1, '{failure_at}', 2, '{failure_at}', 'repaired', '{alert_id}')"
+        ))
+        .execute(conn)
+        .expect("failure history");
+    }
+}
+
 #[tokio::test]
 async fn feed_and_due_discovery_use_indexes_and_cursor_paging() {
     let (temp_db, mut conn) = setup();
@@ -94,6 +138,24 @@ async fn feed_and_due_discovery_use_indexes_and_cursor_paging() {
         .expect("feed page 2");
     assert_eq!(page2.items.len(), 1);
     assert!(page2.next_cursor.is_none());
+    let page_again = repo.list_feed(2, None).await.expect("repeat feed page");
+    assert_eq!(
+        page.items
+            .iter()
+            .map(|item| &item.recurring_transaction.id)
+            .collect::<Vec<_>>(),
+        page_again
+            .items
+            .iter()
+            .map(|item| &item.recurring_transaction.id)
+            .collect::<Vec<_>>()
+    );
+    assert!(page2.items.iter().all(|item| {
+        !page
+            .items
+            .iter()
+            .any(|first| first.recurring_transaction.id == item.recurring_transaction.id)
+    }));
 
     let due = list_due_heads(&mut conn, local(2026, 2, 2, 9, 0), 50).expect("due");
     assert_eq!(due.len(), 2);
@@ -232,6 +294,14 @@ async fn provenance_and_failure_queries_are_indexed() {
          ORDER BY first_failed_at DESC, schedule_revision_id DESC, ordinal DESC LIMIT 20",
     );
     assert_uses_index(&failure_plan, "recurring_generation_failures_history_index");
+
+    let occurrence_plan = explain_plan(
+        &mut conn,
+        "SELECT ordinal FROM recurring_occurrences \
+         WHERE recurring_transaction_id = 'rt-prov' \
+         ORDER BY scheduled_local DESC, schedule_revision_id DESC, ordinal DESC LIMIT 50",
+    );
+    assert_uses_index(&occurrence_plan, "recurring_occurrences_history_index");
 }
 
 #[tokio::test]
@@ -265,6 +335,169 @@ async fn mutations_go_through_serialized_writer_only() {
     let counter = ConnectionStatementCounter::install(&mut read_conn);
     let _ = list_feed(&mut read_conn, 10, None).expect("read feed");
     assert!(counter.count() >= 1);
+}
+
+#[test]
+fn release_query_limits_default_and_cap_contract() {
+    assert_eq!(normalize_feed_limit(50).expect("default feed"), 50);
+    assert_eq!(normalize_feed_limit(101).expect("feed cap"), 100);
+    assert_eq!(normalize_failure_limit(20).expect("default failure"), 20);
+    assert_eq!(normalize_failure_limit(101).expect("failure cap"), 100);
+    assert!(normalize_feed_limit(0).is_err());
+    assert!(normalize_failure_limit(0).is_err());
+}
+
+#[tokio::test]
+async fn occurrence_and_failure_cursor_paging_is_stable() {
+    let (temp_db, mut conn) = setup();
+    let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
+    let writer = spawn_writer(pool.as_ref().clone()).expect("writer");
+    let seed = SeedRecurringSource {
+        id: "rt-cursors".into(),
+        description: "Cursor source".into(),
+        lifecycle: "active",
+        total_occurrences: None,
+        fulfilled_count: 0,
+        revision: 1,
+        first_scheduled_local: local(2026, 1, 1, 9, 0),
+        next_scheduled_local: local(2030, 1, 1, 9, 0),
+        next_ordinal: 1,
+        amount: 100,
+        transaction_type: "expense",
+    };
+    let (schedule_id, template_id) = writer
+        .exec(move |conn| seed_active_interval_source(conn, &seed))
+        .await
+        .expect("seed source");
+    seed_retained_history(&mut conn, "rt-cursors", &schedule_id, &template_id, 120);
+
+    let occurrence_cap =
+        list_occurrences(&mut conn, "rt-cursors", 101, None).expect("occurrence cap");
+    assert_eq!(occurrence_cap.items.len(), 100);
+    let failure_cap =
+        list_failure_history(&mut conn, "rt-cursors", 101, None).expect("failure cap");
+    assert_eq!(failure_cap.items.len(), 100);
+
+    let occurrence_page = list_occurrences(&mut conn, "rt-cursors", 50, None).expect("occurrences");
+    let occurrence_page_2 = list_occurrences(
+        &mut conn,
+        "rt-cursors",
+        50,
+        occurrence_page.next_cursor.as_deref(),
+    )
+    .expect("occurrence page 2");
+    let occurrence_page_3 = list_occurrences(
+        &mut conn,
+        "rt-cursors",
+        50,
+        occurrence_page_2.next_cursor.as_deref(),
+    )
+    .expect("occurrence page 3");
+    assert_eq!(occurrence_page.items.len(), 50);
+    assert_eq!(occurrence_page_2.items.len(), 50);
+    assert_eq!(occurrence_page_3.items.len(), 20);
+    assert!(occurrence_page_3.next_cursor.is_none());
+    assert!(occurrence_page.items.iter().all(|first| {
+        occurrence_page_2
+            .items
+            .iter()
+            .all(|second| first.ordinal != second.ordinal)
+    }));
+    let repeated_occurrence_page =
+        list_occurrences(&mut conn, "rt-cursors", 50, None).expect("repeat occurrence page");
+    assert_eq!(occurrence_page, repeated_occurrence_page);
+
+    let failure_page = list_failure_history(&mut conn, "rt-cursors", 20, None).expect("failures");
+    let failure_page_2 = list_failure_history(
+        &mut conn,
+        "rt-cursors",
+        20,
+        failure_page.next_cursor.as_deref(),
+    )
+    .expect("failure page 2");
+    let failure_page_3 = list_failure_history(
+        &mut conn,
+        "rt-cursors",
+        20,
+        failure_page_2.next_cursor.as_deref(),
+    )
+    .expect("failure page 3");
+    assert_eq!(failure_page.items.len(), 20);
+    assert_eq!(failure_page_2.items.len(), 20);
+    assert_eq!(failure_page_3.items.len(), 20);
+    assert!(failure_page.items.iter().all(|first| {
+        failure_page_2
+            .items
+            .iter()
+            .all(|second| first.ordinal != second.ordinal)
+    }));
+    let repeated_failure_page =
+        list_failure_history(&mut conn, "rt-cursors", 20, None).expect("repeat failure page");
+    assert_eq!(failure_page, repeated_failure_page);
+}
+
+#[tokio::test]
+async fn bounded_pages_keep_statement_count_independent_of_retained_history() {
+    struct PageMeasurement {
+        occurrence_count: usize,
+        occurrence_statements: usize,
+        failure_count: usize,
+        failure_statements: usize,
+    }
+
+    async fn measure(history_size: i32) -> PageMeasurement {
+        let (temp_db, mut conn) = setup();
+        let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
+        let writer = spawn_writer(pool.as_ref().clone()).expect("writer");
+        let seed = SeedRecurringSource {
+            id: "rt-history".into(),
+            description: "History source".into(),
+            lifecycle: "active",
+            total_occurrences: None,
+            fulfilled_count: 0,
+            revision: 1,
+            first_scheduled_local: local(2026, 1, 1, 9, 0),
+            next_scheduled_local: local(2030, 1, 1, 9, 0),
+            next_ordinal: 1,
+            amount: 100,
+            transaction_type: "expense",
+        };
+        let (schedule_id, template_id) = writer
+            .exec(move |conn| seed_active_interval_source(conn, &seed))
+            .await
+            .expect("seed source");
+        seed_retained_history(
+            &mut conn,
+            "rt-history",
+            &schedule_id,
+            &template_id,
+            history_size,
+        );
+
+        let occurrence_counter = ConnectionStatementCounter::install(&mut conn);
+        let occurrences = list_occurrences(&mut conn, "rt-history", 50, None).expect("occurrences");
+        let occurrence_statements = occurrence_counter.count();
+        let failure_counter = ConnectionStatementCounter::install(&mut conn);
+        let failures = list_failure_history(&mut conn, "rt-history", 20, None).expect("failures");
+        let failure_statements = failure_counter.count();
+        PageMeasurement {
+            occurrence_count: occurrences.items.len(),
+            occurrence_statements,
+            failure_count: failures.items.len(),
+            failure_statements,
+        }
+    }
+
+    let empty = measure(0).await;
+    let retained = measure(120).await;
+    assert_eq!(empty.occurrence_count, 0);
+    assert_eq!(empty.occurrence_statements, 1);
+    assert_eq!(empty.failure_count, 0);
+    assert_eq!(empty.failure_statements, 1);
+    assert_eq!(retained.occurrence_count, 50);
+    assert_eq!(retained.occurrence_statements, 1);
+    assert_eq!(retained.failure_count, 20);
+    assert_eq!(retained.failure_statements, 1);
 }
 
 #[tokio::test]

@@ -108,6 +108,7 @@ test("web adoption previews catch-up and preserves adopted provenance", async ({
   await page.goto("/cash-flow/transactions");
   await page.getByRole("button", { name: `Adopt ${description} as recurring` }).click();
   const drawer = page.getByRole("dialog", { name: "Adopt as recurring" });
+  await expect(drawer.getByRole("status")).not.toContainText("Calculating later due occurrences…");
   await drawer.getByRole("button", { name: "day", exact: true }).click();
   await drawer.getByRole("button", { name: "Finite", exact: true }).click();
   await drawer.getByLabel("Number of occurrences").fill("3");

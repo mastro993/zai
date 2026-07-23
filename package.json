@@ -27,6 +27,7 @@
     "check:backend": "mkdir -p dist && printf '<!doctype html><html><body></body></html>' > dist/index.html && cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo build -p zai-db --bin recurring-crash-child --features failpoints && cargo test --workspace",
     "check:file-size": "node --test scripts/check-file-size.test.mjs && node scripts/check-file-size.mjs",
     "check": "pnpm check:file-size && pnpm check:frontend && pnpm check:backend",
+    "benchmark:recurring": "node scripts/recurring-reference-runner.mjs",
     "test:e2e:web": "playwright test"
   },
   "devDependencies": {

@@ -17,6 +17,10 @@ name = "recurring-crash-child"
 path = "src/bin/recurring-crash-child.rs"
 required-features = ["failpoints"]
 
+[[bin]]
+name = "recurring-reference-runner"
+path = "src/bin/recurring-reference-runner.rs"
+
 [dependencies]
 zai-core = { workspace = true }
 diesel = { workspace = true }
