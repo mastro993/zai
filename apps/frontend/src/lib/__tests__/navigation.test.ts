@@ -21,6 +21,14 @@ describe("resolveScreenBreadcrumbs", () => {
     ]);
   });
 
+  it("keeps transaction detail breadcrumbs human-readable", () => {
+    expect(resolveScreenBreadcrumbs("/cash-flow/transactions/txn-generated")).toEqual([
+      { label: "Cash flow", href: "/cash-flow" },
+      { label: "Transactions", href: "/cash-flow/transactions" },
+      { label: "Transaction" },
+    ]);
+  });
+
   it("falls back to title-cased path segments", () => {
     expect(resolveScreenBreadcrumbs("/unknown-route")).toEqual([{ label: "Unknown Route" }]);
   });

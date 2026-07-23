@@ -20,8 +20,10 @@ import { Route as CashFlowRecurringRouteImport } from './routes/cash-flow.recurr
 import { Route as CashFlowForecastRouteImport } from './routes/cash-flow.forecast'
 import { Route as CashFlowCategoriesRouteImport } from './routes/cash-flow.categories'
 import { Route as CashFlowBudgetsRouteImport } from './routes/cash-flow.budgets'
+import { Route as CashFlowTransactionsIndexRouteImport } from './routes/cash-flow.transactions.index'
 import { Route as CashFlowRecurringIndexRouteImport } from './routes/cash-flow.recurring.index'
 import { Route as CashFlowBudgetsIndexRouteImport } from './routes/cash-flow.budgets.index'
+import { Route as CashFlowTransactionsTransactionIdRouteImport } from './routes/cash-flow.transactions.$transactionId'
 import { Route as CashFlowRecurringRecurringTransactionIdRouteImport } from './routes/cash-flow.recurring.$recurringTransactionId'
 import { Route as CashFlowBudgetsBudgetIdRouteImport } from './routes/cash-flow.budgets.$budgetId'
 
@@ -80,6 +82,12 @@ const CashFlowBudgetsRoute = CashFlowBudgetsRouteImport.update({
   path: '/budgets',
   getParentRoute: () => CashFlowRoute,
 } as any)
+const CashFlowTransactionsIndexRoute =
+  CashFlowTransactionsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => CashFlowTransactionsRoute,
+  } as any)
 const CashFlowRecurringIndexRoute = CashFlowRecurringIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -90,6 +98,12 @@ const CashFlowBudgetsIndexRoute = CashFlowBudgetsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => CashFlowBudgetsRoute,
 } as any)
+const CashFlowTransactionsTransactionIdRoute =
+  CashFlowTransactionsTransactionIdRouteImport.update({
+    id: '/$transactionId',
+    path: '/$transactionId',
+    getParentRoute: () => CashFlowTransactionsRoute,
+  } as any)
 const CashFlowRecurringRecurringTransactionIdRoute =
   CashFlowRecurringRecurringTransactionIdRouteImport.update({
     id: '/$recurringTransactionId',
@@ -112,12 +126,14 @@ export interface FileRoutesByFullPath {
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
   '/cash-flow/forecast': typeof CashFlowForecastRoute
   '/cash-flow/recurring': typeof CashFlowRecurringRouteWithChildren
-  '/cash-flow/transactions': typeof CashFlowTransactionsRoute
+  '/cash-flow/transactions': typeof CashFlowTransactionsRouteWithChildren
   '/cash-flow/': typeof CashFlowIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
   '/cash-flow/recurring/$recurringTransactionId': typeof CashFlowRecurringRecurringTransactionIdRoute
+  '/cash-flow/transactions/$transactionId': typeof CashFlowTransactionsTransactionIdRoute
   '/cash-flow/budgets/': typeof CashFlowBudgetsIndexRoute
   '/cash-flow/recurring/': typeof CashFlowRecurringIndexRoute
+  '/cash-flow/transactions/': typeof CashFlowTransactionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -126,12 +142,13 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
   '/cash-flow/forecast': typeof CashFlowForecastRoute
-  '/cash-flow/transactions': typeof CashFlowTransactionsRoute
   '/cash-flow': typeof CashFlowIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
   '/cash-flow/recurring/$recurringTransactionId': typeof CashFlowRecurringRecurringTransactionIdRoute
+  '/cash-flow/transactions/$transactionId': typeof CashFlowTransactionsTransactionIdRoute
   '/cash-flow/budgets': typeof CashFlowBudgetsIndexRoute
   '/cash-flow/recurring': typeof CashFlowRecurringIndexRoute
+  '/cash-flow/transactions': typeof CashFlowTransactionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -144,12 +161,14 @@ export interface FileRoutesById {
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
   '/cash-flow/forecast': typeof CashFlowForecastRoute
   '/cash-flow/recurring': typeof CashFlowRecurringRouteWithChildren
-  '/cash-flow/transactions': typeof CashFlowTransactionsRoute
+  '/cash-flow/transactions': typeof CashFlowTransactionsRouteWithChildren
   '/cash-flow/': typeof CashFlowIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
   '/cash-flow/recurring/$recurringTransactionId': typeof CashFlowRecurringRecurringTransactionIdRoute
+  '/cash-flow/transactions/$transactionId': typeof CashFlowTransactionsTransactionIdRoute
   '/cash-flow/budgets/': typeof CashFlowBudgetsIndexRoute
   '/cash-flow/recurring/': typeof CashFlowRecurringIndexRoute
+  '/cash-flow/transactions/': typeof CashFlowTransactionsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,8 +186,10 @@ export interface FileRouteTypes {
     | '/cash-flow/'
     | '/cash-flow/budgets/$budgetId'
     | '/cash-flow/recurring/$recurringTransactionId'
+    | '/cash-flow/transactions/$transactionId'
     | '/cash-flow/budgets/'
     | '/cash-flow/recurring/'
+    | '/cash-flow/transactions/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -177,12 +198,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/cash-flow/categories'
     | '/cash-flow/forecast'
-    | '/cash-flow/transactions'
     | '/cash-flow'
     | '/cash-flow/budgets/$budgetId'
     | '/cash-flow/recurring/$recurringTransactionId'
+    | '/cash-flow/transactions/$transactionId'
     | '/cash-flow/budgets'
     | '/cash-flow/recurring'
+    | '/cash-flow/transactions'
   id:
     | '__root__'
     | '/'
@@ -198,8 +220,10 @@ export interface FileRouteTypes {
     | '/cash-flow/'
     | '/cash-flow/budgets/$budgetId'
     | '/cash-flow/recurring/$recurringTransactionId'
+    | '/cash-flow/transactions/$transactionId'
     | '/cash-flow/budgets/'
     | '/cash-flow/recurring/'
+    | '/cash-flow/transactions/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -289,6 +313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CashFlowBudgetsRouteImport
       parentRoute: typeof CashFlowRoute
     }
+    '/cash-flow/transactions/': {
+      id: '/cash-flow/transactions/'
+      path: '/'
+      fullPath: '/cash-flow/transactions/'
+      preLoaderRoute: typeof CashFlowTransactionsIndexRouteImport
+      parentRoute: typeof CashFlowTransactionsRoute
+    }
     '/cash-flow/recurring/': {
       id: '/cash-flow/recurring/'
       path: '/'
@@ -302,6 +333,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/cash-flow/budgets/'
       preLoaderRoute: typeof CashFlowBudgetsIndexRouteImport
       parentRoute: typeof CashFlowBudgetsRoute
+    }
+    '/cash-flow/transactions/$transactionId': {
+      id: '/cash-flow/transactions/$transactionId'
+      path: '/$transactionId'
+      fullPath: '/cash-flow/transactions/$transactionId'
+      preLoaderRoute: typeof CashFlowTransactionsTransactionIdRouteImport
+      parentRoute: typeof CashFlowTransactionsRoute
     }
     '/cash-flow/recurring/$recurringTransactionId': {
       id: '/cash-flow/recurring/$recurringTransactionId'
@@ -348,12 +386,26 @@ const CashFlowRecurringRouteChildren: CashFlowRecurringRouteChildren = {
 const CashFlowRecurringRouteWithChildren =
   CashFlowRecurringRoute._addFileChildren(CashFlowRecurringRouteChildren)
 
+interface CashFlowTransactionsRouteChildren {
+  CashFlowTransactionsTransactionIdRoute: typeof CashFlowTransactionsTransactionIdRoute
+  CashFlowTransactionsIndexRoute: typeof CashFlowTransactionsIndexRoute
+}
+
+const CashFlowTransactionsRouteChildren: CashFlowTransactionsRouteChildren = {
+  CashFlowTransactionsTransactionIdRoute:
+    CashFlowTransactionsTransactionIdRoute,
+  CashFlowTransactionsIndexRoute: CashFlowTransactionsIndexRoute,
+}
+
+const CashFlowTransactionsRouteWithChildren =
+  CashFlowTransactionsRoute._addFileChildren(CashFlowTransactionsRouteChildren)
+
 interface CashFlowRouteChildren {
   CashFlowBudgetsRoute: typeof CashFlowBudgetsRouteWithChildren
   CashFlowCategoriesRoute: typeof CashFlowCategoriesRoute
   CashFlowForecastRoute: typeof CashFlowForecastRoute
   CashFlowRecurringRoute: typeof CashFlowRecurringRouteWithChildren
-  CashFlowTransactionsRoute: typeof CashFlowTransactionsRoute
+  CashFlowTransactionsRoute: typeof CashFlowTransactionsRouteWithChildren
   CashFlowIndexRoute: typeof CashFlowIndexRoute
 }
 
@@ -362,7 +414,7 @@ const CashFlowRouteChildren: CashFlowRouteChildren = {
   CashFlowCategoriesRoute: CashFlowCategoriesRoute,
   CashFlowForecastRoute: CashFlowForecastRoute,
   CashFlowRecurringRoute: CashFlowRecurringRouteWithChildren,
-  CashFlowTransactionsRoute: CashFlowTransactionsRoute,
+  CashFlowTransactionsRoute: CashFlowTransactionsRouteWithChildren,
   CashFlowIndexRoute: CashFlowIndexRoute,
 }
 

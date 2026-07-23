@@ -88,7 +88,10 @@ function AppSidebar() {
                 const hasSubItems = "subItems" in item && item.subItems !== undefined;
                 const isActive =
                   pathname === item.to ||
-                  (hasSubItems && item.subItems.some((subItem) => pathname === subItem.to));
+                  (hasSubItems &&
+                    item.subItems.some(
+                      (subItem) => pathname === subItem.to || pathname.startsWith(`${subItem.to}/`),
+                    ));
 
                 return (
                   <SidebarMenuItem key={item.to}>
@@ -105,7 +108,9 @@ function AppSidebar() {
                         {item.subItems.map((subItem) => (
                           <SidebarMenuSubItem key={subItem.to}>
                             <SidebarMenuSubButton
-                              isActive={pathname === subItem.to}
+                              isActive={
+                                pathname === subItem.to || pathname.startsWith(`${subItem.to}/`)
+                              }
                               render={<Link to={subItem.to} preload="intent" />}
                             >
                               <span>{subItem.title}</span>
