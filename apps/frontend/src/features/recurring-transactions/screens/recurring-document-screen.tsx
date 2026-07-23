@@ -16,6 +16,7 @@ import {
 import { RecurringFailureBanner } from "../components/recurring-failure-banner";
 import { RecurringFormDrawer } from "../components/recurring-form-drawer";
 import { RecurringLifecycleActions } from "../components/recurring-lifecycle-actions";
+import { RecurringBudgetImpact } from "../components/recurring-budget-impact";
 import {
   formatFiniteProgress,
   formatLocalDateTime,
@@ -344,9 +345,11 @@ export function RecurringDocumentScreen({
         <Section
           title="Budget impact"
           state={budgetImpact.state}
-          emptyMessage=""
+          emptyMessage="No active budget includes this source in the forecast window."
           failureMessage={budgetImpact.message}
-        />
+        >
+          <RecurringBudgetImpact impact={budgetImpact} />
+        </Section>
       </div>
 
       <Drawer open={isEditOpen} onOpenChange={setIsEditOpen} swipeDirection="right">

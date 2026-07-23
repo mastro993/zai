@@ -23,6 +23,11 @@ async fn checksum_sensitive_tables(path: &str) -> String {
         #[diesel(sql_type = diesel::sql_types::BigInt)]
         c: i64,
     }
+    #[derive(QueryableByName)]
+    struct StateRow {
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+        value: Option<String>,
+    }
     let tables = [
         "transactions",
         "budgets",
@@ -43,11 +48,35 @@ async fn checksum_sensitive_tables(path: &str) -> String {
             .unwrap_or(CountRow { c: -1 });
         parts.push(format!("{table}:{}", row.c));
     }
+    let state_queries = [
+        (
+            "budget-state",
+            "SELECT group_concat(id || ':' || updated_at || ':' || COALESCE(deleted_at, ''), '|') AS value FROM budgets",
+        ),
+        (
+            "recurring-state",
+            "SELECT group_concat(id || ':' || lifecycle || ':' || fulfilled_count || ':' || revision || ':' || lifecycle_changed_at || ':' || COALESCE(paused_at, '') || ':' || updated_at || ':' || COALESCE(deleted_at, ''), '|') AS value FROM recurring_transactions",
+        ),
+        (
+            "alert-state",
+            "SELECT group_concat(id || ':' || updated_at || ':' || COALESCE(read_at, '') || ':' || COALESCE(resolved_at, ''), '|') AS value FROM domain_alerts",
+        ),
+        (
+            "failure-state",
+            "SELECT group_concat(recurring_transaction_id || ':' || schedule_revision_id || ':' || ordinal || ':' || attempt_count || ':' || COALESCE(repaired_at, '') || ':' || COALESCE(resolved_at, '') || ':' || COALESCE(resolution_kind, ''), '|') AS value FROM recurring_generation_failures",
+        ),
+    ];
+    for (label, query) in state_queries {
+        let row = sql_query(query)
+            .get_result::<StateRow>(&mut conn)
+            .unwrap_or(StateRow { value: None });
+        parts.push(format!("{label}:{}", row.value.unwrap_or_default()));
+    }
     parts.join("|")
 }
 
 #[tokio::test]
-async fn projection_is_read_only_and_byte_stable() {
+async fn projection_and_document_impact_are_read_only_and_byte_stable() {
     let observed = local(2026, 1, 10, 12, 0);
     let (temp_db, service, repo, _clock, _guard) = setup_service(observed).await;
     {
@@ -103,11 +132,23 @@ async fn projection_is_read_only_and_byte_stable() {
         })
         .await
         .expect("projection");
+    let document = service.get_document("rent").await.expect("document");
     let after = checksum_sensitive_tables(temp_db.path()).await;
     assert_eq!(before, after);
     assert!(result.complete);
     assert!(
         result
+            .periods
+            .iter()
+            .any(|period| period.projected_delta == 2_000)
+    );
+    let impact = document
+        .budget_impact
+        .projection
+        .expect("document budget impact");
+    assert!(impact.complete);
+    assert!(
+        impact
             .periods
             .iter()
             .any(|period| period.projected_delta == 2_000)

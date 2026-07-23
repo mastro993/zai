@@ -35,6 +35,28 @@ async fn recurring_contract_create_feed_detail_and_paging_match() {
 
     assert_read_parity(&harness, feed_success()).await;
     assert_read_parity(&harness, detail_success(CONTRACT_RECURRING_ID)).await;
+    let detail = detail_success(CONTRACT_RECURRING_ID);
+    let (first_status, mut first_body) = request_json(
+        &harness.router,
+        detail.http.method,
+        &detail.http.path,
+        detail.http.body.clone(),
+    )
+    .await;
+    let (second_status, mut second_body) = request_json(
+        &harness.router,
+        detail.http.method,
+        &detail.http.path,
+        detail.http.body,
+    )
+    .await;
+    assert_eq!(first_status, StatusCode::OK);
+    assert_eq!(second_status, StatusCode::OK);
+    first_body["budgetImpact"]["projection"]["observedLocal"] = serde_json::Value::Null;
+    first_body["budgetImpact"]["projection"]["throughLocal"] = serde_json::Value::Null;
+    second_body["budgetImpact"]["projection"]["observedLocal"] = serde_json::Value::Null;
+    second_body["budgetImpact"]["projection"]["throughLocal"] = serde_json::Value::Null;
+    assert_eq!(first_body, second_body);
     assert_read_parity(&harness, feed_cursor_validation_error()).await;
     assert_read_parity(&harness, failure_history_success(CONTRACT_RECURRING_ID)).await;
     assert_read_parity(
