@@ -12,6 +12,7 @@ import {
   executeRecurringBulk,
   createRecurringTransaction,
   getMatchingRecurringTransactionIds,
+  getRecurringProcessingStatus,
   getRecurringTransactions,
   preflightRecurringBulk,
 } from "../commands/recurring-transactions";
@@ -20,6 +21,7 @@ import { RecurringBulkReviewDialog } from "../components/recurring-bulk-review-d
 import { RecurringFormDrawer } from "../components/recurring-form-drawer";
 import { RecurringOccurrenceCard } from "../components/recurring-occurrence-card";
 import { RecurringSelectionBar } from "../components/recurring-selection-bar";
+import { useRecurringProcessingLiveEvents } from "../hooks/use-recurring-processing-live-events";
 import { useRecurringSelectionContext } from "../hooks/recurring-selection-context";
 import {
   getPageCheckboxState,
@@ -110,6 +112,16 @@ export function RecurringScreen({
     );
     return true;
   };
+
+  const reconcileFromDurableState = () => {
+    void getRecurringProcessingStatus();
+    void refreshFeed();
+  };
+
+  useRecurringProcessingLiveEvents({
+    onReconcile: reconcileFromDurableState,
+    onReady: reconcileFromDurableState,
+  });
 
   const loadMore = async () => {
     if (!nextCursor || isLoadingMore) {

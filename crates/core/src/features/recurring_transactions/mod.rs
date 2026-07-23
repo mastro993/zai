@@ -64,7 +64,8 @@ pub use schedule::{advance_head_past_observation, scheduled_local_at, validate_s
 pub use service::RecurringTransactionsService;
 pub use supervisor::{
     CLOCK_FALLBACK_WAKE, RecurringProcessDelayAlerts, RecurringProcessingStatus,
-    RecurringProcessingSupervisor, RecurringProcessingSupervisorHandle, RecurringSupervisorHeads,
-    TRANSIENT_DELAY_REARM, WAKE_COALESCE_WINDOW,
+    RecurringProcessingStatusView, RecurringProcessingSupervisor,
+    RecurringProcessingSupervisorHandle, RecurringSupervisorHeads, TRANSIENT_DELAY_REARM,
+    WAKE_COALESCE_WINDOW,
 };
 pub use traits::*;

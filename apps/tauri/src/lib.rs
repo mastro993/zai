@@ -170,6 +170,7 @@ pub fn run() {
             commands::recurring_transactions::get_matching_recurring_transaction_ids,
             commands::recurring_transactions::preflight_recurring_bulk,
             commands::recurring_transactions::execute_recurring_bulk,
+            commands::recurring_transactions::get_recurring_processing_status,
             commands::domain_alerts::list_alerts,
             commands::domain_alerts::get_unread_alert_count,
             commands::domain_alerts::mark_all_alerts_read,

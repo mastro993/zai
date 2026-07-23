@@ -104,6 +104,7 @@ describe("command transport registry parity", () => {
         "get_matching_recurring_transaction_ids",
         "get_recurring_budget_projections",
         "get_recurring_generation_failure_diagnostics",
+        "get_recurring_processing_status",
         "get_recurring_transaction",
         "get_recurring_transaction_failure_history",
         "get_recurring_transaction_occurrences",
@@ -166,5 +167,46 @@ describe("command transport registry parity", () => {
       expect(tauriCommands.has(command), `missing Tauri registration for ${command}`).toBe(true);
       expect(webCommands.has(command), `missing web command map entry for ${command}`).toBe(true);
     }
+  });
+
+  it("keeps privileged process-due and zone inputs off public transport surfaces", () => {
+    const surfaces = [
+      "apps/tauri/src/lib.rs",
+      centralWebCommandMapPath,
+      ...discoverFeatureWebCommandMapFiles(),
+      "apps/frontend/src/commands/registry.ts",
+      "apps/frontend/src/features/recurring-transactions/commands/registry.ts",
+      "apps/frontend/src/features/alerts/commands/registry.ts",
+      "apps/frontend/src/features/budgets/commands/registry.ts",
+      "apps/frontend/src/features/categories/commands/registry.ts",
+      "apps/frontend/src/features/transactions/commands/registry.ts",
+    ];
+
+    for (const relativePath of surfaces) {
+      const source = readFile(relativePath);
+      expect(source, relativePath).not.toMatch(/process_due|process-due|processDue/);
+    }
+
+    const recurringSources = [
+      "apps/frontend/src/features/recurring-transactions/commands/web-command-map.ts",
+      "apps/frontend/src/features/recurring-transactions/commands/recurring-transactions.ts",
+      "apps/frontend/src/features/recurring-transactions/types/recurring-transaction.ts",
+      "apps/tauri/src/commands/recurring_transactions.rs",
+    ];
+    for (const relativePath of recurringSources) {
+      const source = readFile(relativePath);
+      expect(source, relativePath).not.toMatch(/\btimeZone\b/);
+      if (relativePath.endsWith(".rs")) {
+        expect(source, relativePath).not.toMatch(/\bzone\b/);
+      } else if (!relativePath.endsWith("recurring-transaction.ts")) {
+        expect(source, relativePath).not.toMatch(/\bzone\b/);
+      }
+    }
+
+    const privilegedSchema = readFile(
+      "apps/frontend/src/features/recurring-transactions/types/recurring-transaction.ts",
+    );
+    expect(privilegedSchema).toContain("zone: z.never()");
+    expect(privilegedSchema).not.toMatch(/timeZone/);
   });
 });

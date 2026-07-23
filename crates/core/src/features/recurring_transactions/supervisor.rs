@@ -1,6 +1,7 @@
 use crate::Result;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -18,11 +19,18 @@ pub const WAKE_COALESCE_WINDOW: Duration = Duration::from_millis(100);
 pub const CLOCK_FALLBACK_WAKE: Duration = Duration::from_secs(60);
 pub const TRANSIENT_DELAY_REARM: Duration = Duration::from_millis(100);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum RecurringProcessingStatus {
     Idle,
     Updating,
     Delayed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecurringProcessingStatusView {
+    pub status: RecurringProcessingStatus,
 }
 
 #[async_trait]
