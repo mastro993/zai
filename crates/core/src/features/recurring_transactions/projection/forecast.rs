@@ -107,15 +107,15 @@ pub fn compute_budget_projection(input: ProjectionComputeInput) -> Result<Budget
             window.through_local,
         )?;
 
+        let mut revision_error = None;
         for slot in slots {
             match resolve_template(source, slot) {
                 Ok(occurrence) => projected.push(occurrence),
-                Err(error) => {
-                    complete = false;
-                    source_errors.push(error);
-                }
+                Err(error) => revision_error = Some(error),
             }
         }
+        complete &= revision_error.is_none();
+        source_errors.extend(revision_error);
     }
 
     let mut periods = Vec::new();
@@ -166,25 +166,17 @@ fn resolve_template(
     source: &ProjectionSourceInput,
     slot: ProjectedSlot,
 ) -> std::result::Result<ResolvedProjectedOccurrence, ProjectionSourceError> {
-    let template = source
+    let matching: Vec<_> = source
         .templates_by_local
         .iter()
-        .rev()
-        .find(|(effective_from, template)| {
-            *effective_from <= slot.scheduled_local
+        .filter(|(_, template)| {
+            template.effective_from_local <= slot.scheduled_local
                 && template
                     .effective_until_local
                     .is_none_or(|until| slot.scheduled_local < until)
         })
-        .map(|(_, template)| template)
-        .cloned()
-        .or_else(|| {
-            source
-                .templates_by_local
-                .last()
-                .map(|(_, template)| template.clone())
-        });
-    let Some(template) = template else {
+        .collect();
+    let Some((effective_from, template)) = matching.first().copied() else {
         return Err(ProjectionSourceError {
             kind: ProjectionSourceErrorKind::MissingRevision,
             recurring_transaction_id: Some(source.recurring.id.clone()),
@@ -192,6 +184,25 @@ fn resolve_template(
             message: "Missing template revision for projected occurrence".to_string(),
         });
     };
+    if matching.len() != 1
+        || *effective_from != template.effective_from_local
+        || template.recurring_transaction_id != source.recurring.id
+        || template.id.trim().is_empty()
+        || template.sequence < 1
+        || template
+            .effective_until_local
+            .is_some_and(|until| until <= template.effective_from_local)
+        || template.description.trim().is_empty()
+        || template.amount < 0
+        || !matches!(template.transaction_type.as_str(), "expense" | "income")
+    {
+        return Err(ProjectionSourceError {
+            kind: ProjectionSourceErrorKind::MissingRevision,
+            recurring_transaction_id: Some(source.recurring.id.clone()),
+            budget_id: None,
+            message: "Invalid template revision for projected occurrence".to_string(),
+        });
+    }
     Ok(ResolvedProjectedOccurrence {
         recurring_transaction_id: source.recurring.id.clone(),
         schedule_revision_id: source.open_schedule.id.clone(),

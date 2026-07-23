@@ -17,3 +17,7 @@ pub use window::{
     MAX_HORIZON_MONTHS, MIN_HORIZON_MONTHS, ProjectionWindow, exclusive_through_local,
     projection_window,
 };
+
+#[cfg(test)]
+#[path = "forecast_revision_tests.rs"]
+mod revision_tests;
