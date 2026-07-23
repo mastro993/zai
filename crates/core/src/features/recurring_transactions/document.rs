@@ -21,6 +21,7 @@ pub struct RecurringFeedItem {
 pub struct RecurringFeedResult {
     pub items: Vec<RecurringFeedItem>,
     pub next_cursor: Option<String>,
+    pub filter_fingerprint: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

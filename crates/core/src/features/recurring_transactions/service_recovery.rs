@@ -8,8 +8,8 @@ use super::repair::{
     GenerationFailureDiagnostics, PreviewRecurringGenerationRepair, RecurringRecoveryAction,
     RecurringRecoveryOutcome, RecurringRepairPreview, RepairRecurringGenerationFailure,
     RetryRecurringGenerationFailure, UNCHANGED_ALREADY_REPAIRED, UNCHANGED_NO_OPEN_FAILURE,
-    UNCHANGED_REPAIR_NOT_APPLICABLE, UNCHANGED_REPAIR_REQUIRED, count_waiting_due_behind,
-    diagnostics_typed_state, recovery_action_for_failure,
+    UNCHANGED_REPAIR_NOT_APPLICABLE, UNCHANGED_REPAIR_REQUIRED, UNCHANGED_RETRY_FAILED,
+    count_waiting_due_behind, diagnostics_typed_state, recovery_action_for_failure,
 };
 use super::service::RecurringTransactionsService;
 use super::traits::{RecurringOccurrenceProcessor, RecurringTransactionsServiceTrait};
@@ -159,6 +159,12 @@ impl RecurringTransactionsService {
             return Err(error);
         }
         let document = self.get_document(&input.recurring_transaction_id).await?;
+        if document.failures.unresolved.is_some() {
+            return Ok(RecurringRecoveryOutcome::Unchanged {
+                document,
+                reason: UNCHANGED_RETRY_FAILED.to_string(),
+            });
+        }
         Ok(RecurringRecoveryOutcome::Succeeded { document })
     }
 

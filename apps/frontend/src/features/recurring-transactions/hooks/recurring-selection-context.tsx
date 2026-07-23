@@ -12,62 +12,88 @@ type RecurringSelectionApi = {
   revisionsById: Map<string, number>;
   selectedCount: number;
   selectAllMatching: boolean;
+  frozenFilterFingerprint?: string;
   clearSelection: () => void;
   toggleRow: (item: SelectableRecurring, selected: boolean) => void;
   togglePage: (items: Array<SelectableRecurring>, selectAll: boolean) => void;
-  applySelectAllMatching: (items: Array<SelectableRecurring>) => void;
+  applySelectAllMatching: (items: Array<SelectableRecurring>, fingerprint: string) => void;
   setSelectedIds: (ids: Set<string>) => void;
-  rememberRevisions: (items: Array<SelectableRecurring>) => void;
 };
 
 const RecurringSelectionContext = createContext<RecurringSelectionApi | null>(null);
 
 export function RecurringSelectionProvider({ children }: { children: ReactNode }) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [revisionsById, setRevisionsById] = useState<Map<string, number>>(() => new Map());
   const [selectAllMatching, setSelectAllMatching] = useState(false);
+  const [frozenFilterFingerprint, setFrozenFilterFingerprint] = useState<string>();
 
-  const rememberRevisions = useCallback((items: Array<SelectableRecurring>) => {
+  const selectedIds = useMemo(() => new Set(revisionsById.keys()), [revisionsById]);
+
+  const clearSelection = useCallback(() => {
+    setRevisionsById(new Map());
+    setSelectAllMatching(false);
+    setFrozenFilterFingerprint(undefined);
+  }, []);
+
+  const toggleRow = useCallback((item: SelectableRecurring, selected: boolean) => {
+    setSelectAllMatching(false);
+    setFrozenFilterFingerprint(undefined);
     setRevisionsById((current) => {
-      const next = new Map(current);
-      for (const item of items) {
-        next.set(item.id, item.revision);
+      const nextIds = toggleRowInSelection(new Set(current.keys()), item.id, selected);
+      const next = new Map<string, number>();
+      for (const id of nextIds) {
+        const revision = id === item.id ? item.revision : current.get(id);
+        if (revision !== undefined) {
+          next.set(id, revision);
+        }
       }
       return next;
     });
   }, []);
 
-  const clearSelection = useCallback(() => {
-    setSelectedIds(new Set());
+  const togglePage = useCallback((items: Array<SelectableRecurring>, selectAll: boolean) => {
     setSelectAllMatching(false);
+    setFrozenFilterFingerprint(undefined);
+    setRevisionsById((current) => {
+      const nextIds = togglePageInSelection(new Set(current.keys()), items, selectAll);
+      const next = new Map<string, number>();
+      for (const id of nextIds) {
+        const item = items.find((candidate) => candidate.id === id);
+        const revision = item?.revision ?? current.get(id);
+        if (revision !== undefined) {
+          next.set(id, revision);
+        }
+      }
+      return next;
+    });
   }, []);
 
-  const toggleRow = useCallback(
-    (item: SelectableRecurring, selected: boolean) => {
-      setSelectAllMatching(false);
-      setSelectedIds((current) => toggleRowInSelection(current, item.id, selected));
-      rememberRevisions([item]);
-    },
-    [rememberRevisions],
-  );
-
-  const togglePage = useCallback(
-    (items: Array<SelectableRecurring>, selectAll: boolean) => {
-      setSelectAllMatching(false);
-      setSelectedIds((current) => togglePageInSelection(current, items, selectAll));
-      rememberRevisions(items);
-    },
-    [rememberRevisions],
-  );
-
   const applySelectAllMatching = useCallback(
-    (items: Array<SelectableRecurring>) => {
-      setSelectedIds(new Set(items.map((item) => item.id)));
+    (items: Array<SelectableRecurring>, fingerprint: string) => {
+      setRevisionsById((current) => {
+        const next = new Map(current);
+        for (const item of items) {
+          next.set(item.id, item.revision);
+        }
+        return next;
+      });
       setSelectAllMatching(true);
-      rememberRevisions(items);
+      setFrozenFilterFingerprint(fingerprint);
     },
-    [rememberRevisions],
+    [],
   );
+
+  const setSelectedIds = useCallback((ids: Set<string>) => {
+    setRevisionsById((current) => {
+      const next = new Map<string, number>();
+      for (const [id, revision] of current) {
+        if (ids.has(id)) {
+          next.set(id, revision);
+        }
+      }
+      return next;
+    });
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -75,22 +101,23 @@ export function RecurringSelectionProvider({ children }: { children: ReactNode }
       revisionsById,
       selectedCount: selectedIds.size,
       selectAllMatching,
+      frozenFilterFingerprint,
       clearSelection,
       toggleRow,
       togglePage,
       applySelectAllMatching,
       setSelectedIds,
-      rememberRevisions,
     }),
     [
       selectedIds,
       revisionsById,
       selectAllMatching,
+      frozenFilterFingerprint,
       clearSelection,
       toggleRow,
       togglePage,
       applySelectAllMatching,
-      rememberRevisions,
+      setSelectedIds,
     ],
   );
 

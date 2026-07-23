@@ -23,6 +23,8 @@ const reasonLabel = (reason: string | undefined): string => {
       return "No longer available";
     case "operation_failed":
       return "Operation failed";
+    case "retry_failed":
+      return "Retry did not resolve the failure";
     default:
       return reason ?? "Unchanged";
   }
@@ -46,8 +48,8 @@ function ResultGroup({
         {title} ({items.length})
       </h3>
       <ul className="space-y-1 text-sm text-muted-foreground">
-        {items.map((item, index) => {
-          const label = labels.get(item.recurringTransactionId) ?? `Selected item ${index + 1}`;
+        {items.map((item) => {
+          const label = labels.get(item.recurringTransactionId) ?? item.recurringTransactionId;
           return (
             <li key={`${item.outcome}-${item.recurringTransactionId}`}>
               {label}

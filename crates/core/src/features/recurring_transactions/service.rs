@@ -15,7 +15,7 @@ use super::lifecycle::{
 };
 use super::models::{
     DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringFailurePage, RecurringFeedEntry,
-    RecurringLifecycle, RecurringOccurrencePage,
+    RecurringFeedFilters, RecurringLifecycle, RecurringOccurrencePage,
 };
 use super::process::{ProcessingSliceOutcome, ProcessingWorkBudget};
 use super::process_slice::run_processing_slice;
@@ -81,8 +81,22 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         limit: Option<i64>,
         cursor: Option<String>,
     ) -> Result<RecurringFeedResult> {
+        self.list_feed_filtered(limit, cursor, RecurringFeedFilters::default())
+            .await
+    }
+
+    async fn list_feed_filtered(
+        &self,
+        limit: Option<i64>,
+        cursor: Option<String>,
+        filters: RecurringFeedFilters,
+    ) -> Result<RecurringFeedResult> {
         let limit = limit.unwrap_or(DEFAULT_FEED_LIMIT).clamp(1, MAX_FEED_LIMIT);
-        let page = self.repository.list_feed(limit, cursor).await?;
+        let filters = filters.normalized()?;
+        let page = self
+            .repository
+            .list_feed_filtered(limit, cursor, filters.clone())
+            .await?;
 
         let mut items = Vec::with_capacity(page.items.len());
         for RecurringFeedEntry {
@@ -103,6 +117,7 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         Ok(RecurringFeedResult {
             items,
             next_cursor: page.next_cursor,
+            filter_fingerprint: filters.fingerprint(),
         })
     }
 
@@ -279,7 +294,15 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
     }
 
     async fn list_matching_ids(&self) -> Result<RecurringMatchingIds> {
-        self.list_matching_ids_inner().await
+        self.list_matching_ids_filtered(RecurringFeedFilters::default())
+            .await
+    }
+
+    async fn list_matching_ids_filtered(
+        &self,
+        filters: RecurringFeedFilters,
+    ) -> Result<RecurringMatchingIds> {
+        self.list_matching_ids_inner(filters).await
     }
 
     async fn preflight_bulk(

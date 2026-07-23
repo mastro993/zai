@@ -62,6 +62,7 @@ export const recurringMatchingIdentitySchema = z.object({
 });
 
 export const recurringMatchingIdsSchema = z.object({
+  fingerprint: z.string().min(1),
   items: z.array(recurringMatchingIdentitySchema),
 });
 

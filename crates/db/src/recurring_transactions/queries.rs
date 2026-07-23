@@ -17,7 +17,9 @@ use zai_core::features::recurring_transactions::{
 };
 use zai_core::{Error, Result};
 
+#[cfg(test)]
 pub(super) use super::feed::list_feed;
+pub(super) use super::feed::list_feed_filtered;
 
 pub fn normalize_feed_limit(limit: i64) -> Result<i64> {
     normalize_limit(limit, MAX_FEED_LIMIT, "Feed limit")
