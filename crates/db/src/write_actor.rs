@@ -13,7 +13,13 @@ use zai_core::{DatabaseError, Error};
 
 type Job<T> = Box<dyn FnOnce(&mut SqliteConnection) -> Result<T> + Send + 'static>;
 type BoxedValue = Box<dyn Any + Send + 'static>;
-type WriterMessage = (Job<BoxedValue>, oneshot::Sender<Result<BoxedValue>>);
+
+struct WriterMessage {
+    job: Job<BoxedValue>,
+    reply_tx: oneshot::Sender<Result<BoxedValue>>,
+    inject_post_commit_failure: bool,
+}
+
 const WRITE_QUEUE_CAPACITY: usize = 1024;
 
 #[derive(Clone)]
@@ -39,16 +45,39 @@ impl WriteHandle {
         F: FnOnce(&mut SqliteConnection) -> Result<T> + Send + 'static,
         T: Send + 'static + Any,
     {
+        self.exec_inner(job, false).await
+    }
+
+    pub(crate) async fn exec_for_fulfillment<F, T>(&self, job: F) -> zai_core::Result<T>
+    where
+        F: FnOnce(&mut SqliteConnection) -> Result<T> + Send + 'static,
+        T: Send + 'static + Any,
+    {
+        self.exec_inner(job, true).await
+    }
+
+    async fn exec_inner<F, T>(
+        &self,
+        job: F,
+        inject_post_commit_failure: bool,
+    ) -> zai_core::Result<T>
+    where
+        F: FnOnce(&mut SqliteConnection) -> Result<T> + Send + 'static,
+        T: Send + 'static + Any,
+    {
         let (ret_tx, ret_rx) = oneshot::channel();
 
         #[cfg(test)]
         self.exec_count.fetch_add(1, Ordering::SeqCst);
 
         self.tx
-            .send((
-                Box::new(move |conn| job(conn).map(|value| Box::new(value) as Box<dyn Any + Send>)),
-                ret_tx,
-            ))
+            .send(WriterMessage {
+                job: Box::new(move |conn| {
+                    job(conn).map(|value| Box::new(value) as Box<dyn Any + Send>)
+                }),
+                reply_tx: ret_tx,
+                inject_post_commit_failure,
+            })
             .await
             .map_err(|_| writer_error("database writer stopped"))?;
 
@@ -82,23 +111,11 @@ fn spawn_writer_with_capacity(
     std::thread::Builder::new()
         .name("zai-db-writer".into())
         .spawn(move || {
-            while let Some((job, reply_tx)) = handle.block_on(rx.recv()) {
-                let result = conn.immediate_transaction(|conn| job(conn));
-                #[cfg(any(test, feature = "failpoints"))]
-                let result = {
-                    use crate::recurring_transactions::failpoints;
-                    if result.is_ok() && failpoints::hit_after_commit_before_reply() {
-                        Err(crate::errors::StorageError::CoreError(
-                            zai_core::Error::Repository(
-                                "Injected fulfillment failure after commit before reply"
-                                    .to_string(),
-                            ),
-                        ))
-                    } else {
-                        result
-                    }
-                };
-                let _ = reply_tx.send(result);
+            while let Some(message) = handle.block_on(rx.recv()) {
+                let result = conn.immediate_transaction(|conn| (message.job)(conn));
+                let result =
+                    apply_post_commit_failpoint(result, message.inject_post_commit_failure);
+                let _ = message.reply_tx.send(result);
             }
         })
         .map_err(|err| writer_error(&format!("failed to spawn database writer: {err}")))?;
@@ -108,6 +125,25 @@ fn spawn_writer_with_capacity(
         #[cfg(test)]
         exec_count: Arc::new(AtomicUsize::new(0)),
     })
+}
+
+fn apply_post_commit_failpoint<T>(result: Result<T>, inject: bool) -> Result<T> {
+    #[cfg(any(test, feature = "failpoints"))]
+    if inject && result.is_ok() {
+        use crate::recurring_transactions::failpoints;
+        if failpoints::hit_after_commit_before_reply() {
+            return Err(crate::errors::StorageError::CoreError(
+                zai_core::Error::Repository(
+                    "Injected fulfillment failure after commit before reply".to_string(),
+                ),
+            ));
+        }
+    }
+
+    #[cfg(not(any(test, feature = "failpoints")))]
+    let _ = inject;
+
+    result
 }
 
 fn writer_error(message: &str) -> Error {
@@ -299,16 +335,18 @@ mod tests {
         let (queued_reply_tx, queued_reply_rx) = oneshot::channel();
         writer
             .tx
-            .try_send((
-                Box::new(|_conn| Ok(Box::new(()) as BoxedValue)),
-                queued_reply_tx,
-            ))
+            .try_send(WriterMessage {
+                job: Box::new(|_conn| Ok(Box::new(()) as BoxedValue)),
+                reply_tx: queued_reply_tx,
+                inject_post_commit_failure: false,
+            })
             .expect("one queued job should fit");
         let (overflow_reply_tx, _overflow_reply_rx) = oneshot::channel();
-        let overflow = writer.tx.try_send((
-            Box::new(|_conn| Ok(Box::new(()) as BoxedValue)),
-            overflow_reply_tx,
-        ));
+        let overflow = writer.tx.try_send(WriterMessage {
+            job: Box::new(|_conn| Ok(Box::new(()) as BoxedValue)),
+            reply_tx: overflow_reply_tx,
+            inject_post_commit_failure: false,
+        });
 
         assert!(matches!(
             overflow,
