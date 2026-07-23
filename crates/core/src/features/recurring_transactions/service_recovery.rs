@@ -28,7 +28,9 @@ impl RecurringTransactionsService {
             .find_open_schedule_revision(recurring_transaction_id)
             .await?
         else {
-            return Ok(0);
+            return Err(Error::Repository(format!(
+                "Missing schedule revision for recurring transaction {recurring_transaction_id}"
+            )));
         };
         count_waiting_due_behind(
             &schedule.rule,

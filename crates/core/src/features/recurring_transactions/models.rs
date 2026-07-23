@@ -221,6 +221,8 @@ pub struct RecurringFeedPage {
 pub struct RecurringFeedEntry {
     pub recurring_transaction: RecurringTransaction,
     pub description: String,
+    pub next_scheduled_local: Option<NaiveDateTime>,
+    pub needs_attention: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
