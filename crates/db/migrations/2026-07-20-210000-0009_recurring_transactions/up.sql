@@ -64,7 +64,6 @@ WHERE resolved_at IS NULL;
 
 CREATE TABLE recurring_transactions (
     id TEXT NOT NULL PRIMARY KEY,
-    name TEXT NOT NULL CHECK (length(trim(name)) > 0),
     lifecycle TEXT NOT NULL CHECK (
         lifecycle IN ('active', 'paused', 'stopped', 'completed', 'tombstoned')
     ),
@@ -99,10 +98,6 @@ CREATE TABLE recurring_transactions (
         OR fulfilled_count < total_occurrences
     )
 );
-
-CREATE UNIQUE INDEX recurring_transactions_visible_name_unique
-ON recurring_transactions (lower(trim(name)))
-WHERE deleted_at IS NULL;
 
 CREATE INDEX recurring_transactions_visible_feed_index
 ON recurring_transactions (updated_at DESC, id DESC)
@@ -159,7 +154,7 @@ CREATE TABLE recurring_template_revisions (
     sequence INTEGER NOT NULL CHECK (sequence >= 1),
     effective_from_local TIMESTAMP NOT NULL,
     effective_until_local TIMESTAMP,
-    description TEXT,
+    description TEXT NOT NULL CHECK (length(trim(description)) > 0),
     amount INTEGER NOT NULL CHECK (amount >= 0),
     transaction_type TEXT NOT NULL CHECK (
         transaction_type IN ('expense', 'income')

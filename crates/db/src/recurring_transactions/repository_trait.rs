@@ -316,7 +316,9 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
         let publisher = Arc::clone(&self.alert_publisher);
         let outcome = match self
             .writer
-            .exec(move |conn| process_one_due_occurrence(conn, observed_local, observed_local))
+            .exec_for_fulfillment(move |conn| {
+                process_one_due_occurrence(conn, observed_local, observed_local)
+            })
             .await
         {
             Ok(outcome) => outcome,

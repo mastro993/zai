@@ -132,6 +132,12 @@ async fn failpoint_after_commit_before_reply_leaves_one_canonical_fulfillment() 
     .await;
 
     failpoints::arm_error(FulfillmentFailpoint::AfterCommitBeforeReply);
+    let generic_write = repo
+        .writer()
+        .exec(|_conn| Ok::<_, crate::errors::StorageError>(42_i32))
+        .await
+        .expect("generic writes must ignore fulfillment failpoints");
+    assert_eq!(generic_write, 42);
     let err = service
         .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
