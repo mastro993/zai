@@ -5,8 +5,15 @@ use crate::migration_fixture_support::{
 };
 use diesel::Connection;
 use diesel::RunQueryDsl;
+use diesel::prelude::QueryableByName;
 use diesel::sqlite::SqliteConnection;
 use diesel_migrations::MigrationHarness;
+
+#[derive(QueryableByName)]
+struct TextRow {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    value: String,
+}
 
 #[test]
 fn released_schema_fixtures_load_at_expected_version() {
@@ -20,12 +27,7 @@ fn released_schema_fixtures_load_at_expected_version() {
 fn released_schema_fixtures_upgrade_to_head() {
     for fixture in RELEASED_SCHEMA_FIXTURES {
         let (temp_db, mut connection, _) = setup_fixture_at_version(fixture);
-
-        let category_count_before = count_rows(&mut connection, "transaction_categories");
-        let transaction_count_before = count_rows(&mut connection, "transactions");
-        let budget_count_before = count_rows(&mut connection, "budgets");
-        let configuration_count_before = count_rows(&mut connection, "budget_configurations");
-        let result_count_before = count_rows(&mut connection, "budget_period_results");
+        let fixture_data_before = fixture_data_snapshot(&mut connection, fixture.name);
 
         let mut connection = migrate_fixture_to_head(&temp_db);
         assert_db_integrity(&mut connection);
@@ -34,36 +36,12 @@ fn released_schema_fixtures_upgrade_to_head() {
             diesel::sql_query("SELECT COUNT(*) AS count FROM __diesel_schema_migrations")
                 .get_result::<CountRow>(&mut connection)
                 .expect("migration history");
-        assert_eq!(migration_count.count, 11, "{}", fixture.name);
+        assert_eq!(migration_count.count, 10, "{}", fixture.name);
 
         assert_eq!(
-            count_rows(&mut connection, "transaction_categories"),
-            category_count_before,
-            "{} categories",
-            fixture.name
-        );
-        assert_eq!(
-            count_rows(&mut connection, "transactions"),
-            transaction_count_before,
-            "{} transactions",
-            fixture.name
-        );
-        assert_eq!(
-            count_rows(&mut connection, "budgets"),
-            budget_count_before,
-            "{} budgets",
-            fixture.name
-        );
-        assert_eq!(
-            count_rows(&mut connection, "budget_configurations"),
-            configuration_count_before,
-            "{} configurations",
-            fixture.name
-        );
-        assert_eq!(
-            count_rows(&mut connection, "budget_period_results"),
-            result_count_before,
-            "{} period results",
+            fixture_data_snapshot(&mut connection, fixture.name),
+            fixture_data_before,
+            "{} finance data",
             fixture.name
         );
 
@@ -162,6 +140,81 @@ fn count_rows(connection: &mut SqliteConnection, table_name: &str) -> i64 {
     } else {
         0
     }
+}
+
+fn fixture_data_snapshot(
+    connection: &mut SqliteConnection,
+    fixture_name: &str,
+) -> Vec<Vec<String>> {
+    let mut snapshots = vec![
+        snapshot_rows(
+            connection,
+            "SELECT quote(id) || '|' || quote(parent_id) || '|' || quote(name) || '|' ||
+             quote(description) || '|' || quote(color) || '|' || quote(role) || '|' ||
+             quote(created_at) || '|' || quote(updated_at) || '|' || quote(deleted_at) AS value
+             FROM transaction_categories ORDER BY id",
+        ),
+        snapshot_rows(
+            connection,
+            "SELECT quote(id) || '|' || quote(description) || '|' || quote(amount) || '|' ||
+             quote(transaction_date) || '|' || quote(transaction_type) || '|' ||
+             quote(transaction_category_id) || '|' || quote(notes) || '|' || quote(created_at) ||
+             '|' || quote(updated_at) || '|' || quote(deleted_at) AS value
+             FROM transactions ORDER BY id",
+        ),
+    ];
+
+    if table_exists(connection, "budgets") {
+        let budget_query = if fixture_name == "v0007_budget_lifecycle" {
+            "SELECT quote(id) || '|' || quote(name) || '|' || quote(cadence) || '|' ||
+             quote(measurement_mode) || '|' || quote(base_allowance) || '|' ||
+             quote(rollover_mode) || '|' || quote(warning_percentage) || '|' || quote(revision) ||
+             '|' || quote(paused) || '|' || quote(created_at) || '|' || quote(updated_at) ||
+             '|' || quote(deleted_at) AS value FROM budgets ORDER BY id"
+        } else {
+            "SELECT quote(id) || '|' || quote(name) || '|' || quote(cadence) || '|' ||
+             quote(measurement_mode) || '|' || quote(base_allowance) || '|' ||
+             quote(rollover_mode) || '|' || quote(warning_percentage) || '|' ||
+             quote(created_at) || '|' || quote(updated_at) || '|' || quote(deleted_at) AS value
+             FROM budgets ORDER BY id"
+        };
+        snapshots.push(snapshot_rows(connection, budget_query));
+    } else {
+        snapshots.push(Vec::new());
+    }
+    if table_exists(connection, "budget_configurations") {
+        snapshots.push(snapshot_rows(
+            connection,
+            "SELECT quote(budget_id) || '|' || quote(period_start) || '|' || quote(period_end) ||
+             '|' || quote(category_ids) || '|' || quote(base_allowance) || '|' ||
+             quote(measurement_mode) || '|' || quote(rollover_mode) || '|' ||
+             quote(warning_percentage) AS value FROM budget_configurations
+             ORDER BY budget_id, period_start",
+        ));
+    } else {
+        snapshots.push(Vec::new());
+    }
+    if table_exists(connection, "budget_period_results") {
+        snapshots.push(snapshot_rows(
+            connection,
+            "SELECT quote(budget_id) || '|' || quote(period_start) || '|' || quote(period_end) ||
+             '|' || quote(net_budget_spending) || '|' || quote(effective_allowance) || '|' ||
+             quote(remaining_allowance) || '|' || quote(status) AS value
+             FROM budget_period_results ORDER BY budget_id, period_start",
+        ));
+    } else {
+        snapshots.push(Vec::new());
+    }
+    snapshots
+}
+
+fn snapshot_rows(connection: &mut SqliteConnection, query: &str) -> Vec<String> {
+    diesel::sql_query(query)
+        .load::<TextRow>(connection)
+        .expect("snapshot rows")
+        .into_iter()
+        .map(|row| row.value)
+        .collect()
 }
 
 fn table_exists(connection: &mut SqliteConnection, table_name: &str) -> bool {
