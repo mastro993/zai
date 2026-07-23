@@ -62,7 +62,6 @@ impl RecurringTransactionsService {
         &self,
         input: PreviewRecurringGenerationRepair,
     ) -> Result<RecurringRepairPreview> {
-        input.validate_field_key()?;
         input.validate_template()?;
         let recurring = self
             .repository
@@ -76,7 +75,7 @@ impl RecurringTransactionsService {
             .ok_or_else(|| {
                 Error::InvalidData("No open generation failure to repair".to_string())
             })?;
-        if failure.repair_field_key.as_deref() != Some(input.repair_field_key.as_str()) {
+        if failure.repair_field_key != Some(input.repair_field_key) {
             return Err(Error::InvalidData(
                 "Repair field does not match the open failure".to_string(),
             ));
@@ -98,7 +97,6 @@ impl RecurringTransactionsService {
         mut input: RepairRecurringGenerationFailure,
     ) -> Result<RecurringRecoveryOutcome> {
         input.validate_revision()?;
-        input.validate_field_key()?;
         input.template.description = normalize_template_description(&input.template.description);
         input.validate_template()?;
 
@@ -128,7 +126,7 @@ impl RecurringTransactionsService {
             });
         }
 
-        if failure.repair_field_key.as_deref() != Some(input.repair_field_key.as_str()) {
+        if failure.repair_field_key != Some(input.repair_field_key) {
             let document = self.get_document(&recurring.id).await?;
             return Ok(RecurringRecoveryOutcome::Unchanged {
                 document,
@@ -146,7 +144,7 @@ impl RecurringTransactionsService {
             .apply_generation_repair(
                 input.recurring_transaction_id.clone(),
                 input.expected_revision,
-                input.repair_field_key.clone(),
+                input.repair_field_key,
                 input.template.clone(),
             )
             .await?;
@@ -185,8 +183,7 @@ impl RecurringTransactionsService {
             });
         };
 
-        if recovery_action_for_failure(failure.repair_field_key.as_deref())
-            == RecurringRecoveryAction::Repair
+        if recovery_action_for_failure(failure.repair_field_key) == RecurringRecoveryAction::Repair
             && failure.repaired_at.is_none()
         {
             let document = self.get_document(&recurring.id).await?;

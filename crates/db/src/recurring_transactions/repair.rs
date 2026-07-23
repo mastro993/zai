@@ -13,7 +13,7 @@ use diesel::sqlite::SqliteConnection;
 use uuid::Uuid;
 use zai_core::Error;
 use zai_core::features::recurring_transactions::{
-    REPAIR_FIELD_AMOUNT, REPAIR_FIELD_CATEGORY, RecurringTemplateInput, RecurringTransaction,
+    RecurringRepairField, RecurringTemplateInput, RecurringTransaction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,7 +38,7 @@ pub fn apply_generation_repair(
     conn: &mut SqliteConnection,
     recurring_transaction_id: &str,
     expected_revision: i32,
-    repair_field_key: &str,
+    repair_field_key: RecurringRepairField,
     template: &RecurringTemplateInput,
     now: NaiveDateTime,
 ) -> Result<RepairApplication> {
@@ -106,11 +106,11 @@ pub fn apply_generation_repair(
 fn update_segment_field(
     conn: &mut SqliteConnection,
     segment_id: &str,
-    repair_field_key: &str,
+    repair_field_key: RecurringRepairField,
     template: &RecurringTemplateInput,
 ) -> Result<()> {
     match repair_field_key {
-        REPAIR_FIELD_CATEGORY => {
+        RecurringRepairField::TransactionCategoryId => {
             diesel::update(
                 recurring_template_revisions::table
                     .filter(recurring_template_revisions::id.eq(segment_id)),
@@ -122,7 +122,7 @@ fn update_segment_field(
             .execute(conn)
             .into_storage()?;
         }
-        REPAIR_FIELD_AMOUNT => {
+        RecurringRepairField::Amount => {
             diesel::update(
                 recurring_template_revisions::table
                     .filter(recurring_template_revisions::id.eq(segment_id)),
@@ -131,38 +131,32 @@ fn update_segment_field(
             .execute(conn)
             .into_storage()?;
         }
-        _ => {
-            return Err(StorageError::CoreError(Error::InvalidData(format!(
-                "Unsupported repair field: {repair_field_key}"
-            ))));
-        }
     }
     Ok(())
 }
 
 fn apply_field_to_row(
     row: &mut RecurringTemplateRevisionRow,
-    repair_field_key: &str,
+    repair_field_key: RecurringRepairField,
     template: &RecurringTemplateInput,
 ) {
     match repair_field_key {
-        REPAIR_FIELD_CATEGORY => {
+        RecurringRepairField::TransactionCategoryId => {
             row.transaction_category_id = template.transaction_category_id.clone();
         }
-        REPAIR_FIELD_AMOUNT => {
+        RecurringRepairField::Amount => {
             row.amount = template.amount;
         }
-        _ => {}
     }
 }
 
 fn validate_repair_value(
     conn: &mut SqliteConnection,
-    repair_field_key: &str,
+    repair_field_key: RecurringRepairField,
     template: &RecurringTemplateInput,
 ) -> Result<()> {
     match repair_field_key {
-        REPAIR_FIELD_CATEGORY => {
+        RecurringRepairField::TransactionCategoryId => {
             if let Some(category_id) = template.transaction_category_id.as_deref() {
                 let exists = transaction_categories::table
                     .filter(transaction_categories::id.eq(category_id))
@@ -179,7 +173,7 @@ fn validate_repair_value(
             }
             Ok(())
         }
-        REPAIR_FIELD_AMOUNT => {
+        RecurringRepairField::Amount => {
             if template.amount < 0 {
                 return Err(StorageError::CoreError(Error::InvalidData(
                     "Template amount cannot be negative".to_string(),
@@ -187,9 +181,6 @@ fn validate_repair_value(
             }
             Ok(())
         }
-        _ => Err(StorageError::CoreError(Error::InvalidData(format!(
-            "Unsupported repair field: {repair_field_key}"
-        )))),
     }
 }
 

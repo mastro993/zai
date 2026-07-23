@@ -2,13 +2,16 @@ import { z } from "zod";
 
 import { SECTION_STATES } from "./recurring-constants";
 
+export const RECURRING_REPAIR_FIELDS = ["amount", "transactionCategoryId"] as const;
+export const recurringRepairFieldSchema = z.enum(RECURRING_REPAIR_FIELDS);
+
 export const recurringGenerationFailureSchema = z.object({
   recurringTransactionId: z.string().min(1),
   scheduleRevisionId: z.string().min(1),
   ordinal: z.number().int().positive(),
   errorCode: z.string().min(1),
   causeCategory: z.string().min(1),
-  repairFieldKey: z.string().nullable().optional(),
+  repairFieldKey: recurringRepairFieldSchema.nullable().optional(),
   correlationId: z.string().min(1),
   failedScheduledLocal: z.string(),
   firstFailedAt: z.string(),
@@ -37,7 +40,7 @@ export const recurringFailuresSectionSchema = z.object({
 });
 
 export const recurringRepairPreviewSchema = z.object({
-  repairFieldKey: z.string().min(1),
+  repairFieldKey: recurringRepairFieldSchema,
   affectedUnfulfilledSegmentCount: z.number().int().nonnegative(),
   includesFutureTemplate: z.boolean(),
   nextAction: recurringRecoveryActionSchema,
@@ -59,3 +62,4 @@ export type RecurringGenerationFailure = z.infer<typeof recurringGenerationFailu
 export type RecurringFailurePage = z.infer<typeof recurringFailurePageSchema>;
 export type RecurringRepairPreview = z.infer<typeof recurringRepairPreviewSchema>;
 export type GenerationFailureDiagnostics = z.infer<typeof generationFailureDiagnosticsSchema>;
+export type RecurringRepairField = z.infer<typeof recurringRepairFieldSchema>;

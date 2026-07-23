@@ -87,7 +87,7 @@ pub fn transition_allowed(from: RecurringLifecycle, command: RecurringLifecycleC
     }
 }
 
-/// Rename (template description) stays available for retained visible sources.
+/// Description editing stays available for retained visible sources.
 pub fn description_edit_allowed(lifecycle: RecurringLifecycle) -> bool {
     matches!(
         lifecycle,

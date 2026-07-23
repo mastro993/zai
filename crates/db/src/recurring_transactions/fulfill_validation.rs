@@ -8,8 +8,8 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use zai_core::Error;
 use zai_core::features::recurring_transactions::{
-    INVALID_CATEGORY_ERROR_CODE, ProcessOneOutcome, RecurringScheduleRevision,
-    RecurringTemplateRevision, scheduled_local_at,
+    INVALID_CATEGORY_ERROR_CODE, ProcessOneOutcome, RecurringRepairField,
+    RecurringScheduleRevision, RecurringTemplateRevision, scheduled_local_at,
 };
 use zai_core::features::transactions::models::NewTransaction;
 
@@ -58,7 +58,7 @@ pub(super) fn validate_generation_inputs(
             now,
             "missing_template_revision",
             "reference",
-            Some("template_revision_id"),
+            None,
         );
     };
 
@@ -89,7 +89,7 @@ pub(super) fn validate_generation_inputs(
                 now,
                 INVALID_CATEGORY_ERROR_CODE,
                 "template",
-                Some("transaction_category_id"),
+                Some(RecurringRepairField::TransactionCategoryId),
             );
         }
     }
@@ -120,7 +120,7 @@ fn failure(
     now: NaiveDateTime,
     error_code: &str,
     cause_category: &str,
-    repair_field_key: Option<&str>,
+    repair_field_key: Option<RecurringRepairField>,
 ) -> Result<GenerationValidation> {
     record_generation_failure(
         conn,

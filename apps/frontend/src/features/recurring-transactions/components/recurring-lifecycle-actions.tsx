@@ -61,7 +61,7 @@ const confirmCopyFor = (
       return {
         title: "Stop this recurring transaction?",
         description:
-          "Stop is irreversible. Due work through now catches up first. The source stays visible and renameable as history.",
+          "Stop is irreversible. Due work through now catches up first. The source stays visible and its description remains editable as history.",
         actionLabel: "Stop",
         pendingLabel: "Stopping…",
       };

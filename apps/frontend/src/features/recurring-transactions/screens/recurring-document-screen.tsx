@@ -62,7 +62,7 @@ const canEditConfiguration = (document: RecurringTransactionDocument): boolean =
   );
 };
 
-const canRename = (document: RecurringTransactionDocument): boolean => {
+const canEditDescription = (document: RecurringTransactionDocument): boolean => {
   const lifecycle = document.recurringTransaction.lifecycle;
   return (
     lifecycle === "active" ||
@@ -167,8 +167,8 @@ export function RecurringDocumentScreen({
     occurrenceSummary.totalOccurrences,
   );
   const configurationEditable = canEditConfiguration(document);
-  const renameAllowed = canRename(document);
-  const editable = configurationEditable || renameAllowed;
+  const descriptionEditable = canEditDescription(document);
+  const editable = configurationEditable || descriptionEditable;
   const lifecycle = recurringTransaction.lifecycle;
 
   const submitEdit = async (values: RecurringFormValues) => {
@@ -185,7 +185,7 @@ export function RecurringDocumentScreen({
         <div className="flex flex-wrap items-center gap-2">
           {editable ? (
             <Button ref={editButtonRef} variant="outline" onClick={() => setIsEditOpen(true)}>
-              {configurationEditable ? "Edit recurring transaction" : "Rename"}
+              {configurationEditable ? "Edit recurring transaction" : "Edit description"}
             </Button>
           ) : null}
           <RecurringLifecycleActions
@@ -293,7 +293,7 @@ export function RecurringDocumentScreen({
           </p>
           {lifecycle === "stopped" || lifecycle === "completed" ? (
             <p role="status" className="text-sm text-muted-foreground">
-              This source is immutable except for rename.
+              This source is immutable except for description editing.
             </p>
           ) : null}
         </Section>
@@ -355,7 +355,7 @@ export function RecurringDocumentScreen({
             onSubmit={submitEdit}
             categories={categories}
             configurationEditable={configurationEditable}
-            descriptionEditable={renameAllowed}
+            descriptionEditable={descriptionEditable}
             returnFocusRef={editButtonRef}
           />
         ) : null}

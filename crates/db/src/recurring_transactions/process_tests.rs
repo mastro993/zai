@@ -365,8 +365,10 @@ async fn invalid_deleted_category_records_failure_and_other_sources_continue() {
     let failure = invalid.failures.unresolved.expect("failure");
     assert_eq!(failure.error_code, "invalid_category");
     assert_eq!(
-        failure.repair_field_key.as_deref(),
-        Some("transaction_category_id")
+        failure.repair_field_key,
+        Some(
+            zai_core::features::recurring_transactions::RecurringRepairField::TransactionCategoryId
+        )
     );
     assert!(invalid.links.occurrences.items.is_empty());
 

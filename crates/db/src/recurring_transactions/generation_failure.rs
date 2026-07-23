@@ -8,8 +8,8 @@ use diesel::sqlite::SqliteConnection;
 use uuid::Uuid;
 use zai_core::features::domain_alerts::{AlertInsertOutcome, CommittedOutcome};
 use zai_core::features::recurring_transactions::{
-    ProcessOneOutcome, RECURRING_GENERATION_FAILURE_PRODUCER_KEY, build_generation_failure_alert,
-    occurrence_identity_key,
+    ProcessOneOutcome, RECURRING_GENERATION_FAILURE_PRODUCER_KEY, RecurringRepairField,
+    build_generation_failure_alert, occurrence_identity_key,
 };
 
 pub(super) fn record(
@@ -18,7 +18,7 @@ pub(super) fn record(
     now: NaiveDateTime,
     error_code: &str,
     cause_category: &str,
-    repair_field_key: Option<&str>,
+    repair_field_key: Option<RecurringRepairField>,
 ) -> Result<CommittedOutcome<ProcessOneOutcome>> {
     let alert = build_generation_failure_alert(
         &head.recurring_transaction_id,
@@ -70,7 +70,7 @@ pub(super) fn record(
             recurring_generation_failures::error_code.eq(error_code),
             recurring_generation_failures::cause_category.eq(cause_category),
             recurring_generation_failures::repair_field_key
-                .eq(repair_field_key.map(str::to_string)),
+                .eq(repair_field_key.map(RecurringRepairField::storage_key)),
             recurring_generation_failures::last_failed_at.eq(now),
             recurring_generation_failures::attempt_count.eq(attempt_count + 1),
             recurring_generation_failures::repaired_at.eq(None::<NaiveDateTime>),
@@ -91,7 +91,7 @@ pub(super) fn record(
                 recurring_generation_failures::error_code.eq(error_code),
                 recurring_generation_failures::cause_category.eq(cause_category),
                 recurring_generation_failures::repair_field_key
-                    .eq(repair_field_key.map(str::to_string)),
+                    .eq(repair_field_key.map(RecurringRepairField::storage_key)),
                 recurring_generation_failures::correlation_id.eq(Uuid::new_v4().to_string()),
                 recurring_generation_failures::failed_scheduled_local.eq(head.next_scheduled_local),
                 recurring_generation_failures::first_failed_at.eq(now),

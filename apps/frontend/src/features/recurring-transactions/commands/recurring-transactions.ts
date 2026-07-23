@@ -23,6 +23,7 @@ import type {
   RecurringOccurrencePage,
   RecurringRecoveryOutcome,
   RecurringRepairPreview,
+  RecurringRepairField,
   RecurringTransactionDocument,
   ScheduleRule,
   TransactionRecurringProvenance,
@@ -261,7 +262,7 @@ export const getRecurringGenerationFailureDiagnostics = (
 
 export const previewRecurringGenerationRepair = (
   document: RecurringTransactionDocument,
-  repairFieldKey: string,
+  repairFieldKey: RecurringRepairField,
   values: Pick<
     RecurringFormValues,
     "description" | "amount" | "transactionType" | "transactionCategoryId" | "notes"
@@ -284,7 +285,7 @@ export const previewRecurringGenerationRepair = (
 
 export const repairRecurringGenerationFailure = (
   document: RecurringTransactionDocument,
-  repairFieldKey: string,
+  repairFieldKey: RecurringRepairField,
   values: Pick<
     RecurringFormValues,
     "description" | "amount" | "transactionType" | "transactionCategoryId" | "notes"

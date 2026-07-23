@@ -6,7 +6,8 @@ use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use zai_core::features::recurring_transactions::{
     FulfillmentKind, RecurringGenerationFailure, RecurringLifecycle, RecurringOccurrence,
-    RecurringOccurrenceHead, RecurringTransaction, ScheduleIntervalUnit, ScheduleRule,
+    RecurringOccurrenceHead, RecurringRepairField, RecurringTransaction, ScheduleIntervalUnit,
+    ScheduleRule,
 };
 use zai_core::{Error, Result};
 
@@ -155,14 +156,21 @@ pub fn build_occurrence(row: RecurringOccurrenceRow) -> Result<RecurringOccurren
     })
 }
 
-pub fn build_generation_failure(row: RecurringGenerationFailureRow) -> RecurringGenerationFailure {
-    RecurringGenerationFailure {
+pub fn build_generation_failure(
+    row: RecurringGenerationFailureRow,
+) -> Result<RecurringGenerationFailure> {
+    let repair_field_key = row
+        .repair_field_key
+        .as_deref()
+        .map(RecurringRepairField::from_storage_key)
+        .transpose()?;
+    Ok(RecurringGenerationFailure {
         recurring_transaction_id: row.recurring_transaction_id,
         schedule_revision_id: row.schedule_revision_id,
         ordinal: row.ordinal,
         error_code: row.error_code,
         cause_category: row.cause_category,
-        repair_field_key: row.repair_field_key,
+        repair_field_key,
         correlation_id: row.correlation_id,
         failed_scheduled_local: row.failed_scheduled_local,
         first_failed_at: row.first_failed_at,
@@ -173,7 +181,7 @@ pub fn build_generation_failure(row: RecurringGenerationFailureRow) -> Recurring
         resolved_at: row.resolved_at,
         resolution_kind: row.resolution_kind,
         generation_failure_alert_id: row.generation_failure_alert_id,
-    }
+    })
 }
 
 pub fn schedule_rule_from_row(row: &RecurringScheduleRevisionRow) -> Result<ScheduleRule> {
@@ -192,5 +200,54 @@ pub fn schedule_rule_from_row(row: &RecurringScheduleRevisionRow) -> Result<Sche
         _ => Err(Error::Repository(
             "Invalid schedule revision rule shape".to_string(),
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+
+    fn failure_row(repair_field_key: Option<&str>) -> RecurringGenerationFailureRow {
+        let timestamp = NaiveDate::from_ymd_opt(2026, 1, 1)
+            .unwrap()
+            .and_hms_opt(9, 0, 0)
+            .unwrap();
+        RecurringGenerationFailureRow {
+            recurring_transaction_id: "recurring-1".to_string(),
+            schedule_revision_id: "schedule-1".to_string(),
+            ordinal: 1,
+            error_code: "invalid_category".to_string(),
+            cause_category: "template".to_string(),
+            repair_field_key: repair_field_key.map(str::to_string),
+            correlation_id: "correlation-1".to_string(),
+            failed_scheduled_local: timestamp,
+            first_failed_at: timestamp,
+            last_failed_at: timestamp,
+            attempt_count: 1,
+            repaired_at: None,
+            repair_revision: None,
+            resolved_at: None,
+            resolution_kind: None,
+            generation_failure_alert_id: "alert-1".to_string(),
+        }
+    }
+
+    #[test]
+    fn unknown_persisted_repair_field_is_typed_error() {
+        assert!(matches!(
+            build_generation_failure(failure_row(Some("notes"))),
+            Err(Error::InvalidRecurringRepairField(value)) if value == "notes"
+        ));
+    }
+
+    #[test]
+    fn legacy_persisted_category_key_maps_to_typed_field() {
+        let failure =
+            build_generation_failure(failure_row(Some("transaction_category_id"))).unwrap();
+        assert_eq!(
+            failure.repair_field_key,
+            Some(RecurringRepairField::TransactionCategoryId)
+        );
     }
 }

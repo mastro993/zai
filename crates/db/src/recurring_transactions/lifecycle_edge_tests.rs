@@ -157,25 +157,34 @@ async fn lifecycle_blocked_when_generation_failure_open() {
 }
 
 #[tokio::test]
-async fn stopped_source_allows_description_rename_only() {
+async fn stopped_source_allows_description_edit_only() {
     let observed = local(2026, 2, 1, 10, 0);
     let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
-    let mut seed = base_seed("rt-rename", "Old name");
+    let mut seed = base_seed("rt-description-edit", "Old description");
     seed.lifecycle = "stopped";
     seed_source(&repo, seed).await;
-    let before = service.get_document("rt-rename").await.expect("doc");
+    let before = service
+        .get_document("rt-description-edit")
+        .await
+        .expect("doc");
 
-    let mut rename = update_from_document(&before);
-    rename.template.description = "Clarified name".into();
-    let renamed = service.update(rename).await.expect("rename");
-    match renamed {
+    let mut description_edit = update_from_document(&before);
+    description_edit.template.description = "Clarified description".into();
+    let updated = service
+        .update(description_edit)
+        .await
+        .expect("description edit");
+    match updated {
         RecurringMutationOutcome::Succeeded { document } => {
-            assert_eq!(document.template.description, "Clarified name");
+            assert_eq!(document.template.description, "Clarified description");
         }
-        other => panic!("expected Succeeded rename, got {other:?}"),
+        other => panic!("expected Succeeded description edit, got {other:?}"),
     }
 
-    let after = service.get_document("rt-rename").await.expect("after");
+    let after = service
+        .get_document("rt-description-edit")
+        .await
+        .expect("after");
     let mut schedule = update_from_document(&after);
     schedule.schedule = ScheduleRule::Interval {
         every: 2,

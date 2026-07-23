@@ -238,7 +238,8 @@ fn list_active_projection_sources(conn: &mut SqliteConnection) -> Result<Vec<Act
             .first::<RecurringGenerationFailureRow>(conn)
             .optional()
             .into_core()?
-            .map(build_generation_failure);
+            .map(build_generation_failure)
+            .transpose()?;
         sources.push((recurring, head, schedule, failure));
     }
     Ok(sources)

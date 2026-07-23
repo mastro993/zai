@@ -21,7 +21,8 @@ use super::process::{ProcessOneOutcome, ProcessingSliceOutcome, ProcessingWorkBu
 use super::projection::{BudgetProjectionQuery, BudgetProjectionResult};
 use super::repair::{
     GenerationFailureDiagnostics, PreviewRecurringGenerationRepair, RecurringRecoveryOutcome,
-    RecurringRepairPreview, RepairRecurringGenerationFailure, RetryRecurringGenerationFailure,
+    RecurringRepairField, RecurringRepairPreview, RepairRecurringGenerationFailure,
+    RetryRecurringGenerationFailure,
 };
 use crate::Result;
 use async_trait::async_trait;
@@ -141,7 +142,7 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         &self,
         recurring_transaction_id: String,
         expected_revision: i32,
-        repair_field_key: String,
+        repair_field_key: RecurringRepairField,
         template: RecurringTemplateInput,
     ) -> Result<RecurringTransaction>;
 

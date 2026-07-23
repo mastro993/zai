@@ -88,6 +88,9 @@ pub enum Error {
     #[error("Invalid data: {0}")]
     InvalidData(String),
 
+    #[error("Invalid recurring repair field: {0}")]
+    InvalidRecurringRepairField(String),
+
     #[error("Unexpected error: {0}")]
     Unexpected(String),
 }
@@ -127,7 +130,7 @@ impl Error {
 
     pub fn code(&self) -> ErrorCode {
         match self {
-            Self::InvalidData(_) => ErrorCode::Validation,
+            Self::InvalidData(_) | Self::InvalidRecurringRepairField(_) => ErrorCode::Validation,
             Self::NotFound(_) => ErrorCode::NotFound,
             Self::Conflict(_) => ErrorCode::Conflict,
             Self::NameConflict(_) => ErrorCode::NameConflict,

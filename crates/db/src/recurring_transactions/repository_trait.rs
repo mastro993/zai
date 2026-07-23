@@ -32,9 +32,9 @@ use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, NewRecurringTransaction, ProcessOneOutcome, RecurringFailurePage,
     RecurringFeedPage, RecurringGenerationFailure, RecurringLifecycleCommand,
     RecurringLifecycleUpdate, RecurringMatchingIdentity, RecurringOccurrence,
-    RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
-    RecurringTemplateInput, RecurringTemplateRevision, RecurringTransaction,
-    RecurringTransactionsRepositoryTrait, UpdateRecurringTransaction,
+    RecurringOccurrenceHead, RecurringOccurrencePage, RecurringRepairField,
+    RecurringScheduleRevision, RecurringTemplateInput, RecurringTemplateRevision,
+    RecurringTransaction, RecurringTransactionsRepositoryTrait, UpdateRecurringTransaction,
 };
 
 #[async_trait]
@@ -338,7 +338,7 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
         &self,
         recurring_transaction_id: String,
         expected_revision: i32,
-        repair_field_key: String,
+        repair_field_key: RecurringRepairField,
         template: RecurringTemplateInput,
     ) -> Result<RecurringTransaction> {
         let now = chrono::Utc::now().naive_utc();
@@ -348,7 +348,7 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
                     conn,
                     &recurring_transaction_id,
                     expected_revision,
-                    &repair_field_key,
+                    repair_field_key,
                     &template,
                     now,
                 )

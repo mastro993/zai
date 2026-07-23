@@ -162,9 +162,9 @@ pub fn failures_section_with_waiting(
     history: RecurringFailurePage,
     waiting_count: i32,
 ) -> RecurringFailuresSection {
-    let next_action = unresolved.as_ref().map(|failure| {
-        super::repair::recovery_action_for_failure(failure.repair_field_key.as_deref())
-    });
+    let next_action = unresolved
+        .as_ref()
+        .map(|failure| super::repair::recovery_action_for_failure(failure.repair_field_key));
     let has_unresolved = unresolved.is_some();
     let state = if !has_unresolved && history.items.is_empty() {
         RecurringSectionState::Empty
