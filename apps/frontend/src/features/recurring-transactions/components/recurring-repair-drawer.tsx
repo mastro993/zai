@@ -117,6 +117,15 @@ export function RecurringRepairDrawer({
     queueMicrotask(() => returnFocusRef?.current?.focus());
   };
 
+  const proposedValue = prepared
+    ? isCategory
+      ? prepared.transactionCategoryId
+        ? (categories.find((category) => category.id === prepared.transactionCategoryId)?.name ??
+          "Selected category")
+        : "Uncategorized"
+      : formatCurrencyFromMinor(prepared.amount, "EUR")
+    : null;
+
   const onPreview = handleSubmit(async (values) => {
     let amount = document.template.amount;
     if (!isCategory) {
@@ -247,12 +256,17 @@ export function RecurringRepairDrawer({
           </FieldGroup>
         </FieldSet>
         {preview ? (
-          <p role="status" className="text-sm">
-            Preview: updates {preview.affectedUnfulfilledSegmentCount} unfulfilled segment
-            {preview.affectedUnfulfilledSegmentCount === 1 ? "" : "s"}
-            {preview.includesFutureTemplate ? ", including the future template" : ""}. Confirm to
-            persist and retry in order.
-          </p>
+          <div role="status" className="space-y-1 text-sm">
+            <p>
+              Proposed {isCategory ? "category" : "amount"}: <strong>{proposedValue}</strong>
+            </p>
+            <p>
+              Preview: updates {preview.affectedUnfulfilledSegmentCount} unfulfilled segment
+              {preview.affectedUnfulfilledSegmentCount === 1 ? "" : "s"}
+              {preview.includesFutureTemplate ? ", including the future template" : ""}. Confirm to
+              persist and retry in order.
+            </p>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">
             Preview the repair across unfulfilled segments before confirming Repair &amp; retry.

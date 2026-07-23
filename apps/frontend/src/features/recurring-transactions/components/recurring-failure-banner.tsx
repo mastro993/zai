@@ -1,5 +1,5 @@
 import { Result } from "@praha/byethrow";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -8,29 +8,15 @@ import type { TransactionCategory } from "@/features/categories/types/model";
 
 import {
   getRecurringGenerationFailureDiagnostics,
-  getRecurringTransactionFailureHistory,
   retryRecurringGenerationFailure,
 } from "../commands/recurring-transactions";
 import { formatLocalDateTime } from "../lib/recurring";
+import { recurringFailureCauseLabel } from "./recurring-failure-labels";
 import type {
-  RecurringGenerationFailure,
   RecurringRepairField,
   RecurringTransactionDocument,
 } from "../types/recurring-transaction";
 import { RecurringRepairDrawer } from "./recurring-repair-drawer";
-
-const causeLabel = (causeCategory: string): string => {
-  switch (causeCategory) {
-    case "template":
-      return "Template problem";
-    case "reference":
-      return "Missing reference";
-    case "validation":
-      return "Validation problem";
-    default:
-      return "Generation problem";
-  }
-};
 
 const fieldLabel = (repairFieldKey: RecurringRepairField | null | undefined): string => {
   if (!repairFieldKey) {
@@ -70,18 +56,15 @@ export function RecurringFailureBanner({
 }) {
   const unresolved = document.failures.unresolved;
   const repairButtonRef = useRef<HTMLButtonElement | null>(null);
+  const headingId = useId();
   const [isRepairOpen, setIsRepairOpen] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [historyItems, setHistoryItems] = useState(document.failures.history.items);
-  const [historyCursor, setHistoryCursor] = useState(document.failures.history.nextCursor);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [pending, setPending] = useState(false);
 
   if (!unresolved) {
     return null;
   }
 
-  const nextAction = document.failures.nextAction ?? "retry";
+  const nextAction = document.failures.nextAction ?? "copyDiagnostics";
   const canRepair = nextAction === "repair" && !unresolved.repairedAt;
   const canRetry = nextAction === "retry" || Boolean(unresolved.repairedAt);
 
@@ -125,34 +108,25 @@ export function RecurringFailureBanner({
     toast.message(payload);
   };
 
-  const loadMoreHistory = async () => {
-    if (!historyCursor || isLoadingHistory) {
-      return;
+  const onRepairOpenChange = (open: boolean) => {
+    setIsRepairOpen(open);
+    if (!open) {
+      queueMicrotask(() => repairButtonRef.current?.focus());
     }
-    setIsLoadingHistory(true);
-    const result = await getRecurringTransactionFailureHistory(
-      document.recurringTransaction.id,
-      20,
-      historyCursor,
-    );
-    setIsLoadingHistory(false);
-    if (Result.isFailure(result)) {
-      toast.error(result.error.message);
-      return;
-    }
-    setHistoryItems((current) => [...current, ...result.value.items]);
-    setHistoryCursor(result.value.nextCursor);
   };
 
   return (
     <section
       className="space-y-3 border border-destructive/30 bg-destructive/5 p-4"
       aria-label="Generation needs attention"
+      aria-labelledby={headingId}
       role="status"
     >
       <div className="space-y-1">
-        <h2 className="text-base font-medium">Needs attention</h2>
-        <p className="text-sm">{causeLabel(unresolved.causeCategory)}</p>
+        <h2 id={headingId} className="text-base font-medium">
+          Needs attention
+        </h2>
+        <p className="text-sm">{recurringFailureCauseLabel(unresolved.causeCategory)}</p>
       </div>
       <dl className="grid gap-2 text-sm sm:grid-cols-2">
         <div>
@@ -198,70 +172,21 @@ export function RecurringFailureBanner({
             Copy diagnostics
           </Button>
         ) : null}
-        <Button
-          variant="ghost"
-          aria-expanded={isHistoryOpen}
-          onClick={() => setIsHistoryOpen((open) => !open)}
-        >
-          {isHistoryOpen ? "Hide history" : "Show history"}
-        </Button>
       </div>
-      {isHistoryOpen ? (
-        <div className="space-y-2 border-t border-border pt-3">
-          <h3 className="text-sm font-medium">Resolved failure history</h3>
-          {historyItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No resolved failures yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {historyItems.map((item) => (
-                <FailureHistoryItem key={historyItemKey(item)} item={item} />
-              ))}
-            </ul>
-          )}
-          {historyCursor ? (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isLoadingHistory}
-              onClick={() => void loadMoreHistory()}
-            >
-              {isLoadingHistory ? "Loading…" : "Load more"}
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
 
-      <Drawer open={isRepairOpen} onOpenChange={setIsRepairOpen} swipeDirection="right">
+      <Drawer open={isRepairOpen} onOpenChange={onRepairOpenChange} swipeDirection="right">
         {isRepairOpen && unresolved.repairFieldKey ? (
           <RecurringRepairDrawer
             document={document}
             repairFieldKey={unresolved.repairFieldKey}
             categories={categories}
             open={isRepairOpen}
-            onOpenChange={setIsRepairOpen}
+            onOpenChange={onRepairOpenChange}
             onDocumentChange={onDocumentChange}
             returnFocusRef={repairButtonRef}
           />
         ) : null}
       </Drawer>
     </section>
-  );
-}
-
-function historyItemKey(item: RecurringGenerationFailure): string {
-  return `${item.scheduleRevisionId}:${item.ordinal}:${item.firstFailedAt}`;
-}
-
-function FailureHistoryItem({ item }: { item: RecurringGenerationFailure }) {
-  return (
-    <li className="text-sm">
-      <p>
-        {causeLabel(item.causeCategory)} · {formatLocalDateTime(item.failedScheduledLocal)}
-      </p>
-      <p className="text-muted-foreground">
-        Failed {formatLocalDateTime(item.firstFailedAt)}
-        {item.resolvedAt ? ` · Resolved ${formatLocalDateTime(item.resolvedAt)}` : null}
-      </p>
-    </li>
   );
 }

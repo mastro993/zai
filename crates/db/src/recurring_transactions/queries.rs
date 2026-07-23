@@ -221,6 +221,7 @@ pub fn list_failure_history(
         .filter(
             recurring_generation_failures::recurring_transaction_id.eq(recurring_transaction_id),
         )
+        .filter(recurring_generation_failures::resolved_at.is_not_null())
         .into_boxed();
 
     if let Some(cursor) = cursor {
