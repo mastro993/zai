@@ -43,14 +43,15 @@ async function confirmLifecycle(page: Page, action: "Pause" | "Resume" | "Stop")
 
 test("web recurring journey persists generated links, edits, lifecycle, and navigation", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto("/cash-flow/recurring");
   await expect(page.getByRole("heading", { name: "Recurring transactions" })).toBeVisible();
   await expect(
     page.evaluate(() => Object.prototype.hasOwnProperty.call(window, "__TAURI_INTERNALS__")),
   ).resolves.toBe(false);
 
-  const description = "E2E monthly rent";
+  const suffix = `${testInfo.repeatEachIndex}-${testInfo.retry}`;
+  const description = `E2E monthly rent ${suffix}`;
   await page.getByRole("button", { name: "New recurring" }).click();
   const createDrawer = page.getByRole("dialog", { name: "New recurring transaction" });
   await createDrawer.getByLabel("Description").fill(description);
@@ -85,9 +86,12 @@ test("web recurring journey persists generated links, edits, lifecycle, and navi
   await expect(page).toHaveURL(/\/cash-flow\/transactions\/?$/);
 });
 
-test("web adoption previews catch-up and preserves adopted provenance", async ({ page }) => {
-  const transactionId = "e2e-adoption-transaction";
-  const description = "E2E adopted transaction";
+test("web adoption previews catch-up and preserves adopted provenance", async ({
+  page,
+}, testInfo) => {
+  const suffix = `${testInfo.repeatEachIndex}-${testInfo.retry}`;
+  const transactionId = `e2e-adoption-transaction-${suffix}`;
+  const description = `E2E adopted transaction ${suffix}`;
   const seed = await page.request.post(`${apiOrigin}/api/cash-flow/transactions`, {
     data: {
       id: transactionId,

@@ -82,7 +82,7 @@ export function RecurringFormDrawer({
     formState: { errors, isSubmitting },
   } = useForm<RecurringFormInput, unknown, RecurringFormValues>({
     resolver: zodResolver(recurringFormSchema),
-    values: getRecurringFormDefaults(mode),
+    defaultValues: getRecurringFormDefaults(mode),
   });
   const scheduleKind = useWatch({ control, name: "scheduleKind" });
   const totalMode = useWatch({ control, name: "totalMode" });
