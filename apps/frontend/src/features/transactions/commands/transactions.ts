@@ -55,6 +55,12 @@ export const getTransactions = (
   });
 };
 
+export const getTransaction = (transactionId: string): CommandResult<Transaction> => {
+  return invokeDecodedCommand(TRANSACTION_COMMANDS.get_transaction, {
+    transactionId,
+  });
+};
+
 export const getFilteredTransactionIds = (
   filters?: TransactionFilters,
   sort?: TransactionSort,

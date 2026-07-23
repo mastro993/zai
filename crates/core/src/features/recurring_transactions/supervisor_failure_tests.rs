@@ -3,8 +3,8 @@ use crate::features::recurring_transactions::{
     ProcessingSliceOutcome, ProcessingStopReason, ProcessingWorkBudget,
     RecurringOccurrenceProcessor, RecurringProcessDelayAlerts, RecurringProcessingEvent,
     RecurringProcessingEventBus, RecurringProcessingFinishState, RecurringProcessingStatus,
-    RecurringProcessingSupervisor, RecurringSupervisorHeads, WAKE_COALESCE_WINDOW,
-    deserialize_recurring_processing_event,
+    RecurringProcessingSupervisor, RecurringSupervisorHeads, TRANSIENT_DELAY_REARM,
+    WAKE_COALESCE_WINDOW, deserialize_recurring_processing_event,
 };
 use crate::{Error, Result};
 use async_trait::async_trait;
@@ -62,8 +62,12 @@ impl RecurringOccurrenceProcessor for ScriptedProcessor {
         if consume_failure(&self.failures) {
             return Err(Error::Repository("injected processor failure".to_string()));
         }
-        let mut guard = self.outcomes.lock().expect("outcomes");
-        Ok(guard.pop().unwrap_or(caught_up()))
+        Ok(self
+            .outcomes
+            .lock()
+            .expect("outcomes")
+            .pop()
+            .unwrap_or_else(caught_up))
     }
 }
 
@@ -136,6 +140,16 @@ fn caught_up() -> ProcessingSliceOutcome {
     }
 }
 
+fn budget_exhausted() -> ProcessingSliceOutcome {
+    ProcessingSliceOutcome {
+        committed: 1,
+        already_fulfilled: 0,
+        more_due_remaining: true,
+        stop_reason: ProcessingStopReason::BudgetExhausted,
+        observed_local: local(2026, 1, 1, 9, 0),
+    }
+}
+
 fn consume_failure(counter: &AtomicU32) -> bool {
     counter
         .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |remaining| {
@@ -149,201 +163,205 @@ fn consume_failure(counter: &AtomicU32) -> bool {
 }
 
 #[tokio::test(start_paused = true)]
-async fn startup_run_publishes_started_and_finished_without_client() {
+async fn processor_error_creates_delay_state_and_retries_after_rearm() {
     let bus = RecurringProcessingEventBus::with_capacity(16);
     let mut receiver = bus.subscribe();
     let processor = Arc::new(ScriptedProcessor {
-        outcomes: Mutex::new(vec![ProcessingSliceOutcome {
-            committed: 1,
-            already_fulfilled: 0,
-            more_due_remaining: false,
-            stop_reason: ProcessingStopReason::CaughtUp,
-            observed_local: local(2026, 1, 1, 9, 0),
-        }]),
+        outcomes: Mutex::new(vec![caught_up()]),
         calls: AtomicU32::new(0),
-        failures: AtomicU32::new(0),
+        failures: AtomicU32::new(1),
     });
     let delay = Arc::new(DelayAlerts::default());
     let supervisor = RecurringProcessingSupervisor::new(
         processor.clone(),
         Arc::new(ManualClock::new(local(2026, 1, 1, 9, 0))),
         Arc::new(Heads::default()),
-        bus.clone(),
+        bus,
         delay.clone(),
     );
     let handle = supervisor.spawn();
-    tokio::time::advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
 
-    let started = receiver.recv().await.expect("started");
-    let started = deserialize_recurring_processing_event(&started).expect("decode");
-    assert!(matches!(started, RecurringProcessingEvent::Started { .. }));
-
-    let progress = receiver.recv().await.expect("progress");
-    let progress = deserialize_recurring_processing_event(&progress).expect("decode");
-    assert!(matches!(
-        progress,
-        RecurringProcessingEvent::Progress { committed: 1, .. }
-    ));
-
-    let finished = receiver.recv().await.expect("finished");
-    let finished = deserialize_recurring_processing_event(&finished).expect("decode");
-    assert!(matches!(
-        finished,
-        RecurringProcessingEvent::Finished {
-            state: RecurringProcessingFinishState::CaughtUp,
-            committed: 1,
-            ..
-        }
-    ));
+    advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    assert_eq!(
+        receive_finished_state(&mut receiver).await,
+        RecurringProcessingFinishState::TransientlyDelayed
+    );
     assert_eq!(processor.calls.load(Ordering::SeqCst), 1);
+    assert_eq!(delay.ensured.load(Ordering::SeqCst), 1);
+    assert_eq!(handle.status(), RecurringProcessingStatus::Delayed);
+
+    advance(TRANSIENT_DELAY_REARM + WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    assert_eq!(
+        receive_finished_state(&mut receiver).await,
+        RecurringProcessingFinishState::CaughtUp
+    );
+    assert_eq!(processor.calls.load(Ordering::SeqCst), 2);
     assert_eq!(delay.resolved.load(Ordering::SeqCst), 1);
     handle.request_shutdown();
 }
 
 #[tokio::test(start_paused = true)]
-async fn wake_after_idle_run_starts_processing_without_waiting_for_next_clock_tick() {
+async fn failed_delay_alert_is_retried_before_processing_recovery() {
     let bus = RecurringProcessingEventBus::with_capacity(16);
     let mut receiver = bus.subscribe();
     let processor = Arc::new(ScriptedProcessor {
-        outcomes: Mutex::new(vec![caught_up(), caught_up()]),
+        outcomes: Mutex::new(vec![caught_up()]),
         calls: AtomicU32::new(0),
-        failures: AtomicU32::new(0),
+        failures: AtomicU32::new(1),
+    });
+    let delay = Arc::new(DelayAlerts {
+        ensure_failures: AtomicU32::new(1),
+        ..DelayAlerts::default()
     });
     let supervisor = RecurringProcessingSupervisor::new(
         processor.clone(),
-        Arc::new(ManualClock::new(local(2026, 1, 1, 9, 0))),
-        Arc::new(Heads::default()),
-        bus,
-        Arc::new(DelayAlerts::default()),
-    );
-    let handle = supervisor.spawn();
-    tokio::time::advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
-    receive_finished(&mut receiver).await;
-    tokio::task::yield_now().await;
-
-    handle.request_wake();
-    tokio::time::advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
-    receive_finished(&mut receiver).await;
-
-    assert_eq!(processor.calls.load(Ordering::SeqCst), 2);
-    handle.request_shutdown();
-}
-
-#[tokio::test(start_paused = true)]
-async fn redundant_wakes_coalesce_within_window() {
-    let bus = RecurringProcessingEventBus::with_capacity(16);
-    let mut receiver = bus.subscribe();
-    let processor = Arc::new(ScriptedProcessor {
-        outcomes: Mutex::new(vec![caught_up(), caught_up()]),
-        calls: AtomicU32::new(0),
-        failures: AtomicU32::new(0),
-    });
-    let supervisor = RecurringProcessingSupervisor::new(
-        processor.clone(),
-        Arc::new(ManualClock::new(local(2026, 1, 1, 9, 0))),
-        Arc::new(Heads::default()),
-        bus,
-        Arc::new(DelayAlerts::default()),
-    );
-    let handle = supervisor.handle();
-    tokio::spawn(supervisor.run());
-
-    handle.request_wake();
-    handle.request_wake();
-    handle.request_wake();
-    tokio::time::advance(WAKE_COALESCE_WINDOW).await;
-    tokio::time::advance(Duration::from_millis(1)).await;
-
-    let _ = receiver.recv().await.expect("started");
-    loop {
-        let payload = receiver.recv().await.expect("event");
-        let event = deserialize_recurring_processing_event(&payload).expect("decode");
-        if matches!(event, RecurringProcessingEvent::Finished { .. }) {
-            break;
-        }
-    }
-    assert_eq!(processor.calls.load(Ordering::SeqCst), 1);
-    handle.request_shutdown();
-}
-
-#[tokio::test(start_paused = true)]
-async fn transient_delay_ensures_alert_and_sets_delayed_status() {
-    let bus = RecurringProcessingEventBus::with_capacity(8);
-    let mut receiver = bus.subscribe();
-    let processor = Arc::new(ScriptedProcessor {
-        outcomes: Mutex::new(vec![ProcessingSliceOutcome {
-            committed: 0,
-            already_fulfilled: 0,
-            more_due_remaining: true,
-            stop_reason: ProcessingStopReason::TransientlyDelayed,
-            observed_local: local(2026, 1, 1, 9, 0),
-        }]),
-        calls: AtomicU32::new(0),
-        failures: AtomicU32::new(0),
-    });
-    let delay = Arc::new(DelayAlerts::default());
-    let supervisor = RecurringProcessingSupervisor::new(
-        processor,
         Arc::new(ManualClock::new(local(2026, 1, 1, 9, 0))),
         Arc::new(Heads::default()),
         bus,
         delay.clone(),
     );
     let handle = supervisor.spawn();
-    tokio::time::advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
 
-    loop {
-        let payload = receiver.recv().await.expect("event");
-        let event = deserialize_recurring_processing_event(&payload).expect("decode");
-        if matches!(
-            event,
-            RecurringProcessingEvent::Finished {
-                state: RecurringProcessingFinishState::TransientlyDelayed,
-                ..
-            }
-        ) {
-            break;
-        }
-    }
-    assert_eq!(delay.ensured.load(Ordering::SeqCst), 1);
-    assert_eq!(handle.status(), RecurringProcessingStatus::Delayed);
+    advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    assert_eq!(
+        receive_finished_state(&mut receiver).await,
+        RecurringProcessingFinishState::TransientlyDelayed
+    );
+    assert_eq!(processor.calls.load(Ordering::SeqCst), 1);
+
+    advance(TRANSIENT_DELAY_REARM + WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    assert_eq!(
+        receive_finished_state(&mut receiver).await,
+        RecurringProcessingFinishState::CaughtUp
+    );
+    assert_eq!(processor.calls.load(Ordering::SeqCst), 2);
+    assert_eq!(delay.ensured.load(Ordering::SeqCst), 2);
     handle.request_shutdown();
 }
 
 #[tokio::test(start_paused = true)]
-async fn shutdown_cancels_between_commits() {
-    let bus = RecurringProcessingEventBus::with_capacity(8);
+async fn failed_delay_resolution_keeps_supervisor_delayed_until_recovery() {
+    let bus = RecurringProcessingEventBus::with_capacity(16);
     let mut receiver = bus.subscribe();
     let processor = Arc::new(ScriptedProcessor {
-        outcomes: Mutex::new(Vec::new()),
+        outcomes: Mutex::new(vec![caught_up()]),
+        calls: AtomicU32::new(0),
+        failures: AtomicU32::new(0),
+    });
+    let delay = Arc::new(DelayAlerts {
+        resolve_failures: AtomicU32::new(1),
+        ..DelayAlerts::default()
+    });
+    let supervisor = RecurringProcessingSupervisor::new(
+        processor.clone(),
+        Arc::new(ManualClock::new(local(2026, 1, 1, 9, 0))),
+        Arc::new(Heads::default()),
+        bus,
+        delay.clone(),
+    );
+    let handle = supervisor.spawn();
+
+    advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    assert_eq!(
+        receive_finished_state(&mut receiver).await,
+        RecurringProcessingFinishState::TransientlyDelayed
+    );
+    assert_eq!(handle.status(), RecurringProcessingStatus::Delayed);
+
+    advance(TRANSIENT_DELAY_REARM + WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    assert_eq!(
+        receive_finished_state(&mut receiver).await,
+        RecurringProcessingFinishState::CaughtUp
+    );
+    assert_eq!(processor.calls.load(Ordering::SeqCst), 2);
+    assert_eq!(delay.resolved.load(Ordering::SeqCst), 2);
+    handle.request_shutdown();
+}
+
+#[tokio::test(start_paused = true)]
+async fn head_lookup_failure_uses_short_recovery_rearm_and_durable_delay() {
+    let bus = RecurringProcessingEventBus::with_capacity(16);
+    let mut receiver = bus.subscribe();
+    let heads = Arc::new(Heads {
+        failures: AtomicU32::new(1),
+        ..Heads::default()
+    });
+    let delay = Arc::new(DelayAlerts::default());
+    let supervisor = RecurringProcessingSupervisor::new(
+        Arc::new(ScriptedProcessor {
+            outcomes: Mutex::new(vec![caught_up()]),
+            calls: AtomicU32::new(0),
+            failures: AtomicU32::new(0),
+        }),
+        Arc::new(ManualClock::new(local(2026, 1, 1, 9, 0))),
+        heads,
+        bus,
+        delay.clone(),
+    );
+    let handle = supervisor.spawn();
+
+    advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    assert_eq!(
+        receive_finished_state(&mut receiver).await,
+        RecurringProcessingFinishState::CaughtUp
+    );
+    assert_eq!(handle.status(), RecurringProcessingStatus::Delayed);
+    assert_eq!(delay.ensured.load(Ordering::SeqCst), 1);
+    handle.request_shutdown();
+}
+
+#[tokio::test(start_paused = true)]
+async fn bounded_slice_rearms_timer_before_continuing_backlog() {
+    let bus = RecurringProcessingEventBus::with_capacity(16);
+    let mut receiver = bus.subscribe();
+    let observed = local(2026, 1, 1, 9, 0);
+    let heads = Arc::new(Heads {
+        next: Mutex::new(Some(local(2026, 1, 1, 10, 0))),
+        ..Heads::default()
+    });
+    let processor = Arc::new(ScriptedProcessor {
+        outcomes: Mutex::new(vec![caught_up(), budget_exhausted()]),
         calls: AtomicU32::new(0),
         failures: AtomicU32::new(0),
     });
     let supervisor = RecurringProcessingSupervisor::new(
-        processor,
-        Arc::new(ManualClock::new(local(2026, 1, 1, 9, 0))),
-        Arc::new(Heads::default()),
+        processor.clone(),
+        Arc::new(ManualClock::new(observed)),
+        heads,
         bus,
         Arc::new(DelayAlerts::default()),
     );
-    let handle = supervisor.handle();
-    let task = tokio::spawn(supervisor.run());
-    handle.request_wake();
-    tokio::time::advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    let handle = supervisor.spawn();
+
+    advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    assert_eq!(
+        receive_finished_state(&mut receiver).await,
+        RecurringProcessingFinishState::BudgetExhausted
+    );
+    assert_eq!(processor.calls.load(Ordering::SeqCst), 1);
+
+    advance(Duration::from_millis(1) + WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    assert_eq!(
+        receive_finished_state(&mut receiver).await,
+        RecurringProcessingFinishState::CaughtUp
+    );
+    assert_eq!(processor.calls.load(Ordering::SeqCst), 2);
     handle.request_shutdown();
-    let _ = tokio::time::timeout(Duration::from_secs(1), task)
-        .await
-        .expect("join timeout");
-    // May observe Finished Cancelled or ShuttingDown depending on race; ensure no hang.
-    let _ = receiver.try_recv();
 }
 
-async fn receive_finished(receiver: &mut tokio::sync::broadcast::Receiver<String>) {
+async fn advance(duration: Duration) {
+    tokio::time::advance(duration).await;
+    tokio::task::yield_now().await;
+}
+
+async fn receive_finished_state(
+    receiver: &mut tokio::sync::broadcast::Receiver<String>,
+) -> RecurringProcessingFinishState {
     loop {
         let payload = receiver.recv().await.expect("event");
         let event = deserialize_recurring_processing_event(&payload).expect("decode");
-        if matches!(event, RecurringProcessingEvent::Finished { .. }) {
-            break;
+        if let RecurringProcessingEvent::Finished { state, .. } = event {
+            return state;
         }
     }
 }

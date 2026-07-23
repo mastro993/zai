@@ -22,6 +22,8 @@ mod service_projection;
 mod service_recovery;
 mod supervisor;
 #[cfg(test)]
+mod supervisor_failure_tests;
+#[cfg(test)]
 mod supervisor_tests;
 mod traits;
 
@@ -65,7 +67,7 @@ pub use service::RecurringTransactionsService;
 pub use supervisor::{
     CLOCK_FALLBACK_WAKE, RecurringProcessDelayAlerts, RecurringProcessingStatus,
     RecurringProcessingStatusView, RecurringProcessingSupervisor,
-    RecurringProcessingSupervisorHandle, RecurringSupervisorHeads, TRANSIENT_DELAY_REARM,
-    WAKE_COALESCE_WINDOW,
+    RecurringProcessingSupervisorHandle, RecurringSupervisorHeads, SLICE_REARM,
+    TRANSIENT_DELAY_REARM, WAKE_COALESCE_WINDOW,
 };
 pub use traits::*;

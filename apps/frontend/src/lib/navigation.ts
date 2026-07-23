@@ -76,6 +76,14 @@ export const resolveScreenBreadcrumbs = (pathname: string): Array<BreadcrumbSegm
         if (path === subPath) {
           return [{ label: item.title, href: item.to }, { label: subItem.title }];
         }
+
+        if (subItem.title === "Transactions" && path.startsWith(`${subPath}/`)) {
+          return [
+            { label: item.title, href: item.to },
+            { label: subItem.title, href: subItem.to },
+            { label: "Transaction" },
+          ];
+        }
       }
     }
   }

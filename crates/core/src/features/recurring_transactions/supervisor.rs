@@ -15,9 +15,13 @@ use super::process::{ProcessingStopReason, ProcessingWorkBudget};
 use super::traits::{RecurringOccurrenceProcessor, RecurringProcessingWake};
 use crate::features::budgets::traits::CalendarClock;
 
+#[path = "supervisor_rearm.rs"]
+mod rearm;
+
 pub const WAKE_COALESCE_WINDOW: Duration = Duration::from_millis(100);
 pub const CLOCK_FALLBACK_WAKE: Duration = Duration::from_secs(60);
 pub const TRANSIENT_DELAY_REARM: Duration = Duration::from_millis(100);
+pub const SLICE_REARM: Duration = Duration::from_millis(1);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -154,12 +158,15 @@ impl RecurringProcessingSupervisor {
                     self.set_status(RecurringProcessingStatus::Delayed);
                     wake_received_during_sleep = self.sleep_or_wake(TRANSIENT_DELAY_REARM).await;
                 }
+                RecurringProcessingFinishState::BudgetExhausted => {
+                    self.set_status(RecurringProcessingStatus::Idle);
+                    wake_received_during_sleep = self.sleep_or_wake(SLICE_REARM).await;
+                }
                 RecurringProcessingFinishState::CaughtUp
                 | RecurringProcessingFinishState::Parked
-                | RecurringProcessingFinishState::Cancelled
-                | RecurringProcessingFinishState::BudgetExhausted => {
-                    self.set_status(RecurringProcessingStatus::Idle);
-                    let wait = self.next_wait_duration().await;
+                | RecurringProcessingFinishState::Cancelled => {
+                    let (status, wait) = self.next_wait_duration().await;
+                    self.set_status(status);
                     wake_received_during_sleep = self.sleep_or_wake(wait).await;
                 }
                 RecurringProcessingFinishState::ShuttingDown => break,
@@ -192,102 +199,135 @@ impl RecurringProcessingSupervisor {
     async fn execute_run(&self) -> RecurringProcessingFinishState {
         let run_id = Uuid::new_v4().to_string();
         let observed_local = self.clock.sample();
+        let was_delayed = self.handle.status() == RecurringProcessingStatus::Delayed;
         self.set_status(RecurringProcessingStatus::Updating);
         let _ = self.events.publish(&RecurringProcessingEvent::Started {
             run_id: run_id.clone(),
         });
 
+        if was_delayed && self.ensure_delay_alert().await.is_err() {
+            self.publish_state_changed();
+            return self.finish(
+                &run_id,
+                0,
+                0,
+                true,
+                RecurringProcessingFinishState::TransientlyDelayed,
+            );
+        }
+
         let cancelled = &self.handle.shutdown;
         let mut total_committed = 0_u32;
         let mut total_fulfilled = 0_u32;
 
-        loop {
-            if self.handle.is_shutdown() {
-                return self.finish(
+        if self.handle.is_shutdown() {
+            return self.finish(
+                &run_id,
+                total_committed,
+                total_fulfilled,
+                true,
+                RecurringProcessingFinishState::Cancelled,
+            );
+        }
+
+        match self
+            .processor
+            .process_due(
+                observed_local,
+                ProcessingWorkBudget::default_slice(),
+                Some(cancelled),
+            )
+            .await
+        {
+            Ok(outcome) => {
+                total_committed += outcome.committed;
+                total_fulfilled += outcome.already_fulfilled;
+                if outcome.committed > 0 {
+                    let _ = self.events.publish(&RecurringProcessingEvent::Progress {
+                        run_id: run_id.clone(),
+                        committed: total_committed,
+                        already_fulfilled: total_fulfilled,
+                        more_due_remaining: outcome.more_due_remaining,
+                    });
+                }
+
+                match outcome.stop_reason {
+                    ProcessingStopReason::CaughtUp => {
+                        if self.reconcile_delay_alert().await.is_err() {
+                            return self.finish(
+                                &run_id,
+                                total_committed,
+                                total_fulfilled,
+                                true,
+                                RecurringProcessingFinishState::TransientlyDelayed,
+                            );
+                        }
+                        self.finish(
+                            &run_id,
+                            total_committed,
+                            total_fulfilled,
+                            false,
+                            RecurringProcessingFinishState::CaughtUp,
+                        )
+                    }
+                    ProcessingStopReason::Cancelled => self.finish(
+                        &run_id,
+                        total_committed,
+                        total_fulfilled,
+                        outcome.more_due_remaining,
+                        RecurringProcessingFinishState::Cancelled,
+                    ),
+                    ProcessingStopReason::TransientlyDelayed => {
+                        if self.ensure_delay_alert().await.is_err() {
+                            self.publish_state_changed();
+                        }
+                        self.finish(
+                            &run_id,
+                            total_committed,
+                            total_fulfilled,
+                            outcome.more_due_remaining,
+                            RecurringProcessingFinishState::TransientlyDelayed,
+                        )
+                    }
+                    ProcessingStopReason::BudgetExhausted if outcome.more_due_remaining => self
+                        .finish(
+                            &run_id,
+                            total_committed,
+                            total_fulfilled,
+                            true,
+                            RecurringProcessingFinishState::BudgetExhausted,
+                        ),
+                    ProcessingStopReason::BudgetExhausted => {
+                        if self.reconcile_delay_alert().await.is_err() {
+                            return self.finish(
+                                &run_id,
+                                total_committed,
+                                total_fulfilled,
+                                true,
+                                RecurringProcessingFinishState::TransientlyDelayed,
+                            );
+                        }
+                        self.finish(
+                            &run_id,
+                            total_committed,
+                            total_fulfilled,
+                            false,
+                            RecurringProcessingFinishState::CaughtUp,
+                        )
+                    }
+                }
+            }
+            Err(_) => {
+                if self.ensure_delay_alert().await.is_err() {
+                    self.publish_state_changed();
+                }
+                self.finish(
                     &run_id,
                     total_committed,
                     total_fulfilled,
                     true,
-                    RecurringProcessingFinishState::Cancelled,
-                );
-            }
-
-            match self
-                .processor
-                .process_due(
-                    observed_local,
-                    ProcessingWorkBudget::default_slice(),
-                    Some(cancelled),
+                    RecurringProcessingFinishState::TransientlyDelayed,
                 )
-                .await
-            {
-                Ok(outcome) => {
-                    total_committed += outcome.committed;
-                    total_fulfilled += outcome.already_fulfilled;
-                    if outcome.committed > 0 {
-                        let _ = self.events.publish(&RecurringProcessingEvent::Progress {
-                            run_id: run_id.clone(),
-                            committed: total_committed,
-                            already_fulfilled: total_fulfilled,
-                            more_due_remaining: outcome.more_due_remaining,
-                        });
-                    }
-
-                    match outcome.stop_reason {
-                        ProcessingStopReason::CaughtUp => {
-                            let _ = self.delay_alerts.resolve_delayed().await;
-                            return self.finish(
-                                &run_id,
-                                total_committed,
-                                total_fulfilled,
-                                false,
-                                RecurringProcessingFinishState::CaughtUp,
-                            );
-                        }
-                        ProcessingStopReason::Cancelled => {
-                            return self.finish(
-                                &run_id,
-                                total_committed,
-                                total_fulfilled,
-                                outcome.more_due_remaining,
-                                RecurringProcessingFinishState::Cancelled,
-                            );
-                        }
-                        ProcessingStopReason::TransientlyDelayed => {
-                            let _ = self.delay_alerts.ensure_delayed().await;
-                            return self.finish(
-                                &run_id,
-                                total_committed,
-                                total_fulfilled,
-                                outcome.more_due_remaining,
-                                RecurringProcessingFinishState::TransientlyDelayed,
-                            );
-                        }
-                        ProcessingStopReason::BudgetExhausted if outcome.more_due_remaining => {
-                            tokio::task::yield_now().await;
-                        }
-                        ProcessingStopReason::BudgetExhausted => {
-                            let _ = self.delay_alerts.resolve_delayed().await;
-                            return self.finish(
-                                &run_id,
-                                total_committed,
-                                total_fulfilled,
-                                false,
-                                RecurringProcessingFinishState::CaughtUp,
-                            );
-                        }
-                    }
-                }
-                Err(_) => {
-                    let _ = self.events.publish(&RecurringProcessingEvent::StateChanged);
-                    return self.finish(
-                        &run_id,
-                        total_committed,
-                        total_fulfilled,
-                        false,
-                        RecurringProcessingFinishState::Parked,
-                    );
-                }
             }
         }
     }
@@ -319,35 +359,5 @@ impl RecurringProcessingSupervisor {
             more_due_remaining: false,
             state: RecurringProcessingFinishState::ShuttingDown,
         });
-    }
-
-    async fn next_wait_duration(&self) -> Duration {
-        let observed = self.clock.sample();
-        match self.heads.earliest_active_head_after(observed).await {
-            Ok(Some(next)) => {
-                let delta = (next - observed)
-                    .to_std()
-                    .unwrap_or(CLOCK_FALLBACK_WAKE)
-                    .min(CLOCK_FALLBACK_WAKE);
-                if delta.is_zero() {
-                    Duration::from_millis(1)
-                } else {
-                    delta
-                }
-            }
-            _ => CLOCK_FALLBACK_WAKE,
-        }
-    }
-
-    async fn sleep_or_wake(&self, wait: Duration) -> bool {
-        tokio::select! {
-            _ = tokio::time::sleep(wait) => false,
-            _ = self.handle.wake.notified() => true,
-            _ = self.handle.shutdown_notify.notified(), if self.handle.is_shutdown() => false,
-        }
-    }
-
-    fn set_status(&self, status: RecurringProcessingStatus) {
-        *self.handle.status.write().expect("status lock") = status;
     }
 }

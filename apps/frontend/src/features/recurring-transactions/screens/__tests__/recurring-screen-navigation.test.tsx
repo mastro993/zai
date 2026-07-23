@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -133,6 +133,8 @@ const documentFixture = {
   },
 };
 
+const provenanceState = vi.hoisted(() => ({ sourceVisible: true }));
+
 vi.mock("@/features/recurring-transactions/commands/recurring-transactions", async () => {
   const { Result } = await import("@praha/byethrow");
   return {
@@ -155,12 +157,46 @@ vi.mock("@/features/recurring-transactions/commands/recurring-transactions", asy
     getRecurringTransactionOccurrences: vi.fn(() =>
       Promise.resolve(Result.succeed(documentFixture.links.occurrences)),
     ),
+    getTransactionRecurringProvenance: vi.fn(() =>
+      Promise.resolve(
+        Result.succeed({
+          occurrence: documentFixture.links.occurrences.items[0],
+          source: provenanceState.sourceVisible
+            ? {
+                id: "rt-1",
+                description: "Monthly rent",
+                lifecycle: "active" as const,
+              }
+            : undefined,
+        }),
+      ),
+    ),
     getRecurringProcessingStatus: vi.fn(() =>
       Promise.resolve(Result.succeed({ status: "idle" as const })),
     ),
     createRecurringTransaction: vi.fn(() =>
       Promise.resolve(Result.succeed({ outcome: "succeeded", document: documentFixture })),
     ),
+  };
+});
+
+vi.mock("@/features/transactions/commands/transactions", async () => {
+  const { Result } = await import("@praha/byethrow");
+  return {
+    getTransaction: vi.fn(() =>
+      Promise.resolve(
+        Result.succeed({
+          id: "txn-1",
+          description: "Monthly rent",
+          amount: 120000,
+          transactionDate: "2026-08-01T09:00:00",
+          transactionType: "expense",
+          transactionCategoryId: null,
+          notes: null,
+        }),
+      ),
+    ),
+    updateTransaction: vi.fn(),
   };
 });
 
@@ -232,6 +268,7 @@ describe("recurring screen navigation", () => {
 
   afterEach(() => {
     cleanup();
+    provenanceState.sourceVisible = true;
   });
 
   it("shows the occurrence-card feed and create control", async () => {
@@ -264,5 +301,34 @@ describe("recurring screen navigation", () => {
       screen.getByRole("link", { name: "Open recurring source for Monthly rent" }),
     ).toBeTruthy();
     expect(screen.getByText("Back to feed")).toBeTruthy();
+  });
+
+  it("opens exact occurrence transaction and links back to its source", async () => {
+    const router = await renderPath("/cash-flow/recurring/rt-1");
+    const occurrenceLink = screen.getByRole("link", {
+      name: "Open adopted transaction for occurrence 1 of Monthly rent",
+    });
+
+    expect((occurrenceLink as HTMLAnchorElement).getAttribute("href")).toBe(
+      "/cash-flow/transactions/txn-1",
+    );
+    fireEvent.click(occurrenceLink);
+
+    expect(await screen.findByRole("heading", { name: "Monthly rent" })).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/cash-flow/transactions/txn-1");
+    expect(screen.getByRole("link", { name: "Open recurring source Monthly rent" })).toBeTruthy();
+
+    await router.history.back();
+    expect(await screen.findByRole("heading", { name: "Monthly rent" })).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/cash-flow/recurring/rt-1");
+  });
+
+  it("does not expose a tombstoned source from retained transaction provenance", async () => {
+    provenanceState.sourceVisible = false;
+    await renderPath("/cash-flow/transactions/txn-1");
+
+    expect(await screen.findByRole("heading", { name: "Monthly rent" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Open recurring source/ })).toBeNull();
+    expect(screen.queryByText("rt-1")).toBeNull();
   });
 });

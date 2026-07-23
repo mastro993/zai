@@ -19,7 +19,7 @@ async function openRecurringDocument(page: Page, description: string) {
 }
 
 async function waitForLinkedOccurrence(page: Page) {
-  const links = page.getByRole("link", { name: /Open transactions list for occurrence/ });
+  const links = page.getByRole("link", { name: /Open (generated|adopted) transaction for occurrence/ });
   await expect
     .poll(
       async () => {
@@ -34,7 +34,7 @@ async function waitForLinkedOccurrence(page: Page) {
   return links.first();
 }
 
-async function confirmLifecycle(page: Page, action: "Pause" | "Resume" | "Stop") {
+async function confirmLifecycle(page: Page, action: "Pause" | "Resume" | "Stop" | "Delete") {
   await page.getByRole("button", { name: action, exact: true }).click();
   const dialog = page.getByRole("dialog", { name: new RegExp(`${action} this recurring`) });
   await dialog.getByRole("button", { name: action, exact: true }).click();
@@ -82,8 +82,30 @@ test("web recurring journey persists generated links, edits, lifecycle, and navi
   await expect(page.getByText("Stopped", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit description" })).toBeVisible();
 
+  const generatedTransactionPath = await generatedLink.getAttribute("href");
+  expect(generatedTransactionPath).toMatch(/^\/cash-flow\/transactions\/[^/]+$/);
   await generatedLink.click();
-  await expect(page).toHaveURL(/\/cash-flow\/transactions\/?$/);
+  await expect(page).toHaveURL(new RegExp(`${generatedTransactionPath}$`));
+  await expect(page.getByRole("heading", { name: description })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: `Open recurring source ${description}` }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: description })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: `Open recurring source ${description}` }),
+  ).toBeVisible();
+  const generatedTransactionUrl = page.url();
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: description })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: description })).toBeVisible();
+  await confirmLifecycle(page, "Delete");
+  await expect(page).toHaveURL(/\/cash-flow\/recurring\/?$/);
+
+  await page.goto(generatedTransactionUrl);
+  await expect(page.getByRole("heading", { name: description })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Open recurring source/ })).toHaveCount(0);
 });
 
 test("web adoption previews catch-up and preserves adopted provenance", async ({
@@ -118,11 +140,62 @@ test("web adoption previews catch-up and preserves adopted provenance", async ({
 
   await page.goto("/cash-flow/recurring");
   await openRecurringDocument(page, description);
-  const adoptedLink = await waitForLinkedOccurrence(page);
+  const adoptedLink = page.getByRole("link", { name: /Open adopted transaction for occurrence/ });
+  await expect(adoptedLink).toHaveCount(1);
   await expect(page.getByText("Adopted").first()).toBeVisible();
   await expect(adoptedLink).toBeVisible();
+  await adoptedLink.click();
+  await expect(page).toHaveURL(new RegExp(`/cash-flow/transactions/${transactionId}$`));
+  await expect(
+    page.getByRole("link", { name: `Open recurring source ${description}` }),
+  ).toBeVisible();
+  const adoptedTransactionUrl = page.url();
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: description })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: description })).toBeVisible();
+  await confirmLifecycle(page, "Delete");
+  await expect(page).toHaveURL(/\/cash-flow\/recurring\/?$/);
+  await page.goto(adoptedTransactionUrl);
+  await expect(page.getByRole("heading", { name: description })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Open recurring source/ })).toHaveCount(0);
+});
+
+test("web completed provenance remains exact and navigable", async ({ page }, testInfo) => {
+  const suffix = `${testInfo.repeatEachIndex}-${testInfo.retry}`;
+  const transactionId = `e2e-completed-transaction-${suffix}`;
+  const description = `E2E completed transaction ${suffix}`;
+  const seed = await page.request.post(`${apiOrigin}/api/cash-flow/transactions`, {
+    data: {
+      id: transactionId,
+      description,
+      amount: 5000,
+      transactionDate: localDateTimeDaysAgo(30),
+      transactionType: "expense",
+      transactionCategoryId: null,
+      notes: null,
+    },
+  });
+  expect(seed.ok()).toBeTruthy();
+
+  await page.goto("/cash-flow/transactions");
+  await page.getByRole("button", { name: `Adopt ${description} as recurring` }).click();
+  const drawer = page.getByRole("dialog", { name: "Adopt as recurring" });
+  await drawer.getByRole("button", { name: "day", exact: true }).click();
+  await drawer.getByRole("button", { name: "Finite", exact: true }).click();
+  await drawer.getByLabel("Number of occurrences").fill("1");
+  await drawer.getByRole("button", { name: "Confirm adoption" }).click();
+
+  await page.goto("/cash-flow/recurring");
+  await openRecurringDocument(page, description);
+  await expect(page.getByText("Completed", { exact: true }).first()).toBeVisible();
+  const completedLink = page.getByRole("link", { name: /Open adopted transaction for occurrence/ });
+  await expect(completedLink).toHaveCount(1);
+  await completedLink.click();
+  await expect(page).toHaveURL(new RegExp(`/cash-flow/transactions/${transactionId}$`));
+  await expect(
+    page.getByRole("link", { name: `Open recurring source ${description}` }),
+  ).toBeVisible();
 });
 
 test("web forecast board exposes a keyboard-operable empty state", async ({ page }) => {
