@@ -12,8 +12,6 @@ import {
   executeRecurringBulk,
   createRecurringTransaction,
   getMatchingRecurringTransactionIds,
-  getRecurringProcessingStatus,
-  getRecurringTransactions,
   preflightRecurringBulk,
 } from "../commands/recurring-transactions";
 import { RecurringBulkResultDialog } from "../components/recurring-bulk-result-dialog";
@@ -21,7 +19,7 @@ import { RecurringBulkReviewDialog } from "../components/recurring-bulk-review-d
 import { RecurringFormDrawer } from "../components/recurring-form-drawer";
 import { RecurringOccurrenceCard } from "../components/recurring-occurrence-card";
 import { RecurringSelectionBar } from "../components/recurring-selection-bar";
-import { useRecurringProcessingLiveEvents } from "../hooks/use-recurring-processing-live-events";
+import { useRecurringFeedReconciliation } from "../hooks/use-recurring-feed-reconciliation";
 import { useRecurringSelectionContext } from "../hooks/recurring-selection-context";
 import {
   getPageCheckboxState,
@@ -58,11 +56,8 @@ export function RecurringScreen({
   categories,
 }: RecurringScreenProps) {
   const createButtonRef = useRef<HTMLButtonElement>(null);
-  const [items, setItems] = useState(initialItems);
-  const [nextCursor, setNextCursor] = useState(initialNextCursor);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [feedError, setFeedError] = useState<string>();
   const [bulkError, setBulkError] = useState<string>();
   const [isBulkBusy, setIsBulkBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState<RecurringBulkAction | null>(null);
@@ -72,6 +67,16 @@ export function RecurringScreen({
   const [resultOpen, setResultOpen] = useState(false);
 
   const selection = useRecurringSelectionContext();
+  const {
+    items,
+    nextCursor,
+    feedError,
+    reconciliationError,
+    subscriptionError,
+    refreshFeed,
+    loadMoreFeed,
+    reportReconciliationError,
+  } = useRecurringFeedReconciliation({ initialItems, initialNextCursor, selection });
   const selectableItems = items.map((item) => ({
     id: item.recurringTransaction.id,
     revision: item.recurringTransaction.revision,
@@ -95,59 +100,24 @@ export function RecurringScreen({
       return [{ recurringTransactionId: id, expectedRevision: revision }];
     });
 
-  const refreshFeed = async (): Promise<boolean> => {
-    const result = await getRecurringTransactions();
-    if (Result.isFailure(result)) {
-      setFeedError(result.error.message);
-      return false;
-    }
-    setFeedError(undefined);
-    setItems(result.value.items);
-    setNextCursor(result.value.nextCursor);
-    selection.rememberRevisions(
-      result.value.items.map((item) => ({
-        id: item.recurringTransaction.id,
-        revision: item.recurringTransaction.revision,
-      })),
-    );
-    return true;
-  };
-
-  const reconcileFromDurableState = () => {
-    void Promise.allSettled([getRecurringProcessingStatus(), refreshFeed()]);
-  };
-
-  useRecurringProcessingLiveEvents({
-    onReconcile: reconcileFromDurableState,
-    onReady: reconcileFromDurableState,
-  });
-
   const loadMore = async () => {
     if (!nextCursor || isLoadingMore) {
       return;
     }
     setIsLoadingMore(true);
-    const result = await getRecurringTransactions(50, nextCursor);
-    if (Result.isFailure(result)) {
-      setFeedError(result.error.message);
-      setIsLoadingMore(false);
-      return;
-    }
-    setItems((current) => [...current, ...result.value.items]);
-    setNextCursor(result.value.nextCursor);
-    selection.rememberRevisions(
-      result.value.items.map((item) => ({
-        id: item.recurringTransaction.id,
-        revision: item.recurringTransaction.revision,
-      })),
-    );
+    await loadMoreFeed(nextCursor);
     setIsLoadingMore(false);
   };
 
   const submitCreate = async (values: RecurringFormValues) => {
     const result = await createRecurringTransaction(values);
     if (Result.isSuccess(result)) {
-      await refreshFeed();
+      const refreshed = await refreshFeed();
+      if (!refreshed) {
+        reportReconciliationError(
+          "Recurring transaction created, but feed refresh failed. Retry refresh without repeating creation.",
+        );
+      }
     }
     return result;
   };
@@ -289,9 +259,25 @@ export function RecurringScreen({
           </div>
         ) : null}
 
-        {feedError || bulkError ? (
+        {bulkError ? (
           <p role="alert" className="text-sm text-destructive">
-            {bulkError ?? feedError}
+            {bulkError}
+          </p>
+        ) : null}
+        {feedError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {feedError}
+          </p>
+        ) : null}
+        {reconciliationError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {reconciliationError}
+          </p>
+        ) : null}
+        {subscriptionError ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            Live recurring updates unavailable. Durable state will refresh when the connection
+            recovers or this window regains focus.
           </p>
         ) : null}
 
