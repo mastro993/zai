@@ -114,8 +114,7 @@ export function RecurringScreen({
   };
 
   const reconcileFromDurableState = () => {
-    void getRecurringProcessingStatus();
-    void refreshFeed();
+    void Promise.allSettled([getRecurringProcessingStatus(), refreshFeed()]);
   };
 
   useRecurringProcessingLiveEvents({

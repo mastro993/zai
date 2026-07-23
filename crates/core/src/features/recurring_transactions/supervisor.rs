@@ -127,13 +127,17 @@ impl RecurringProcessingSupervisor {
     }
 
     pub async fn run(self) {
+        let mut wake_received_during_sleep = false;
         loop {
             if self.handle.is_shutdown() {
                 self.publish_shutdown();
                 break;
             }
 
-            self.coalesce_wakes().await;
+            if !self.coalesce_wakes(wake_received_during_sleep).await {
+                self.publish_shutdown();
+                break;
+            }
             if self.handle.is_shutdown() {
                 self.publish_shutdown();
                 break;
@@ -148,7 +152,7 @@ impl RecurringProcessingSupervisor {
             match finish {
                 RecurringProcessingFinishState::TransientlyDelayed => {
                     self.set_status(RecurringProcessingStatus::Delayed);
-                    self.sleep_or_wake(TRANSIENT_DELAY_REARM).await;
+                    wake_received_during_sleep = self.sleep_or_wake(TRANSIENT_DELAY_REARM).await;
                 }
                 RecurringProcessingFinishState::CaughtUp
                 | RecurringProcessingFinishState::Parked
@@ -156,30 +160,33 @@ impl RecurringProcessingSupervisor {
                 | RecurringProcessingFinishState::BudgetExhausted => {
                     self.set_status(RecurringProcessingStatus::Idle);
                     let wait = self.next_wait_duration().await;
-                    self.sleep_or_wake(wait).await;
+                    wake_received_during_sleep = self.sleep_or_wake(wait).await;
                 }
                 RecurringProcessingFinishState::ShuttingDown => break,
             }
         }
     }
 
-    async fn coalesce_wakes(&self) {
-        tokio::select! {
-            biased;
-            _ = self.handle.shutdown_notify.notified(), if self.handle.is_shutdown() => return,
-            _ = self.handle.wake.notified() => {}
+    async fn coalesce_wakes(&self, wake_already_received: bool) -> bool {
+        if !wake_already_received {
+            tokio::select! {
+                biased;
+                _ = self.handle.shutdown_notify.notified(), if self.handle.is_shutdown() => return false,
+                _ = self.handle.wake.notified() => {}
+            }
         }
         let deadline = tokio::time::Instant::now() + WAKE_COALESCE_WINDOW;
         loop {
             if self.handle.is_shutdown() {
-                return;
+                return false;
             }
             tokio::select! {
                 _ = self.handle.wake.notified() => {}
                 _ = tokio::time::sleep_until(deadline) => break,
-                _ = self.handle.shutdown_notify.notified(), if self.handle.is_shutdown() => return,
+                _ = self.handle.shutdown_notify.notified(), if self.handle.is_shutdown() => return false,
             }
         }
+        true
     }
 
     async fn execute_run(&self) -> RecurringProcessingFinishState {
@@ -332,11 +339,11 @@ impl RecurringProcessingSupervisor {
         }
     }
 
-    async fn sleep_or_wake(&self, wait: Duration) {
+    async fn sleep_or_wake(&self, wait: Duration) -> bool {
         tokio::select! {
-            _ = tokio::time::sleep(wait) => {}
-            _ = self.handle.wake.notified() => {}
-            _ = self.handle.shutdown_notify.notified(), if self.handle.is_shutdown() => {}
+            _ = tokio::time::sleep(wait) => false,
+            _ = self.handle.wake.notified() => true,
+            _ = self.handle.shutdown_notify.notified(), if self.handle.is_shutdown() => false,
         }
     }
 

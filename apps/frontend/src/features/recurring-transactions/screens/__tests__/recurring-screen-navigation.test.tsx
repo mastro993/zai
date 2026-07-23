@@ -94,6 +94,9 @@ vi.mock("@/features/recurring-transactions/commands/recurring-transactions", asy
     getRecurringTransactionOccurrences: vi.fn(() =>
       Promise.resolve(Result.succeed(documentFixture.links.occurrences)),
     ),
+    getRecurringProcessingStatus: vi.fn(() =>
+      Promise.resolve(Result.succeed({ status: "idle" as const })),
+    ),
     createRecurringTransaction: vi.fn(() =>
       Promise.resolve(Result.succeed({ outcome: "succeeded", document: documentFixture })),
     ),

@@ -166,6 +166,34 @@ async fn startup_run_publishes_started_and_finished_without_client() {
 }
 
 #[tokio::test(start_paused = true)]
+async fn wake_after_idle_run_starts_processing_without_waiting_for_next_clock_tick() {
+    let bus = RecurringProcessingEventBus::with_capacity(16);
+    let mut receiver = bus.subscribe();
+    let processor = Arc::new(ScriptedProcessor {
+        outcomes: Mutex::new(vec![caught_up(), caught_up()]),
+        calls: AtomicU32::new(0),
+    });
+    let supervisor = RecurringProcessingSupervisor::new(
+        processor.clone(),
+        Arc::new(ManualClock::new(local(2026, 1, 1, 9, 0))),
+        Arc::new(Heads::default()),
+        bus,
+        Arc::new(DelayAlerts::default()),
+    );
+    let handle = supervisor.spawn();
+    tokio::time::advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    receive_finished(&mut receiver).await;
+    tokio::task::yield_now().await;
+
+    handle.request_wake();
+    tokio::time::advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    receive_finished(&mut receiver).await;
+
+    assert_eq!(processor.calls.load(Ordering::SeqCst), 2);
+    handle.request_shutdown();
+}
+
+#[tokio::test(start_paused = true)]
 async fn redundant_wakes_coalesce_within_window() {
     let bus = RecurringProcessingEventBus::with_capacity(16);
     let mut receiver = bus.subscribe();
@@ -269,4 +297,14 @@ async fn shutdown_cancels_between_commits() {
         .expect("join timeout");
     // May observe Finished Cancelled or ShuttingDown depending on race; ensure no hang.
     let _ = receiver.try_recv();
+}
+
+async fn receive_finished(receiver: &mut tokio::sync::broadcast::Receiver<String>) {
+    loop {
+        let payload = receiver.recv().await.expect("event");
+        let event = deserialize_recurring_processing_event(&payload).expect("decode");
+        if matches!(event, RecurringProcessingEvent::Finished { .. }) {
+            break;
+        }
+    }
 }
