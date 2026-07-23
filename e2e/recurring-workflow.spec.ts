@@ -80,7 +80,7 @@ test("web recurring journey persists generated links, edits, lifecycle, and navi
   await expect(page.getByText("Active", { exact: true }).first()).toBeVisible();
   await confirmLifecycle(page, "Stop");
   await expect(page.getByText("Stopped", { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Rename" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit description" })).toBeVisible();
 
   await generatedLink.click();
   await expect(page).toHaveURL(/\/cash-flow\/transactions\/?$/);
