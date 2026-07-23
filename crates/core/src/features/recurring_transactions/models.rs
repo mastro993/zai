@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
+use super::repair::RecurringRepairField;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RecurringLifecycle {
@@ -167,7 +169,7 @@ pub struct RecurringGenerationFailure {
     pub ordinal: i32,
     pub error_code: String,
     pub cause_category: String,
-    pub repair_field_key: Option<String>,
+    pub repair_field_key: Option<RecurringRepairField>,
     pub correlation_id: String,
     pub failed_scheduled_local: NaiveDateTime,
     pub first_failed_at: NaiveDateTime,

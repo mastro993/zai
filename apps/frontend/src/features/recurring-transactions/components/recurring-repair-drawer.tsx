@@ -36,6 +36,7 @@ import {
 import { formatLocalDateTime } from "../lib/recurring";
 import type {
   RecurringRepairPreview,
+  RecurringRepairField,
   RecurringTransactionDocument,
 } from "../types/recurring-transaction";
 
@@ -68,7 +69,7 @@ const repairFormSchema = z.object({
 
 interface RecurringRepairDrawerProps {
   document: RecurringTransactionDocument;
-  repairFieldKey: string;
+  repairFieldKey: RecurringRepairField;
   categories: Array<TransactionCategory>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -94,7 +95,7 @@ export function RecurringRepairDrawer({
   returnFocusRef,
 }: RecurringRepairDrawerProps) {
   const unresolved = document.failures.unresolved;
-  const isCategory = repairFieldKey === "transaction_category_id";
+  const isCategory = repairFieldKey === "transactionCategoryId";
   const [preview, setPreview] = useState<RecurringRepairPreview>();
   const [prepared, setPrepared] = useState<PreparedTemplateValues>();
   const [isConfirming, setIsConfirming] = useState(false);

@@ -37,6 +37,7 @@ export {
   type GenerationFailureDiagnostics,
   type RecurringFailurePage,
   type RecurringGenerationFailure,
+  type RecurringRepairField,
   type RecurringRepairPreview,
 } from "./recurring-failure";
 

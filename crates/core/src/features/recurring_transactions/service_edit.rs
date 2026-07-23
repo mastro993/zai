@@ -38,7 +38,7 @@ impl RecurringTransactionsService {
             .await?
             .is_some();
         let config_allowed = configuration_edit_allowed(recurring.lifecycle, generation_blocked);
-        let rename_allowed = description_edit_allowed(recurring.lifecycle);
+        let description_edit_allowed_for_lifecycle = description_edit_allowed(recurring.lifecycle);
 
         let open_schedule = self.require_open_schedule(&recurring.id).await?;
         let open_template = self.require_open_template(&recurring.id).await?;
@@ -86,10 +86,12 @@ impl RecurringTransactionsService {
         let apply_template = if config_allowed {
             template_changed
         } else {
-            description_changed && rename_allowed && !config_changed
+            description_changed && description_edit_allowed_for_lifecycle && !config_changed
         };
 
-        if (config_changed && !config_allowed) || (description_changed && !rename_allowed) {
+        if (config_changed && !config_allowed)
+            || (description_changed && !description_edit_allowed_for_lifecycle)
+        {
             let reason = if generation_blocked
                 && matches!(
                     recurring.lifecycle,

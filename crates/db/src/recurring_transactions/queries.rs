@@ -335,7 +335,7 @@ pub fn list_failure_history(
     let mut last_row: Option<RecurringGenerationFailureRow> = None;
     for row in rows.into_iter().take(limit as usize) {
         last_row = Some(row.clone());
-        items.push(build_generation_failure(row));
+        items.push(build_generation_failure(row)?);
     }
 
     let next_cursor = if has_more {
@@ -365,7 +365,7 @@ pub fn list_unresolved_failures(
         .select(RecurringGenerationFailureRow::as_select())
         .load::<RecurringGenerationFailureRow>(conn)
         .into_core()?;
-    Ok(rows.into_iter().map(build_generation_failure).collect())
+    rows.into_iter().map(build_generation_failure).collect()
 }
 
 pub fn find_unresolved_failure(
@@ -381,7 +381,7 @@ pub fn find_unresolved_failure(
         .first::<RecurringGenerationFailureRow>(conn)
         .optional()
         .into_core()?;
-    Ok(row.map(build_generation_failure))
+    row.map(build_generation_failure).transpose()
 }
 
 pub fn get_occurrence_head(

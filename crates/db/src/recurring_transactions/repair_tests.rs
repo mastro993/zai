@@ -5,7 +5,7 @@ use crate::schema::{
 };
 use diesel::prelude::*;
 use zai_core::features::recurring_transactions::{
-    REPAIR_FIELD_AMOUNT, REPAIR_FIELD_CATEGORY, RecurringRecoveryOutcome, RecurringTemplateInput,
+    RecurringRecoveryOutcome, RecurringRepairField, RecurringTemplateInput,
     RecurringTransactionsServiceTrait, RepairRecurringGenerationFailure,
     RetryRecurringGenerationFailure, UNCHANGED_REPAIR_REQUIRED,
 };
@@ -30,13 +30,13 @@ async fn seed_open_failure(
     repo: &super::RecurringTransactionsRepository,
     recurring_id: &str,
     schedule_id: &str,
-    repair_field_key: Option<&str>,
+    repair_field_key: Option<RecurringRepairField>,
     observed: chrono::NaiveDateTime,
 ) {
     let writer = repo.writer().clone();
     let recurring_id = recurring_id.to_string();
     let schedule_id = schedule_id.to_string();
-    let repair_field_key = repair_field_key.map(str::to_string);
+    let repair_field_key = repair_field_key.map(RecurringRepairField::storage_key);
     writer
         .exec(move |conn| {
             diesel::sql_query(
@@ -78,7 +78,7 @@ async fn retry_now_rejects_when_known_repair_required() {
         &repo,
         "rt-repair",
         &schedule_id,
-        Some(REPAIR_FIELD_CATEGORY),
+        Some(RecurringRepairField::TransactionCategoryId),
         observed,
     )
     .await;
@@ -107,7 +107,7 @@ async fn repair_marks_failure_and_keeps_template_change_after_retry_wake() {
         &repo,
         "rt-repair-amt",
         &schedule_id,
-        Some(REPAIR_FIELD_AMOUNT),
+        Some(RecurringRepairField::Amount),
         observed,
     )
     .await;
@@ -117,7 +117,7 @@ async fn repair_marks_failure_and_keeps_template_change_after_retry_wake() {
         .repair_and_retry(RepairRecurringGenerationFailure {
             recurring_transaction_id: "rt-repair-amt".into(),
             expected_revision: before.recurring_transaction.revision,
-            repair_field_key: REPAIR_FIELD_AMOUNT.into(),
+            repair_field_key: RecurringRepairField::Amount,
             template: RecurringTemplateInput {
                 description: before.template.description.clone(),
                 amount: 2500,
@@ -180,7 +180,7 @@ async fn document_exposes_waiting_count_for_blocked_source() {
         &repo,
         "rt-wait",
         &schedule_id,
-        Some(REPAIR_FIELD_AMOUNT),
+        Some(RecurringRepairField::Amount),
         observed,
     )
     .await;
@@ -199,7 +199,7 @@ async fn category_repair_rejects_missing_category() {
         &repo,
         "rt-cat",
         &schedule_id,
-        Some(REPAIR_FIELD_CATEGORY),
+        Some(RecurringRepairField::TransactionCategoryId),
         observed,
     )
     .await;
@@ -208,7 +208,7 @@ async fn category_repair_rejects_missing_category() {
         .repair_and_retry(RepairRecurringGenerationFailure {
             recurring_transaction_id: "rt-cat".into(),
             expected_revision: before.recurring_transaction.revision,
-            repair_field_key: REPAIR_FIELD_CATEGORY.into(),
+            repair_field_key: RecurringRepairField::TransactionCategoryId,
             template: RecurringTemplateInput {
                 description: before.template.description.clone(),
                 amount: before.template.amount,

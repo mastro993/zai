@@ -1,5 +1,6 @@
 use super::*;
 use crate::features::budgets::models::{BudgetCadence, BudgetMeasurementMode, BudgetStatus};
+use crate::features::recurring_transactions::RecurringRepairField;
 use crate::features::recurring_transactions::models::{
     RecurringGenerationFailure, ScheduleIntervalUnit, ScheduleRule,
 };
@@ -328,7 +329,7 @@ fn blocked_source_isolates_without_erasing_valid_contributions() {
         ordinal: 1,
         error_code: "invalidCategory".to_string(),
         cause_category: "template".to_string(),
-        repair_field_key: Some("transactionCategoryId".to_string()),
+        repair_field_key: Some(RecurringRepairField::TransactionCategoryId),
         correlation_id: "corr".to_string(),
         failed_scheduled_local: dt(2026, 1, 15, 9, 0),
         first_failed_at: dt(2026, 1, 1, 0, 0),

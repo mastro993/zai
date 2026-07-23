@@ -11,15 +11,36 @@ pub const UNCHANGED_REPAIR_REQUIRED: &str = "repair_required";
 pub const UNCHANGED_REPAIR_NOT_APPLICABLE: &str = "repair_not_applicable";
 pub const UNCHANGED_ALREADY_REPAIRED: &str = "already_repaired";
 
-pub const REPAIR_FIELD_CATEGORY: &str = "transaction_category_id";
-pub const REPAIR_FIELD_AMOUNT: &str = "amount";
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RecurringRepairField {
+    Amount,
+    TransactionCategoryId,
+}
+
+impl RecurringRepairField {
+    pub const fn storage_key(self) -> &'static str {
+        match self {
+            Self::Amount => "amount",
+            Self::TransactionCategoryId => "transactionCategoryId",
+        }
+    }
+
+    pub fn from_storage_key(value: &str) -> Result<Self> {
+        match value {
+            "amount" => Ok(Self::Amount),
+            "transactionCategoryId" | "transaction_category_id" => Ok(Self::TransactionCategoryId),
+            _ => Err(Error::InvalidRecurringRepairField(value.to_string())),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RepairRecurringGenerationFailure {
     pub recurring_transaction_id: String,
     pub expected_revision: i32,
-    pub repair_field_key: String,
+    pub repair_field_key: RecurringRepairField,
     pub template: RecurringTemplateInput,
 }
 
@@ -34,14 +55,14 @@ pub struct RetryRecurringGenerationFailure {
 #[serde(rename_all = "camelCase")]
 pub struct PreviewRecurringGenerationRepair {
     pub recurring_transaction_id: String,
-    pub repair_field_key: String,
+    pub repair_field_key: RecurringRepairField,
     pub template: RecurringTemplateInput,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecurringRepairPreview {
-    pub repair_field_key: String,
+    pub repair_field_key: RecurringRepairField,
     pub affected_unfulfilled_segment_count: i32,
     pub includes_future_template: bool,
     pub next_action: RecurringRecoveryAction,
@@ -99,10 +120,6 @@ impl RepairRecurringGenerationFailure {
     pub fn validate_template(&self) -> Result<()> {
         self.template.validate()
     }
-
-    pub fn validate_field_key(&self) -> Result<()> {
-        validate_repairable_field_key(&self.repair_field_key)
-    }
 }
 
 impl RetryRecurringGenerationFailure {
@@ -115,23 +132,12 @@ impl PreviewRecurringGenerationRepair {
     pub fn validate_template(&self) -> Result<()> {
         self.template.validate()
     }
-
-    pub fn validate_field_key(&self) -> Result<()> {
-        validate_repairable_field_key(&self.repair_field_key)
-    }
 }
 
-pub fn validate_repairable_field_key(repair_field_key: &str) -> Result<()> {
-    match repair_field_key {
-        REPAIR_FIELD_CATEGORY | REPAIR_FIELD_AMOUNT => Ok(()),
-        _ => Err(Error::InvalidData(format!(
-            "Unsupported repair field: {repair_field_key}"
-        ))),
-    }
-}
-
-pub fn recovery_action_for_failure(repair_field_key: Option<&str>) -> RecurringRecoveryAction {
-    if repair_field_key.is_some_and(|key| validate_repairable_field_key(key).is_ok()) {
+pub fn recovery_action_for_failure(
+    repair_field_key: Option<RecurringRepairField>,
+) -> RecurringRecoveryAction {
+    if repair_field_key.is_some() {
         RecurringRecoveryAction::Repair
     } else {
         RecurringRecoveryAction::Retry
@@ -213,22 +219,28 @@ mod tests {
     #[test]
     fn recovery_action_repair_when_field_known() {
         assert_eq!(
-            recovery_action_for_failure(Some(REPAIR_FIELD_CATEGORY)),
+            recovery_action_for_failure(Some(RecurringRepairField::TransactionCategoryId)),
             RecurringRecoveryAction::Repair
         );
         assert_eq!(
             recovery_action_for_failure(None),
             RecurringRecoveryAction::Retry
         );
-        assert_eq!(
-            recovery_action_for_failure(Some("template_revision_id")),
-            RecurringRecoveryAction::Retry
-        );
+        assert!(matches!(
+            RecurringRepairField::from_storage_key("unknown"),
+            Err(Error::InvalidRecurringRepairField(value)) if value == "unknown"
+        ));
     }
 
     #[test]
-    fn repair_rejects_blank_unsupported_field() {
-        assert!(validate_repairable_field_key("notes").is_err());
-        assert!(validate_repairable_field_key(REPAIR_FIELD_AMOUNT).is_ok());
+    fn repair_field_serializes_with_canonical_wire_values() {
+        assert_eq!(
+            serde_json::to_string(&RecurringRepairField::TransactionCategoryId).unwrap(),
+            "\"transactionCategoryId\""
+        );
+        assert_eq!(
+            RecurringRepairField::from_storage_key("transaction_category_id").unwrap(),
+            RecurringRepairField::TransactionCategoryId
+        );
     }
 }

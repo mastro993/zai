@@ -14,6 +14,7 @@ import {
 import { formatLocalDateTime } from "../lib/recurring";
 import type {
   RecurringGenerationFailure,
+  RecurringRepairField,
   RecurringTransactionDocument,
 } from "../types/recurring-transaction";
 import { RecurringRepairDrawer } from "./recurring-repair-drawer";
@@ -31,16 +32,15 @@ const causeLabel = (causeCategory: string): string => {
   }
 };
 
-const fieldLabel = (repairFieldKey: string | null | undefined): string => {
+const fieldLabel = (repairFieldKey: RecurringRepairField | null | undefined): string => {
+  if (!repairFieldKey) {
+    return "Not repairable";
+  }
   switch (repairFieldKey) {
-    case "transaction_category_id":
+    case "transactionCategoryId":
       return "Category";
     case "amount":
       return "Amount";
-    case "template_revision_id":
-      return "Template revision";
-    default:
-      return "Unknown field";
   }
 };
 

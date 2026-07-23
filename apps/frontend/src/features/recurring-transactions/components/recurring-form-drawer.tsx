@@ -129,7 +129,7 @@ export function RecurringFormDrawer({
             {configLocked ? (
               <FieldDescription>
                 Schedule, template amount/type/category/notes, and count are locked while this
-                source is stopped, completed, or needs attention. Description rename remains
+                source is stopped, completed, or needs attention. Description editing remains
                 available when the source is still visible.
               </FieldDescription>
             ) : null}

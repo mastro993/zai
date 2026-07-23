@@ -4,8 +4,8 @@ use super::lifecycle::{
 };
 use super::models::{RecurringLifecycle, ScheduleRule};
 use super::repair::{
-    RecurringRecoveryAction, UNCHANGED_NO_OPEN_FAILURE, UNCHANGED_REPAIR_REQUIRED,
-    recovery_action_for_failure,
+    RecurringRecoveryAction, RecurringRepairField, UNCHANGED_NO_OPEN_FAILURE,
+    UNCHANGED_REPAIR_REQUIRED, recovery_action_for_failure,
 };
 use super::schedule::scheduled_local_at;
 use crate::{Error, Result};
@@ -195,7 +195,7 @@ pub fn classify_lifecycle_eligibility(
 
 pub fn classify_retry_eligibility(
     has_open_failure: bool,
-    repair_field_key: Option<&str>,
+    repair_field_key: Option<RecurringRepairField>,
 ) -> BulkEligibility {
     if !has_open_failure {
         return BulkEligibility::Unchanged {
@@ -331,7 +331,7 @@ mod tests {
             BulkEligibility::Eligible
         );
         assert!(matches!(
-            classify_retry_eligibility(true, Some("transaction_category_id")),
+            classify_retry_eligibility(true, Some(RecurringRepairField::TransactionCategoryId),),
             BulkEligibility::Unchanged {
                 reason: UNCHANGED_REPAIR_REQUIRED,
                 next_action: Some(NEXT_ACTION_REPAIR),

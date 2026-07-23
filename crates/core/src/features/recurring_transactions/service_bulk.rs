@@ -83,7 +83,7 @@ impl RecurringTransactionsService {
                     generation_blocked,
                     unresolved
                         .as_ref()
-                        .and_then(|failure| failure.repair_field_key.as_deref()),
+                        .and_then(|failure| failure.repair_field_key),
                 )
             } else {
                 let command = request
@@ -275,7 +275,7 @@ impl RecurringTransactionsService {
                             .failures
                             .unresolved
                             .as_ref()
-                            .and_then(|failure| failure.repair_field_key.as_deref()),
+                            .and_then(|failure| failure.repair_field_key),
                     ) {
                         RecurringRecoveryAction::Repair => Some(NEXT_ACTION_REPAIR.to_string()),
                         RecurringRecoveryAction::Retry => Some(NEXT_ACTION_RETRY.to_string()),

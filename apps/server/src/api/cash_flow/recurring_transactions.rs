@@ -311,7 +311,7 @@ async fn list_failure_history(
 #[serde(rename_all = "camelCase")]
 struct RepairBody {
     expected_revision: i32,
-    repair_field_key: String,
+    repair_field_key: zai_core::features::recurring_transactions::RecurringRepairField,
     template: zai_core::features::recurring_transactions::RecurringTemplateInput,
 }
 
