@@ -8,11 +8,11 @@ use zai_core::features::recurring_transactions::{
     BudgetProjectionResult, GenerationFailureDiagnostics, NewRecurringTransaction,
     PreviewRecurringGenerationRepair, RecurringAdoptOutcome, RecurringBulkExecuteResult,
     RecurringBulkPreflight, RecurringBulkRequest, RecurringCreateOutcome, RecurringFailurePage,
-    RecurringFeedResult, RecurringLifecycleOutcome, RecurringLifecycleUpdate, RecurringMatchingIds,
-    RecurringMutationOutcome, RecurringOccurrencePage, RecurringProcessingStatusView,
-    RecurringRecoveryOutcome, RecurringRepairPreview, RecurringTransactionDocument,
-    RepairRecurringGenerationFailure, RetryRecurringGenerationFailure,
-    TransactionRecurringProvenance, UpdateRecurringTransaction,
+    RecurringFeedFilters, RecurringFeedResult, RecurringLifecycleOutcome, RecurringLifecycleUpdate,
+    RecurringMatchingIds, RecurringMutationOutcome, RecurringOccurrencePage,
+    RecurringProcessingStatusView, RecurringRecoveryOutcome, RecurringRepairPreview,
+    RecurringTransactionDocument, RepairRecurringGenerationFailure,
+    RetryRecurringGenerationFailure, TransactionRecurringProvenance, UpdateRecurringTransaction,
 };
 
 use super::{CommandResult, command_error};
@@ -21,12 +21,13 @@ use super::{CommandResult, command_error};
 pub async fn get_recurring_transactions(
     limit: Option<i64>,
     cursor: Option<String>,
+    filters: Option<RecurringFeedFilters>,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringFeedResult> {
     debug!("Getting recurring transactions feed...");
     state
         .recurring_transactions_service()
-        .list_feed(limit, cursor)
+        .list_feed_filtered(limit, cursor, filters.unwrap_or_default())
         .await
         .map_err(|error| command_error("Failed to load recurring transactions", error))
 }
@@ -307,12 +308,13 @@ pub async fn get_recurring_budget_projections(
 
 #[tauri::command]
 pub async fn get_matching_recurring_transaction_ids(
+    filters: Option<RecurringFeedFilters>,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringMatchingIds> {
     debug!("Resolving matching recurring transaction ids...");
     state
         .recurring_transactions_service()
-        .list_matching_ids()
+        .list_matching_ids_filtered(filters.unwrap_or_default())
         .await
         .map_err(|error| command_error("Failed to resolve matching recurring ids", error))
 }

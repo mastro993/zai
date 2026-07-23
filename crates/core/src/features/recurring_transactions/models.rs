@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
+use crate::{Error, Result};
+
 use super::repair::RecurringRepairField;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -214,6 +216,60 @@ pub struct RecurringTemplateRevision {
 pub struct RecurringFeedPage {
     pub items: Vec<RecurringFeedEntry>,
     pub next_cursor: Option<String>,
+}
+
+pub const MAX_FEED_SEARCH_LENGTH: usize = 200;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct RecurringFeedFilters {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lifecycle: Option<RecurringLifecycle>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub needs_attention: Option<bool>,
+}
+
+impl RecurringFeedFilters {
+    pub fn normalized(&self) -> Result<Self> {
+        let search = self
+            .search
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_lowercase);
+        if search
+            .as_deref()
+            .is_some_and(|value| value.chars().count() > MAX_FEED_SEARCH_LENGTH)
+        {
+            return Err(Error::InvalidData(format!(
+                "Recurring feed search cannot exceed {MAX_FEED_SEARCH_LENGTH} characters"
+            )));
+        }
+        Ok(Self {
+            search,
+            lifecycle: self.lifecycle,
+            needs_attention: self.needs_attention,
+        })
+    }
+
+    pub fn fingerprint(&self) -> String {
+        let canonical = format!(
+            "search={:?};lifecycle={};needsAttention={:?}",
+            self.search.as_deref().unwrap_or_default(),
+            self.lifecycle
+                .map(RecurringLifecycle::as_str)
+                .unwrap_or_default(),
+            self.needs_attention
+        );
+        let mut hash = 0xcbf29ce484222325_u64;
+        for byte in canonical.as_bytes() {
+            hash ^= u64::from(*byte);
+            hash = hash.wrapping_mul(0x100000001b3_u64);
+        }
+        format!("v1-{hash:016x}")
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

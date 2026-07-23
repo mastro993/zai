@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildRecurringBulkItems,
   getPageCheckboxState,
   retainAfterPartialSuccess,
   shouldShowSelectAllMatching,
@@ -37,5 +38,11 @@ describe("recurring selection helpers", () => {
       { recurringTransactionId: "c", outcome: "failed" },
     ]);
     expect([...next].toSorted()).toEqual(["b", "c"]);
+  });
+
+  it("builds bulk identities from frozen revisions", () => {
+    expect(
+      buildRecurringBulkItems(new Set(["hidden", "visible"]), new Map([["hidden", 4]])),
+    ).toEqual([{ recurringTransactionId: "hidden", expectedRevision: 4 }]);
   });
 });

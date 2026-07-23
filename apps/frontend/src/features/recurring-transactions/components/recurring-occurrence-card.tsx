@@ -16,10 +16,12 @@ import type { RecurringFeedItem } from "../types/recurring-transaction";
 export function RecurringOccurrenceCard({
   item,
   selected = false,
+  disabled = false,
   onSelectedChange,
 }: {
   item: RecurringFeedItem;
   selected?: boolean;
+  disabled?: boolean;
   onSelectedChange?: (selected: boolean) => void;
 }) {
   const { recurringTransaction, description, nextScheduledLocal, needsAttention } = item;
@@ -41,6 +43,7 @@ export function RecurringOccurrenceCard({
         {onSelectedChange ? (
           <Checkbox
             checked={selected}
+            disabled={disabled}
             onCheckedChange={(value) => onSelectedChange(value === true)}
             aria-label={`Select ${description}`}
             className="mt-1"

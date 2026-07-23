@@ -16,6 +16,7 @@ import {
 } from "../commands/recurring-transactions";
 import { RecurringBulkResultDialog } from "../components/recurring-bulk-result-dialog";
 import { RecurringBulkReviewDialog } from "../components/recurring-bulk-review-dialog";
+import { RecurringFeedFiltersBar } from "../components/recurring-feed-filters";
 import { RecurringFormDrawer } from "../components/recurring-form-drawer";
 import { RecurringOccurrenceCard } from "../components/recurring-occurrence-card";
 import { RecurringSelectionBar } from "../components/recurring-selection-bar";
@@ -23,6 +24,7 @@ import { useRecurringFeedReconciliation } from "../hooks/use-recurring-feed-reco
 import { useRecurringSelectionContext } from "../hooks/recurring-selection-context";
 import {
   getPageCheckboxState,
+  buildRecurringBulkItems,
   retainAfterPartialSuccess,
   shouldShowSelectAllMatching,
 } from "../lib/recurring-selection";
@@ -32,7 +34,11 @@ import type {
   RecurringBulkItem,
   RecurringBulkPreflight,
 } from "../types/recurring-bulk";
-import type { RecurringFeedItem, RecurringFormValues } from "../types/recurring-transaction";
+import type {
+  RecurringFeedFilters,
+  RecurringFeedItem,
+  RecurringFormValues,
+} from "../types/recurring-transaction";
 
 interface RecurringScreenProps {
   initialItems: Array<RecurringFeedItem>;
@@ -58,14 +64,17 @@ export function RecurringScreen({
   const createButtonRef = useRef<HTMLButtonElement>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isFiltering, setIsFiltering] = useState(false);
+  const [feedFilters, setFeedFilters] = useState<RecurringFeedFilters>({});
   const [bulkError, setBulkError] = useState<string>();
   const [isBulkBusy, setIsBulkBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState<RecurringBulkAction | null>(null);
+  const [pendingItems, setPendingItems] = useState<Array<RecurringBulkItem> | null>(null);
   const [preflight, setPreflight] = useState<RecurringBulkPreflight | null>(null);
   const [bulkResult, setBulkResult] = useState<RecurringBulkExecuteResult | null>(null);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
-
+  const filterRequestSequence = useRef(0);
   const selection = useRecurringSelectionContext();
   const {
     items,
@@ -76,7 +85,11 @@ export function RecurringScreen({
     refreshFeed,
     loadMoreFeed,
     reportReconciliationError,
-  } = useRecurringFeedReconciliation({ initialItems, initialNextCursor, selection });
+  } = useRecurringFeedReconciliation({
+    initialItems,
+    initialNextCursor,
+    filters: feedFilters,
+  });
   const selectableItems = items.map((item) => ({
     id: item.recurringTransaction.id,
     revision: item.recurringTransaction.revision,
@@ -85,30 +98,23 @@ export function RecurringScreen({
   const hiddenCount = [...selection.selectedIds].filter(
     (id) => !selectableItems.some((item) => item.id === id),
   ).length;
+  const selectionLocked = isBulkBusy || pendingItems !== null;
+  const hasActiveFeedFilters = Boolean(
+    feedFilters.search || feedFilters.lifecycle || feedFilters.needsAttention !== undefined,
+  );
   const showSelectAllMatching = shouldShowSelectAllMatching(
     pageCheckboxState,
     Boolean(nextCursor) || hiddenCount > 0 || items.length < selection.selectedCount,
     selection.selectAllMatching,
   );
-
-  const selectedItems = (): Array<RecurringBulkItem> =>
-    [...selection.selectedIds].flatMap((id) => {
-      const revision = selection.revisionsById.get(id);
-      if (!revision) {
-        return [];
-      }
-      return [{ recurringTransactionId: id, expectedRevision: revision }];
-    });
-
   const loadMore = async () => {
-    if (!nextCursor || isLoadingMore) {
+    if (!nextCursor || isLoadingMore || isFiltering || selectionLocked || feedError) {
       return;
     }
     setIsLoadingMore(true);
     await loadMoreFeed(nextCursor);
     setIsLoadingMore(false);
   };
-
   const submitCreate = async (values: RecurringFormValues) => {
     const result = await createRecurringTransaction(values);
     if (Result.isSuccess(result)) {
@@ -121,10 +127,9 @@ export function RecurringScreen({
     }
     return result;
   };
-
   const startBulkAction = async (action: RecurringBulkAction) => {
     setBulkError(undefined);
-    const itemsForRequest = selectedItems();
+    const itemsForRequest = buildRecurringBulkItems(selection.selectedIds, selection.revisionsById);
     if (itemsForRequest.length === 0) {
       setBulkError("Selected items are missing revision data. Clear selection and try again.");
       return;
@@ -137,30 +142,30 @@ export function RecurringScreen({
       return;
     }
     setPendingAction(action);
+    setPendingItems(itemsForRequest);
     setPreflight(result.value);
   };
-
   const confirmBulkAction = async () => {
-    if (!pendingAction || !preflight) {
+    if (!pendingAction || !pendingItems || !preflight) {
       return;
     }
     setIsBulkBusy(true);
-    const result = await executeRecurringBulk(pendingAction, selectedItems());
+    const result = await executeRecurringBulk(pendingAction, pendingItems);
     if (Result.isFailure(result)) {
       setIsBulkBusy(false);
       setBulkError(result.error.message);
       setPendingAction(null);
+      setPendingItems(null);
       setPreflight(null);
       return;
     }
-
     const refreshed = await refreshFeed();
     setIsBulkBusy(false);
     setPendingAction(null);
+    setPendingItems(null);
     setPreflight(null);
     setBulkResult(result.value);
     setRefreshFailed(!refreshed);
-
     if (result.value.unchanged === 0 && result.value.failed === 0 && refreshed) {
       selection.clearSelection();
       setBulkResult(null);
@@ -173,10 +178,9 @@ export function RecurringScreen({
     );
     setResultOpen(true);
   };
-
   const selectAllMatching = async () => {
     setIsBulkBusy(true);
-    const result = await getMatchingRecurringTransactionIds();
+    const result = await getMatchingRecurringTransactionIds(feedFilters);
     setIsBulkBusy(false);
     if (Result.isFailure(result)) {
       setBulkError(result.error.message);
@@ -187,14 +191,30 @@ export function RecurringScreen({
         id: item.recurringTransactionId,
         revision: item.expectedRevision,
       })),
+      result.value.fingerprint,
     );
   };
-
+  const changeFeedFilters = async (filters: RecurringFeedFilters) => {
+    const requestId = ++filterRequestSequence.current;
+    setFeedFilters(filters);
+    setIsFiltering(true);
+    const refreshed = await refreshFeed(filters);
+    if (requestId !== filterRequestSequence.current) {
+      return;
+    }
+    setIsFiltering(false);
+    if (!refreshed) {
+      reportReconciliationError(
+        "Recurring filter refresh failed. Existing selection remains unchanged; retry the filter.",
+      );
+    }
+  };
   const renderCard = (item: RecurringFeedItem) => (
     <RecurringOccurrenceCard
       key={item.recurringTransaction.id}
       item={item}
       selected={selection.selectedIds.has(item.recurringTransaction.id)}
+      disabled={selectionLocked}
       onSelectedChange={(selected) =>
         selection.toggleRow(
           {
@@ -223,10 +243,22 @@ export function RecurringScreen({
           </p>
         </div>
 
+        <RecurringFeedFiltersBar
+          filters={feedFilters}
+          disabled={selectionLocked}
+          onChange={changeFeedFilters}
+        />
+        {isFiltering ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            Filtering recurring transactions...
+          </p>
+        ) : null}
+
         <RecurringSelectionBar
           selectedCount={selection.selectedCount}
           hiddenCount={hiddenCount}
-          isBusy={isBulkBusy}
+          frozenFilterFingerprint={selection.frozenFilterFingerprint}
+          isBusy={selectionLocked}
           onAction={startBulkAction}
           onClearSelection={selection.clearSelection}
         />
@@ -237,6 +269,7 @@ export function RecurringScreen({
               <Checkbox
                 checked={pageCheckboxState === "all"}
                 data-indeterminate={pageCheckboxState === "some" ? true : undefined}
+                disabled={selectionLocked}
                 onCheckedChange={(value) => selection.togglePage(selectableItems, value === true)}
                 aria-label="Select all on this page"
               />
@@ -247,7 +280,7 @@ export function RecurringScreen({
                 type="button"
                 variant="link"
                 className="h-auto p-0"
-                disabled={isBulkBusy}
+                disabled={selectionLocked}
                 onClick={selectAllMatching}
               >
                 Select all matching
@@ -283,7 +316,9 @@ export function RecurringScreen({
 
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No recurring transactions yet. Create one to start scheduling cash flow.
+            {hasActiveFeedFilters
+              ? "No recurring transactions match these filters."
+              : "No recurring transactions yet. Create one to start scheduling cash flow."}
           </p>
         ) : (
           <>
@@ -307,7 +342,11 @@ export function RecurringScreen({
         )}
 
         {nextCursor ? (
-          <Button variant="outline" onClick={loadMore} disabled={isLoadingMore}>
+          <Button
+            variant="outline"
+            onClick={loadMore}
+            disabled={isLoadingMore || isFiltering || selectionLocked || Boolean(feedError)}
+          >
             {isLoadingMore ? "Loading..." : "Load more"}
           </Button>
         ) : null}
@@ -332,6 +371,7 @@ export function RecurringScreen({
         onOpenChange={(open) => {
           if (!open) {
             setPendingAction(null);
+            setPendingItems(null);
             setPreflight(null);
           }
         }}

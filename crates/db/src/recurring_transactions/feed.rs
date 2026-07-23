@@ -5,10 +5,11 @@ use crate::schema::{
     recurring_transactions,
 };
 use chrono::NaiveDateTime;
+use diesel::expression_methods::EscapeExpressionMethods;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use zai_core::features::recurring_transactions::{
-    RecurringFeedEntry, RecurringFeedPage, RecurringRepairField,
+    RecurringFeedEntry, RecurringFeedFilters, RecurringFeedPage, RecurringRepairField,
 };
 use zai_core::{Error, Result};
 
@@ -31,28 +32,32 @@ pub fn decode_feed_cursor(cursor: &str) -> Result<(NaiveDateTime, String)> {
     Ok((updated_at, id.to_string()))
 }
 
+fn escape_like(input: &str) -> String {
+    input
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
+}
+
+#[cfg(test)]
 pub fn list_feed(
     conn: &mut SqliteConnection,
     limit: i64,
     cursor: Option<&str>,
 ) -> Result<RecurringFeedPage> {
+    list_feed_filtered(conn, limit, cursor, &RecurringFeedFilters::default())
+}
+
+pub fn list_feed_filtered(
+    conn: &mut SqliteConnection,
+    limit: i64,
+    cursor: Option<&str>,
+    filters: &RecurringFeedFilters,
+) -> Result<RecurringFeedPage> {
     let limit = super::queries::normalize_feed_limit(limit)?;
+    let filters = filters.normalized()?;
     let mut query = recurring_transactions::table
         .filter(recurring_transactions::deleted_at.is_null())
-        .into_boxed();
-
-    if let Some(cursor) = cursor {
-        let (updated_at, id) = decode_feed_cursor(cursor)?;
-        query = query.filter(
-            recurring_transactions::updated_at.lt(updated_at).or(
-                recurring_transactions::updated_at
-                    .eq(updated_at)
-                    .and(recurring_transactions::id.lt(id)),
-            ),
-        );
-    }
-
-    let rows = query
         .inner_join(
             recurring_template_revisions::table.on(
                 recurring_template_revisions::recurring_transaction_id
@@ -70,6 +75,38 @@ pub fn list_feed(
                     .and(recurring_generation_failures::resolved_at.is_null()),
             ),
         )
+        .into_boxed();
+
+    if let Some(cursor) = cursor {
+        let (updated_at, id) = decode_feed_cursor(cursor)?;
+        query = query.filter(
+            recurring_transactions::updated_at.lt(updated_at).or(
+                recurring_transactions::updated_at
+                    .eq(updated_at)
+                    .and(recurring_transactions::id.lt(id)),
+            ),
+        );
+    }
+
+    if let Some(search) = filters.search {
+        query = query.filter(
+            recurring_template_revisions::description
+                .like(format!("%{}%", escape_like(&search)))
+                .escape('\\'),
+        );
+    }
+    if let Some(lifecycle) = filters.lifecycle {
+        query = query.filter(recurring_transactions::lifecycle.eq(lifecycle.as_str()));
+    }
+    if let Some(needs_attention) = filters.needs_attention {
+        query = if needs_attention {
+            query.filter(recurring_generation_failures::recurring_transaction_id.is_not_null())
+        } else {
+            query.filter(recurring_generation_failures::recurring_transaction_id.is_null())
+        };
+    }
+
+    let rows = query
         .order((
             recurring_transactions::updated_at.desc(),
             recurring_transactions::id.desc(),

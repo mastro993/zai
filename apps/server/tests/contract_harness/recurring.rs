@@ -3,7 +3,8 @@ use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, AdoptionPreviewRequest, BudgetProjectionQuery,
     NewRecurringTransaction, PreviewRecurringGenerationRepair, RecurringBulkRequest,
-    RecurringLifecycleUpdate, RecurringProcessingStatusView, RepairRecurringGenerationFailure,
+    RecurringFeedFilters, RecurringLifecycle, RecurringLifecycleUpdate,
+    RecurringProcessingStatusView, RepairRecurringGenerationFailure,
     RetryRecurringGenerationFailure, UpdateRecurringTransaction,
 };
 
@@ -26,10 +27,11 @@ pub async fn try_run_tauri_for_recurring(
             let limit = parse_optional_query_value(&call.path, "limit")
                 .and_then(|value| value.parse().ok());
             let cursor = parse_optional_query_value(&call.path, "cursor");
+            let filters = recurring_feed_filters(&call.path);
             tauri_success(
                 context
                     .recurring_transactions_service()
-                    .list_feed(limit, cursor)
+                    .list_feed_filtered(limit, cursor, filters)
                     .await,
                 "Failed to load recurring transactions",
             )
@@ -37,7 +39,7 @@ pub async fn try_run_tauri_for_recurring(
         ("GET", "/api/cash-flow/recurring-transactions/ids") => tauri_success(
             context
                 .recurring_transactions_service()
-                .list_matching_ids()
+                .list_matching_ids_filtered(recurring_feed_filters(&call.path))
                 .await,
             "Failed to resolve matching recurring ids",
         ),
@@ -296,6 +298,16 @@ pub async fn try_run_tauri_for_recurring(
         _ => return None,
     };
     Some(value)
+}
+
+fn recurring_feed_filters(path: &str) -> RecurringFeedFilters {
+    RecurringFeedFilters {
+        search: parse_optional_query_value(path, "search"),
+        lifecycle: parse_optional_query_value(path, "lifecycle")
+            .and_then(|value| value.parse::<RecurringLifecycle>().ok()),
+        needs_attention: parse_optional_query_value(path, "needsAttention")
+            .and_then(|value| value.parse::<bool>().ok()),
+    }
 }
 
 async fn lifecycle(

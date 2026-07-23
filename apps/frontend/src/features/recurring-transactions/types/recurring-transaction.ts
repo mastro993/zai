@@ -181,9 +181,16 @@ export const recurringFeedItemSchema = z.object({
   needsAttention: z.boolean(),
 });
 
+export const recurringFeedFiltersSchema = z.object({
+  search: z.string().trim().max(200).optional(),
+  lifecycle: z.enum(RECURRING_LIFECYCLES).optional(),
+  needsAttention: z.boolean().optional(),
+});
+
 export const recurringFeedResultSchema = z.object({
   items: z.array(recurringFeedItemSchema),
   nextCursor: z.string().nullable().optional(),
+  filterFingerprint: z.string().min(1),
 });
 
 export const recurringOccurrenceSchema = z.object({
@@ -361,6 +368,7 @@ export type AdoptRecurringFormInput = z.input<typeof adoptRecurringFormSchema>;
 export type AdoptRecurringFormValues = z.infer<typeof adoptRecurringFormSchema>;
 export type RecurringTransaction = z.infer<typeof recurringTransactionSchema>;
 export type RecurringFeedItem = z.infer<typeof recurringFeedItemSchema>;
+export type RecurringFeedFilters = z.infer<typeof recurringFeedFiltersSchema>;
 export type RecurringFeedResult = z.infer<typeof recurringFeedResultSchema>;
 export type RecurringTransactionDocument = z.infer<typeof recurringTransactionDocumentSchema>;
 export type RecurringCreateOutcome = z.infer<typeof recurringCreateOutcomeSchema>;

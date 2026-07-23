@@ -9,11 +9,11 @@ use super::fulfill::{
     has_eligible_due_work as query_has_eligible_due_work, process_one_due_occurrence,
 };
 use super::lifecycle::apply_lifecycle_command;
-use super::matching::list_matching_ids;
+use super::matching::list_matching_ids_filtered;
 use super::queries::{
     earliest_active_head_after, find_provenance_by_transaction, find_unresolved_failure,
     get_occurrence_head, get_recurring_transaction, list_due_heads, list_failure_history,
-    list_feed, list_occurrences, list_unresolved_failures,
+    list_feed_filtered, list_occurrences, list_unresolved_failures,
 };
 use super::repair::{apply_generation_repair, preview_template_field_repair};
 use super::repository::{
@@ -30,7 +30,7 @@ use zai_core::features::domain_alerts::publish_created_alerts;
 use zai_core::features::recurring_transactions::projection::ProjectionComputeInput;
 use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, NewRecurringTransaction, ProcessOneOutcome, RecurringFailurePage,
-    RecurringFeedPage, RecurringGenerationFailure, RecurringLifecycleCommand,
+    RecurringFeedFilters, RecurringFeedPage, RecurringGenerationFailure, RecurringLifecycleCommand,
     RecurringLifecycleUpdate, RecurringMatchingIdentity, RecurringOccurrence,
     RecurringOccurrenceHead, RecurringOccurrencePage, RecurringRepairField,
     RecurringScheduleRevision, RecurringTemplateInput, RecurringTemplateRevision,
@@ -39,24 +39,31 @@ use zai_core::features::recurring_transactions::{
 
 #[async_trait]
 impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
-    async fn list_feed(&self, limit: i64, cursor: Option<String>) -> Result<RecurringFeedPage> {
+    async fn list_feed_filtered(
+        &self,
+        limit: i64,
+        cursor: Option<String>,
+        filters: RecurringFeedFilters,
+    ) -> Result<RecurringFeedPage> {
         let pool = Arc::clone(&self.pool);
         run_blocking(move || {
             let mut conn = get_connection(&pool)?;
-            list_feed(&mut conn, limit, cursor.as_deref())
+            list_feed_filtered(&mut conn, limit, cursor.as_deref(), &filters)
         })
         .await
     }
 
-    async fn list_matching_ids(&self) -> Result<Vec<RecurringMatchingIdentity>> {
+    async fn list_matching_ids_filtered(
+        &self,
+        filters: RecurringFeedFilters,
+    ) -> Result<Vec<RecurringMatchingIdentity>> {
         let pool = Arc::clone(&self.pool);
         run_blocking(move || {
             let mut conn = get_connection(&pool)?;
-            list_matching_ids(&mut conn)
+            list_matching_ids_filtered(&mut conn, &filters)
         })
         .await
     }
-
     async fn list_due_heads(
         &self,
         observed_local: NaiveDateTime,
@@ -69,7 +76,6 @@ impl RecurringTransactionsRepositoryTrait for RecurringTransactionsRepository {
         })
         .await
     }
-
     async fn earliest_active_head_after(
         &self,
         after_local: NaiveDateTime,

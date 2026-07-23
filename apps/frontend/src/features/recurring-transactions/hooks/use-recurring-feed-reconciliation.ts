@@ -1,75 +1,73 @@
 import { Result } from "@praha/byethrow";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import {
   getRecurringProcessingStatus,
   getRecurringTransactions,
 } from "../commands/recurring-transactions";
-import type { RecurringFeedItem, RecurringFeedResult } from "../types/recurring-transaction";
+import type {
+  RecurringFeedFilters,
+  RecurringFeedItem,
+  RecurringFeedResult,
+} from "../types/recurring-transaction";
 import {
   RecurringProcessingReconciliationError,
   useRecurringProcessingLiveEvents,
 } from "./use-recurring-processing-live-events";
 
-interface RecurringFeedSelectionPort {
-  rememberRevisions: (items: Array<{ id: string; revision: number }>) => void;
-}
-
 interface UseRecurringFeedReconciliationProps {
   initialItems: Array<RecurringFeedItem>;
   initialNextCursor?: string | null;
-  selection: RecurringFeedSelectionPort;
+  filters: RecurringFeedFilters;
 }
-
-const feedRevisions = (items: Array<RecurringFeedItem>) =>
-  items.map((item) => ({
-    id: item.recurringTransaction.id,
-    revision: item.recurringTransaction.revision,
-  }));
 
 export function useRecurringFeedReconciliation({
   initialItems,
   initialNextCursor,
-  selection,
+  filters,
 }: UseRecurringFeedReconciliationProps) {
   const [items, setItems] = useState(initialItems);
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
   const [feedError, setFeedError] = useState<string>();
   const [reconciliationError, setReconciliationError] = useState<string>();
   const [subscriptionError, setSubscriptionError] = useState(false);
+  const requestSequence = useRef(0);
 
-  const applyFeed = useCallback(
-    (feed: RecurringFeedResult) => {
-      setItems(feed.items);
-      setNextCursor(feed.nextCursor);
-      selection.rememberRevisions(feedRevisions(feed.items));
+  const applyFeed = useCallback((feed: RecurringFeedResult) => {
+    setItems(feed.items);
+    setNextCursor(feed.nextCursor);
+  }, []);
+
+  const appendFeed = useCallback((feed: RecurringFeedResult) => {
+    setItems((current) => [...current, ...feed.items]);
+    setNextCursor(feed.nextCursor);
+  }, []);
+
+  const refreshFeed = useCallback(
+    async (requestedFilters: RecurringFeedFilters = filters): Promise<boolean> => {
+      const requestId = ++requestSequence.current;
+      const result = await getRecurringTransactions(50, undefined, requestedFilters);
+      if (requestId !== requestSequence.current) {
+        return true;
+      }
+      if (Result.isFailure(result)) {
+        setFeedError(result.error.message);
+        return false;
+      }
+      setFeedError(undefined);
+      applyFeed(result.value);
+      return true;
     },
-    [selection],
+    [applyFeed, filters],
   );
-
-  const appendFeed = useCallback(
-    (feed: RecurringFeedResult) => {
-      setItems((current) => [...current, ...feed.items]);
-      setNextCursor(feed.nextCursor);
-      selection.rememberRevisions(feedRevisions(feed.items));
-    },
-    [selection],
-  );
-
-  const refreshFeed = useCallback(async (): Promise<boolean> => {
-    const result = await getRecurringTransactions();
-    if (Result.isFailure(result)) {
-      setFeedError(result.error.message);
-      return false;
-    }
-    setFeedError(undefined);
-    applyFeed(result.value);
-    return true;
-  }, [applyFeed]);
 
   const loadMoreFeed = useCallback(
     async (cursor: string): Promise<boolean> => {
-      const result = await getRecurringTransactions(50, cursor);
+      const requestId = ++requestSequence.current;
+      const result = await getRecurringTransactions(50, cursor, filters);
+      if (requestId !== requestSequence.current) {
+        return true;
+      }
       if (Result.isFailure(result)) {
         setFeedError(result.error.message);
         return false;
@@ -78,14 +76,18 @@ export function useRecurringFeedReconciliation({
       appendFeed(result.value);
       return true;
     },
-    [appendFeed],
+    [appendFeed, filters],
   );
 
   const reconcileFromDurableState = useCallback(async () => {
+    const requestId = ++requestSequence.current;
     const [statusResult, feedResult] = await Promise.all([
       getRecurringProcessingStatus(),
-      getRecurringTransactions(),
+      getRecurringTransactions(50, undefined, filters),
     ]);
+    if (requestId !== requestSequence.current) {
+      return Result.succeed(undefined);
+    }
     const errors: Array<string> = [];
 
     if (Result.isFailure(statusResult)) {
@@ -107,7 +109,7 @@ export function useRecurringFeedReconciliation({
 
     setReconciliationError(undefined);
     return Result.succeed(undefined);
-  }, [applyFeed]);
+  }, [applyFeed, filters]);
 
   const handleReconciliationFailure = useCallback(
     (error: RecurringProcessingReconciliationError) => {

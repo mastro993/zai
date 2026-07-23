@@ -10,6 +10,7 @@ pub const UNCHANGED_NO_OPEN_FAILURE: &str = "no_open_failure";
 pub const UNCHANGED_REPAIR_REQUIRED: &str = "repair_required";
 pub const UNCHANGED_REPAIR_NOT_APPLICABLE: &str = "repair_not_applicable";
 pub const UNCHANGED_ALREADY_REPAIRED: &str = "already_repaired";
+pub const UNCHANGED_RETRY_FAILED: &str = "retry_failed";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
