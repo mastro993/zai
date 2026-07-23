@@ -72,6 +72,22 @@ mod tests {
     }
 
     #[test]
+    fn repository_errors_use_same_redacted_internal_envelope() {
+        let (status, Json(body)) = command_error(
+            "Failed to load recurring transactions",
+            Error::Repository("missing schedule at /private/zai.db".to_string()),
+        );
+
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(body.code, ErrorCode::Internal);
+        assert_eq!(
+            body.message,
+            "Failed to load recurring transactions: An internal error occurred"
+        );
+        assert!(!body.message.contains("/private/zai.db"));
+    }
+
+    #[test]
     fn domain_conflict_details_remain_actionable() {
         let (status, Json(body)) = command_error(
             "Failed to update category",

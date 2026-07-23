@@ -83,6 +83,9 @@ impl RecurringTransactionsService {
             .await
         {
             Ok(projection) => Self::budget_impact_from_projection(&projection, &recurring.id),
+            Err(error @ (Error::Database(_) | Error::Repository(_) | Error::Unexpected(_))) => {
+                return Err(error);
+            }
             Err(error) => RecurringBudgetImpactSection {
                 state: RecurringSectionState::Unavailable,
                 message: Some(error.to_string()),
