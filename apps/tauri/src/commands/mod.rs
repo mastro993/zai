@@ -41,6 +41,23 @@ mod tests {
     }
 
     #[test]
+    fn repository_errors_use_same_redacted_internal_envelope() {
+        use zai_core::ErrorCode;
+
+        let envelope = command_error(
+            "Failed to load recurring transactions",
+            Error::Repository("missing schedule at /private/zai.db".to_string()),
+        );
+
+        assert_eq!(envelope.code, ErrorCode::Internal);
+        assert_eq!(
+            envelope.message,
+            "Failed to load recurring transactions: An internal error occurred"
+        );
+        assert!(!envelope.message.contains("/private/zai.db"));
+    }
+
+    #[test]
     fn domain_conflict_details_remain_actionable() {
         use zai_core::ErrorCode;
 

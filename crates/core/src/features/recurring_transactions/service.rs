@@ -88,18 +88,10 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         for RecurringFeedEntry {
             recurring_transaction,
             description,
+            next_scheduled_local,
+            needs_attention,
         } in page.items
         {
-            let next_scheduled_local = self
-                .repository
-                .get_occurrence_head(&recurring_transaction.id)
-                .await?
-                .map(|head| head.next_scheduled_local);
-            let needs_attention = self
-                .repository
-                .find_unresolved_failure(&recurring_transaction.id)
-                .await?
-                .is_some();
             items.push(RecurringFeedItem {
                 recurring_transaction,
                 description,
