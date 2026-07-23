@@ -14,6 +14,7 @@ import {
   updateRecurringTransaction,
 } from "../commands/recurring-transactions";
 import { RecurringFailureBanner } from "../components/recurring-failure-banner";
+import { RecurringFailureHistory } from "../components/recurring-failure-history";
 import { RecurringFormDrawer } from "../components/recurring-form-drawer";
 import { RecurringLifecycleActions } from "../components/recurring-lifecycle-actions";
 import { RecurringBudgetImpact } from "../components/recurring-budget-impact";
@@ -337,9 +338,11 @@ export function RecurringDocumentScreen({
             <p role="status" className="text-sm text-muted-foreground">
               Open failure details appear in the Needs attention banner above.
             </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">No open generation failure.</p>
-          )}
+          ) : null}
+          <RecurringFailureHistory
+            recurringTransactionId={recurringTransaction.id}
+            initialPage={failures.history}
+          />
         </Section>
 
         <Section

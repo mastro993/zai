@@ -643,6 +643,38 @@ async fn occurrence_and_failure_cursor_paging_is_stable() {
 }
 
 #[tokio::test]
+async fn failure_history_excludes_open_failure() {
+    let (temp_db, mut conn) = setup();
+    let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
+    let writer = spawn_writer(pool.as_ref().clone()).expect("writer");
+    let seed = SeedRecurringSource {
+        id: "rt-history-open".into(),
+        description: "History source".into(),
+        lifecycle: "active",
+        total_occurrences: None,
+        fulfilled_count: 0,
+        revision: 1,
+        first_scheduled_local: local(2026, 1, 1, 9, 0),
+        next_scheduled_local: local(2030, 1, 1, 9, 0),
+        next_ordinal: 1,
+        amount: 100,
+        transaction_type: "expense",
+    };
+    let (schedule_id, template_id) = writer
+        .exec(move |conn| seed_active_interval_source(conn, &seed))
+        .await
+        .expect("seed source");
+    seed_retained_history(&mut conn, "rt-history-open", &schedule_id, &template_id, 1);
+    seed_unresolved_failure(&mut conn, "rt-history-open", &schedule_id, 2);
+
+    let page = list_failure_history(&mut conn, "rt-history-open", 20, None).expect("history");
+
+    assert_eq!(page.items.len(), 1);
+    assert!(page.items[0].resolved_at.is_some());
+    assert_eq!(page.items[0].ordinal, 1);
+}
+
+#[tokio::test]
 async fn bounded_pages_keep_statement_count_independent_of_retained_history() {
     struct PageMeasurement {
         occurrence_count: usize,

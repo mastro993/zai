@@ -7,7 +7,7 @@ use diesel::prelude::*;
 use zai_core::features::recurring_transactions::{
     RecurringRecoveryOutcome, RecurringRepairField, RecurringTemplateInput,
     RecurringTransactionsServiceTrait, RepairRecurringGenerationFailure,
-    RetryRecurringGenerationFailure, UNCHANGED_REPAIR_REQUIRED,
+    RetryRecurringGenerationFailure, UNCHANGED_REPAIR_REQUIRED, process_failpoints,
 };
 
 fn base_seed(id: &str, description: &str) -> SeedRecurringSource {
@@ -146,6 +146,55 @@ async fn repair_marks_failure_and_keeps_template_change_after_retry_wake() {
         assert!(history[0].resolved_at.is_some());
         assert!(!after.occurrence_summary.needs_attention);
     }
+}
+
+#[tokio::test]
+async fn repair_remains_durable_when_retry_fails_after_commit() {
+    let observed = local(2026, 7, 21, 10, 0);
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
+    let (schedule_id, _) = seed_source(&repo, base_seed("rt-repair-durable", "Durable")).await;
+    seed_open_failure(
+        &repo,
+        "rt-repair-durable",
+        &schedule_id,
+        Some(RecurringRepairField::Amount),
+        observed,
+    )
+    .await;
+
+    let before = service
+        .get_document("rt-repair-durable")
+        .await
+        .expect("before");
+    process_failpoints::fail_after_commits(1);
+    let result = service
+        .repair_and_retry(RepairRecurringGenerationFailure {
+            recurring_transaction_id: "rt-repair-durable".into(),
+            expected_revision: before.recurring_transaction.revision,
+            repair_field_key: RecurringRepairField::Amount,
+            template: RecurringTemplateInput {
+                description: before.template.description.clone(),
+                amount: 2500,
+                transaction_type: before.template.transaction_type.clone(),
+                transaction_category_id: before.template.transaction_category_id.clone(),
+                notes: before.template.notes.clone(),
+            },
+        })
+        .await;
+    process_failpoints::reset();
+
+    assert!(matches!(
+        result.expect("repair remains successful"),
+        RecurringRecoveryOutcome::Succeeded { .. }
+    ));
+    let after = service
+        .get_document("rt-repair-durable")
+        .await
+        .expect("after");
+    assert_eq!(after.template.amount, 2500);
+    assert_eq!(after.links.occurrences.items.len(), 1);
+    assert!(after.failures.unresolved.is_none());
+    assert_eq!(after.failures.history.items.len(), 1);
 }
 
 #[tokio::test]
