@@ -67,8 +67,69 @@ const documentFixture = {
   },
   failures: { state: "empty" as const, waitingCount: 0, history: { items: [] } },
   budgetImpact: {
-    state: "unavailable" as const,
-    message: "Budget impact will appear once forecast projections are available.",
+    state: "ready" as const,
+    projection: {
+      observedLocal: "2026-08-05T12:00:00",
+      throughLocal: "2026-11-05T12:00:00",
+      horizonMonths: 3,
+      complete: false,
+      sourceErrors: [
+        {
+          kind: "generationBlocked" as const,
+          recurringTransactionId: "rt-1",
+          message: "Generation-blocked source excluded from projection",
+        },
+      ],
+      periods: [
+        {
+          budgetId: "budget-1",
+          budgetName: "Household",
+          periodStart: "2026-09-01T00:00:00",
+          periodEnd: "2026-10-01T00:00:00",
+          cadence: "month" as const,
+          measurementMode: "spending" as const,
+          rolloverMode: "off" as const,
+          baseAllowance: 200000,
+          actualNetBudgetSpending: 80000,
+          projectedDelta: 120000,
+          forecastNetBudgetSpending: 200000,
+          effectiveAllowance: 200000,
+          remainingAllowance: 0,
+          status: null,
+          partial: false,
+          coveredUntil: "2026-10-01T00:00:00",
+          attribution: [
+            {
+              recurringTransactionId: "rt-1",
+              scheduleRevisionId: "sched-1",
+              ordinal: 2,
+              scheduledLocal: "2026-09-01T09:00:00",
+              description: "Monthly rent",
+              contribution: 120000,
+            },
+          ],
+        },
+        {
+          budgetId: "budget-1",
+          budgetName: "Household",
+          periodStart: "2026-11-01T00:00:00",
+          periodEnd: "2026-12-01T00:00:00",
+          cadence: "month" as const,
+          measurementMode: "spending" as const,
+          rolloverMode: "off" as const,
+          baseAllowance: 200000,
+          actualNetBudgetSpending: 0,
+          projectedDelta: 0,
+          forecastNetBudgetSpending: 0,
+          effectiveAllowance: 200000,
+          remainingAllowance: 200000,
+          status: null,
+          partial: true,
+          coveredUntil: "2026-11-05T12:00:00",
+          attribution: [],
+        },
+      ],
+    },
   },
 };
 
@@ -194,6 +255,14 @@ describe("recurring screen navigation", () => {
     expect(screen.getByText(/Adopted/)).toBeTruthy();
     expect(screen.getByLabelText("Failures")).toBeTruthy();
     expect(screen.getByLabelText("Budget impact")).toBeTruthy();
+    expect(screen.getByRole("table", { name: "Recurring budget impact by period" })).toBeTruthy();
+    expect(screen.getByText("Projected change")).toBeTruthy();
+    expect(screen.getByText("Combined forecast")).toBeTruthy();
+    expect(screen.getByText("Forecast incomplete")).toBeTruthy();
+    expect(screen.getAllByText("Partial through 2026-11-05")).toHaveLength(2);
+    expect(
+      screen.getByRole("link", { name: "Open recurring source for Monthly rent" }),
+    ).toBeTruthy();
     expect(screen.getByText("Back to feed")).toBeTruthy();
   });
 });

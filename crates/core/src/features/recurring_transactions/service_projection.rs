@@ -133,7 +133,10 @@ impl RecurringTransactionsService {
             .periods
             .iter()
             .any(|period| !period.attribution.is_empty());
-        let state = if has_attribution || !focused.periods.is_empty() {
+        let state = if has_attribution
+            || !focused.periods.is_empty()
+            || !focused.source_errors.is_empty()
+        {
             RecurringSectionState::Ready
         } else {
             RecurringSectionState::Empty
@@ -143,5 +146,42 @@ impl RecurringTransactionsService {
             message: None,
             projection: Some(focused),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::document::RecurringSectionState;
+    use super::super::projection::{
+        BudgetProjectionResult, ProjectionSourceError, ProjectionSourceErrorKind,
+    };
+    use super::RecurringTransactionsService;
+    use chrono::NaiveDate;
+
+    #[test]
+    fn source_errors_keep_empty_budget_impact_visible() {
+        let observed_local = NaiveDate::from_ymd_opt(2026, 8, 5)
+            .expect("date")
+            .and_hms_opt(12, 0, 0)
+            .expect("time");
+        let impact = RecurringTransactionsService::budget_impact_from_projection(
+            &BudgetProjectionResult {
+                observed_local,
+                through_local: observed_local,
+                horizon_months: 1,
+                complete: false,
+                periods: Vec::new(),
+                source_errors: vec![ProjectionSourceError {
+                    kind: ProjectionSourceErrorKind::GenerationBlocked,
+                    recurring_transaction_id: Some("rt-blocked".to_string()),
+                    budget_id: None,
+                    message: "Generation-blocked source excluded from projection".to_string(),
+                }],
+            },
+            "rt-blocked",
+        );
+
+        assert_eq!(impact.state, RecurringSectionState::Ready);
+        assert!(impact.projection.is_some());
     }
 }
