@@ -87,4 +87,11 @@ mod tests {
         assert_eq!(budget.max_occurrences, DEFAULT_PROCESS_MAX_OCCURRENCES);
         assert_eq!(budget.max_duration, DEFAULT_PROCESS_MAX_DURATION);
     }
+
+    #[test]
+    fn bounded_slice_overrides_occurrences_without_changing_duration_contract() {
+        let budget = ProcessingWorkBudget::occurrences(7);
+        assert_eq!(budget.max_occurrences, 7);
+        assert_eq!(budget.max_duration, DEFAULT_PROCESS_MAX_DURATION);
+    }
 }
