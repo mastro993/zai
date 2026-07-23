@@ -134,6 +134,7 @@ function TransactionFormDrawer({
               to="/cash-flow/recurring/$recurringTransactionId"
               params={{ recurringTransactionId: visibleSource.id }}
               className="underline-offset-4 hover:underline"
+              aria-label={`Open recurring source ${visibleSource.description}`}
             >
               Part of recurring: {visibleSource.description}
             </Link>

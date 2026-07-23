@@ -74,10 +74,12 @@ const canEditDescription = (document: RecurringTransactionDocument): boolean => 
 
 function OccurrenceLinks({
   recurringTransactionId,
+  recurringDescription,
   initialItems,
   initialNextCursor,
 }: {
   recurringTransactionId: string;
+  recurringDescription: string;
   initialItems: Array<RecurringOccurrence>;
   initialNextCursor?: string | null;
 }) {
@@ -108,13 +110,13 @@ function OccurrenceLinks({
         {items.map((occurrence) => (
           <li key={`${occurrence.scheduleRevisionId}:${occurrence.ordinal}`}>
             <Link
-              to="/cash-flow/transactions"
+              to="/cash-flow/transactions/$transactionId"
+              params={{ transactionId: occurrence.transactionId }}
               className="flex flex-wrap items-center justify-between gap-2 text-sm underline-offset-4 hover:underline"
-              aria-label={`Open transactions list for occurrence ${occurrence.fulfillmentPosition}`}
+              aria-label={`Open ${occurrence.fulfillmentKind} transaction for occurrence ${occurrence.fulfillmentPosition} of ${recurringDescription}`}
             >
               <span>
-                #{occurrence.fulfillmentPosition} · {formatLocalDateTime(occurrence.scheduledLocal)}{" "}
-                · {occurrence.transactionId}
+                #{occurrence.fulfillmentPosition} · {formatLocalDateTime(occurrence.scheduledLocal)}
               </span>
               <Badge variant="outline">
                 {occurrence.fulfillmentKind === "adopted" ? "Adopted" : "Generated"}
@@ -318,6 +320,7 @@ export function RecurringDocumentScreen({
         >
           <OccurrenceLinks
             recurringTransactionId={recurringTransaction.id}
+            recurringDescription={template.description}
             initialItems={links.occurrences.items}
             initialNextCursor={links.occurrences.nextCursor}
           />
