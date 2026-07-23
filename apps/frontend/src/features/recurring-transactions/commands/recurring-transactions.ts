@@ -17,6 +17,7 @@ import type {
   RecurringCreateOutcome,
   RecurringFailurePage,
   RecurringFeedResult,
+  RecurringFeedFilters,
   RecurringFormValues,
   RecurringLifecycleOutcome,
   RecurringMutationOutcome,
@@ -72,10 +73,12 @@ export const buildScheduleRule = (
 export const getRecurringTransactions = (
   limit = 50,
   cursor?: string,
+  filters?: RecurringFeedFilters,
 ): CommandResult<RecurringFeedResult> => {
   return invokeDecodedCommand(RECURRING_COMMANDS.get_recurring_transactions, {
     limit,
     ...(cursor ? { cursor } : {}),
+    ...(filters ? { filters } : {}),
   });
 };
 
@@ -319,8 +322,13 @@ export const retryRecurringGenerationFailure = (
   });
 };
 
-export const getMatchingRecurringTransactionIds = (): CommandResult<RecurringMatchingIds> => {
-  return invokeDecodedCommand(RECURRING_COMMANDS.get_matching_recurring_transaction_ids, {});
+export const getMatchingRecurringTransactionIds = (
+  filters?: RecurringFeedFilters,
+): CommandResult<RecurringMatchingIds> => {
+  return invokeDecodedCommand(
+    RECURRING_COMMANDS.get_matching_recurring_transaction_ids,
+    filters ? { filters } : {},
+  );
 };
 
 export const preflightRecurringBulk = (

@@ -3,8 +3,8 @@ use super::process_test_support::{local, seed_source, setup_service};
 use super::seed::SeedRecurringSource;
 use zai_core::features::recurring_transactions::{
     MAX_BULK_SELECTION, RecurringBulkAction, RecurringBulkItem, RecurringBulkItemOutcomeKind,
-    RecurringBulkRequest, RecurringLifecycle, RecurringLifecycleOutcome,
-    RecurringTransactionsServiceTrait,
+    RecurringBulkRequest, RecurringFeedFilters, RecurringLifecycle, RecurringLifecycleOutcome,
+    RecurringTransactionsServiceTrait, UNCHANGED_REVISION_CONFLICT,
 };
 
 fn bulk_item(id: &str, revision: i32) -> RecurringBulkItem {
@@ -107,6 +107,32 @@ async fn preflight_reports_mixed_eligibility() {
 }
 
 #[tokio::test]
+async fn preflight_keeps_stale_frozen_revision_unchanged() {
+    let observed = local(2026, 1, 1, 8, 0);
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
+    seed_source(&repo, future_seed("rt-stale", "Stale")).await;
+    service
+        .pause(lifecycle_update("rt-stale", 1))
+        .await
+        .expect("pause");
+
+    let preflight = service
+        .preflight_bulk(RecurringBulkRequest {
+            action: RecurringBulkAction::Resume,
+            items: vec![bulk_item("rt-stale", 1)],
+        })
+        .await
+        .expect("preflight");
+
+    assert_eq!(preflight.eligible, 0);
+    assert_eq!(preflight.unchanged, 1);
+    assert_eq!(
+        preflight.unchanged_items[0].reason,
+        UNCHANGED_REVISION_CONFLICT
+    );
+}
+
+#[tokio::test]
 async fn execute_partial_success_keeps_unchanged_selected_semantics() {
     let observed = local(2026, 1, 1, 8, 0);
     let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
@@ -156,5 +182,74 @@ async fn execute_partial_success_keeps_unchanged_selected_semantics() {
     assert_eq!(
         two.recurring_transaction.lifecycle,
         RecurringLifecycle::Paused
+    );
+}
+
+#[tokio::test]
+async fn filtered_feed_and_matching_ids_share_frozen_scope_and_order() {
+    let observed = local(2026, 2, 1, 10, 0);
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
+    seed_source(&repo, future_seed("rt-alpha", "Rent Alpha")).await;
+    seed_source(&repo, future_seed("rt-beta", "Rent Beta")).await;
+    seed_source(&repo, future_seed("rt-groceries", "Groceries")).await;
+
+    let filters = RecurringFeedFilters {
+        search: Some("  rent  ".into()),
+        ..Default::default()
+    };
+    let feed = service
+        .list_feed_filtered(Some(50), None, filters.clone())
+        .await
+        .expect("filtered feed");
+    let matching = service
+        .list_matching_ids_filtered(filters)
+        .await
+        .expect("matching ids");
+
+    let feed_ids = feed
+        .items
+        .iter()
+        .map(|item| item.recurring_transaction.id.as_str())
+        .collect::<Vec<_>>();
+    let matching_ids = matching
+        .items
+        .iter()
+        .map(|item| item.recurring_transaction_id.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(feed_ids, matching_ids);
+    assert_eq!(feed.filter_fingerprint, matching.fingerprint);
+    assert_eq!(feed_ids.len(), 2);
+    assert!(!feed_ids.contains(&"rt-groceries"));
+}
+
+#[tokio::test]
+async fn filtered_feed_can_freeze_lifecycle_scope() {
+    let observed = local(2026, 2, 1, 10, 0);
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
+    seed_source(&repo, future_seed("rt-active", "Active")).await;
+    seed_source(&repo, future_seed("rt-paused", "Paused")).await;
+    service
+        .pause(lifecycle_update("rt-paused", 1))
+        .await
+        .expect("pause");
+
+    let feed = service
+        .list_feed_filtered(
+            Some(50),
+            None,
+            RecurringFeedFilters {
+                lifecycle: Some(RecurringLifecycle::Paused),
+                ..Default::default()
+            },
+        )
+        .await
+        .expect("paused feed");
+
+    assert_eq!(
+        feed.items
+            .iter()
+            .map(|item| item.recurring_transaction.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["rt-paused"]
     );
 }

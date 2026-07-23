@@ -11,6 +11,7 @@ use super::schedule::scheduled_local_at;
 use crate::{Error, Result};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 pub const MAX_BULK_SELECTION: usize = 500;
 pub const UNCHANGED_NOT_FOUND: &str = "not_found";
@@ -113,6 +114,7 @@ pub struct RecurringMatchingIdentity {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecurringMatchingIds {
+    pub fingerprint: String,
     pub items: Vec<RecurringMatchingIdentity>,
 }
 
@@ -168,6 +170,16 @@ impl RecurringBulkRequest {
                     "Expected revision must be at least 1".to_string(),
                 ));
             }
+        }
+        let mut ids = HashSet::with_capacity(self.items.len());
+        if self
+            .items
+            .iter()
+            .any(|item| !ids.insert(&item.recurring_transaction_id))
+        {
+            return Err(Error::InvalidData(
+                "Bulk selection cannot contain duplicate identities".to_string(),
+            ));
         }
         Ok(())
     }
@@ -255,104 +267,5 @@ pub fn record_lifecycle(counts: &mut RecurringBulkLifecycleCounts, lifecycle: Re
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::features::recurring_transactions::{ScheduleIntervalUnit, ScheduleRule};
-    use chrono::NaiveDate;
-
-    fn monthly() -> ScheduleRule {
-        ScheduleRule::Interval {
-            every: 1,
-            unit: ScheduleIntervalUnit::Month,
-        }
-    }
-
-    fn observed() -> NaiveDateTime {
-        NaiveDate::from_ymd_opt(2026, 3, 15)
-            .unwrap()
-            .and_hms_opt(10, 0, 0)
-            .unwrap()
-    }
-
-    #[test]
-    fn rejects_more_than_500_identities() {
-        let items = (0..501)
-            .map(|index| RecurringBulkItem {
-                recurring_transaction_id: format!("rt-{index}"),
-                expected_revision: 1,
-            })
-            .collect();
-        let request = RecurringBulkRequest {
-            action: RecurringBulkAction::Pause,
-            items,
-        };
-        let error = request.validate_bound().expect_err("over limit");
-        assert!(error.to_string().contains("500"));
-    }
-
-    #[test]
-    fn pause_eligible_only_for_active_unblocked() {
-        assert_eq!(
-            classify_lifecycle_eligibility(
-                RecurringLifecycle::Active,
-                false,
-                RecurringLifecycleCommand::Pause
-            ),
-            BulkEligibility::Eligible
-        );
-        assert!(matches!(
-            classify_lifecycle_eligibility(
-                RecurringLifecycle::Paused,
-                false,
-                RecurringLifecycleCommand::Pause
-            ),
-            BulkEligibility::Unchanged {
-                reason: UNCHANGED_INVALID_TRANSITION,
-                ..
-            }
-        ));
-        assert!(matches!(
-            classify_lifecycle_eligibility(
-                RecurringLifecycle::Active,
-                true,
-                RecurringLifecycleCommand::Pause
-            ),
-            BulkEligibility::Unchanged {
-                reason: UNCHANGED_GENERATION_BLOCKED,
-                next_action: Some(NEXT_ACTION_REPAIR),
-            }
-        ));
-    }
-
-    #[test]
-    fn retry_excludes_repair_required() {
-        assert_eq!(
-            classify_retry_eligibility(true, None),
-            BulkEligibility::Eligible
-        );
-        assert!(matches!(
-            classify_retry_eligibility(true, Some(RecurringRepairField::TransactionCategoryId),),
-            BulkEligibility::Unchanged {
-                reason: UNCHANGED_REPAIR_REQUIRED,
-                next_action: Some(NEXT_ACTION_REPAIR),
-            }
-        ));
-        assert!(matches!(
-            classify_retry_eligibility(false, None),
-            BulkEligibility::Unchanged {
-                reason: UNCHANGED_NO_OPEN_FAILURE,
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn due_from_head_counts_through_observation() {
-        let first = NaiveDate::from_ymd_opt(2026, 1, 1)
-            .unwrap()
-            .and_hms_opt(9, 0, 0)
-            .unwrap();
-        let count = count_due_from_head(&monthly(), first, 1, Some(12), observed()).unwrap();
-        assert_eq!(count, 3);
-    }
-}
+#[path = "bulk_tests.rs"]
+mod tests;

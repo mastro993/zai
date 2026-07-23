@@ -2,6 +2,20 @@ import type { CommandArgs } from "@/commands/types";
 import { readNumber, readRecord, readString } from "@/commands/web-request-args";
 import type { WebRequestSpec } from "@/commands/web-request-spec";
 
+const recurringFilterQuery = (args: CommandArgs): Record<string, string> => {
+  const filters = readRecord(args.filters);
+  const search = readString(filters?.search);
+  const lifecycle = readString(filters?.lifecycle);
+  const needsAttention = filters?.needsAttention;
+  return {
+    ...(search ? { search } : {}),
+    ...(lifecycle ? { lifecycle } : {}),
+    ...(typeof needsAttention === "boolean"
+      ? { needsAttention: needsAttention ? "true" : "false" }
+      : {}),
+  };
+};
+
 export const buildRecurringCommandRequestSpec = (
   command: string,
   args: CommandArgs = {},
@@ -10,12 +24,14 @@ export const buildRecurringCommandRequestSpec = (
     case "get_recurring_transactions": {
       const limit = readNumber(args.limit, 50);
       const cursor = readString(args.cursor);
+      const filters = recurringFilterQuery(args);
       return {
         method: "GET",
         path: "/recurring-transactions",
         query: {
           limit: String(limit),
           ...(cursor ? { cursor } : {}),
+          ...filters,
         },
       };
     }
@@ -183,6 +199,7 @@ export const buildRecurringCommandRequestSpec = (
       return {
         method: "GET",
         path: "/recurring-transactions/ids",
+        query: recurringFilterQuery(args),
       };
     case "preflight_recurring_bulk": {
       const request = readRecord(args.request) ?? {};

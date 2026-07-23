@@ -65,3 +65,14 @@ export const retainAfterPartialSuccess = (
   );
   return new Set([...selectedIds].filter((id) => !succeeded.has(id)));
 };
+
+export const buildRecurringBulkItems = (
+  selectedIds: ReadonlySet<string>,
+  revisionsById: ReadonlyMap<string, number>,
+): Array<{ recurringTransactionId: string; expectedRevision: number }> =>
+  [...selectedIds].flatMap((id) => {
+    const revision = revisionsById.get(id);
+    return revision === undefined
+      ? []
+      : [{ recurringTransactionId: id, expectedRevision: revision }];
+  });

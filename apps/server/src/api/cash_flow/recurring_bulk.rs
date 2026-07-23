@@ -3,18 +3,34 @@ use std::sync::Arc;
 use axum::{
     Json, Router,
     extract::State,
-    extract::rejection::JsonRejection,
+    extract::{
+        Query,
+        rejection::{JsonRejection, QueryRejection},
+    },
     http::StatusCode,
     routing::{get, post},
 };
+use serde::Deserialize;
 use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
-    RecurringBulkExecuteResult, RecurringBulkPreflight, RecurringBulkRequest, RecurringMatchingIds,
+    RecurringBulkExecuteResult, RecurringBulkPreflight, RecurringBulkRequest, RecurringFeedFilters,
+    RecurringLifecycle, RecurringMatchingIds,
 };
 
 use crate::api::error::{bad_request, command_error};
 
 type RecurringResult<T> = Result<T, (StatusCode, Json<crate::api::error::ApiError>)>;
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MatchingQuery {
+    #[serde(default)]
+    search: Option<String>,
+    #[serde(default)]
+    lifecycle: Option<RecurringLifecycle>,
+    #[serde(default)]
+    needs_attention: Option<bool>,
+}
 
 pub fn router() -> Router<Arc<ServiceContext>> {
     Router::new()
@@ -31,10 +47,16 @@ pub fn router() -> Router<Arc<ServiceContext>> {
 
 async fn list_matching_recurring_ids(
     State(context): State<Arc<ServiceContext>>,
+    query: Result<Query<MatchingQuery>, QueryRejection>,
 ) -> RecurringResult<Json<RecurringMatchingIds>> {
+    let Query(query) = query.map_err(|rejection| bad_request(rejection.body_text()))?;
     context
         .recurring_transactions_service()
-        .list_matching_ids()
+        .list_matching_ids_filtered(RecurringFeedFilters {
+            search: query.search,
+            lifecycle: query.lifecycle,
+            needs_attention: query.needs_attention,
+        })
         .await
         .map(Json)
         .map_err(|error| command_error("Failed to resolve matching recurring ids", error))

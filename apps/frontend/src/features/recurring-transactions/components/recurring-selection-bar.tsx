@@ -17,12 +17,14 @@ const ACTIONS: Array<{ action: RecurringBulkAction; label: string; destructive?:
 export function RecurringSelectionBar({
   selectedCount,
   hiddenCount,
+  frozenFilterFingerprint,
   isBusy,
   onAction,
   onClearSelection,
 }: {
   selectedCount: number;
   hiddenCount: number;
+  frozenFilterFingerprint?: string;
   isBusy: boolean;
   onAction: (action: RecurringBulkAction) => void;
   onClearSelection: () => void;
@@ -37,6 +39,7 @@ export function RecurringSelectionBar({
         <ButtonGroupText className="font-normal tabular-nums">
           {selectedCount} selected
           {hiddenCount > 0 ? ` · ${hiddenCount} hidden` : ""}
+          {frozenFilterFingerprint ? " · filters frozen" : ""}
         </ButtonGroupText>
         <Button
           type="button"

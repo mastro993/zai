@@ -13,9 +13,9 @@ use super::lifecycle::{
     RecurringLifecycleCommand, RecurringLifecycleOutcome, RecurringLifecycleUpdate,
 };
 use super::models::{
-    RecurringFailurePage, RecurringFeedPage, RecurringGenerationFailure, RecurringOccurrence,
-    RecurringOccurrenceHead, RecurringOccurrencePage, RecurringScheduleRevision,
-    RecurringTemplateRevision, RecurringTransaction,
+    RecurringFailurePage, RecurringFeedFilters, RecurringFeedPage, RecurringGenerationFailure,
+    RecurringOccurrence, RecurringOccurrenceHead, RecurringOccurrencePage,
+    RecurringScheduleRevision, RecurringTemplateRevision, RecurringTransaction,
 };
 use super::process::{ProcessOneOutcome, ProcessingSliceOutcome, ProcessingWorkBudget};
 use super::projection::{BudgetProjectionQuery, BudgetProjectionResult};
@@ -31,9 +31,27 @@ use std::sync::atomic::AtomicBool;
 
 #[async_trait]
 pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
-    async fn list_feed(&self, limit: i64, cursor: Option<String>) -> Result<RecurringFeedPage>;
+    async fn list_feed(&self, limit: i64, cursor: Option<String>) -> Result<RecurringFeedPage> {
+        self.list_feed_filtered(limit, cursor, RecurringFeedFilters::default())
+            .await
+    }
 
-    async fn list_matching_ids(&self) -> Result<Vec<RecurringMatchingIdentity>>;
+    async fn list_feed_filtered(
+        &self,
+        limit: i64,
+        cursor: Option<String>,
+        filters: RecurringFeedFilters,
+    ) -> Result<RecurringFeedPage>;
+
+    async fn list_matching_ids(&self) -> Result<Vec<RecurringMatchingIdentity>> {
+        self.list_matching_ids_filtered(RecurringFeedFilters::default())
+            .await
+    }
+
+    async fn list_matching_ids_filtered(
+        &self,
+        filters: RecurringFeedFilters,
+    ) -> Result<Vec<RecurringMatchingIdentity>>;
 
     async fn list_due_heads(
         &self,
@@ -170,6 +188,13 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
         cursor: Option<String>,
     ) -> Result<RecurringFeedResult>;
 
+    async fn list_feed_filtered(
+        &self,
+        limit: Option<i64>,
+        cursor: Option<String>,
+        filters: RecurringFeedFilters,
+    ) -> Result<RecurringFeedResult>;
+
     async fn get_document(&self, id: &str) -> Result<RecurringTransactionDocument>;
 
     async fn list_linked_occurrences(
@@ -231,6 +256,11 @@ pub trait RecurringTransactionsServiceTrait: Send + Sync {
     -> Result<BudgetProjectionResult>;
 
     async fn list_matching_ids(&self) -> Result<RecurringMatchingIds>;
+
+    async fn list_matching_ids_filtered(
+        &self,
+        filters: RecurringFeedFilters,
+    ) -> Result<RecurringMatchingIds>;
 
     async fn preflight_bulk(&self, request: RecurringBulkRequest)
     -> Result<RecurringBulkPreflight>;

@@ -1,13 +1,14 @@
 use super::bulk::{
-    BulkEligibility, MAX_BULK_SELECTION, NEXT_ACTION_REPAIR, NEXT_ACTION_RETRY,
-    RecurringBulkAction, RecurringBulkExecuteResult, RecurringBulkItem,
-    RecurringBulkItemOutcomeKind, RecurringBulkItemResult, RecurringBulkLifecycleCounts,
-    RecurringBulkPreflight, RecurringBulkRequest, RecurringBulkUnchangedItem, RecurringMatchingIds,
-    UNCHANGED_NOT_FOUND, UNCHANGED_REVISION_CONFLICT, classify_lifecycle_eligibility,
-    classify_retry_eligibility, count_due_from_head, record_lifecycle,
+    BulkEligibility, NEXT_ACTION_REPAIR, NEXT_ACTION_RETRY, RecurringBulkAction,
+    RecurringBulkExecuteResult, RecurringBulkItem, RecurringBulkItemOutcomeKind,
+    RecurringBulkItemResult, RecurringBulkLifecycleCounts, RecurringBulkPreflight,
+    RecurringBulkRequest, RecurringBulkUnchangedItem, RecurringMatchingIds, UNCHANGED_NOT_FOUND,
+    UNCHANGED_REVISION_CONFLICT, classify_lifecycle_eligibility, classify_retry_eligibility,
+    count_due_from_head, record_lifecycle,
 };
 use super::edit::UNCHANGED_GENERATION_BLOCKED;
 use super::lifecycle::{RecurringLifecycleOutcome, RecurringLifecycleUpdate};
+use super::models::RecurringFeedFilters;
 use super::models::RecurringLifecycle;
 use super::repair::{
     RecurringRecoveryAction, RecurringRecoveryOutcome, RetryRecurringGenerationFailure,
@@ -17,14 +18,19 @@ use super::service::RecurringTransactionsService;
 use crate::{Error, Result};
 
 impl RecurringTransactionsService {
-    pub(super) async fn list_matching_ids_inner(&self) -> Result<RecurringMatchingIds> {
-        let items = self.repository.list_matching_ids().await?;
-        let ids: Vec<String> = items
-            .iter()
-            .map(|item| item.recurring_transaction_id.clone())
-            .collect();
-        ensure_matching_ids_bound(&ids)?;
-        Ok(RecurringMatchingIds { items })
+    pub(super) async fn list_matching_ids_inner(
+        &self,
+        filters: RecurringFeedFilters,
+    ) -> Result<RecurringMatchingIds> {
+        let filters = filters.normalized()?;
+        let items = self
+            .repository
+            .list_matching_ids_filtered(filters.clone())
+            .await?;
+        Ok(RecurringMatchingIds {
+            fingerprint: filters.fingerprint(),
+            items,
+        })
     }
 
     pub(super) async fn preflight_bulk_inner(
@@ -42,17 +48,21 @@ impl RecurringTransactionsService {
         let mut needs_attention = 0_i32;
 
         for item in &request.items {
-            let Ok(recurring) = self
+            let recurring = match self
                 .repository
                 .get_recurring_transaction(&item.recurring_transaction_id)
                 .await
-            else {
-                unchanged_items.push(RecurringBulkUnchangedItem {
-                    recurring_transaction_id: item.recurring_transaction_id.clone(),
-                    reason: UNCHANGED_NOT_FOUND.to_string(),
-                    next_action: None,
-                });
-                continue;
+            {
+                Ok(recurring) => recurring,
+                Err(Error::NotFound(_)) => {
+                    unchanged_items.push(RecurringBulkUnchangedItem {
+                        recurring_transaction_id: item.recurring_transaction_id.clone(),
+                        reason: UNCHANGED_NOT_FOUND.to_string(),
+                        next_action: None,
+                    });
+                    continue;
+                }
+                Err(error) => return Err(error),
             };
 
             if recurring.lifecycle == RecurringLifecycle::Tombstoned
@@ -67,6 +77,14 @@ impl RecurringTransactionsService {
             }
 
             record_lifecycle(&mut lifecycle, recurring.lifecycle);
+            if recurring.revision != item.expected_revision {
+                unchanged_items.push(RecurringBulkUnchangedItem {
+                    recurring_transaction_id: item.recurring_transaction_id.clone(),
+                    reason: UNCHANGED_REVISION_CONFLICT.to_string(),
+                    next_action: None,
+                });
+                continue;
+            }
             let unresolved = self
                 .repository
                 .find_unresolved_failure(&recurring.id)
@@ -80,9 +98,10 @@ impl RecurringTransactionsService {
 
             let eligibility = if request.action.is_retry() {
                 classify_retry_eligibility(
-                    generation_blocked,
+                    unresolved.is_some(),
                     unresolved
                         .as_ref()
+                        .filter(|failure| failure.repaired_at.is_none())
                         .and_then(|failure| failure.repair_field_key),
                 )
             } else {
@@ -270,13 +289,17 @@ impl RecurringTransactionsService {
                 let next_action = if reason == UNCHANGED_REPAIR_REQUIRED {
                     Some(NEXT_ACTION_REPAIR.to_string())
                 } else if document.occurrence_summary.needs_attention {
-                    match recovery_action_for_failure(
-                        document
-                            .failures
-                            .unresolved
-                            .as_ref()
-                            .and_then(|failure| failure.repair_field_key),
-                    ) {
+                    let recovery_action = document.failures.unresolved.as_ref().map_or(
+                        RecurringRecoveryAction::CopyDiagnostics,
+                        |failure| {
+                            if failure.repaired_at.is_some() {
+                                RecurringRecoveryAction::Retry
+                            } else {
+                                recovery_action_for_failure(failure.repair_field_key)
+                            }
+                        },
+                    );
+                    match recovery_action {
                         RecurringRecoveryAction::Repair => Some(NEXT_ACTION_REPAIR.to_string()),
                         RecurringRecoveryAction::Retry => Some(NEXT_ACTION_RETRY.to_string()),
                         RecurringRecoveryAction::CopyDiagnostics => None,
@@ -311,13 +334,4 @@ impl RecurringTransactionsService {
             },
         }
     }
-}
-
-pub fn ensure_matching_ids_bound(ids: &[String]) -> Result<()> {
-    if ids.len() > MAX_BULK_SELECTION {
-        return Err(Error::InvalidData(format!(
-            "Bulk selection cannot exceed {MAX_BULK_SELECTION} identities"
-        )));
-    }
-    Ok(())
 }

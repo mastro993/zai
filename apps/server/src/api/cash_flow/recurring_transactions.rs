@@ -12,10 +12,10 @@ use zai_app::ServiceContext;
 use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest,
     GenerationFailureDiagnostics, NewRecurringTransaction, PreviewRecurringGenerationRepair,
-    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFailurePage, RecurringFeedResult,
-    RecurringLifecycleOutcome, RecurringLifecycleUpdate, RecurringMutationOutcome,
-    RecurringOccurrencePage, RecurringRecoveryOutcome, RecurringRepairPreview,
-    RecurringTransactionDocument, RepairRecurringGenerationFailure,
+    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFailurePage, RecurringFeedFilters,
+    RecurringFeedResult, RecurringLifecycle, RecurringLifecycleOutcome, RecurringLifecycleUpdate,
+    RecurringMutationOutcome, RecurringOccurrencePage, RecurringRecoveryOutcome,
+    RecurringRepairPreview, RecurringTransactionDocument, RepairRecurringGenerationFailure,
     RetryRecurringGenerationFailure, TransactionRecurringProvenance, UpdateRecurringTransaction,
 };
 
@@ -34,6 +34,12 @@ struct FeedQuery {
     limit: i64,
     #[serde(default)]
     cursor: Option<String>,
+    #[serde(default)]
+    search: Option<String>,
+    #[serde(default)]
+    lifecycle: Option<RecurringLifecycle>,
+    #[serde(default)]
+    needs_attention: Option<bool>,
 }
 
 pub fn router() -> Router<Arc<ServiceContext>> {
@@ -107,7 +113,15 @@ async fn list_recurring_transactions(
     let Query(query) = query.map_err(|rejection| bad_request(rejection.body_text()))?;
     context
         .recurring_transactions_service()
-        .list_feed(Some(query.limit), query.cursor)
+        .list_feed_filtered(
+            Some(query.limit),
+            query.cursor,
+            RecurringFeedFilters {
+                search: query.search,
+                lifecycle: query.lifecycle,
+                needs_attention: query.needs_attention,
+            },
+        )
         .await
         .map(Json)
         .map_err(|error| command_error("Failed to load recurring transactions", error))

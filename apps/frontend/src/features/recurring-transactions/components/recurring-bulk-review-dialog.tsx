@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { Button } from "@/components/ui/button";
 
@@ -52,7 +54,7 @@ export function RecurringBulkReviewDialog({
   }
 
   const copy = ACTION_COPY[action];
-  const description = [
+  const summary = [
     `${preflight.selected} selected · ${preflight.eligible} affected · ${preflight.unchanged} unchanged.`,
     `Lifecycle: ${preflight.lifecycle.active} active, ${preflight.lifecycle.paused} paused, ${preflight.lifecycle.stopped} stopped, ${preflight.lifecycle.completed} completed, ${preflight.lifecycle.needsAttention} needing attention.`,
     preflight.dueCatchUp > 0 ? `${preflight.dueCatchUp} due occurrences to catch up.` : null,
@@ -74,7 +76,35 @@ export function RecurringBulkReviewDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={copy.title}
-      description={description}
+      description={
+        <div className="space-y-3 text-left">
+          <p>{summary}</p>
+          {preflight.unchangedItems.length > 0 ? (
+            <section aria-label="Unchanged selected sources">
+              <h3 className="text-sm font-medium">Unchanged sources</h3>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                {preflight.unchangedItems.map((item) => (
+                  <li key={item.recurringTransactionId}>
+                    {item.recurringTransactionId} — {item.reason.replaceAll("_", " ")}
+                    {item.nextAction === "repair" ? (
+                      <>
+                        {" · "}
+                        <Link
+                          className="underline underline-offset-2"
+                          to="/cash-flow/recurring/$recurringTransactionId"
+                          params={{ recurringTransactionId: item.recurringTransactionId }}
+                        >
+                          Open repair
+                        </Link>
+                      </>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </div>
+      }
       isActionPending={isPending}
     >
       <Button
