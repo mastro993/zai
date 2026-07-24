@@ -2,12 +2,14 @@ use super::{
     AlertEventEmitter, RecurringProcessingEmitter, forward_alert_events,
     forward_recurring_processing_events,
 };
-use chrono::{Duration, Local};
+use chrono::{Duration, NaiveDate, NaiveDateTime};
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc;
-use zai_app::bootstrap_context;
+use zai_app::bootstrap_context_with_clock;
+use zai_core::features::budgets::traits::CalendarClock;
 use zai_core::features::domain_alerts::{
     DomainAlertEvent, DomainAlertEventBus, DomainAlertEventPublisher,
     deserialize_domain_alert_event,
@@ -21,6 +23,21 @@ use zai_core::features::recurring_transactions::{
 #[derive(Clone)]
 struct FakeEmitter {
     sender: mpsc::UnboundedSender<(String, String)>,
+}
+
+struct FixedCalendarClock;
+
+impl CalendarClock for FixedCalendarClock {
+    fn sample(&self) -> NaiveDateTime {
+        fixed_local()
+    }
+}
+
+fn fixed_local() -> NaiveDateTime {
+    NaiveDate::from_ymd_opt(2026, 7, 24)
+        .expect("fixed date")
+        .and_hms_opt(12, 0, 0)
+        .expect("fixed time")
 }
 
 impl AlertEventEmitter for FakeEmitter {
@@ -108,11 +125,12 @@ async fn native_recurring_workflow_smoke_boots_processes_and_resolves_links() {
     let zai_app::BootstrappedApp {
         context,
         supervisor,
-    } = bootstrap_context(&data_dir).expect("native context should boot");
+    } = bootstrap_context_with_clock(&data_dir, Arc::new(FixedCalendarClock))
+        .expect("native context should boot");
     let mut events = context.recurring_processing_event_bus().subscribe();
     let supervisor_handle = supervisor.spawn();
     await_finished_event(&mut events).await;
-    let first_scheduled_local = Local::now().naive_local() - Duration::days(1);
+    let first_scheduled_local = fixed_local() - Duration::days(1);
 
     let created = context
         .recurring_transactions_service()

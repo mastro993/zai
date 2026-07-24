@@ -189,7 +189,7 @@ async fn transaction_mutation_advances_stale_affected_budget_projection() {
 #[tokio::test]
 async fn transaction_update_repairs_category_type_and_amount_changes() {
     let temp_db = TempDb::new();
-    let now = date(2026, 7, 15);
+    let now = crate::test_utils::fixed_local();
     let (budgets, transactions, categories) = setup(&temp_db);
     let category = categories
         .create_category(NewTransactionCategory {
@@ -291,7 +291,7 @@ async fn delete_bulk_delete_and_combined_import_repair_results() {
         .create_budget(new_budget("repair-mutations", "Repair mutations", 10_000))
         .await
         .expect("budget");
-    let now = chrono::Local::now().naive_local();
+    let now = crate::test_utils::fixed_local();
 
     for (id, amount) in [("delete-one", 100), ("delete-two", 200)] {
         transactions
@@ -367,7 +367,7 @@ async fn failed_projection_repair_rolls_back_transaction_insert() {
             id: Some("rolled-back".to_string()),
             description: None,
             amount: 100,
-            transaction_date: chrono::Local::now().naive_local(),
+            transaction_date: crate::test_utils::fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
