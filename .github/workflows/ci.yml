@@ -1,9 +1,9 @@
 name: CI
 
 on:
-  - pull_request
-  - merge_group
-  - workflow_call
+  pull_request:
+    branches:
+      - main
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
