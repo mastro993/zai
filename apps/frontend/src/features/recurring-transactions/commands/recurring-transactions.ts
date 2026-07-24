@@ -274,6 +274,7 @@ export const previewRecurringGenerationRepair = (
   return invokeDecodedCommand(RECURRING_COMMANDS.preview_recurring_generation_repair, {
     request: {
       recurringTransactionId: document.recurringTransaction.id,
+      expectedRevision: document.recurringTransaction.revision,
       repairFieldKey,
       template: {
         description: values.description,

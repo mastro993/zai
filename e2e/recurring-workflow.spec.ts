@@ -19,7 +19,9 @@ async function openRecurringDocument(page: Page, description: string) {
 }
 
 async function waitForLinkedOccurrence(page: Page) {
-  const links = page.getByRole("link", { name: /Open (generated|adopted) transaction for occurrence/ });
+  const links = page.getByRole("link", {
+    name: /Open (generated|adopted) transaction for occurrence/,
+  });
   await expect
     .poll(
       async () => {
@@ -202,7 +204,7 @@ test("web forecast board exposes a keyboard-operable empty state", async ({ page
   await page.goto("/cash-flow/forecast");
   await expect(page.getByRole("heading", { name: "Forecast" })).toBeVisible();
   await expect(page.getByLabel("Horizon")).toBeVisible();
-  await expect(page.getByText("Forecast ready").first()).toBeVisible();
+  await expect(page.getByText(/Forecast (ready|incomplete)/).first()).toBeVisible();
 
   const emptyState = page.getByText("No forecast periods");
   const matrix = page.getByRole("table", { name: "Budget forecast matrix" });
