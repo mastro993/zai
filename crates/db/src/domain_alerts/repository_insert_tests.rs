@@ -15,7 +15,7 @@ use std::sync::Arc;
 use zai_core::Error;
 use zai_core::features::domain_alerts::{
     AlertInsertOutcome, CommittedOutcome, DomainAlertDestination, DomainAlertRichData,
-    DomainAlertSeverity, NewDomainAlert,
+    DomainAlertSeverity, DomainAlertsRepositoryTrait, NewDomainAlert,
 };
 
 #[derive(Debug, diesel::QueryableByName)]
@@ -85,20 +85,19 @@ fn insert_domain_alert_persists_row_in_immediate_transaction() {
 }
 
 #[tokio::test]
-async fn insert_returns_created_with_database_assigned_timestamp() {
+async fn insert_returns_created_with_persisted_timestamp() {
     let temp_db = TempDb::new();
     let repo = setup(&temp_db);
     let alert = sample_alert("budget.status", "period-1");
-    let before = Utc::now().naive_utc();
 
     let outcome = repo.insert(alert).await.expect("insert");
 
     let AlertInsertOutcome::Created(alert) = outcome else {
         panic!("expected created alert");
     };
-    let after = Utc::now().naive_utc();
-    assert!(alert.created_at >= before - chrono::Duration::seconds(1));
-    assert!(alert.created_at <= after + chrono::Duration::seconds(1));
+    let persisted = repo.list_alerts(&Default::default()).await.expect("list");
+    assert_eq!(persisted.items[0].created_at, alert.created_at);
+    assert_eq!(alert.created_at, alert.updated_at);
     assert!(alert.read_at.is_none());
 }
 

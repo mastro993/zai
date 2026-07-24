@@ -1,4 +1,4 @@
-use super::process_test_support::{local, seed_source, setup_service};
+use super::process_test_support::{local, process_until_caught_up, seed_source, setup_service};
 use super::seed::SeedRecurringSource;
 use crate::schema::{recurring_generation_failures, transaction_categories};
 use diesel::prelude::*;
@@ -252,8 +252,7 @@ async fn open_failure_blocks_only_that_source() {
         .await
         .expect("seed failure");
 
-    let outcome = service
-        .process_due(observed, ProcessingWorkBudget::occurrences(5), None)
+    let outcome = process_until_caught_up(&service, observed, 2)
         .await
         .expect("process");
     assert_eq!(outcome.committed, 1);
@@ -352,8 +351,7 @@ async fn invalid_deleted_category_records_failure_and_other_sources_continue() {
         .await
         .expect("invalid category seed");
 
-    let outcome = service
-        .process_due(observed, ProcessingWorkBudget::occurrences(5), None)
+    let outcome = process_until_caught_up(&service, observed, 2)
         .await
         .expect("deterministic failure should be committed");
     assert_eq!(outcome.committed, 1);

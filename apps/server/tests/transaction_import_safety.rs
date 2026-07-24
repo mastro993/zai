@@ -1,8 +1,7 @@
 mod common;
 
 use axum::http::StatusCode;
-use chrono::Local;
-use common::{request_json, setup_app};
+use common::{request_json, setup_app, test_now};
 use serde_json::{Value, json};
 
 async fn create_category(
@@ -58,7 +57,7 @@ async fn transaction_batch_child_inherits_existing_income_root_role() {
     let (app, _context, _dir) = setup_app("zai-transaction-import-inherited-role").await;
     let root = create_category(&app, "Income", None, Some("income")).await;
     let root_id = root["id"].as_str().expect("root id");
-    let transaction_date = Local::now().format("%Y-%m-%dT12:00:00").to_string();
+    let transaction_date = test_now().format("%Y-%m-%dT%H:%M:%S").to_string();
 
     let (status, _) = request_json(
         &app,

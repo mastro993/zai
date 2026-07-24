@@ -1,6 +1,5 @@
 use super::{configured_budget, setup};
-use crate::test_utils::TempDb;
-use chrono::Local;
+use crate::test_utils::{TempDb, fixed_local};
 use zai_core::features::budgets::models::{BudgetCadence, BudgetMeasurementMode, current_period};
 use zai_core::features::budgets::traits::BudgetsRepositoryTrait;
 use zai_core::features::transactions::models::NewTransaction;
@@ -8,7 +7,7 @@ use zai_core::features::transactions::traits::TransactionsRepositoryTrait;
 
 #[tokio::test]
 async fn every_budget_cadence_uses_half_open_periods() {
-    let now = Local::now().naive_local();
+    let now = fixed_local();
 
     for (index, cadence) in [
         BudgetCadence::Day,
