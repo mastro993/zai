@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig(({ mode }) => ({
   clearScreen: false,
@@ -41,6 +41,9 @@ export default defineConfig(({ mode }) => ({
     watch: {
       ignored: ["**/apps/tauri/**"],
     },
+  },
+  test: {
+    exclude: [...configDefaults.exclude, "**/.impeccable/vendor/**"],
   },
   build: {
     outDir: "../../dist",
