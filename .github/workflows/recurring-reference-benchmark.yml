@@ -1,4 +1,4 @@
-name: recurring-reference-benchmark
+name: benchmarks
 
 on:
   push:
