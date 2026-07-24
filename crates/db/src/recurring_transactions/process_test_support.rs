@@ -18,8 +18,8 @@ use tokio::sync::MutexGuard as AsyncMutexGuard;
 use zai_core::features::budgets::traits::CalendarClock;
 use zai_core::features::domain_alerts::DomainAlertEventBus;
 use zai_core::features::recurring_transactions::{
-    RECURRING_GENERATION_FAILURE_PRODUCER_KEY, RECURRING_OCCURRENCE_PRODUCER_KEY,
-    RecurringOccurrenceProcessor, RecurringTransactionsService,
+    ProcessingSliceOutcome, ProcessingWorkBudget, RECURRING_GENERATION_FAILURE_PRODUCER_KEY,
+    RECURRING_OCCURRENCE_PRODUCER_KEY, RecurringOccurrenceProcessor, RecurringTransactionsService,
 };
 
 pub static PROCESS_TEST_LOCK: AsyncMutex<()> = AsyncMutex::const_new(());
@@ -197,6 +197,33 @@ pub async fn seed_source(
         .exec(move |conn| seed_active_interval_source(conn, &seed))
         .await
         .expect("seed")
+}
+
+pub async fn process_until_caught_up(
+    service: &RecurringTransactionsService,
+    observed_local: NaiveDateTime,
+    max_passes: usize,
+) -> zai_core::Result<ProcessingSliceOutcome> {
+    let mut total_committed = 0;
+    let mut total_already_fulfilled = 0;
+
+    for _ in 0..max_passes {
+        let mut outcome = service
+            .process_due(observed_local, ProcessingWorkBudget::occurrences(1), None)
+            .await?;
+        total_committed += outcome.committed;
+        total_already_fulfilled += outcome.already_fulfilled;
+
+        if !outcome.more_due_remaining {
+            outcome.committed = total_committed;
+            outcome.already_fulfilled = total_already_fulfilled;
+            return Ok(outcome);
+        }
+    }
+
+    Err(zai_core::Error::Repository(format!(
+        "recurring test did not catch up within {max_passes} passes"
+    )))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -1,7 +1,7 @@
 use super::failpoints::{self, FulfillmentFailpoint};
 use super::process_test_support::{
-    assert_canonical_fulfillment, count_canonical, default_seed, local, reset_failpoints,
-    seed_source, setup_service,
+    assert_canonical_fulfillment, count_canonical, default_seed, local, process_until_caught_up,
+    reset_failpoints, seed_source, setup_service,
 };
 use super::seed::SeedRecurringSource;
 use std::path::PathBuf;
@@ -193,8 +193,7 @@ async fn failpoint_between_slices_keeps_completed_occurrence_only() {
 
     assert_canonical_fulfillment(&repo, 1);
 
-    let resume = service
-        .process_due(observed, ProcessingWorkBudget::occurrences(10), None)
+    let resume = process_until_caught_up(&service, observed, 2)
         .await
         .expect("resume");
     assert_eq!(resume.committed, 2);
@@ -317,8 +316,7 @@ async fn restart_after_between_slices_failure_keeps_complete_first_occurrence() 
 
     let db_path = temp_db.path().to_string();
     let (service2, repo2, _) = super::process_test_support::open_service(&db_path, observed);
-    let resume = service2
-        .process_due(observed, ProcessingWorkBudget::occurrences(10), None)
+    let resume = process_until_caught_up(&service2, observed, 2)
         .await
         .expect("resume after restart");
     assert_eq!(resume.committed, 2);

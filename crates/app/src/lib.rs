@@ -74,13 +74,28 @@ pub fn initialize_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<Se
 }
 
 pub fn bootstrap_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<BootstrappedApp> {
+    bootstrap_context_with_clock(app_data_dir, Arc::new(LocalCalendarClock))
+}
+
+pub fn bootstrap_context_with_clock(
+    app_data_dir: impl AsRef<Path>,
+    clock: Arc<dyn CalendarClock>,
+) -> zai_core::Result<BootstrappedApp> {
     let domain_alert_event_bus = DomainAlertEventBus::new();
     let recurring_processing_event_bus = RecurringProcessingEventBus::new();
-    bootstrap_context_with_buses(
+    bootstrap_context_with_buses_and_clock(
         app_data_dir,
         domain_alert_event_bus,
         recurring_processing_event_bus,
+        clock,
     )
+}
+
+pub fn initialize_context_with_clock(
+    app_data_dir: impl AsRef<Path>,
+    clock: Arc<dyn CalendarClock>,
+) -> zai_core::Result<ServiceContext> {
+    Ok(bootstrap_context_with_clock(app_data_dir, clock)?.context)
 }
 
 pub fn initialize_context_with_event_bus(
