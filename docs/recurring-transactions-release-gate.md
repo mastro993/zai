@@ -13,6 +13,10 @@ migration. Missing schema belongs to issue #205.
   Structural tests assert both values without wall-clock assertions.
 - Tests use fixed fixture identities, `ManualClock`, explicit barriers, and
   database/core failpoints. The reference workload uses replayable seed `220`.
+- Native smoke boots the application context with a fixed clock, registers the
+  production Tauri command handler in a headless mock runtime, and exercises
+  frontend-shaped IPC payloads plus forwarded processing events. It does not
+  call recurring core services directly.
 
 ## Reference workload
 
@@ -37,7 +41,9 @@ pnpm check
 pnpm test:e2e:web
 pnpm benchmark:recurring
 cargo test -p zai --lib native_recurring_workflow_smoke_boots_processes_and_resolves_links
+pnpm --filter frontend exec vitest run src/features/recurring-transactions/commands/__tests__/native-adapter.test.ts
 ```
 
 The native smoke requires the workspace `dist/index.html` stub when run alone;
-`pnpm check:backend` creates it as part of the backend gate.
+`pnpm check:backend` creates it as part of the backend gate. No migration is
+added or changed by this gate.

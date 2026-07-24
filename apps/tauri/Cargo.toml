@@ -31,6 +31,9 @@ log = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 chrono = { workspace = true }
 
+[dev-dependencies]
+tauri = { version = "~2.11", features = ["test"] }
+
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
