@@ -16,9 +16,12 @@ test("flags oversized production files and excludes tests and generated UI", asy
   try {
     await mkdir(join(root, "apps/frontend/src/components/ui"), { recursive: true });
     await mkdir(join(root, "apps/frontend/src/features/example/__tests__"), { recursive: true });
+    await mkdir(join(root, "apps/frontend/.impeccable/vendor/cli"), { recursive: true });
     await mkdir(join(root, "crates/example/src"), { recursive: true });
     await mkdir(join(root, "scripts"), { recursive: true });
     await writeFile(join(root, "crates/example/src/oversized.rs"), oversizedContent);
+    await writeFile(join(root, "apps/frontend/.impeccable/vendor/cli/oversized.mjs"), oversizedContent);
+    await writeFile(join(root, "apps/frontend/.impeccable/owned.mjs"), oversizedContent);
     await writeFile(join(root, "crates/example/src/boundary.rs"), boundaryContent);
     await writeFile(
       join(root, "apps/frontend/src/features/example/__tests__/oversized.test.ts"),
@@ -35,11 +38,14 @@ test("flags oversized production files and excludes tests and generated UI", asy
     });
     assert.equal(failed.status, 1);
     assert.match(failed.stderr, /oversized\.rs: 401 lines/);
+    assert.match(failed.stderr, /owned\.mjs: 401 lines/);
+    assert.doesNotMatch(failed.stderr, /vendor\/cli\/oversized\.mjs/);
     assert.doesNotMatch(failed.stderr, /boundary\.rs/);
     assert.doesNotMatch(failed.stderr, /oversized\.test\.ts/);
     assert.doesNotMatch(failed.stderr, /components\/ui/);
 
     await rm(join(root, "crates/example/src/oversized.rs"));
+    await rm(join(root, "apps/frontend/.impeccable/owned.mjs"));
     const passed = spawnSync(process.execPath, [checkerPath, "--root", root], {
       encoding: "utf8",
     });
