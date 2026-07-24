@@ -223,23 +223,47 @@ mod tests {
         let temp_db = TempDb::new();
         let writer = setup_writer(&temp_db);
         let seen = Arc::new(Mutex::new(Vec::new()));
-
-        let mut handles = Vec::new();
-        for i in 0..8 {
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (resume_tx, resume_rx) = mpsc::channel::<()>();
+        let blocked = {
             let writer = writer.clone();
-            let seen = Arc::clone(&seen);
-            handles.push(tokio::spawn(async move {
+            tokio::spawn(async move {
                 writer
                     .exec(move |_conn| {
-                        seen.lock().expect("seen").push(i);
+                        entered_tx.send(()).expect("entered");
+                        resume_rx.recv().expect("resume");
                         Ok(())
                     })
                     .await
-            }));
+            })
+        };
+        tokio::task::spawn_blocking(move || entered_rx.recv())
+            .await
+            .expect("join")
+            .expect("entered");
+
+        let mut replies = Vec::new();
+        for i in 0..8 {
+            let seen = Arc::clone(&seen);
+            let (reply_tx, reply_rx) = oneshot::channel();
+            writer
+                .tx
+                .try_send(WriterMessage {
+                    job: Box::new(move |_conn| {
+                        seen.lock().expect("seen").push(i);
+                        Ok(Box::new(()) as BoxedValue)
+                    }),
+                    reply_tx,
+                    inject_post_commit_failure: false,
+                })
+                .expect("queue");
+            replies.push(reply_rx);
         }
 
-        for handle in handles {
-            handle.await.expect("join").expect("write");
+        resume_tx.send(()).expect("resume");
+        blocked.await.expect("join").expect("blocked write");
+        for reply in replies {
+            reply.await.expect("reply").expect("write");
         }
 
         assert_eq!(*seen.lock().expect("seen"), (0..8).collect::<Vec<_>>());

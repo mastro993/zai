@@ -1,10 +1,10 @@
 use super::repository::BudgetsRepository;
 use crate::connection::run_migrations;
-use crate::test_utils::TempDb;
+use crate::test_utils::{FixedCalendarClock, TempDb, fixed_local};
 use crate::transaction_categories::TransactionCategoriesRepository;
 use crate::transactions::TransactionsRepository;
 use crate::write_actor::spawn_writer;
-use chrono::{Datelike, Local};
+use chrono::Datelike;
 use diesel::r2d2::{self, Pool};
 use std::sync::Arc;
 use uuid::Uuid;
@@ -12,7 +12,7 @@ use zai_core::Error;
 use zai_core::features::budgets::models::{
     BudgetCadence, BudgetListFilter, BudgetMeasurementMode, BudgetStatus, NewBudget,
 };
-use zai_core::features::budgets::traits::BudgetsRepositoryTrait;
+use zai_core::features::budgets::traits::{BudgetsRepositoryTrait, CalendarClock};
 use zai_core::features::transaction_categories::models::{CategoryRole, NewTransactionCategory};
 use zai_core::features::transaction_categories::traits::TransactionCategoriesRepositoryTrait;
 use zai_core::features::transactions::models::NewTransaction;
@@ -30,10 +30,15 @@ fn setup(
     run_migrations(&pool).expect("migrations");
     let writer = spawn_writer(pool.clone()).expect("writer");
     let pool = Arc::new(pool);
+    let clock: Arc<dyn CalendarClock> = Arc::new(FixedCalendarClock);
     (
-        BudgetsRepository::new(Arc::clone(&pool), writer.clone()),
-        TransactionsRepository::new(Arc::clone(&pool), writer.clone()),
-        TransactionCategoriesRepository::new(pool, writer),
+        BudgetsRepository::new_with_clock(Arc::clone(&pool), writer.clone(), Arc::clone(&clock)),
+        TransactionsRepository::new_with_clock(
+            Arc::clone(&pool),
+            writer.clone(),
+            Arc::clone(&clock),
+        ),
+        TransactionCategoriesRepository::new_with_clock(pool, writer, clock),
     )
 }
 
@@ -74,7 +79,6 @@ fn configured_budget(
 async fn create_budget_uses_existing_month_transactions_and_materializes_projection() {
     let temp_db = TempDb::new();
     let (budgets, transactions, categories) = setup(&temp_db);
-    let now = Local::now().naive_local();
     let spending_category = categories
         .create_category(NewTransactionCategory {
             id: Some(Uuid::new_v4().to_string()),
@@ -92,7 +96,7 @@ async fn create_budget_uses_existing_month_transactions_and_materializes_project
             id: Some(Uuid::new_v4().to_string()),
             description: Some("Before budget".to_string()),
             amount: 1_250,
-            transaction_date: now,
+            transaction_date: fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: Some(spending_category.id),
             notes: None,
@@ -152,7 +156,7 @@ async fn spending_budget_counts_refunds_but_ignores_income_category_income() {
                 id: Some(Uuid::new_v4().to_string()),
                 description: None,
                 amount,
-                transaction_date: Local::now().naive_local(),
+                transaction_date: fixed_local(),
                 transaction_type: transaction_type.to_string(),
                 transaction_category_id: category_id,
                 notes: None,
@@ -208,7 +212,7 @@ async fn reading_budget_rebuilds_projected_result_after_transaction_changes() {
             id: Some(Uuid::new_v4().to_string()),
             description: None,
             amount: 2_500,
-            transaction_date: Local::now().naive_local(),
+            transaction_date: fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
@@ -258,7 +262,7 @@ async fn category_scope_includes_children_and_canonicalizes_redundant_selection(
         })
         .await
         .expect("other category");
-    let now = Local::now().naive_local();
+    let now = fixed_local();
 
     for (id, amount, category_id) in [
         ("root-expense", 1_000, root.id.clone()),
@@ -339,7 +343,7 @@ async fn measurement_mode_applies_signed_income_rules_to_empty_scope() {
                 id: Some(id.to_string()),
                 description: None,
                 amount,
-                transaction_date: Local::now().naive_local(),
+                transaction_date: fixed_local(),
                 transaction_type: transaction_type.to_string(),
                 transaction_category_id: category_id,
                 notes: None,

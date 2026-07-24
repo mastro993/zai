@@ -172,7 +172,7 @@ async fn startup_run_publishes_started_and_finished_without_client() {
         delay.clone(),
     );
     let handle = supervisor.spawn();
-    tokio::time::advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
 
     let started = receiver.recv().await.expect("started");
     let started = deserialize_recurring_processing_event(&started).expect("decode");
@@ -217,12 +217,12 @@ async fn wake_after_idle_run_starts_processing_without_waiting_for_next_clock_ti
         Arc::new(DelayAlerts::default()),
     );
     let handle = supervisor.spawn();
-    tokio::time::advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
     receive_finished(&mut receiver).await;
     tokio::task::yield_now().await;
 
     handle.request_wake();
-    tokio::time::advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
     receive_finished(&mut receiver).await;
 
     assert_eq!(processor.calls.load(Ordering::SeqCst), 2);
@@ -251,8 +251,7 @@ async fn redundant_wakes_coalesce_within_window() {
     handle.request_wake();
     handle.request_wake();
     handle.request_wake();
-    tokio::time::advance(WAKE_COALESCE_WINDOW).await;
-    tokio::time::advance(Duration::from_millis(1)).await;
+    advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
 
     let _ = receiver.recv().await.expect("started");
     loop {
@@ -290,7 +289,7 @@ async fn transient_delay_ensures_alert_and_sets_delayed_status() {
         delay.clone(),
     );
     let handle = supervisor.spawn();
-    tokio::time::advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
 
     loop {
         let payload = receiver.recv().await.expect("event");
@@ -329,13 +328,22 @@ async fn shutdown_cancels_between_commits() {
     let handle = supervisor.handle();
     let task = tokio::spawn(supervisor.run());
     handle.request_wake();
-    tokio::time::advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
+    advance(WAKE_COALESCE_WINDOW + Duration::from_millis(1)).await;
     handle.request_shutdown();
-    let _ = tokio::time::timeout(Duration::from_secs(1), task)
+    let timeout_task =
+        tokio::spawn(async move { tokio::time::timeout(Duration::from_secs(1), task).await });
+    advance(Duration::from_secs(1)).await;
+    let _ = timeout_task
         .await
+        .expect("timeout task")
         .expect("join timeout");
-    // May observe Finished Cancelled or ShuttingDown depending on race; ensure no hang.
     let _ = receiver.try_recv();
+}
+
+async fn advance(duration: Duration) {
+    tokio::task::yield_now().await;
+    tokio::time::advance(duration).await;
+    tokio::task::yield_now().await;
 }
 
 async fn receive_finished(receiver: &mut tokio::sync::broadcast::Receiver<String>) {
