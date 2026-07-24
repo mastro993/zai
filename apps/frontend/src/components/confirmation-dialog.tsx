@@ -43,7 +43,7 @@ function ConfirmationDialog({
       <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription render={<div />}>{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <DialogClose render={<Button variant="outline" size="sm" disabled={isActionPending} />}>
