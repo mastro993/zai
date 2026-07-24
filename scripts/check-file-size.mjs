@@ -6,6 +6,7 @@ const MAX_LINES = 400;
 const SCAN_ROOTS = ["apps", "crates", "scripts"];
 const SOURCE_EXTENSIONS = new Set([".js", ".mjs", ".rs", ".ts", ".tsx"]);
 const IGNORED_DIRECTORIES = new Set(["dist", "node_modules", "target"]);
+const IGNORED_RELATIVE_DIRECTORIES = new Set(["apps/frontend/.impeccable/vendor"]);
 
 const normalizePath = (path) => path.split(sep).join("/");
 
@@ -43,15 +44,20 @@ const isProductionFile = (path) => {
   return true;
 };
 
-const collectFiles = async (directory) => {
+const collectFiles = async (directory, root) => {
   const entries = await readdir(directory, { withFileTypes: true });
   const nested = await Promise.all(
     entries.map((entry) => {
       const path = join(directory, entry.name);
-      if (entry.isDirectory() && IGNORED_DIRECTORIES.has(entry.name)) {
+      const relativePath = normalizePath(relative(root, path));
+      if (
+        entry.isDirectory() &&
+        (IGNORED_DIRECTORIES.has(entry.name) ||
+          IGNORED_RELATIVE_DIRECTORIES.has(relativePath))
+      ) {
         return [];
       }
-      return entry.isDirectory() ? collectFiles(path) : [path];
+      return entry.isDirectory() ? collectFiles(path, root) : [path];
     }),
   );
   return nested.flat();
@@ -59,7 +65,9 @@ const collectFiles = async (directory) => {
 
 export const findOversizedProductionFiles = async ({ root, exceptions }) => {
   const files = (
-    await Promise.all(SCAN_ROOTS.map((directory) => collectFiles(join(root, directory))))
+    await Promise.all(
+      SCAN_ROOTS.map((directory) => collectFiles(join(root, directory), root)),
+    )
   ).flat();
   const violations = [];
 
