@@ -8,6 +8,10 @@
       }
     ],
     "afterFileEdit": [
+       {
+        "command": "[ ! -f \".cursor/skills/impeccable/scripts/hook-before-edit.mjs\" ] || node \".cursor/skills/impeccable/scripts/hook-before-edit.mjs\"",
+        "timeout": 5
+      },
       {
         "command": ".agents/hooks/format.sh",
         "timeout": 120

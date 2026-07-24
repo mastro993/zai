@@ -1,6 +1,23 @@
+use chrono::{NaiveDate, NaiveDateTime};
 use std::fs;
 use std::path::PathBuf;
 use uuid::Uuid;
+use zai_core::features::budgets::traits::CalendarClock;
+
+pub struct FixedCalendarClock;
+
+impl CalendarClock for FixedCalendarClock {
+    fn sample(&self) -> NaiveDateTime {
+        fixed_local()
+    }
+}
+
+pub fn fixed_local() -> NaiveDateTime {
+    NaiveDate::from_ymd_opt(2026, 7, 24)
+        .expect("fixed date")
+        .and_hms_opt(12, 0, 0)
+        .expect("fixed time")
+}
 
 pub struct TempDb {
     path: PathBuf,
