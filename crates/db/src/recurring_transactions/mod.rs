@@ -41,6 +41,8 @@ mod process_heal_tests;
 #[cfg(test)]
 mod process_lifecycle_race_tests;
 #[cfg(test)]
+mod process_revision_tests;
+#[cfg(test)]
 mod process_test_support;
 #[cfg(test)]
 mod process_tests;
@@ -48,11 +50,19 @@ mod process_tests;
 mod projection_tests;
 mod queries;
 mod queries_projection;
+#[cfg(test)]
+mod release_evidence_tests;
 mod repair;
 #[cfg(test)]
 mod repair_tests;
 mod repository;
 mod repository_projection;
+#[cfg(test)]
+mod repository_query_history_tests;
+#[cfg(test)]
+mod repository_query_paging_tests;
+#[cfg(test)]
+mod repository_query_test_support;
 #[cfg(test)]
 mod repository_query_tests;
 mod repository_trait;

@@ -63,6 +63,21 @@ pub(crate) struct ReleasedSchemaFixture {
 
 pub(crate) const RELEASED_SCHEMA_FIXTURES: &[ReleasedSchemaFixture] = &[
     ReleasedSchemaFixture {
+        name: "v0000_initial",
+        expected_version: "202509260654000000",
+        seed_sql: include_str!("../fixtures/released_schemas/v0000_initial_seed.sql"),
+    },
+    ReleasedSchemaFixture {
+        name: "v0001_category_invariants",
+        expected_version: "202607051915000001",
+        seed_sql: include_str!("../fixtures/released_schemas/v0001_category_invariants_seed.sql"),
+    },
+    ReleasedSchemaFixture {
+        name: "v0002_transaction_indexes",
+        expected_version: "202607081806000002",
+        seed_sql: include_str!("../fixtures/released_schemas/v0002_transaction_indexes_seed.sql"),
+    },
+    ReleasedSchemaFixture {
         name: "v0003_category_roles",
         expected_version: "202607120900000003",
         seed_sql: include_str!("../fixtures/released_schemas/v0003_category_roles_seed.sql"),
@@ -78,9 +93,26 @@ pub(crate) const RELEASED_SCHEMA_FIXTURES: &[ReleasedSchemaFixture] = &[
         seed_sql: include_str!("../fixtures/released_schemas/v0005_budget_rollover_modes_seed.sql"),
     },
     ReleasedSchemaFixture {
+        name: "v0006_budget_revisions",
+        expected_version: "202607121800000006",
+        seed_sql: include_str!("../fixtures/released_schemas/v0006_budget_revisions_seed.sql"),
+    },
+    ReleasedSchemaFixture {
         name: "v0007_budget_lifecycle",
         expected_version: "202607122000000007",
         seed_sql: include_str!("../fixtures/released_schemas/v0007_budget_lifecycle_seed.sql"),
+    },
+    ReleasedSchemaFixture {
+        name: "v0008_domain_alerts",
+        expected_version: "202607141200000008",
+        seed_sql: include_str!("../fixtures/released_schemas/v0008_domain_alerts_seed.sql"),
+    },
+    ReleasedSchemaFixture {
+        name: "v0009_recurring_transactions",
+        expected_version: "202607202100000009",
+        seed_sql: include_str!(
+            "../fixtures/released_schemas/v0009_recurring_transactions_seed.sql"
+        ),
     },
 ];
 
@@ -165,10 +197,16 @@ mod generator {
     use super::*;
 
     const FRONTIER_VERSIONS: &[(&str, &str)] = &[
+        ("v0000_initial", "202509260654000000"),
+        ("v0001_category_invariants", "202607051915000001"),
+        ("v0002_transaction_indexes", "202607081806000002"),
         ("v0003_category_roles", "202607120900000003"),
         ("v0004_budgets", "202607121000000004"),
         ("v0005_budget_rollover_modes", "202607121200000005"),
+        ("v0006_budget_revisions", "202607121800000006"),
         ("v0007_budget_lifecycle", "202607122000000007"),
+        ("v0008_domain_alerts", "202607141200000008"),
+        ("v0009_recurring_transactions", "202607202100000009"),
     ];
 
     #[test]
