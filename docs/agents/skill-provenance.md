@@ -49,7 +49,7 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 
 | Consumer config | Reads / executes | Target |
 | --------------- | ---------------- | ------ |
-| `.codex/hooks.json` | `.agents/hooks/{install,format,check-gate}.sh` | SessionStart install; PostToolUse format + lint autofix; Stop → `pnpm check` when check-relevant |
+| `.codex/hooks.json` | Impeccable plus `.agents/hooks/{install,format,check-gate}.sh` | SessionStart install; PostToolUse design detection plus format + lint autofix; Stop → `pnpm check` when check-relevant |
 | `.claude/settings.json` | `.agents/hooks/{install,format,check-gate}.sh` | SessionStart install; PostToolUse format + lint autofix; Stop → `pnpm check` when check-relevant |
 | `.cursor/hooks.json` | `.agents/hooks/{install,format,check-gate}.sh` | sessionStart install; afterFileEdit format + lint autofix; stop → `pnpm check` when check-relevant |
 | `.github/hooks/impeccable.json` | `node "$(git rev-parse --show-toplevel)/.github/skills/impeccable/scripts/hook.mjs"` | GitHub Impeccable tree only |
@@ -98,10 +98,11 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
   - `check-gate.sh` runs `pnpm check` at completion only when the branch has
     check-relevant code changes. It emits consumer-specific follow-up JSON on
     failure.
-- The Codex, Claude Code, and Cursor edit hooks do not invoke Impeccable; they
-  continue to run only the shared formatter and lint autofix hook.
-- `.github/hooks/impeccable.json` remains the only active Impeccable hook
-  manifest and invokes `.github/skills/impeccable/scripts/hook.mjs` after edits.
+- The Codex PostToolUse hook invokes the Impeccable detector before the shared
+  formatter and lint autofix hook. Claude Code and Cursor continue to run only
+  the shared lifecycle hooks.
+- `.github/hooks/impeccable.json` also invokes the Impeccable detector after
+  edits through `.github/skills/impeccable/scripts/hook.mjs`.
 
 ## Provenance table
 
@@ -111,7 +112,7 @@ upstream revisions. “Last update” is not recorded per skill.
 | Skill | Layout | Lock entry | Source (lock or header) | Hash (lock) | License | Local mods / notes |
 | ----- | ------ | ---------- | ----------------------- | ----------- | ------- | ------------------ |
 | `byethrow` | Real copies in `.agents` and `.claude` | none | Unknown / local; skill describes `@praha/byethrow` docs | — | Not present in tree (unknown — needs follow-up); no frontmatter `license` | Copies differ; no scripts |
-| `impeccable` | Git submodule at `apps/frontend/.impeccable/vendor`; four provider symlinks | Git submodule gitlink | `pbakaus/impeccable` | `08676d57…e1462b3b` | Apache-2.0 (`LICENSE` in submodule) | Linked into `.agents`, `.claude`, `.cursor`, and `.github`; only the GitHub provider hook is active |
+| `impeccable` | Git submodule at `apps/frontend/.impeccable/vendor`; four provider symlinks | Git submodule gitlink | `pbakaus/impeccable` | `08676d57…e1462b3b` | Apache-2.0 (`LICENSE` in submodule) | Linked into `.agents`, `.claude`, `.cursor`, and `.github`; Codex and GitHub provider hooks are active |
 | `react-hook-form` | Canonical in `.agents`; `.claude` symlink | yes | `pproenca/dot-skills` (github), curated path | `708cdc15…68ba2409` | Not present in tree (unknown — needs follow-up) | Docs/skill only |
 | `rust-async-patterns` | Canonical in `.agents`; `.claude` symlink | yes | `wshobson/agents` (github) | `20d32ef5…eda389273` | Not present in tree (unknown — needs follow-up) | Docs/skill only |
 | `rust-best-practices` | Canonical in `.agents`; `.claude` symlink | yes | `apollographql/skills` (github) | `fd336f2f…eb4b2e658` | MIT (frontmatter) | Docs/skill only |
@@ -179,5 +180,5 @@ The large legacy skill set and its consumer symlinks were removed from the
 repository. The current inventory intentionally records only surviving files;
 git history is the source of truth for the removed bundles. In particular,
 the old copied Impeccable trees were replaced by links into the frontend
-submodule. The GitHub hook manifest remains active; the Codex, Claude Code, and
+submodule. The Codex and GitHub hook manifests are active; the Claude Code and
 Cursor shared edit hooks do not run the Impeccable detector.
