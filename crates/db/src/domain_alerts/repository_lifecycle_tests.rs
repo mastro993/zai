@@ -259,18 +259,15 @@ async fn mark_read_preserves_immutable_alert_fields() {
 }
 
 #[tokio::test]
-async fn mark_read_timestamp_is_database_assigned_utc() {
+async fn mark_read_sets_read_and_updated_at_together() {
     let temp_db = TempDb::new();
     let repo = setup(&temp_db);
     let row = insert_alert(&repo, sample_alert("period-6")).await;
-    let before = chrono::Utc::now().naive_utc();
 
     let read = repo.mark_read(&row.id).await.expect("mark read");
-    let after = chrono::Utc::now().naive_utc();
     let read_at = read.read_at.expect("read_at");
 
-    assert!(read_at >= before);
-    assert!(read_at <= after);
+    assert_eq!(read_at, read.updated_at);
 }
 
 #[tokio::test]

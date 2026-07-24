@@ -1,6 +1,6 @@
 use super::process_test_support::{
     assert_canonical_fulfillment, assert_no_generation_failure, count_canonical, default_seed,
-    local, seed_source, setup_dual_services, setup_service,
+    local, process_until_caught_up, seed_source, setup_dual_services, setup_service,
 };
 use super::seed::SeedRecurringSource;
 use diesel::connection::SimpleConnection;
@@ -102,7 +102,7 @@ async fn competing_processors_different_observations_loser_reselects() {
     let daemon_task = tokio::spawn(async move {
         daemon_start.wait().await;
         daemon
-            .process_due(late, ProcessingWorkBudget::occurrences(2), None)
+            .process_due(late, ProcessingWorkBudget::occurrences(1), None)
             .await
     });
     start.wait().await;
@@ -123,12 +123,15 @@ async fn competing_processors_different_observations_loser_reselects() {
         Arc::clone(&app_repo) as Arc<_>,
         Arc::new(super::process_test_support::ManualClock::new(late)),
     );
-    let replay_out = replay
-        .process_due(late, ProcessingWorkBudget::occurrences(10), None)
+    let replay_out = process_until_caught_up(&replay, late, 2)
         .await
         .expect("replay");
-    assert_eq!(replay_out.committed, 0);
-    assert_eq!(count_canonical(&app_repo).occurrences, counts.occurrences);
+    assert_eq!(
+        counts.occurrences + i64::from(replay_out.committed),
+        2,
+        "bounded replay must finish both due occurrences"
+    );
+    assert_canonical_fulfillment(&app_repo, 2);
 }
 
 #[tokio::test]

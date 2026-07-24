@@ -214,7 +214,7 @@ async fn cancellation_between_commits_keeps_completed_occurrence() {
     let second = service
         .process_due(
             observed,
-            ProcessingWorkBudget::occurrences(10),
+            ProcessingWorkBudget::occurrences(1),
             Some(&cancelled),
         )
         .await
