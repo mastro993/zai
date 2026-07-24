@@ -48,8 +48,8 @@ included. It records platform, architecture, operating-system release, CPU
 model, and host memory. It uses a temporary SQLite directory and removes it
 after success.
 
-The recurring benchmark is release evidence, not a CI check. Run it explicitly
-during release validation; functional CI gates do not report benchmark status.
+The recurring benchmark runs in its own workflow after commits reach `main`.
+It is not part of pull-request or functional CI checks.
 
 ## Completion evidence
 
