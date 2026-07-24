@@ -126,18 +126,34 @@ test("web preserves committed bulk work when post-commit refresh is interrupted"
   });
   await expect(confirmation).toBeVisible();
 
-  const executeResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === "POST" &&
-      response.url().includes("/recurring-transactions/bulk/execute"),
-  );
-  await confirmation.getByRole("button", { name: "Confirm", exact: true }).click();
-  const response = await executeResponse;
-  await response.finished();
-  await page.context().setOffline(true);
+  let blockFeedRefresh = false;
+  await page.route("**/api/cash-flow/recurring-transactions**", async (route) => {
+    const request = route.request();
+    const pathname = new URL(request.url()).pathname;
+    if (request.method() === "POST" && pathname.endsWith("/bulk/execute")) {
+      const response = await route.fetch();
+      blockFeedRefresh = true;
+      await route.fulfill({ response });
+      return;
+    }
+    if (
+      blockFeedRefresh &&
+      request.method() === "GET" &&
+      pathname === "/api/cash-flow/recurring-transactions"
+    ) {
+      await route.abort("internetdisconnected");
+      return;
+    }
+    await route.continue();
+  });
 
-  await expect(page.getByRole("alert")).toContainText("Recurring feed refresh failed");
-  await page.context().setOffline(false);
+  await confirmation.getByRole("button", { name: "Confirm", exact: true }).click();
+
+  const result = page.getByRole("dialog", { name: "Bulk action results" });
+  await expect(result).toContainText(
+    "Mutations already committed. Feed refresh failed; retry refresh without repeating successful work.",
+  );
+  blockFeedRefresh = false;
   await page.reload();
 
   const updated = await getApiDocument(page.request, source.recurringTransaction.id);

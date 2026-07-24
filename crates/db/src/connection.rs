@@ -100,17 +100,17 @@ pub fn connect_with_event_bus(
     app_data_dir: impl AsRef<Path>,
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
 ) -> Result<Database> {
-    connect_with_clock_and_event_bus(
+    connect_with_event_bus_and_clock(
         app_data_dir,
-        Arc::new(LocalCalendarClock),
         domain_alert_event_bus,
+        Arc::new(LocalCalendarClock),
     )
 }
 
-pub fn connect_with_clock_and_event_bus(
+pub fn connect_with_event_bus_and_clock(
     app_data_dir: impl AsRef<Path>,
-    clock: Arc<dyn CalendarClock>,
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
+    clock: Arc<dyn CalendarClock>,
 ) -> Result<Database> {
     let db_path = get_db_path(app_data_dir.as_ref());
     init(&db_path)?;

@@ -17,7 +17,7 @@ mod sql_statement_counter;
 mod test_utils;
 mod write_actor;
 
-pub use connection::{Database, connect, connect_with_clock_and_event_bus, connect_with_event_bus};
+pub use connection::{Database, connect, connect_with_event_bus, connect_with_event_bus_and_clock};
 pub mod budgets;
 pub mod domain_alerts;
 pub mod recurring_transactions;
