@@ -34,14 +34,14 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 | `.agents/skills/` | Canonical shared skill store | Nine real skill directories plus the linked Impeccable skill |
 | `.agents/hooks/` | Shared agent lifecycle hooks | `install.sh`, `format.sh`, and `check-gate.sh` are consumed by Codex, Claude Code, and Cursor |
 | `.claude/skills/` | Claude Code consumer tree | `byethrow` is a real copy; the other nine entries symlink into `.agents/skills/` |
-| `.claude/settings.json` | Claude Code project settings | SessionStart, PostToolUse, and Stop hooks invoke `.agents/hooks/` only |
-| `.codex/` | Codex consumer config | `hooks.json` invokes the shared install, format, and check-gate hooks only |
-| `.cursor/` | Cursor consumer config | `hooks.json` invokes the shared install, format, and check-gate hooks; skills link from the submodule |
+| `.claude/settings.json` | Claude Code consumer config | SessionStart, Impeccable PostToolUse, and shared format/check hooks |
+| `.codex/` | Codex consumer config | `hooks.json` invokes Impeccable PostToolUse plus the shared install, format, and check-gate hooks |
+| `.cursor/` | Cursor consumer config | `hooks.json` invokes Impeccable afterFileEdit plus the shared install, format, and check-gate hooks |
 | `.cursor/hooks/` | Cursor hook adapters | Thin executable wrappers around the shared `.agents/hooks/` scripts |
 | `apps/frontend/.impeccable/` | Frontend Impeccable project data | Tracked design artifacts (`design.json`, `live/config.json`) and the vendored submodule |
 | `apps/frontend/.impeccable/vendor/` | Impeccable Git submodule | `pbakaus/impeccable` checkout; source for all linked provider skills |
 | `.github/skills/impeccable` | GitHub skill link | Symlink into the frontend Impeccable submodule |
-| `.github/hooks/` | GitHub hook manifests | `impeccable.json` invokes the remaining GitHub Impeccable hook |
+| `.github/hooks/` | GitHub hook manifests | `impeccable.json` invokes the GitHub Impeccable hook |
 | `skills-lock.json` | Install/lock record | Source + `computedHash` for eight canonical skills; no licensing or consumer map |
 | `docs/agents/` | Project agent policy docs | Includes this provenance document |
 
@@ -49,9 +49,9 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 
 | Consumer config | Reads / executes | Target |
 | --------------- | ---------------- | ------ |
-| `.codex/hooks.json` | `.agents/hooks/{install,format,check-gate}.sh` | SessionStart install; PostToolUse format + lint autofix; Stop → `pnpm check` when check-relevant |
-| `.claude/settings.json` | `.agents/hooks/{install,format,check-gate}.sh` | SessionStart install; PostToolUse format + lint autofix; Stop → `pnpm check` when check-relevant |
-| `.cursor/hooks.json` | `.agents/hooks/{install,format,check-gate}.sh` | sessionStart install; afterFileEdit format + lint autofix; stop → `pnpm check` when check-relevant |
+| `.codex/hooks.json` | Impeccable plus `.agents/hooks/{install,format,check-gate}.sh` | SessionStart install; PostToolUse design detection plus format + lint autofix; Stop → `pnpm check` when check-relevant |
+| `.claude/settings.json` | Impeccable plus `.agents/hooks/{install,format,check-gate}.sh` | SessionStart install; PostToolUse design detection plus format + lint autofix; Stop → `pnpm check` when check-relevant |
+| `.cursor/hooks.json` | Impeccable plus `.agents/hooks/{install,format,check-gate}.sh` | sessionStart install; afterFileEdit design detection plus format + lint autofix; stop → `pnpm check` when check-relevant |
 | `.github/hooks/impeccable.json` | `node "$(git rev-parse --show-toplevel)/.github/skills/impeccable/scripts/hook.mjs"` | GitHub Impeccable tree only |
 | Claude Code | `.claude/skills/*` | Nine symlinks to `.agents/skills/*` plus the real `byethrow` copy |
 | Generic agents | `.agents/skills/*/SKILL.md` | Canonical skill docs; Impeccable resolves through the frontend submodule |
@@ -98,10 +98,11 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
   - `check-gate.sh` runs `pnpm check` at completion only when the branch has
     check-relevant code changes. It emits consumer-specific follow-up JSON on
     failure.
-- The Codex, Claude Code, and Cursor edit hooks do not invoke Impeccable; they
-  continue to run only the shared formatter and lint autofix hook.
-- `.github/hooks/impeccable.json` remains the only active Impeccable hook
-  manifest and invokes `.github/skills/impeccable/scripts/hook.mjs` after edits.
+- Claude Code, Codex, and Cursor invoke the Impeccable detector after edits,
+  before the shared formatter where the provider runs hooks sequentially. Their
+  existing Stop/stop hooks continue to run only the shared completion gate.
+- `.github/hooks/impeccable.json` invokes the Impeccable detector after edits
+  through `.github/skills/impeccable/scripts/hook.mjs`.
 
 ## Provenance table
 
@@ -111,7 +112,7 @@ upstream revisions. “Last update” is not recorded per skill.
 | Skill | Layout | Lock entry | Source (lock or header) | Hash (lock) | License | Local mods / notes |
 | ----- | ------ | ---------- | ----------------------- | ----------- | ------- | ------------------ |
 | `byethrow` | Real copies in `.agents` and `.claude` | none | Unknown / local; skill describes `@praha/byethrow` docs | — | Not present in tree (unknown — needs follow-up); no frontmatter `license` | Copies differ; no scripts |
-| `impeccable` | Git submodule at `apps/frontend/.impeccable/vendor`; four provider symlinks | Git submodule gitlink | `pbakaus/impeccable` | `08676d57…e1462b3b` | Apache-2.0 (`LICENSE` in submodule) | Linked into `.agents`, `.claude`, `.cursor`, and `.github`; only the GitHub provider hook is active |
+| `impeccable` | Git submodule at `apps/frontend/.impeccable/vendor`; four provider symlinks | Git submodule gitlink | `pbakaus/impeccable` | `08676d57…e1462b3b` | Apache-2.0 (`LICENSE` in submodule) | Linked into `.agents`, `.claude`, `.cursor`, and `.github`; all four provider hooks are active |
 | `react-hook-form` | Canonical in `.agents`; `.claude` symlink | yes | `pproenca/dot-skills` (github), curated path | `708cdc15…68ba2409` | Not present in tree (unknown — needs follow-up) | Docs/skill only |
 | `rust-async-patterns` | Canonical in `.agents`; `.claude` symlink | yes | `wshobson/agents` (github) | `20d32ef5…eda389273` | Not present in tree (unknown — needs follow-up) | Docs/skill only |
 | `rust-best-practices` | Canonical in `.agents`; `.claude` symlink | yes | `apollographql/skills` (github) | `fd336f2f…eb4b2e658` | MIT (frontmatter) | Docs/skill only |
@@ -169,9 +170,8 @@ npx impeccable@3.3.1 link \
 ```
 
 The linker creates symlinks and does not install or alter provider hook
-manifests. The existing GitHub hook remains committed and resolves through the
-linked GitHub skill; the shared Codex, Claude Code, and Cursor edit hooks stay
-separate.
+manifests. The provider manifests remain committed and resolve through their
+linked Impeccable skill payloads; the shared quality hooks stay separate.
 
 ## Removed tooling
 
@@ -179,5 +179,5 @@ The large legacy skill set and its consumer symlinks were removed from the
 repository. The current inventory intentionally records only surviving files;
 git history is the source of truth for the removed bundles. In particular,
 the old copied Impeccable trees were replaced by links into the frontend
-submodule. The GitHub hook manifest remains active; the Codex, Claude Code, and
-Cursor shared edit hooks do not run the Impeccable detector.
+submodule. The Claude Code, Codex, Cursor, and GitHub hook manifests are active
+with provider-native event semantics.
