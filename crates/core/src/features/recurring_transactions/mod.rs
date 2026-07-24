@@ -12,6 +12,8 @@ mod process;
 pub mod process_failpoints;
 mod process_slice;
 pub mod projection;
+#[cfg(test)]
+mod release_evidence_tests;
 mod repair;
 mod schedule;
 mod service;

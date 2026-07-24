@@ -146,14 +146,22 @@ fn fixture_data_snapshot(
     connection: &mut SqliteConnection,
     fixture_name: &str,
 ) -> Vec<Vec<String>> {
+    let category_query = if matches!(
+        fixture_name,
+        "v0000_initial" | "v0001_category_invariants" | "v0002_transaction_indexes"
+    ) {
+        "SELECT quote(id) || '|' || quote(parent_id) || '|' || quote(name) || '|' ||
+         quote(description) || '|' || quote(color) || '|' || quote('spending') || '|' ||
+         quote(created_at) || '|' || quote(updated_at) || '|' || quote(deleted_at) AS value
+         FROM transaction_categories ORDER BY id"
+    } else {
+        "SELECT quote(id) || '|' || quote(parent_id) || '|' || quote(name) || '|' ||
+         quote(description) || '|' || quote(color) || '|' || quote(role) || '|' ||
+         quote(created_at) || '|' || quote(updated_at) || '|' || quote(deleted_at) AS value
+         FROM transaction_categories ORDER BY id"
+    };
     let mut snapshots = vec![
-        snapshot_rows(
-            connection,
-            "SELECT quote(id) || '|' || quote(parent_id) || '|' || quote(name) || '|' ||
-             quote(description) || '|' || quote(color) || '|' || quote(role) || '|' ||
-             quote(created_at) || '|' || quote(updated_at) || '|' || quote(deleted_at) AS value
-             FROM transaction_categories ORDER BY id",
-        ),
+        snapshot_rows(connection, category_query),
         snapshot_rows(
             connection,
             "SELECT quote(id) || '|' || quote(description) || '|' || quote(amount) || '|' ||
@@ -165,12 +173,21 @@ fn fixture_data_snapshot(
     ];
 
     if table_exists(connection, "budgets") {
-        let budget_query = if fixture_name == "v0007_budget_lifecycle" {
+        let budget_query = if matches!(
+            fixture_name,
+            "v0007_budget_lifecycle" | "v0008_domain_alerts" | "v0009_recurring_transactions"
+        ) {
             "SELECT quote(id) || '|' || quote(name) || '|' || quote(cadence) || '|' ||
              quote(measurement_mode) || '|' || quote(base_allowance) || '|' ||
              quote(rollover_mode) || '|' || quote(warning_percentage) || '|' || quote(revision) ||
              '|' || quote(paused) || '|' || quote(created_at) || '|' || quote(updated_at) ||
              '|' || quote(deleted_at) AS value FROM budgets ORDER BY id"
+        } else if fixture_name == "v0006_budget_revisions" {
+            "SELECT quote(id) || '|' || quote(name) || '|' || quote(cadence) || '|' ||
+             quote(measurement_mode) || '|' || quote(base_allowance) || '|' ||
+             quote(rollover_mode) || '|' || quote(warning_percentage) || '|' || quote(revision) ||
+             '|' || quote(created_at) || '|' || quote(updated_at) || '|' || quote(deleted_at) AS value
+             FROM budgets ORDER BY id"
         } else {
             "SELECT quote(id) || '|' || quote(name) || '|' || quote(cadence) || '|' ||
              quote(measurement_mode) || '|' || quote(base_allowance) || '|' ||
@@ -204,6 +221,60 @@ fn fixture_data_snapshot(
         ));
     } else {
         snapshots.push(Vec::new());
+    }
+
+    if table_exists(connection, "domain_alerts") {
+        let domain_alert_query = if fixture_name == "v0009_recurring_transactions" {
+            "SELECT quote(id) || '|' || quote(producer_key) || '|' || quote(occurrence_key) ||
+             '|' || quote(severity) || '|' || quote(title) || '|' || quote(body) || '|' ||
+             quote(destination) || '|' || quote(data) || '|' || quote(created_at) || '|' ||
+             quote(updated_at) || '|' || quote(read_at) || '|' || quote(resolved_at) AS value
+             FROM domain_alerts ORDER BY id"
+        } else {
+            "SELECT quote(id) || '|' || quote(producer_key) || '|' || quote(occurrence_key) ||
+             '|' || quote(severity) || '|' || quote(title) || '|' || quote(body) || '|' ||
+             quote(destination) || '|' || quote(data) || '|' || quote(created_at) || '|' ||
+             quote(created_at) || '|' || quote(read_at) || '|' || quote(NULL) AS value
+             FROM domain_alerts ORDER BY id"
+        };
+        snapshots.push(snapshot_rows(connection, domain_alert_query));
+    } else {
+        snapshots.push(Vec::new());
+    }
+
+    if table_exists(connection, "recurring_transactions") {
+        snapshots.push(snapshot_rows(
+            connection,
+            "SELECT quote(id) || '|' || quote(lifecycle) || '|' || quote(total_occurrences) ||
+             '|' || quote(fulfilled_count) || '|' || quote(revision) || '|' ||
+             quote(lifecycle_changed_at) || '|' || quote(paused_at) || '|' || quote(created_at) ||
+             '|' || quote(updated_at) || '|' || quote(deleted_at) AS value
+             FROM recurring_transactions ORDER BY id",
+        ));
+        snapshots.push(snapshot_rows(
+            connection,
+            "SELECT quote(id) || '|' || quote(recurring_transaction_id) || '|' || quote(sequence) ||
+             '|' || quote(effective_from_local) || '|' || quote(effective_until_local) || '|' ||
+             quote(first_scheduled_local) || '|' || quote(interval_every) || '|' ||
+             quote(interval_unit) || '|' || quote(monthly_day) AS value
+             FROM recurring_schedule_revisions ORDER BY id",
+        ));
+        snapshots.push(snapshot_rows(
+            connection,
+            "SELECT quote(id) || '|' || quote(recurring_transaction_id) || '|' || quote(sequence) ||
+             '|' || quote(effective_from_local) || '|' || quote(effective_until_local) || '|' ||
+             quote(description) || '|' || quote(amount) || '|' || quote(transaction_type) ||
+             '|' || quote(transaction_category_id) || '|' || quote(notes) AS value
+             FROM recurring_template_revisions ORDER BY id",
+        ));
+        snapshots.push(snapshot_rows(
+            connection,
+            "SELECT quote(recurring_transaction_id) || '|' || quote(schedule_revision_id) ||
+             '|' || quote(next_ordinal) || '|' || quote(next_scheduled_local) AS value
+             FROM recurring_occurrence_heads ORDER BY recurring_transaction_id",
+        ));
+    } else {
+        snapshots.extend([Vec::new(), Vec::new(), Vec::new(), Vec::new()]);
     }
     snapshots
 }

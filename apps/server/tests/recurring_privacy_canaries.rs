@@ -1,5 +1,4 @@
 use std::collections::BTreeSet;
-use std::path::PathBuf;
 
 use chrono::NaiveDate;
 use serde_json::{Value, json};
@@ -20,6 +19,10 @@ use axum::http::StatusCode;
 use recurring_contract::{CONTRACT_RECURRING_ID, bulk_preflight_success, setup_contract};
 
 const CANARY_DESCRIPTION: &str = "CANARY_DESC_MEMBERSHIP_ZX9";
+const CANARY_NAME: &str = "CANARY_NAME_MEMBERSHIP_ZX9";
+const CANARY_ACCOUNT: &str = "CANARY_ACCOUNT_MEMBERSHIP_ZX9";
+const CANARY_CATEGORY: &str = "CANARY_CATEGORY_MEMBERSHIP_ZX9";
+const CANARY_NOTE: &str = "CANARY_NOTE_ZX9";
 const CANARY_AMOUNT: i32 = 424_242;
 const CANARY_SQL: &str = "SENTINEL_SQL_SELECT * FROM recurring_secrets";
 const CANARY_STACK: &str = "SENTINEL_STACK at recurring::internal::leak";
@@ -83,6 +86,9 @@ fn diagnostics_and_events_omit_financial_and_internal_canaries() {
         &diagnostics_json,
         &[
             CANARY_DESCRIPTION,
+            CANARY_NAME,
+            CANARY_ACCOUNT,
+            CANARY_CATEGORY,
             &CANARY_AMOUNT.to_string(),
             CANARY_SQL,
             CANARY_STACK,
@@ -171,6 +177,9 @@ fn process_delay_alert_and_public_errors_redact_canaries() {
         &alert_json,
         &[
             CANARY_DESCRIPTION,
+            CANARY_NAME,
+            CANARY_ACCOUNT,
+            CANARY_CATEGORY,
             &CANARY_AMOUNT.to_string(),
             CANARY_SQL,
             CANARY_STACK,
@@ -179,7 +188,7 @@ fn process_delay_alert_and_public_errors_redact_canaries() {
     );
 
     let envelope = Error::Database(DatabaseError::QueryFailed(format!(
-        "{CANARY_SQL} {CANARY_STACK} {CANARY_INTERNAL_ID}"
+        "{CANARY_SQL} {CANARY_STACK} {CANARY_INTERNAL_ID} {CANARY_NAME} {CANARY_ACCOUNT}"
     )))
     .to_envelope("Failed to load recurring transaction");
     let envelope_json = serde_json::to_value(envelope).expect("envelope");
@@ -235,65 +244,11 @@ async fn bulk_preflight_feedback_omits_template_description_and_amount() {
     }
 }
 
-#[test]
-fn public_inventory_keeps_process_due_as_internal_port_only() {
-    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let workspace = manifest
-        .parent()
-        .and_then(|path| path.parent())
-        .expect("workspace");
-
-    let tauri_lib = std::fs::read_to_string(workspace.join("apps/tauri/src/lib.rs")).expect("lib");
-    let tauri_commands = std::fs::read_to_string(
-        workspace.join("apps/tauri/src/commands/recurring_transactions.rs"),
-    )
-    .expect("commands");
-    let server_api = std::fs::read_to_string(
-        workspace.join("apps/server/src/api/cash_flow/recurring_transactions.rs"),
-    )
-    .expect("api");
-    let events_api = std::fs::read_to_string(
-        workspace.join("apps/server/src/api/cash_flow/recurring_processing_events.rs"),
-    )
-    .expect("events api");
-    let bulk_api =
-        std::fs::read_to_string(workspace.join("apps/server/src/api/cash_flow/recurring_bulk.rs"))
-            .expect("bulk api");
-    let traits = std::fs::read_to_string(
-        workspace.join("crates/core/src/features/recurring_transactions/traits.rs"),
-    )
-    .expect("traits");
-
-    for (label, source) in [
-        ("tauri lib", tauri_lib.as_str()),
-        ("tauri commands", tauri_commands.as_str()),
-        ("recurring api", server_api.as_str()),
-        ("processing api", events_api.as_str()),
-        ("bulk api", bulk_api.as_str()),
-    ] {
-        assert!(
-            !source.contains("process_due")
-                && !source.contains("process-due")
-                && !source.contains("processDue"),
-            "{label} exposes process_due"
-        );
-    }
-
-    assert!(
-        traits.contains("async fn process_due("),
-        "internal RecurringOccurrenceProcessor::process_due port must remain"
-    );
-    assert!(
-        traits.contains("Not exposed through Tauri IPC or public Axum REST endpoints"),
-        "process_due must stay documented as internal"
-    );
-}
-
 #[tokio::test]
 async fn seeded_source_surfaces_omit_canaries_from_status_errors_history_and_alerts() {
     let harness = setup_contract("recurring-privacy-seeded").await;
     let (status, category) =
-        crate::contract_harness::seed_category(&harness, "CANARY_CAT_ZX9").await;
+        crate::contract_harness::seed_category(&harness, CANARY_CATEGORY).await;
     assert_eq!(status, StatusCode::CREATED);
     let category_id = category["id"].as_str().expect("category id").to_string();
 
@@ -303,11 +258,11 @@ async fn seeded_source_surfaces_omit_canaries_from_status_errors_history_and_ale
         "firstScheduledLocal": "2026-08-01T09:00:00",
         "totalOccurrences": 12,
         "template": {
-            "description": CANARY_DESCRIPTION,
+            "description": format!("{CANARY_NAME} {CANARY_DESCRIPTION}"),
             "amount": CANARY_AMOUNT,
             "transactionType": "expense",
             "transactionCategoryId": category_id,
-            "notes": "CANARY_NOTE_ZX9"
+            "notes": format!("{CANARY_ACCOUNT} {CANARY_NOTE}")
         }
     });
     let (status, _) = request_json(
@@ -321,9 +276,11 @@ async fn seeded_source_surfaces_omit_canaries_from_status_errors_history_and_ale
 
     let canaries = [
         CANARY_DESCRIPTION,
+        CANARY_NAME,
+        CANARY_ACCOUNT,
+        CANARY_CATEGORY,
+        CANARY_NOTE,
         &CANARY_AMOUNT.to_string(),
-        "CANARY_CAT_ZX9",
-        "CANARY_NOTE_ZX9",
         CANARY_SQL,
         CANARY_STACK,
         CANARY_INTERNAL_ID,

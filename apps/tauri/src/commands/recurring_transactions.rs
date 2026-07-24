@@ -37,10 +37,7 @@ pub async fn get_recurring_transaction(
     recurring_transaction_id: String,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringTransactionDocument> {
-    debug!(
-        "Getting recurring transaction {}...",
-        recurring_transaction_id
-    );
+    debug!("Getting recurring transaction...");
     state
         .recurring_transactions_service()
         .get_document(&recurring_transaction_id)
@@ -55,10 +52,7 @@ pub async fn get_recurring_transaction_occurrences(
     cursor: Option<String>,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringOccurrencePage> {
-    debug!(
-        "Getting occurrences for recurring transaction {}...",
-        recurring_transaction_id
-    );
+    debug!("Getting recurring occurrences...");
     state
         .recurring_transactions_service()
         .list_linked_occurrences(&recurring_transaction_id, limit, cursor)
@@ -71,10 +65,7 @@ pub async fn get_transaction_recurring_provenance(
     transaction_id: String,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<Option<TransactionRecurringProvenance>> {
-    debug!(
-        "Getting recurring provenance for transaction {}...",
-        transaction_id
-    );
+    debug!("Getting recurring provenance...");
     state
         .recurring_transactions_service()
         .get_transaction_provenance(&transaction_id)
@@ -100,10 +91,7 @@ pub async fn update_recurring_transaction(
     input: UpdateRecurringTransaction,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringMutationOutcome> {
-    debug!(
-        "Updating recurring transaction {}...",
-        input.recurring_transaction_id
-    );
+    debug!("Updating recurring transaction...");
     state
         .recurring_transactions_service()
         .update(input)
@@ -143,7 +131,7 @@ pub async fn pause_recurring_transaction(
     expected_revision: i32,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringLifecycleOutcome> {
-    debug!("Pausing recurring transaction {recurring_transaction_id}...");
+    debug!("Pausing recurring transaction...");
     state
         .recurring_transactions_service()
         .pause(RecurringLifecycleUpdate {
@@ -160,7 +148,7 @@ pub async fn resume_recurring_transaction(
     expected_revision: i32,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringLifecycleOutcome> {
-    debug!("Resuming recurring transaction {recurring_transaction_id}...");
+    debug!("Resuming recurring transaction...");
     state
         .recurring_transactions_service()
         .resume(RecurringLifecycleUpdate {
@@ -177,7 +165,7 @@ pub async fn stop_recurring_transaction(
     expected_revision: i32,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringLifecycleOutcome> {
-    debug!("Stopping recurring transaction {recurring_transaction_id}...");
+    debug!("Stopping recurring transaction...");
     state
         .recurring_transactions_service()
         .stop(RecurringLifecycleUpdate {
@@ -194,7 +182,7 @@ pub async fn delete_recurring_transaction(
     expected_revision: i32,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringLifecycleOutcome> {
-    debug!("Deleting recurring transaction {recurring_transaction_id}...");
+    debug!("Deleting recurring transaction...");
     state
         .recurring_transactions_service()
         .delete(RecurringLifecycleUpdate {
@@ -210,10 +198,7 @@ pub async fn preview_recurring_generation_repair(
     request: PreviewRecurringGenerationRepair,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringRepairPreview> {
-    debug!(
-        "Previewing generation repair for {}...",
-        request.recurring_transaction_id
-    );
+    debug!("Previewing generation repair...");
     state
         .recurring_transactions_service()
         .preview_generation_repair(request)
@@ -226,10 +211,7 @@ pub async fn repair_recurring_generation_failure(
     input: RepairRecurringGenerationFailure,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringRecoveryOutcome> {
-    debug!(
-        "Repairing generation failure for {}...",
-        input.recurring_transaction_id
-    );
+    debug!("Repairing generation failure...");
     state
         .recurring_transactions_service()
         .repair_and_retry(input)
@@ -242,10 +224,7 @@ pub async fn retry_recurring_generation_failure(
     input: RetryRecurringGenerationFailure,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringRecoveryOutcome> {
-    debug!(
-        "Retrying generation for {}...",
-        input.recurring_transaction_id
-    );
+    debug!("Retrying generation...");
     state
         .recurring_transactions_service()
         .retry_generation(input)
@@ -258,10 +237,7 @@ pub async fn get_recurring_generation_failure_diagnostics(
     recurring_transaction_id: String,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<GenerationFailureDiagnostics> {
-    debug!(
-        "Copying generation failure diagnostics for {}...",
-        recurring_transaction_id
-    );
+    debug!("Copying generation failure diagnostics...");
     state
         .recurring_transactions_service()
         .generation_failure_diagnostics(&recurring_transaction_id)
@@ -276,10 +252,7 @@ pub async fn get_recurring_transaction_failure_history(
     cursor: Option<String>,
     state: State<'_, Arc<ServiceContext>>,
 ) -> CommandResult<RecurringFailurePage> {
-    debug!(
-        "Loading failure history for recurring transaction {}...",
-        recurring_transaction_id
-    );
+    debug!("Loading recurring failure history...");
     state
         .recurring_transactions_service()
         .list_failure_history(&recurring_transaction_id, limit, cursor)

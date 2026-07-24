@@ -10,6 +10,9 @@ const IGNORED_RELATIVE_DIRECTORIES = new Set(["apps/frontend/.impeccable/vendor"
 
 const normalizePath = (path) => path.split(sep).join("/");
 
+const isRecurringSourceFile = (path) =>
+  /(^|\/)recurring(?:[._/-]|$)/.test(path);
+
 const countLines = (content) => {
   if (content.length === 0) {
     return 0;
@@ -26,18 +29,23 @@ const isProductionFile = (path) => {
   const segments = path.split("/");
   const fileName = segments.at(-1) ?? "";
   if (
-    segments.includes("__tests__") ||
     segments.includes("node_modules") ||
     segments.includes("target") ||
     segments.includes("dist") ||
-    segments.includes("tests") ||
     path.includes("/components/ui/") ||
+    fileName.includes(".gen.")
+  ) {
+    return false;
+  }
+
+  const isTestFile =
+    segments.includes("__tests__") ||
+    segments.includes("tests") ||
     fileName.includes(".test.") ||
     fileName.includes(".spec.") ||
     fileName.endsWith("_test.rs") ||
-    fileName.endsWith("_tests.rs") ||
-    fileName.includes(".gen.")
-  ) {
+    fileName.endsWith("_tests.rs");
+  if (isTestFile && !isRecurringSourceFile(path)) {
     return false;
   }
 

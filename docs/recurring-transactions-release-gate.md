@@ -1,7 +1,8 @@
 # Recurring transaction release gate
 
-Issue #220 owns release evidence for recurring transactions. It adds no
-migration. Missing schema belongs to issue #205.
+Issue #277 owns release evidence for recurring transactions. It adds no
+migration. Missing schema belongs to issue #205. Issue #220 established the
+performance contracts retained here.
 
 ## Fixed contracts
 
@@ -13,10 +14,21 @@ migration. Missing schema belongs to issue #205.
   Structural tests assert both values without wall-clock assertions.
 - Tests use fixed fixture identities, `ManualClock`, explicit barriers, and
   database/core failpoints. The reference workload uses replayable seed `220`.
-- Native smoke boots the application context with a fixed clock, registers the
-  production Tauri command handler in a headless mock runtime, and exercises
-  frontend-shaped IPC payloads plus forwarded processing events. It does not
-  call recurring core services directly.
+- Release-evidence tests use replayable seed `277` for generated schedule
+  properties, metamorphic schedule checks, lifecycle model transitions,
+  exactly-once replay, revision boundaries, and bulk partial commits.
+
+## Release-evidence matrix
+
+The standard backend gate includes the complete released-schema fixture matrix
+through `v0009_recurring_transactions`, transport parity, recursive privacy
+canaries, and native Tauri smoke. The matrix preserves populated finance,
+alert, and recurring rows while upgrading to head. No migration is added by
+this gate.
+Native smoke boots the application context with a fixed clock, registers the
+production Tauri command handler in a headless mock runtime, and exercises
+frontend-shaped IPC payloads plus forwarded processing events. It does not
+call recurring core services directly.
 
 ## Reference workload
 
@@ -32,7 +44,12 @@ clock, processes all 10,000 occurrences, and checks every persisted count. The
 wrapper measures child working set from the runner's `READY` barrier (`vmmap`
 physical footprint on macOS, `VmRSS` on Linux) and fails when processing
 exceeds 60 seconds or working-set growth exceeds 64 MiB. Build time is not
-included. It uses a temporary SQLite directory and removes it after success.
+included. It records platform, architecture, operating-system release, CPU
+model, and host memory. It uses a temporary SQLite directory and removes it
+after success.
+
+The recurring benchmark runs in its own workflow after commits reach `main`.
+It is not part of pull-request or functional CI checks.
 
 ## Completion evidence
 

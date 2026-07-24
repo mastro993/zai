@@ -1,6 +1,7 @@
 import { execFile, spawn, spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { once } from "node:events";
+import { arch, cpus, platform, release, totalmem } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -127,6 +128,9 @@ const elapsedMs = performance.now() - started;
 const growthKiB = peak - (baseline ?? peak);
 const processed = stdout.match(/processed=(\d+)/)?.[1];
 console.log(stdout.trim());
+console.log(
+  `reference_platform=${platform()} reference_arch=${arch()} reference_os_release=${release()} reference_cpu_model=${cpus()[0]?.model ?? "unknown"} reference_host_memory_mib=${Math.round(totalmem() / 1024 / 1024)}`,
+);
 console.log(
   `reference_elapsed_ms=${Math.round(elapsedMs)} reference_working_set_growth_kib=${Math.round(growthKiB)}`,
 );
