@@ -8,11 +8,28 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
+use chrono::{NaiveDate, NaiveDateTime};
 use serde_json::{Value, json};
 use tower::ServiceExt;
 use uuid::Uuid;
-use zai_app::initialize_context;
+use zai_app::initialize_context_with_clock;
+use zai_core::features::budgets::traits::CalendarClock;
 use zai_server::create_router;
+
+struct FixedCalendarClock;
+
+impl CalendarClock for FixedCalendarClock {
+    fn sample(&self) -> NaiveDateTime {
+        test_now()
+    }
+}
+
+pub fn test_now() -> NaiveDateTime {
+    NaiveDate::from_ymd_opt(2026, 7, 24)
+        .expect("fixed date")
+        .and_hms_opt(12, 0, 0)
+        .expect("fixed time")
+}
 
 pub struct TempAppDataDir {
     path: PathBuf,
@@ -41,7 +58,8 @@ pub async fn setup_app(
 ) -> (axum::Router, Arc<zai_app::ServiceContext>, TempAppDataDir) {
     let app_data_dir = TempAppDataDir::new(prefix);
     let context = Arc::new(
-        initialize_context(app_data_dir.path()).expect("shared context should initialize"),
+        initialize_context_with_clock(app_data_dir.path(), Arc::new(FixedCalendarClock))
+            .expect("shared context should initialize"),
     );
     (create_router(Arc::clone(&context)), context, app_data_dir)
 }

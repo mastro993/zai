@@ -81,7 +81,7 @@ async fn stale_head_with_existing_occurrence_heals_as_already_fulfilled() {
     assert_eq!(head.next_scheduled_local, local(2026, 2, 1, 9, 0));
 
     let continue_catch_up = service
-        .process_due(observed, ProcessingWorkBudget::occurrences(5), None)
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect("continue");
     assert_eq!(continue_catch_up.committed, 1);

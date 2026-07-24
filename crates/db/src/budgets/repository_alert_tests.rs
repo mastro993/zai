@@ -2,7 +2,7 @@ use crate::budgets::repository::BudgetsRepository;
 use crate::connection::run_migrations;
 use crate::domain_alerts::DomainAlertsRepository;
 use crate::schema::domain_alerts;
-use crate::test_utils::TempDb;
+use crate::test_utils::{FixedCalendarClock, TempDb, fixed_local};
 use crate::transactions::TransactionsRepository;
 use crate::write_actor::spawn_writer;
 use diesel::prelude::*;
@@ -15,6 +15,7 @@ use zai_core::features::budgets::models::{
     BudgetCadence, BudgetListFilter, BudgetStatus, NewBudget,
 };
 use zai_core::features::budgets::traits::BudgetsRepositoryTrait;
+use zai_core::features::budgets::traits::CalendarClock;
 use zai_core::features::domain_alerts::{
     DomainAlertEvent, DomainAlertEventPublisher, DomainAlertPublicationError, DomainAlertSeverity,
     DomainAlertsRepositoryTrait,
@@ -47,16 +48,17 @@ fn setup(
     run_migrations(&pool).expect("migrations");
     let writer = spawn_writer(pool.clone()).expect("writer");
     let pool = Arc::new(pool);
+    let clock: Arc<dyn CalendarClock> = Arc::new(FixedCalendarClock);
     let budgets = BudgetsRepository::new_with_clock_and_publisher(
         Arc::clone(&pool),
         writer.clone(),
-        Arc::new(zai_core::features::budgets::traits::LocalCalendarClock),
+        Arc::clone(&clock),
         Arc::clone(&publisher),
     );
     let transactions = TransactionsRepository::new_with_clock_and_publisher(
         Arc::clone(&pool),
         writer.clone(),
-        Arc::new(zai_core::features::budgets::traits::LocalCalendarClock),
+        clock,
         Arc::clone(&publisher),
     );
     let alerts = DomainAlertsRepository::new_with_publisher(pool, writer, publisher);
@@ -75,7 +77,7 @@ async fn creating_budget_with_overspent_period_is_silent() {
             id: Some(Uuid::new_v4().to_string()),
             description: Some("Big spend".to_string()),
             amount: 15_000,
-            transaction_date: chrono::Local::now().naive_local(),
+            transaction_date: fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
@@ -132,7 +134,7 @@ async fn transaction_transition_to_overspent_persists_and_publishes_critical_ale
             id: Some(Uuid::new_v4().to_string()),
             description: Some("Big spend".to_string()),
             amount: 15_000,
-            transaction_date: chrono::Local::now().naive_local(),
+            transaction_date: fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
@@ -183,7 +185,7 @@ async fn duplicate_occurrence_preserves_first_alert_without_failing_mutation() {
         id: Some(Uuid::new_v4().to_string()),
         description: Some("Spend".to_string()),
         amount: 2_000,
-        transaction_date: chrono::Local::now().naive_local(),
+        transaction_date: fixed_local(),
         transaction_type: "expense".to_string(),
         transaction_category_id: None,
         notes: None,
