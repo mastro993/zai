@@ -88,7 +88,7 @@ Before opening a pull request, run:
 
 ```sh
 pnpm check
-pnpm audit
+pnpm build:web
 ```
 
 When transport or web behavior changes, also run:
