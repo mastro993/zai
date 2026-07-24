@@ -48,8 +48,8 @@ included. It records platform, architecture, operating-system release, CPU
 model, and host memory. It uses a temporary SQLite directory and removes it
 after success.
 
-CI runs `Recurring reference benchmark` as an independent job, parallel to
-functional checks. A passing functional suite cannot waive a failed benchmark.
+The recurring benchmark is release evidence, not a CI check. Run it explicitly
+during release validation; functional CI gates do not report benchmark status.
 
 ## Completion evidence
 
