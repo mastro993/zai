@@ -350,6 +350,7 @@ async fn bounded_slice_rearms_timer_before_continuing_backlog() {
 }
 
 async fn advance(duration: Duration) {
+    tokio::task::yield_now().await;
     tokio::time::advance(duration).await;
     tokio::task::yield_now().await;
 }

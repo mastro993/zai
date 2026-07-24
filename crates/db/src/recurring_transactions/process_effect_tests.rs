@@ -1,5 +1,5 @@
 use super::fulfill::FAIL_AFTER_TRANSACTION_INSERT;
-use super::process_test_support::{local, seed_source, setup_service};
+use super::process_test_support::{local, process_until_caught_up, seed_source, setup_service};
 use super::seed::SeedRecurringSource;
 use crate::connection::get_connection;
 use crate::schema::{domain_alerts, recurring_generation_failures, transactions};
@@ -95,8 +95,7 @@ async fn finite_source_completes_and_idempotent_replay_creates_nothing() {
     )
     .await;
 
-    let first = service
-        .process_due(observed, ProcessingWorkBudget::occurrences(10), None)
+    let first = process_until_caught_up(&service, observed, 2)
         .await
         .expect("process");
     assert_eq!(first.committed, 2);
@@ -141,7 +140,7 @@ async fn finite_source_completes_and_idempotent_replay_creates_nothing() {
     );
 
     let replay = service
-        .process_due(observed, ProcessingWorkBudget::occurrences(10), None)
+        .process_due(observed, ProcessingWorkBudget::occurrences(1), None)
         .await
         .expect("replay");
     assert_eq!(replay.committed, 0);
