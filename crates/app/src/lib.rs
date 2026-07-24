@@ -1,6 +1,6 @@
 use std::{path::Path, sync::Arc};
 
-use zai_core::features::budgets::traits::LocalCalendarClock;
+use zai_core::features::budgets::traits::{CalendarClock, LocalCalendarClock};
 use zai_core::features::domain_alerts::DomainAlertEventBus;
 use zai_core::features::recurring_transactions::{
     RecurringProcessingEventBus, RecurringProcessingSupervisor,
@@ -74,13 +74,28 @@ pub fn initialize_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<Se
 }
 
 pub fn bootstrap_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<BootstrappedApp> {
+    bootstrap_context_with_clock(app_data_dir, Arc::new(LocalCalendarClock))
+}
+
+pub fn bootstrap_context_with_clock(
+    app_data_dir: impl AsRef<Path>,
+    clock: Arc<dyn CalendarClock>,
+) -> zai_core::Result<BootstrappedApp> {
     let domain_alert_event_bus = DomainAlertEventBus::new();
     let recurring_processing_event_bus = RecurringProcessingEventBus::new();
-    bootstrap_context_with_buses(
+    bootstrap_context_with_clock_and_buses(
         app_data_dir,
+        clock,
         domain_alert_event_bus,
         recurring_processing_event_bus,
     )
+}
+
+pub fn initialize_context_with_clock(
+    app_data_dir: impl AsRef<Path>,
+    clock: Arc<dyn CalendarClock>,
+) -> zai_core::Result<ServiceContext> {
+    Ok(bootstrap_context_with_clock(app_data_dir, clock)?.context)
 }
 
 pub fn initialize_context_with_event_bus(
@@ -100,8 +115,25 @@ pub fn bootstrap_context_with_buses(
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
     recurring_processing_event_bus: Arc<RecurringProcessingEventBus>,
 ) -> zai_core::Result<BootstrappedApp> {
-    let database =
-        zai_db::connect_with_event_bus(app_data_dir, Arc::clone(&domain_alert_event_bus))?;
+    bootstrap_context_with_clock_and_buses(
+        app_data_dir,
+        Arc::new(LocalCalendarClock),
+        domain_alert_event_bus,
+        recurring_processing_event_bus,
+    )
+}
+
+pub fn bootstrap_context_with_clock_and_buses(
+    app_data_dir: impl AsRef<Path>,
+    clock: Arc<dyn CalendarClock>,
+    domain_alert_event_bus: Arc<DomainAlertEventBus>,
+    recurring_processing_event_bus: Arc<RecurringProcessingEventBus>,
+) -> zai_core::Result<BootstrappedApp> {
+    let database = zai_db::connect_with_clock_and_event_bus(
+        app_data_dir,
+        Arc::clone(&clock),
+        Arc::clone(&domain_alert_event_bus),
+    )?;
     log::info!("Database initialized at {}", database.path().display());
 
     let transaction_categories_repository = database.transaction_categories_repository();
@@ -109,9 +141,6 @@ pub fn bootstrap_context_with_buses(
     let budgets_repository = database.budgets_repository();
     let domain_alerts_repository = database.domain_alerts_repository();
     let recurring_transactions_repository = database.recurring_transactions_repository();
-    let clock: Arc<dyn zai_core::features::budgets::traits::CalendarClock> =
-        Arc::new(LocalCalendarClock);
-
     let heads = Arc::new(RepositorySupervisorHeads::new(
         recurring_transactions_repository.clone(),
     ));

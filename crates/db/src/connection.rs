@@ -100,12 +100,23 @@ pub fn connect_with_event_bus(
     app_data_dir: impl AsRef<Path>,
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
 ) -> Result<Database> {
+    connect_with_clock_and_event_bus(
+        app_data_dir,
+        Arc::new(LocalCalendarClock),
+        domain_alert_event_bus,
+    )
+}
+
+pub fn connect_with_clock_and_event_bus(
+    app_data_dir: impl AsRef<Path>,
+    clock: Arc<dyn CalendarClock>,
+    domain_alert_event_bus: Arc<DomainAlertEventBus>,
+) -> Result<Database> {
     let db_path = get_db_path(app_data_dir.as_ref());
     init(&db_path)?;
     let pool = create_pool(&db_path)?;
     run_migrations(&pool)?;
     let writer = spawn_writer(pool.as_ref().clone())?;
-    let clock: Arc<dyn CalendarClock> = Arc::new(LocalCalendarClock);
 
     Ok(Database {
         db_path,

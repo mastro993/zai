@@ -1,8 +1,7 @@
 mod common;
 
 use axum::http::StatusCode;
-use chrono::Local;
-use common::{request_json, setup_app};
+use common::{request_json, setup_app, test_now};
 use serde_json::{Value, json};
 
 fn budget_payload(name: &str) -> Value {
@@ -15,7 +14,7 @@ fn budget_payload(name: &str) -> Value {
 #[tokio::test]
 async fn create_list_and_inspect_budget_round_trip() {
     let (app, _context, _dir) = setup_app("zai-budgets").await;
-    let transaction_date = Local::now().format("%Y-%m-%dT12:00:00").to_string();
+    let transaction_date = test_now().format("%Y-%m-%dT%H:%M:%S").to_string();
 
     let (transaction_status, _) = request_json(
         &app,
