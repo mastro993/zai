@@ -21,7 +21,6 @@ use zai_core::Error;
 use zai_core::features::budgets::traits::LocalCalendarClock;
 use zai_core::features::recurring_transactions::{
     RecurringTransactionsRepositoryTrait, RecurringTransactionsService,
-    RecurringTransactionsServiceTrait,
 };
 
 #[derive(QueryableByName, Debug)]
