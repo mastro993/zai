@@ -351,5 +351,5 @@ export const executeRecurringBulk = (
 };
 
 export const getRecurringProcessingStatus = (): CommandResult<RecurringProcessingStatusView> => {
-  return invokeDecodedCommand(RECURRING_COMMANDS.get_recurring_processing_status, {});
+  return invokeDecodedCommand(RECURRING_COMMANDS.get_recurring_processing_status);
 };

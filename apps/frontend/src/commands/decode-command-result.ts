@@ -1,12 +1,12 @@
 import { Result } from "@praha/byethrow";
 
-import type { CommandDescriptor } from "./command-descriptor";
 import { CommandError } from "./errors";
+import type { z } from "zod";
 
 export const decodeCommandValue = <T>(
   command: string,
   value: unknown,
-  resultSchema: CommandDescriptor<T>["resultSchema"],
+  resultSchema: z.ZodType<T> | "void",
 ): Result.Result<T, CommandError> => {
   if (resultSchema === "void") {
     return Result.succeed(undefined as T) as Result.Result<T, CommandError>;

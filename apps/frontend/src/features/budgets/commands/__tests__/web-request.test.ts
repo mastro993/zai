@@ -1,114 +1,105 @@
+import { Result } from "@praha/byethrow";
 import { describe, expect, it } from "vitest";
 
-import { buildBudgetCommandRequestSpec } from "../web-command-map";
+import type { CommandError } from "@/commands/errors";
+
+import {
+  buildCreateBudgetRequest,
+  buildDeleteBudgetRequest,
+  buildGetBudgetHistoryRequest,
+  buildGetBudgetRequest,
+  buildGetBudgetsRequest,
+  buildPauseBudgetRequest,
+  buildResumeBudgetRequest,
+  buildUpdateBudgetRequest,
+} from "../web-requests";
+
+const unwrap = <T>(result: Result.Result<T, CommandError>): T | undefined => {
+  expect(Result.isSuccess(result)).toBe(true);
+  return Result.isSuccess(result) ? result.value : undefined;
+};
+
+const newBudget = {
+  name: "Monthly",
+  baseAllowance: 10000,
+  cadence: "month" as const,
+  categoryIds: ["category-1"],
+  measurementMode: "spending" as const,
+  rolloverMode: "off" as const,
+  warningPercentage: 80,
+};
 
 describe("budget web requests", () => {
   it("maps list and detail reads", () => {
-    expect(buildBudgetCommandRequestSpec("get_budgets")).toEqual({
+    expect(unwrap(buildGetBudgetsRequest({}))).toEqual({
+      api: "cash-flow",
       method: "GET",
       path: "/budgets",
       query: undefined,
     });
-    expect(buildBudgetCommandRequestSpec("get_budgets", { filter: "paused" })).toEqual({
+    expect(unwrap(buildGetBudgetsRequest({ filter: "paused" }))).toEqual({
+      api: "cash-flow",
       method: "GET",
       path: "/budgets",
       query: { filter: "paused" },
     });
-    expect(buildBudgetCommandRequestSpec("get_budget", { budgetId: "budget-1" })).toEqual({
+    expect(unwrap(buildGetBudgetRequest({ budgetId: "budget-1" }))).toEqual({
+      api: "cash-flow",
       method: "GET",
       path: "/budgets/budget-1",
     });
   });
 
-  it("maps budget creation without changing the payload", () => {
-    const newBudget = {
-      name: "Monthly",
-      baseAllowance: 10000,
-      cadence: "month",
-      categoryIds: ["category-1"],
-      measurementMode: "spending",
-      rolloverMode: "off",
-      warningPercentage: 80,
-    };
-
-    expect(buildBudgetCommandRequestSpec("create_budget", { newBudget })).toEqual({
+  it("preserves budget payload and revision bodies", () => {
+    expect(unwrap(buildCreateBudgetRequest({ newBudget }))).toEqual({
+      api: "cash-flow",
       method: "POST",
       path: "/budgets",
       body: newBudget,
     });
-  });
-
-  it("maps budget updates to the budget detail route", () => {
-    const updatedBudget = {
-      expectedRevision: 0,
-      name: "Updated monthly",
-      baseAllowance: 20000,
-      cadence: "month",
-      categoryIds: [],
-      measurementMode: "spending",
-      rolloverMode: "off",
-      warningPercentage: 80,
-    };
-
-    expect(
-      buildBudgetCommandRequestSpec("update_budget", {
-        budgetId: "budget-1",
-        updatedBudget,
-      }),
-    ).toEqual({
+    const updatedBudget = { ...newBudget, categoryIds: [], expectedRevision: 0 };
+    expect(unwrap(buildUpdateBudgetRequest({ budgetId: "budget-1", updatedBudget }))).toEqual({
+      api: "cash-flow",
       method: "PUT",
       path: "/budgets/budget-1",
       body: updatedBudget,
     });
+    expect(unwrap(buildDeleteBudgetRequest({ budgetId: "budget-1", expectedRevision: 3 }))).toEqual(
+      {
+        api: "cash-flow",
+        method: "DELETE",
+        path: "/budgets/budget-1",
+        body: { expectedRevision: 3 },
+      },
+    );
   });
 
-  it("preserves revision-safe deletion and lifecycle bodies", () => {
-    expect(
-      buildBudgetCommandRequestSpec("delete_budget", {
-        budgetId: "budget-1",
-        expectedRevision: 3,
-      }),
-    ).toEqual({
-      method: "DELETE",
-      path: "/budgets/budget-1",
-      body: { expectedRevision: 3 },
-    });
-    expect(
-      buildBudgetCommandRequestSpec("pause_budget", {
-        budgetId: "budget-1",
-        expectedRevision: 4,
-      }),
-    ).toEqual({
+  it("maps lifecycle and history requests", () => {
+    expect(unwrap(buildPauseBudgetRequest({ budgetId: "budget-1", expectedRevision: 4 }))).toEqual({
+      api: "cash-flow",
       method: "POST",
       path: "/budgets/budget-1/pause",
       body: { expectedRevision: 4 },
     });
-    expect(
-      buildBudgetCommandRequestSpec("resume_budget", {
-        budgetId: "budget-1",
-        expectedRevision: 5,
-      }),
-    ).toEqual({
-      method: "POST",
-      path: "/budgets/budget-1/resume",
-      body: { expectedRevision: 5 },
+    expect(unwrap(buildResumeBudgetRequest({ budgetId: "budget-1", expectedRevision: 5 }))).toEqual(
+      {
+        api: "cash-flow",
+        method: "POST",
+        path: "/budgets/budget-1/resume",
+        body: { expectedRevision: 5 },
+      },
+    );
+    expect(unwrap(buildGetBudgetHistoryRequest({ budgetId: "budget-1" }))).toEqual({
+      api: "cash-flow",
+      method: "GET",
+      path: "/budgets/budget-1/history",
+      query: { page: "1", perPage: "50" },
     });
   });
 
-  it("maps budget history with default and explicit pagination", () => {
-    expect(buildBudgetCommandRequestSpec("get_budget_history", { budgetId: "budget-1" })).toEqual({
-      method: "GET",
-      path: "/budgets/budget-1/history?page=1&perPage=50",
-    });
+  it("rejects malformed revisions before transport", () => {
     expect(
-      buildBudgetCommandRequestSpec("get_budget_history", {
-        budgetId: "budget-1",
-        page: 3,
-        perPage: 25,
-      }),
-    ).toEqual({
-      method: "GET",
-      path: "/budgets/budget-1/history?page=3&perPage=25",
-    });
+      Result.isFailure(buildDeleteBudgetRequest({ budgetId: "budget-1", expectedRevision: -1 })),
+    ).toBe(true);
   });
 });

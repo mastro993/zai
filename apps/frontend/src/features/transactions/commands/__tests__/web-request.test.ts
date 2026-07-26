@@ -1,63 +1,104 @@
+import { Result } from "@praha/byethrow";
 import { describe, expect, it } from "vitest";
 
-import { buildTransactionCommandRequestSpec } from "../web-command-map";
+import type { CommandError } from "@/commands/errors";
+
+import {
+  buildCreateTransactionRequest,
+  buildDeleteTransactionRequest,
+  buildDeleteTransactionsRequest,
+  buildExportTransactionsRequest,
+  buildFindDuplicateKeysRequest,
+  buildGetFilteredTransactionIdsRequest,
+  buildGetTransactionRequest,
+  buildGetTransactionsRequest,
+  buildImportTransactionBatchRequest,
+  buildImportTransactionsRequest,
+  buildUpdateTransactionRequest,
+} from "../web-requests";
+
+const unwrap = <T>(result: Result.Result<T, CommandError>): T | undefined => {
+  expect(Result.isSuccess(result)).toBe(true);
+  return Result.isSuccess(result) ? result.value : undefined;
+};
+
+const transaction = {
+  description: "Coffee",
+  amount: 350,
+  transactionDate: "2026-07-09T12:30:00",
+  transactionType: "expense",
+};
 
 describe("transaction web requests", () => {
-  it("maps transaction list defaults and filters", () => {
-    expect(buildTransactionCommandRequestSpec("get_transactions")).toEqual({
+  it("maps transaction pagination, filters, and sorting", () => {
+    expect(unwrap(buildGetTransactionsRequest({}))).toEqual({
+      api: "cash-flow",
       method: "GET",
-      path: "/transactions?page=1&perPage=50",
+      path: "/transactions",
+      query: { page: "1", perPage: "50" },
     });
     expect(
-      buildTransactionCommandRequestSpec("get_transactions", {
-        page: 2,
-        perPage: 25,
-        filters: {
-          query: "coffee",
-          categories: ["cat-1"],
-          transactionType: "expense",
-          startDate: "2026-07-01T00:00:00",
-          endDate: "2026-07-31T23:59:59",
-        },
-        sort: {
-          field: "amount",
-          desc: true,
-        },
-      }),
+      unwrap(
+        buildGetTransactionsRequest({
+          page: 2,
+          perPage: 25,
+          filters: {
+            query: "coffee",
+            categories: ["cat-1", "cat-2"],
+            transactionType: "expense",
+            startDate: "2026-07-01T00:00:00",
+            endDate: "2026-07-31T23:59:59",
+          },
+          sort: { field: "amount", desc: true },
+        }),
+      ),
     ).toEqual({
+      api: "cash-flow",
       method: "GET",
-      path: "/transactions?page=2&perPage=25&query=coffee&transactionType=expense&startDate=2026-07-01T00%3A00%3A00&endDate=2026-07-31T23%3A59%3A59&categoryId=cat-1&sortField=amount&sortDesc=true",
+      path: "/transactions",
+      query: {
+        page: "2",
+        perPage: "25",
+        query: "coffee",
+        transactionType: "expense",
+        startDate: "2026-07-01T00:00:00",
+        endDate: "2026-07-31T23:59:59",
+        categoryId: ["cat-1", "cat-2"],
+        sortField: "amount",
+        sortDesc: "true",
+      },
+    });
+    expect(
+      unwrap(
+        buildGetTransactionsRequest({
+          filters: { categories: [] },
+          sort: { field: "date", desc: false },
+        }),
+      ),
+    ).toEqual({
+      api: "cash-flow",
+      method: "GET",
+      path: "/transactions",
+      query: {
+        page: "1",
+        perPage: "50",
+        uncategorized: "true",
+        sortField: "date",
+        sortDesc: "false",
+      },
     });
   });
 
-  it("serializes uncategorized and ascending-sort filters", () => {
+  it("maps ids, exports, and duplicate lookup", () => {
     expect(
-      buildTransactionCommandRequestSpec("get_transactions", {
-        filters: { categories: [] },
-        sort: { field: "date", desc: false },
-      }),
+      unwrap(
+        buildGetFilteredTransactionIdsRequest({
+          filters: { query: "rent", categories: [], transactionType: "expense" },
+          sort: { field: "date", desc: true },
+        }),
+      ),
     ).toEqual({
-      method: "GET",
-      path: "/transactions?page=1&perPage=50&uncategorized=true&sortField=date&sortDesc=false",
-    });
-  });
-
-  it("maps transaction detail reads", () => {
-    expect(
-      buildTransactionCommandRequestSpec("get_transaction", { transactionId: "txn-1" }),
-    ).toEqual({
-      method: "GET",
-      path: "/transactions/txn-1",
-    });
-  });
-
-  it("maps filtered ids with filters and sorting in the body", () => {
-    expect(
-      buildTransactionCommandRequestSpec("get_filtered_transaction_ids", {
-        filters: { query: "rent", categories: [], transactionType: "expense" },
-        sort: { field: "date", desc: true },
-      }),
-    ).toEqual({
+      api: "cash-flow",
       method: "POST",
       path: "/transactions/ids",
       body: {
@@ -68,119 +109,87 @@ describe("transaction web requests", () => {
         sortDesc: true,
       },
     });
-  });
-
-  it("maps exports and duplicate lookup requests", () => {
     const candidates = [
-      {
-        transactionDate: "2026-01-15T08:30:00",
-        amount: 1250,
-        description: "Groceries",
-      },
+      { transactionDate: "2026-01-15T08:30:00", amount: 1250, description: "Groceries" },
     ];
-    expect(
-      buildTransactionCommandRequestSpec("find_existing_duplicate_keys", {
-        request: { candidates },
-      }),
-    ).toEqual({
+    expect(unwrap(buildFindDuplicateKeysRequest({ request: { candidates } }))).toEqual({
+      api: "cash-flow",
       method: "POST",
       path: "/transactions/duplicate-keys",
       body: { candidates },
     });
-
     expect(
-      buildTransactionCommandRequestSpec("export_transactions_csv", {
-        request: {
-          filters: { query: "coffee", categories: [] },
-          transactionIds: ["txn-1", "txn-2"],
-        },
-      }),
+      unwrap(
+        buildExportTransactionsRequest({
+          request: {
+            filters: { query: "coffee", categories: [] },
+            transactionIds: ["txn-1", "txn-2"],
+          },
+        }),
+      ),
     ).toEqual({
+      api: "cash-flow",
       method: "POST",
       path: "/transactions/export",
-      body: {
-        query: "coffee",
-        uncategorized: "true",
-        transactionIds: ["txn-1", "txn-2"],
-      },
+      body: { query: "coffee", uncategorized: "true", transactionIds: ["txn-1", "txn-2"] },
     });
   });
 
-  it("maps transaction creation and removes ids from updates", () => {
-    const newTransaction = {
-      description: "Coffee",
-      amount: 350,
-      transactionDate: "2026-07-09T12:30:00",
-      transactionType: "expense",
-    };
-    expect(buildTransactionCommandRequestSpec("create_transaction", { newTransaction })).toEqual({
+  it("maps detail, mutation, deletion, and imports", () => {
+    expect(unwrap(buildGetTransactionRequest({ transactionId: "txn-1" }))).toEqual({
+      api: "cash-flow",
+      method: "GET",
+      path: "/transactions/txn-1",
+    });
+    expect(unwrap(buildCreateTransactionRequest({ newTransaction: transaction }))).toEqual({
+      api: "cash-flow",
       method: "POST",
       path: "/transactions",
-      body: newTransaction,
+      body: transaction,
     });
-
     expect(
-      buildTransactionCommandRequestSpec("update_transaction", {
-        updatedTransaction: {
-          id: "txn-1",
-          description: "Updated",
-          amount: 100,
-          transactionDate: "2026-07-09T12:30:00",
-          transactionType: "expense",
-        },
-      }),
+      unwrap(
+        buildUpdateTransactionRequest({ updatedTransaction: { ...transaction, id: "txn-1" } }),
+      ),
     ).toEqual({
+      api: "cash-flow",
       method: "PUT",
       path: "/transactions/txn-1",
-      body: {
-        description: "Updated",
-        amount: 100,
-        transactionDate: "2026-07-09T12:30:00",
-        transactionType: "expense",
-      },
+      body: transaction,
     });
-  });
-
-  it("maps single and bulk deletion", () => {
-    expect(
-      buildTransactionCommandRequestSpec("delete_transaction", { transactionId: "txn-1" }),
-    ).toEqual({
+    expect(unwrap(buildDeleteTransactionRequest({ transactionId: "txn-1" }))).toEqual({
+      api: "cash-flow",
       method: "DELETE",
       path: "/transactions/txn-1",
     });
-    expect(
-      buildTransactionCommandRequestSpec("delete_transactions", {
-        transactionIds: ["txn-1", "txn-2"],
-      }),
-    ).toEqual({
+    expect(unwrap(buildDeleteTransactionsRequest({ transactionIds: ["txn-1", "txn-2"] }))).toEqual({
+      api: "cash-flow",
       method: "POST",
       path: "/transactions/bulk-delete",
       body: { transactionIds: ["txn-1", "txn-2"] },
     });
-  });
-
-  it("maps transaction and batch imports", () => {
-    const categories = [{ name: "Food", color: "#ff0000" }];
-    const transactions = [
-      {
-        description: "Coffee",
-        amount: 350,
-        transactionDate: "2026-07-09T12:30:00",
-        transactionType: "expense",
-        categoryName: "Food",
-      },
-    ];
-    expect(buildTransactionCommandRequestSpec("import_transactions", { transactions })).toEqual({
+    const transactions = [{ ...transaction, id: "txn-1" }];
+    expect(unwrap(buildImportTransactionsRequest({ transactions }))).toEqual({
+      api: "cash-flow",
       method: "POST",
       path: "/transactions/import",
       body: { transactions },
     });
-    expect(
-      buildTransactionCommandRequestSpec("import_transaction_batch", { categories, transactions }),
-    ).toEqual({
+    const categories = [{ name: "Food", color: "#ff0000" }];
+    expect(unwrap(buildImportTransactionBatchRequest({ categories, transactions }))).toEqual({
+      api: "cash-flow",
       method: "POST",
       path: "/transactions/import-batch",
       body: { categories, transactions },
     });
+  });
+
+  it("rejects malformed runtime values locally", () => {
+    expect(Result.isFailure(buildGetTransactionRequest({ transactionId: "" }))).toBe(true);
+    expect(Result.isFailure(buildGetTransactionsRequest({ page: 0 }))).toBe(true);
+    expect(Result.isFailure(buildDeleteTransactionsRequest({ transactionIds: [] }))).toBe(true);
+    expect(
+      Result.isFailure(buildFindDuplicateKeysRequest({ request: { candidates: "bad" as never } })),
+    ).toBe(true);
   });
 });

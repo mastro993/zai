@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Result } from "@praha/byethrow";
 
 import { CommandError, getAffectedBudgets } from "../errors";
-import { invokeCommand } from "../shared";
+import { invokeDecodedCommand } from "../shared";
+import { CATEGORY_COMMANDS } from "@/features/categories/commands/registry";
 
 const invokeMock = vi.hoisted(() => vi.fn());
 const isTauriMock = vi.hoisted(() => vi.fn());
@@ -25,10 +26,10 @@ describe("desktop command transport", () => {
   });
 
   it("delegates desktop commands to Tauri IPC", async () => {
-    const value = { id: "category-1" };
+    const value: Array<never> = [];
     invokeMock.mockResolvedValue(value);
 
-    const result = await invokeCommand<typeof value>("get_transaction_categories", {
+    const result = await invokeDecodedCommand(CATEGORY_COMMANDS.get_transaction_categories, {
       parentId: null,
     });
 
@@ -45,7 +46,7 @@ describe("desktop command transport", () => {
   it("rejects desktop commands when Tauri IPC is unavailable", async () => {
     isTauriMock.mockReturnValue(false);
 
-    const result = await invokeCommand("get_transaction_categories", {
+    const result = await invokeDecodedCommand(CATEGORY_COMMANDS.get_transaction_categories, {
       parentId: null,
     });
 
@@ -60,7 +61,7 @@ describe("desktop command transport", () => {
   it("maps rejected desktop invocations into failed command results", async () => {
     invokeMock.mockRejectedValue(new Error("IPC failed"));
 
-    const result = await invokeCommand("get_transaction_categories", {
+    const result = await invokeDecodedCommand(CATEGORY_COMMANDS.get_transaction_categories, {
       parentId: null,
     });
 
@@ -79,7 +80,7 @@ describe("desktop command transport", () => {
       details: { resource: "category" },
     });
 
-    const result = await invokeCommand("create_transaction_category", {
+    const result = await invokeDecodedCommand(CATEGORY_COMMANDS.create_transaction_category, {
       newCategory: { name: "Food" },
     });
 
