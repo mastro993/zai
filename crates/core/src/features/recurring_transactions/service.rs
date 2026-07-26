@@ -10,9 +10,7 @@ use super::document::{
     RecurringTransactionDocument, TransactionRecurringProvenance, visible_source_link,
 };
 use super::edit::{RecurringMutationOutcome, UpdateRecurringTransaction};
-use super::lifecycle::{
-    RecurringLifecycleCommand, RecurringLifecycleOutcome, RecurringLifecycleUpdate,
-};
+use super::lifecycle::{RecurringLifecycleOutcome, RecurringLifecycleUpdate};
 use super::models::{
     DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT, RecurringFailurePage, RecurringFeedEntry,
     RecurringFeedFilters, RecurringLifecycle, RecurringOccurrencePage,
@@ -72,11 +70,8 @@ impl RecurringTransactionsService {
             wake.request_wake();
         }
     }
-}
 
-#[async_trait::async_trait]
-impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
-    async fn list_feed(
+    pub async fn list_feed(
         &self,
         limit: Option<i64>,
         cursor: Option<String>,
@@ -85,7 +80,7 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
             .await
     }
 
-    async fn list_feed_filtered(
+    pub async fn list_feed_filtered(
         &self,
         limit: Option<i64>,
         cursor: Option<String>,
@@ -121,12 +116,12 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         })
     }
 
-    async fn get_document(&self, id: &str) -> Result<RecurringTransactionDocument> {
+    pub async fn get_document(&self, id: &str) -> Result<RecurringTransactionDocument> {
         let recurring = self.repository.get_recurring_transaction(id).await?;
         self.compose_document(recurring).await
     }
 
-    async fn list_linked_occurrences(
+    pub async fn list_linked_occurrences(
         &self,
         recurring_transaction_id: &str,
         limit: Option<i64>,
@@ -147,7 +142,7 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
             .await
     }
 
-    async fn get_transaction_provenance(
+    pub async fn get_transaction_provenance(
         &self,
         transaction_id: &str,
     ) -> Result<Option<TransactionRecurringProvenance>> {
@@ -178,7 +173,7 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         }))
     }
 
-    async fn preview_adoption(&self, input: AdoptionPreviewRequest) -> Result<AdoptionPreview> {
+    pub async fn preview_adoption(&self, input: AdoptionPreviewRequest) -> Result<AdoptionPreview> {
         input.validate_inputs()?;
         let observed_local = self.clock.sample();
         if self
@@ -209,7 +204,10 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         })
     }
 
-    async fn create(&self, mut input: NewRecurringTransaction) -> Result<RecurringCreateOutcome> {
+    pub async fn create(
+        &self,
+        mut input: NewRecurringTransaction,
+    ) -> Result<RecurringCreateOutcome> {
         input.template.description = normalize_template_description(&input.template.description);
         input.id = Some(Self::assign_id(input.id)?);
         let first_scheduled_local =
@@ -222,57 +220,107 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         self.request_processing_wake();
         Ok(RecurringCreateOutcome::Succeeded { document })
     }
+}
+
+#[async_trait::async_trait]
+impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
+    async fn list_feed(
+        &self,
+        limit: Option<i64>,
+        cursor: Option<String>,
+    ) -> Result<RecurringFeedResult> {
+        RecurringTransactionsService::list_feed(self, limit, cursor).await
+    }
+
+    async fn list_feed_filtered(
+        &self,
+        limit: Option<i64>,
+        cursor: Option<String>,
+        filters: RecurringFeedFilters,
+    ) -> Result<RecurringFeedResult> {
+        RecurringTransactionsService::list_feed_filtered(self, limit, cursor, filters).await
+    }
+
+    async fn get_document(&self, id: &str) -> Result<RecurringTransactionDocument> {
+        RecurringTransactionsService::get_document(self, id).await
+    }
+
+    async fn list_linked_occurrences(
+        &self,
+        recurring_transaction_id: &str,
+        limit: Option<i64>,
+        cursor: Option<String>,
+    ) -> Result<RecurringOccurrencePage> {
+        RecurringTransactionsService::list_linked_occurrences(
+            self,
+            recurring_transaction_id,
+            limit,
+            cursor,
+        )
+        .await
+    }
+
+    async fn get_transaction_provenance(
+        &self,
+        transaction_id: &str,
+    ) -> Result<Option<TransactionRecurringProvenance>> {
+        RecurringTransactionsService::get_transaction_provenance(self, transaction_id).await
+    }
+
+    async fn preview_adoption(&self, input: AdoptionPreviewRequest) -> Result<AdoptionPreview> {
+        RecurringTransactionsService::preview_adoption(self, input).await
+    }
+
+    async fn create(&self, input: NewRecurringTransaction) -> Result<RecurringCreateOutcome> {
+        RecurringTransactionsService::create(self, input).await
+    }
 
     async fn update(&self, input: UpdateRecurringTransaction) -> Result<RecurringMutationOutcome> {
-        self.update_inner(input).await
+        RecurringTransactionsService::update(self, input).await
     }
 
     async fn pause(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome> {
-        self.apply_lifecycle(RecurringLifecycleCommand::Pause, input)
-            .await
+        RecurringTransactionsService::pause(self, input).await
     }
 
     async fn resume(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome> {
-        self.apply_lifecycle(RecurringLifecycleCommand::Resume, input)
-            .await
+        RecurringTransactionsService::resume(self, input).await
     }
 
     async fn stop(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome> {
-        self.apply_lifecycle(RecurringLifecycleCommand::Stop, input)
-            .await
+        RecurringTransactionsService::stop(self, input).await
     }
 
     async fn delete(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome> {
-        self.apply_lifecycle(RecurringLifecycleCommand::Delete, input)
-            .await
+        RecurringTransactionsService::delete(self, input).await
     }
 
     async fn preview_generation_repair(
         &self,
         input: PreviewRecurringGenerationRepair,
     ) -> Result<RecurringRepairPreview> {
-        self.preview_generation_repair_inner(input).await
+        RecurringTransactionsService::preview_generation_repair(self, input).await
     }
 
     async fn repair_and_retry(
         &self,
         input: RepairRecurringGenerationFailure,
     ) -> Result<RecurringRecoveryOutcome> {
-        self.repair_and_retry_inner(input).await
+        RecurringTransactionsService::repair_and_retry(self, input).await
     }
 
     async fn retry_generation(
         &self,
         input: RetryRecurringGenerationFailure,
     ) -> Result<RecurringRecoveryOutcome> {
-        self.retry_generation_inner(input).await
+        RecurringTransactionsService::retry_generation(self, input).await
     }
 
     async fn generation_failure_diagnostics(
         &self,
         recurring_transaction_id: &str,
     ) -> Result<GenerationFailureDiagnostics> {
-        self.generation_failure_diagnostics_inner(recurring_transaction_id)
+        RecurringTransactionsService::generation_failure_diagnostics(self, recurring_transaction_id)
             .await
     }
 
@@ -282,45 +330,49 @@ impl RecurringTransactionsServiceTrait for RecurringTransactionsService {
         limit: Option<i64>,
         cursor: Option<String>,
     ) -> Result<RecurringFailurePage> {
-        self.list_failure_history_inner(recurring_transaction_id, limit, cursor)
-            .await
+        RecurringTransactionsService::list_failure_history(
+            self,
+            recurring_transaction_id,
+            limit,
+            cursor,
+        )
+        .await
     }
 
     async fn project_budgets(
         &self,
         query: BudgetProjectionQuery,
     ) -> Result<super::projection::BudgetProjectionResult> {
-        self.compute_projection(query).await
+        RecurringTransactionsService::project_budgets(self, query).await
     }
 
     async fn list_matching_ids(&self) -> Result<RecurringMatchingIds> {
-        self.list_matching_ids_filtered(RecurringFeedFilters::default())
-            .await
+        RecurringTransactionsService::list_matching_ids(self).await
     }
 
     async fn list_matching_ids_filtered(
         &self,
         filters: RecurringFeedFilters,
     ) -> Result<RecurringMatchingIds> {
-        self.list_matching_ids_inner(filters).await
+        RecurringTransactionsService::list_matching_ids_filtered(self, filters).await
     }
 
     async fn preflight_bulk(
         &self,
         request: RecurringBulkRequest,
     ) -> Result<RecurringBulkPreflight> {
-        self.preflight_bulk_inner(request).await
+        RecurringTransactionsService::preflight_bulk(self, request).await
     }
 
     async fn execute_bulk(
         &self,
         request: RecurringBulkRequest,
     ) -> Result<RecurringBulkExecuteResult> {
-        self.execute_bulk_inner(request).await
+        RecurringTransactionsService::execute_bulk(self, request).await
     }
 
     async fn adopt(&self, input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {
-        self.adopt_inner(input).await
+        RecurringTransactionsService::adopt(self, input).await
     }
 }
 

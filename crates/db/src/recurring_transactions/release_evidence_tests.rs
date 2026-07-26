@@ -6,8 +6,8 @@ use super::revisions::{find_schedule_revision_at, find_template_revision_at};
 use crate::connection::get_connection;
 use zai_core::features::recurring_transactions::{
     ProcessingWorkBudget, RecurringBulkAction, RecurringBulkItem, RecurringBulkRequest,
-    RecurringOccurrenceProcessor, RecurringTemplateInput, RecurringTransactionsServiceTrait,
-    ScheduleIntervalUnit, ScheduleRule, UpdateRecurringTransaction,
+    RecurringOccurrenceProcessor, RecurringTemplateInput, ScheduleIntervalUnit, ScheduleRule,
+    UpdateRecurringTransaction,
 };
 
 const RELEASE_EVIDENCE_SEED: u64 = 277;

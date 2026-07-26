@@ -18,6 +18,32 @@ use super::service::RecurringTransactionsService;
 use crate::{Error, Result};
 
 impl RecurringTransactionsService {
+    pub async fn list_matching_ids(&self) -> Result<RecurringMatchingIds> {
+        self.list_matching_ids_filtered(RecurringFeedFilters::default())
+            .await
+    }
+
+    pub async fn list_matching_ids_filtered(
+        &self,
+        filters: RecurringFeedFilters,
+    ) -> Result<RecurringMatchingIds> {
+        self.list_matching_ids_inner(filters).await
+    }
+
+    pub async fn preflight_bulk(
+        &self,
+        request: RecurringBulkRequest,
+    ) -> Result<RecurringBulkPreflight> {
+        self.preflight_bulk_inner(request).await
+    }
+
+    pub async fn execute_bulk(
+        &self,
+        request: RecurringBulkRequest,
+    ) -> Result<RecurringBulkExecuteResult> {
+        self.execute_bulk_inner(request).await
+    }
+
     pub(super) async fn list_matching_ids_inner(
         &self,
         filters: RecurringFeedFilters,

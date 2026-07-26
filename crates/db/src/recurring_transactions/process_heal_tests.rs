@@ -5,7 +5,6 @@ use diesel::prelude::*;
 use zai_core::features::recurring_transactions::{
     ProcessingStopReason, ProcessingWorkBudget, RECURRING_GENERATION_FAILURE_PRODUCER_KEY,
     RECURRING_OCCURRENCE_PRODUCER_KEY, RecurringOccurrenceProcessor,
-    RecurringTransactionsServiceTrait,
 };
 
 #[tokio::test]

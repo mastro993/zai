@@ -11,9 +11,7 @@ use zai_core::features::budgets::models::{
     BudgetCadence, BudgetLifecycleUpdate, BudgetMeasurementMode, NewBudget,
 };
 use zai_core::features::budgets::traits::{BudgetsRepositoryTrait, CalendarClock};
-use zai_core::features::recurring_transactions::{
-    BudgetProjectionQuery, RecurringTransactionsServiceTrait,
-};
+use zai_core::features::recurring_transactions::BudgetProjectionQuery;
 
 async fn checksum_sensitive_tables(path: &str) -> String {
     let pool = create_pool(std::path::Path::new(path)).expect("pool");

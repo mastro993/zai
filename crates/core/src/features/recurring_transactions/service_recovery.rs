@@ -12,10 +12,49 @@ use super::repair::{
     count_waiting_due_behind, diagnostics_typed_state, recovery_action_for_failure,
 };
 use super::service::RecurringTransactionsService;
-use super::traits::{RecurringOccurrenceProcessor, RecurringTransactionsServiceTrait};
+use super::traits::RecurringOccurrenceProcessor;
 use crate::{Error, Result};
 
 impl RecurringTransactionsService {
+    pub async fn preview_generation_repair(
+        &self,
+        input: PreviewRecurringGenerationRepair,
+    ) -> Result<RecurringRepairPreview> {
+        self.preview_generation_repair_inner(input).await
+    }
+
+    pub async fn repair_and_retry(
+        &self,
+        input: RepairRecurringGenerationFailure,
+    ) -> Result<RecurringRecoveryOutcome> {
+        self.repair_and_retry_inner(input).await
+    }
+
+    pub async fn retry_generation(
+        &self,
+        input: RetryRecurringGenerationFailure,
+    ) -> Result<RecurringRecoveryOutcome> {
+        self.retry_generation_inner(input).await
+    }
+
+    pub async fn generation_failure_diagnostics(
+        &self,
+        recurring_transaction_id: &str,
+    ) -> Result<GenerationFailureDiagnostics> {
+        self.generation_failure_diagnostics_inner(recurring_transaction_id)
+            .await
+    }
+
+    pub async fn list_failure_history(
+        &self,
+        recurring_transaction_id: &str,
+        limit: Option<i64>,
+        cursor: Option<String>,
+    ) -> Result<RecurringFailurePage> {
+        self.list_failure_history_inner(recurring_transaction_id, limit, cursor)
+            .await
+    }
+
     pub(super) async fn waiting_count_for_failure(
         &self,
         recurring_transaction_id: &str,

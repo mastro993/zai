@@ -6,10 +6,39 @@ use super::lifecycle::{
 use super::models::RecurringLifecycle;
 use super::process::{ProcessingStopReason, ProcessingWorkBudget};
 use super::service::RecurringTransactionsService;
-use super::traits::{RecurringOccurrenceProcessor, RecurringTransactionsServiceTrait};
+use super::traits::RecurringOccurrenceProcessor;
 use crate::{Error, Result};
 
 impl RecurringTransactionsService {
+    pub async fn pause(
+        &self,
+        input: RecurringLifecycleUpdate,
+    ) -> Result<RecurringLifecycleOutcome> {
+        self.apply_lifecycle(RecurringLifecycleCommand::Pause, input)
+            .await
+    }
+
+    pub async fn resume(
+        &self,
+        input: RecurringLifecycleUpdate,
+    ) -> Result<RecurringLifecycleOutcome> {
+        self.apply_lifecycle(RecurringLifecycleCommand::Resume, input)
+            .await
+    }
+
+    pub async fn stop(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome> {
+        self.apply_lifecycle(RecurringLifecycleCommand::Stop, input)
+            .await
+    }
+
+    pub async fn delete(
+        &self,
+        input: RecurringLifecycleUpdate,
+    ) -> Result<RecurringLifecycleOutcome> {
+        self.apply_lifecycle(RecurringLifecycleCommand::Delete, input)
+            .await
+    }
+
     pub(super) async fn apply_lifecycle(
         &self,
         command: RecurringLifecycleCommand,

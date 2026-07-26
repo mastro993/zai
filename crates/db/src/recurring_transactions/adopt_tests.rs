@@ -7,7 +7,7 @@ use uuid::Uuid;
 use zai_core::features::recurring_transactions::{
     AdoptRecurringTransaction, AdoptionPreviewRequest, FulfillmentKind,
     RECURRING_OCCURRENCE_PRODUCER_KEY, RecurringLifecycle, RecurringOccurrenceProcessor,
-    RecurringTemplateInput, RecurringTransactionsServiceTrait, ScheduleIntervalUnit, ScheduleRule,
+    RecurringTemplateInput, ScheduleIntervalUnit, ScheduleRule,
 };
 use zai_core::features::transactions::models::NewTransaction;
 

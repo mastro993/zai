@@ -8,7 +8,7 @@ use std::sync::atomic::Ordering;
 use zai_core::features::recurring_transactions::{
     FulfillmentKind, ProcessingWorkBudget, RECURRING_GENERATION_FAILURE_PRODUCER_KEY,
     RECURRING_OCCURRENCE_PRODUCER_KEY, RecurringLifecycle, RecurringOccurrenceProcessor,
-    RecurringTransactionsRepositoryTrait, RecurringTransactionsServiceTrait,
+    RecurringTransactionsRepositoryTrait,
 };
 
 #[tokio::test]

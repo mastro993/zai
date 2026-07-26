@@ -10,6 +10,13 @@ use super::service::RecurringTransactionsService;
 use crate::{Error, Result};
 
 impl RecurringTransactionsService {
+    pub async fn project_budgets(
+        &self,
+        query: BudgetProjectionQuery,
+    ) -> Result<BudgetProjectionResult> {
+        self.compute_projection(query).await
+    }
+
     pub(super) async fn compose_document(
         &self,
         recurring: RecurringTransaction,
