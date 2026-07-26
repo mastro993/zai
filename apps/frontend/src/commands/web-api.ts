@@ -1,8 +1,5 @@
-import type { WebApiNamespace } from "./web-request-spec";
-
 export const DEFAULT_WEB_API_ORIGIN = "http://127.0.0.1:3000";
-export const CASH_FLOW_API_PREFIX = "api/cash-flow";
-export const ALERTS_API_PREFIX = "api";
+export const WEB_API_PREFIX = "api";
 
 export const resolveWebApiOrigin = (): string => {
   const configuredOrigin = import.meta.env.VITE_ZAI_API_ORIGIN;
@@ -20,17 +17,11 @@ export const joinWebApiUrl = (origin: string, ...pathSegments: Array<string>): s
   return path.length > 0 ? `${normalizedOrigin}/${path}` : normalizedOrigin;
 };
 
-export const resolveCashFlowApiBaseUrl = (): string =>
-  joinWebApiUrl(resolveWebApiOrigin(), CASH_FLOW_API_PREFIX);
-
-export const resolveAlertsApiBaseUrl = (): string =>
-  joinWebApiUrl(resolveWebApiOrigin(), ALERTS_API_PREFIX);
-
-export const resolveWebApiBaseUrl = (api: WebApiNamespace): string =>
-  api === "alerts" ? resolveAlertsApiBaseUrl() : resolveCashFlowApiBaseUrl();
+export const resolveWebApiBaseUrl = (): string =>
+  joinWebApiUrl(resolveWebApiOrigin(), WEB_API_PREFIX);
 
 export const resolveAlertsEventUrl = (): string =>
-  joinWebApiUrl(resolveWebApiOrigin(), "api/alerts/events");
+  joinWebApiUrl(resolveWebApiBaseUrl(), "alerts/events");
 
 export const resolveRecurringProcessingEventUrl = (): string =>
-  joinWebApiUrl(resolveWebApiOrigin(), "api/cash-flow/recurring-processing/events");
+  joinWebApiUrl(resolveWebApiBaseUrl(), "recurring-processing/events");

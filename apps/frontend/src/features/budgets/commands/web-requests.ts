@@ -102,7 +102,6 @@ export const buildGetBudgetsRequest = (
     return Result.fail(new CommandError("Budget filter is invalid"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "GET",
     path: "/budgets",
     query: filter ? { filter } : undefined,
@@ -116,7 +115,6 @@ export const buildGetBudgetRequest = (
   return Result.isFailure(validArgs)
     ? validArgs
     : Result.succeed({
-        api: "cash-flow",
         method: "GET",
         path: `/budgets/${validArgs.value.budgetId}`,
       });
@@ -129,7 +127,6 @@ export const buildCreateBudgetRequest = (
     return Result.fail(new CommandError("Budget payload must be a valid record"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/budgets",
     body: args.newBudget,
@@ -147,7 +144,6 @@ export const buildUpdateBudgetRequest = (
   }
   const { expectedRevision: _expectedRevision, ...body } = args.updatedBudget;
   return Result.succeed({
-    api: "cash-flow",
     method: "PUT",
     path: `/budgets/${args.budgetId}`,
     body: { expectedRevision: args.updatedBudget.expectedRevision, ...body },
@@ -161,7 +157,6 @@ export const buildDeleteBudgetRequest = (
   return Result.isFailure(validArgs)
     ? validArgs
     : Result.succeed({
-        api: "cash-flow",
         method: "DELETE",
         path: `/budgets/${validArgs.value.budgetId}`,
         body: { expectedRevision: validArgs.value.expectedRevision },
@@ -183,7 +178,6 @@ export const buildGetBudgetHistoryRequest = (
     return Result.fail(new CommandError("Budget history pagination must use positive integers"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "GET",
     path: `/budgets/${identifier.value.budgetId}/history`,
     query: { page: String(args.page ?? 1), perPage: String(args.perPage ?? 50) },
@@ -198,7 +192,6 @@ const buildBudgetLifecycleRequest = (
   return Result.isFailure(validArgs)
     ? validArgs
     : Result.succeed({
-        api: "cash-flow",
         method: "POST",
         path: `/budgets/${validArgs.value.budgetId}/${action}`,
         body: { expectedRevision: validArgs.value.expectedRevision },

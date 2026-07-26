@@ -1,7 +1,7 @@
 import { Result } from "@praha/byethrow";
 import { describe, expect, it } from "vitest";
 
-import { resolveAlertsApiBaseUrl, resolveWebApiBaseUrl } from "@/commands/web-api";
+import { resolveWebApiBaseUrl } from "@/commands/web-api";
 
 import {
   buildGetUnreadAlertCountRequest,
@@ -19,30 +19,25 @@ const unwrap = <T>(result: ReturnType<typeof buildListAlertsRequest>): T | undef
 describe("alerts web requests", () => {
   it("maps alert reads and mutations to their HTTP contracts", () => {
     expect(unwrap(buildListAlertsRequest({}))).toEqual({
-      api: "alerts",
       method: "GET",
       path: "/alerts",
       query: undefined,
     });
     expect(unwrap(buildGetUnreadAlertCountRequest(undefined))).toEqual({
-      api: "alerts",
       method: "GET",
       path: "/alerts/unread-count",
     });
     expect(unwrap(buildMarkAllAlertsReadRequest(undefined))).toEqual({
-      api: "alerts",
       method: "POST",
       path: "/alerts/mark-all-read",
       body: {},
     });
     expect(unwrap(buildMarkAlertReadRequest({ alertId: "alert-1" }))).toEqual({
-      api: "alerts",
       method: "POST",
       path: "/alerts/alert-1/read",
       body: {},
     });
     expect(unwrap(buildMarkAlertUnreadRequest({ alertId: "alert-1" }))).toEqual({
-      api: "alerts",
       method: "POST",
       path: "/alerts/alert-1/unread",
       body: {},
@@ -62,7 +57,6 @@ describe("alerts web requests", () => {
         }),
       ),
     ).toEqual({
-      api: "alerts",
       method: "GET",
       path: "/alerts",
       query: {
@@ -74,8 +68,8 @@ describe("alerts web requests", () => {
     });
   });
 
-  it("routes the namespace without command-name matching", () => {
-    expect(resolveWebApiBaseUrl("alerts")).toBe(resolveAlertsApiBaseUrl());
+  it("uses the shared API base", () => {
+    expect(resolveWebApiBaseUrl()).toBe("http://127.0.0.1:3000/api");
   });
 
   it("rejects malformed identifiers locally", () => {

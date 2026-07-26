@@ -214,7 +214,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn shared_context_initializes_cash_flow_services_from_app_data_dir() {
+    async fn shared_context_initializes_services_from_app_data_dir() {
         let app_data_dir = TempAppDataDir::new();
 
         let context = initialize_context(app_data_dir.path()).expect("context should initialize");

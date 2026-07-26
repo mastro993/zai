@@ -116,7 +116,7 @@ test("web adoption previews catch-up and preserves adopted provenance", async ({
   const suffix = `${testInfo.repeatEachIndex}-${testInfo.retry}`;
   const transactionId = `e2e-adoption-transaction-${suffix}`;
   const description = `E2E adopted transaction ${suffix}`;
-  const seed = await page.request.post(`${apiOrigin}/api/cash-flow/transactions`, {
+  const seed = await page.request.post(`${apiOrigin}/api/transactions`, {
     data: {
       id: transactionId,
       description,
@@ -167,7 +167,7 @@ test("web completed provenance remains exact and navigable", async ({ page }, te
   const suffix = `${testInfo.repeatEachIndex}-${testInfo.retry}`;
   const transactionId = `e2e-completed-transaction-${suffix}`;
   const description = `E2E completed transaction ${suffix}`;
-  const seed = await page.request.post(`${apiOrigin}/api/cash-flow/transactions`, {
+  const seed = await page.request.post(`${apiOrigin}/api/transactions`, {
     data: {
       id: transactionId,
       description,

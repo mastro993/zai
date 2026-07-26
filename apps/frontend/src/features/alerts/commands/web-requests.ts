@@ -94,7 +94,6 @@ export const buildListAlertsRequest = (
   }
   const query = buildAlertListQuery(validArgs.value.query);
   return Result.succeed({
-    api: "alerts",
     method: "GET",
     path: "/alerts",
     query: Object.keys(query).length > 0 ? query : undefined,
@@ -104,12 +103,12 @@ export const buildListAlertsRequest = (
 export const buildGetUnreadAlertCountRequest = (
   _args: void,
 ): Result.Result<WebRequestSpec, CommandError> =>
-  Result.succeed({ api: "alerts", method: "GET", path: "/alerts/unread-count" });
+  Result.succeed({ method: "GET", path: "/alerts/unread-count" });
 
 export const buildMarkAllAlertsReadRequest = (
   _args: void,
 ): Result.Result<WebRequestSpec, CommandError> =>
-  Result.succeed({ api: "alerts", method: "POST", path: "/alerts/mark-all-read", body: {} });
+  Result.succeed({ method: "POST", path: "/alerts/mark-all-read", body: {} });
 
 const buildMarkAlertRequest = (
   args: MarkAlertArgs,
@@ -119,7 +118,6 @@ const buildMarkAlertRequest = (
     return Result.fail(new CommandError("Alert id must be a non-empty string"));
   }
   return Result.succeed({
-    api: "alerts",
     method: "POST",
     path: `/alerts/${args.alertId}/${action}`,
     body: {},

@@ -19,7 +19,7 @@ async fn transaction_contract_list_create_and_detail_match_across_transports() {
         ContractExpectation {
             http: HttpCall {
                 method: "GET",
-                path: "/api/cash-flow/transactions".to_string(),
+                path: "/api/transactions".to_string(),
                 body: None,
                 expected_status: StatusCode::OK,
             },
@@ -34,7 +34,7 @@ async fn transaction_contract_list_create_and_detail_match_across_transports() {
         ContractExpectation {
             http: HttpCall {
                 method: "GET",
-                path: format!("/api/cash-flow/transactions/{transaction_id}"),
+                path: format!("/api/transactions/{transaction_id}"),
                 body: None,
                 expected_status: StatusCode::OK,
             },
@@ -53,7 +53,7 @@ async fn transaction_list_paging_validation_matches_across_transports() {
         ContractExpectation {
             http: HttpCall {
                 method: "GET",
-                path: "/api/cash-flow/transactions?perPage=101".to_string(),
+                path: "/api/transactions?perPage=101".to_string(),
                 body: None,
                 expected_status: StatusCode::BAD_REQUEST,
             },
@@ -72,7 +72,7 @@ async fn transaction_list_paging_overflow_matches_across_transports() {
         ContractExpectation {
             http: HttpCall {
                 method: "GET",
-                path: "/api/cash-flow/transactions?page=9223372036854775807&perPage=2".to_string(),
+                path: "/api/transactions?page=9223372036854775807&perPage=2".to_string(),
                 body: None,
                 expected_status: StatusCode::BAD_REQUEST,
             },
@@ -91,7 +91,7 @@ async fn transaction_contract_not_found_matches_across_transports() {
         ContractExpectation {
             http: HttpCall {
                 method: "GET",
-                path: "/api/cash-flow/transactions/missing-transaction".to_string(),
+                path: "/api/transactions/missing-transaction".to_string(),
                 body: None,
                 expected_status: StatusCode::NOT_FOUND,
             },

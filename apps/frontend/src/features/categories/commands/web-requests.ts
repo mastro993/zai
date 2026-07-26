@@ -69,7 +69,6 @@ export const buildGetCategoriesRequest = (
     return Result.fail(new CommandError("Category parent id must be a string or null"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "GET",
     path: "/categories",
     query: args.parentId ? { parentId: args.parentId } : undefined,
@@ -83,7 +82,6 @@ export const buildGetCategoryRequest = (
     return Result.fail(new CommandError("Category id must be a non-empty string"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "GET",
     path: `/categories/${args.categoryId}`,
   });
@@ -99,7 +97,6 @@ export const buildCreateCategoryRequest = (
     return Result.fail(new CommandError("Category payload must be a valid record"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/categories",
     body: args.newCategory,
@@ -118,7 +115,6 @@ export const buildUpdateCategoryRequest = (
   }
   const { id: _id, ...body } = args.updatedCategory;
   return Result.succeed({
-    api: "cash-flow",
     method: "PUT",
     path: `/categories/${args.updatedCategory.id}`,
     body,
@@ -136,7 +132,6 @@ export const buildDeleteCategoriesRequest = (
     return Result.fail(new CommandError("Category deletion requires valid ids and strategy"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/categories/bulk-delete",
     body: {
@@ -158,7 +153,6 @@ export const buildPreviewDeleteCategoriesRequest = (
     return Result.fail(new CommandError("Category preview requires valid ids and strategy"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/categories/bulk-delete/preview",
     body: {
@@ -175,7 +169,6 @@ export const buildImportCategoriesRequest = (
     return Result.fail(new CommandError("Category import requires categories"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/categories/import",
     body: { categories: args.categories },

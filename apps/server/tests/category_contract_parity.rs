@@ -21,7 +21,7 @@ async fn category_contract_list_create_and_detail_match_across_transports() {
         ContractExpectation {
             http: HttpCall {
                 method: "GET",
-                path: "/api/cash-flow/categories".to_string(),
+                path: "/api/categories".to_string(),
                 body: None,
                 expected_status: StatusCode::OK,
             },
@@ -36,7 +36,7 @@ async fn category_contract_list_create_and_detail_match_across_transports() {
         ContractExpectation {
             http: HttpCall {
                 method: "GET",
-                path: format!("/api/cash-flow/categories/{category_id}"),
+                path: format!("/api/categories/{category_id}"),
                 body: None,
                 expected_status: StatusCode::OK,
             },
@@ -55,7 +55,7 @@ async fn category_contract_validation_and_not_found_match_across_transports() {
         ContractExpectation {
             http: HttpCall {
                 method: "GET",
-                path: "/api/cash-flow/categories/missing-category".to_string(),
+                path: "/api/categories/missing-category".to_string(),
                 body: None,
                 expected_status: StatusCode::NOT_FOUND,
             },
@@ -70,7 +70,7 @@ async fn category_contract_validation_and_not_found_match_across_transports() {
         ContractExpectation {
             http: HttpCall {
                 method: "POST",
-                path: "/api/cash-flow/categories".to_string(),
+                path: "/api/categories".to_string(),
                 body: Some(category_payload("", CategoryRole::Spending)),
                 expected_status: StatusCode::BAD_REQUEST,
             },

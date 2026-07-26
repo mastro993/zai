@@ -4,12 +4,14 @@ Personal finance context for tracking money movement and related organization.
 
 ## Language
 
-**Cash flow**:
-Money movement over time, grouped as the app area that contains transactions and categories.
-_Avoid_: Transactions as the top-level area
+**Cash flow area**:
+The user-interface navigation area that presents transactions, categories,
+recurring transactions, forecasts, and budgets together. This grouping is a
+presentation convention; the features remain distinct.
+_Avoid_: Cash flow feature
 
 **Category**:
-A user-defined grouping for cash flow transactions.
+A user-defined grouping for transactions.
 _Avoid_: Transaction category in user-facing language
 
 **Root category**:

@@ -127,7 +127,7 @@ test("web preserves committed bulk work when post-commit refresh is interrupted"
   await expect(confirmation).toBeVisible();
 
   let blockFeedRefresh = false;
-  await page.route("**/api/cash-flow/recurring-transactions**", async (route) => {
+  await page.route("**/api/recurring-transactions**", async (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
     if (request.method() === "POST" && pathname.endsWith("/bulk/execute")) {
@@ -139,7 +139,7 @@ test("web preserves committed bulk work when post-commit refresh is interrupted"
     if (
       blockFeedRefresh &&
       request.method() === "GET" &&
-      pathname === "/api/cash-flow/recurring-transactions"
+      pathname === "/api/recurring-transactions"
     ) {
       await route.abort("internetdisconnected");
       return;

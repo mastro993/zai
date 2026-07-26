@@ -5,7 +5,7 @@ import { Result } from "@praha/byethrow";
 import { CommandError } from "../errors";
 import { invokeDecodedCommand } from "../shared";
 import { buildWebRequestUrl } from "../web-transport";
-import { joinWebApiUrl, resolveCashFlowApiBaseUrl, resolveWebApiOrigin } from "../web-api";
+import { joinWebApiUrl, resolveWebApiBaseUrl, resolveWebApiOrigin } from "../web-api";
 import { createWebCommandTransport } from "../web-transport";
 import { CATEGORY_COMMANDS } from "@/features/categories/commands/registry";
 import { BUDGET_COMMANDS } from "@/features/budgets/commands/registry";
@@ -16,17 +16,16 @@ const fetchMock = vi.hoisted(() => vi.fn());
 describe("web request URL helpers", () => {
   it("builds an absolute URL from a request path and query", () => {
     expect(
-      buildWebRequestUrl("http://127.0.0.1:3000/api/cash-flow", {
-        api: "cash-flow",
+      buildWebRequestUrl("http://127.0.0.1:3000/api", {
         method: "GET",
         path: "/categories",
         query: { parentId: "parent-1" },
       }),
-    ).toBe("http://127.0.0.1:3000/api/cash-flow/categories?parentId=parent-1");
+    ).toBe("http://127.0.0.1:3000/api/categories?parentId=parent-1");
   });
 
-  it("resolves the cash-flow API base from the configured origin", () => {
-    expect(resolveCashFlowApiBaseUrl()).toBe("http://127.0.0.1:3000/api/cash-flow");
+  it("resolves the API base from the configured origin", () => {
+    expect(resolveWebApiBaseUrl()).toBe("http://127.0.0.1:3000/api");
   });
 });
 
@@ -46,9 +45,7 @@ describe("web API config", () => {
   });
 
   it("joins origin and API prefixes without duplicate slashes", () => {
-    expect(joinWebApiUrl("http://127.0.0.1:3000", "api/cash-flow")).toBe(
-      "http://127.0.0.1:3000/api/cash-flow",
-    );
+    expect(joinWebApiUrl("http://127.0.0.1:3000", "api")).toBe("http://127.0.0.1:3000/api");
   });
 });
 
@@ -78,7 +75,7 @@ describe("web command transport", () => {
       parentId: null,
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:3000/api/cash-flow/categories", {
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:3000/api/categories", {
       method: "GET",
       headers: { "x-zai-app": "zai" },
       body: undefined,
@@ -99,7 +96,7 @@ describe("web command transport", () => {
       newCategory: { name: "Food", parentId: null, description: null, color: "#ff0000" },
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:3000/api/cash-flow/categories", {
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:3000/api/categories", {
       method: "POST",
       headers: { "x-zai-app": "zai", "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -122,14 +119,11 @@ describe("web command transport", () => {
     const transport = createWebCommandTransport();
     await transport.invoke(TRANSACTION_COMMANDS.delete_transaction, { transactionId: "txn-1" });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:3000/api/cash-flow/transactions/txn-1",
-      {
-        method: "DELETE",
-        headers: { "x-zai-app": "zai" },
-        body: undefined,
-      },
-    );
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:3000/api/transactions/txn-1", {
+      method: "DELETE",
+      headers: { "x-zai-app": "zai" },
+      body: undefined,
+    });
   });
 
   it("returns undefined for 204 No Content responses", async () => {

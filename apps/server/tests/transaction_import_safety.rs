@@ -19,8 +19,7 @@ async fn create_category(
         payload["role"] = json!(role);
     }
 
-    let (status, category) =
-        request_json(app, "POST", "/api/cash-flow/categories", Some(payload)).await;
+    let (status, category) = request_json(app, "POST", "/api/categories", Some(payload)).await;
     assert_eq!(status, StatusCode::CREATED);
     category
 }
@@ -32,7 +31,7 @@ async fn transaction_batch_rejects_blank_category_without_persisting_it() {
     let (status, body) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/transactions/import-batch",
+        "/api/transactions/import-batch",
         Some(json!({
             "categories": [{
                 "id": "blank-category",
@@ -47,7 +46,7 @@ async fn transaction_batch_rejects_blank_category_without_persisting_it() {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["code"], "validation");
 
-    let (status, categories) = request_json(&app, "GET", "/api/cash-flow/categories", None).await;
+    let (status, categories) = request_json(&app, "GET", "/api/categories", None).await;
     assert_eq!(status, StatusCode::OK);
     assert!(categories.as_array().expect("categories").is_empty());
 }
@@ -62,7 +61,7 @@ async fn transaction_batch_child_inherits_existing_income_root_role() {
     let (status, _) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/transactions/import-batch",
+        "/api/transactions/import-batch",
         Some(json!({
             "categories": [{
                 "id": "bonus-child",
@@ -83,15 +82,14 @@ async fn transaction_batch_child_inherits_existing_income_root_role() {
     .await;
     assert_eq!(status, StatusCode::OK);
 
-    let (status, child) =
-        request_json(&app, "GET", "/api/cash-flow/categories/bonus-child", None).await;
+    let (status, child) = request_json(&app, "GET", "/api/categories/bonus-child", None).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(child["role"], "income");
 
     let (status, budget) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(json!({
             "name": "Income-only spending budget",
             "baseAllowance": 1000,
@@ -115,7 +113,7 @@ async fn transaction_batch_rejects_third_category_level_without_mutation() {
     let (status, body) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/transactions/import-batch",
+        "/api/transactions/import-batch",
         Some(json!({
             "categories": [{
                 "id": "forbidden-third-level",
@@ -131,12 +129,7 @@ async fn transaction_batch_rejects_third_category_level_without_mutation() {
     assert_eq!(status, StatusCode::CONFLICT);
     assert_eq!(body["code"], "conflict");
 
-    let (status, _) = request_json(
-        &app,
-        "GET",
-        "/api/cash-flow/categories/forbidden-third-level",
-        None,
-    )
-    .await;
+    let (status, _) =
+        request_json(&app, "GET", "/api/categories/forbidden-third-level", None).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }

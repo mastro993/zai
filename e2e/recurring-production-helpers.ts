@@ -82,7 +82,7 @@ export async function createApiCategory(
   request: APIRequestContext,
   name: string,
 ): Promise<Category> {
-  return apiJson<Category>(request, "POST", "/api/cash-flow/categories", {
+  return apiJson<Category>(request, "POST", "/api/categories", {
     name,
     parentId: null,
     description: null,
@@ -92,7 +92,7 @@ export async function createApiCategory(
 }
 
 export async function deleteApiCategory(request: APIRequestContext, categoryId: string) {
-  return apiJson(request, "POST", "/api/cash-flow/categories/bulk-delete", {
+  return apiJson(request, "POST", "/api/categories/bulk-delete", {
     categoryIds: [categoryId],
     childrenStrategy: "block",
     confirmBudgetImpact: true,
@@ -104,7 +104,7 @@ export async function createApiBudget(
   name: string,
   categoryId: string,
 ): Promise<Budget> {
-  return apiJson<Budget>(request, "POST", "/api/cash-flow/budgets", {
+  return apiJson<Budget>(request, "POST", "/api/budgets", {
     name,
     baseAllowance: 100000,
     cadence: "month",
@@ -129,7 +129,7 @@ export async function createApiRecurring(
   const response = await apiJson<{ outcome: string; document: RecurringDocument }>(
     request,
     "POST",
-    "/api/cash-flow/recurring-transactions",
+    "/api/recurring-transactions",
     {
       schedule: input.schedule ?? { type: "interval", every: 1, unit: "day" },
       firstScheduledLocal: input.firstScheduledLocal,
@@ -151,7 +151,7 @@ export async function createApiTransaction(
   request: APIRequestContext,
   input: { id: string; description: string; transactionDate: string },
 ) {
-  return apiJson(request, "POST", "/api/cash-flow/transactions", {
+  return apiJson(request, "POST", "/api/transactions", {
     id: input.id,
     description: input.description,
     amount: 5000,
@@ -169,7 +169,7 @@ export async function getApiDocument(
   return apiJson<RecurringDocument>(
     request,
     "GET",
-    `/api/cash-flow/recurring-transactions/${recurringTransactionId}`,
+    `/api/recurring-transactions/${recurringTransactionId}`,
   );
 }
 
@@ -232,7 +232,7 @@ export async function updateApiRecurringDescription(
   return apiJson(
     request,
     "POST",
-    `/api/cash-flow/recurring-transactions/${document.recurringTransaction.id}`,
+    `/api/recurring-transactions/${document.recurringTransaction.id}`,
     {
       recurringTransactionId: document.recurringTransaction.id,
       expectedRevision: document.recurringTransaction.revision,

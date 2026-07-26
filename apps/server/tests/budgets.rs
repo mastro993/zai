@@ -19,7 +19,7 @@ async fn create_list_and_inspect_budget_round_trip() {
     let (transaction_status, _) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/transactions",
+        "/api/transactions",
         Some(json!({
             "description": "Before budget",
             "amount": 1250,
@@ -33,7 +33,7 @@ async fn create_list_and_inspect_budget_round_trip() {
     let (create_status, created) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(budget_payload("  Monthly spending  ")),
     )
     .await;
@@ -49,25 +49,20 @@ async fn create_list_and_inspect_budget_round_trip() {
     assert_eq!(created["currentPeriod"]["remainingAllowance"], 8750);
 
     let budget_id = created["id"].as_str().expect("budget id");
-    let (list_status, listed) = request_json(&app, "GET", "/api/cash-flow/budgets", None).await;
+    let (list_status, listed) = request_json(&app, "GET", "/api/budgets", None).await;
     assert_eq!(list_status, StatusCode::OK);
     assert_eq!(listed.as_array().expect("budget list").len(), 1);
     assert_eq!(listed[0]["id"], budget_id);
 
-    let (detail_status, detail) = request_json(
-        &app,
-        "GET",
-        &format!("/api/cash-flow/budgets/{budget_id}"),
-        None,
-    )
-    .await;
+    let (detail_status, detail) =
+        request_json(&app, "GET", &format!("/api/budgets/{budget_id}"), None).await;
     assert_eq!(detail_status, StatusCode::OK);
     assert_eq!(detail, created);
 
     let (history_status, history) = request_json(
         &app,
         "GET",
-        &format!("/api/cash-flow/budgets/{budget_id}/history"),
+        &format!("/api/budgets/{budget_id}/history"),
         None,
     )
     .await;
@@ -84,7 +79,7 @@ async fn duplicate_active_budget_name_returns_name_conflict() {
     let (first_status, _) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(budget_payload("Monthly")),
     )
     .await;
@@ -93,7 +88,7 @@ async fn duplicate_active_budget_name_returns_name_conflict() {
     let (status, body) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(budget_payload(" monthly ")),
     )
     .await;
@@ -108,7 +103,7 @@ async fn update_budget_replaces_open_configuration_and_rejects_stale_revision() 
     let (_, created) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(budget_payload("Monthly")),
     )
     .await;
@@ -117,7 +112,7 @@ async fn update_budget_replaces_open_configuration_and_rejects_stale_revision() 
     let (status, updated) = request_json(
         &app,
         "PUT",
-        &format!("/api/cash-flow/budgets/{budget_id}"),
+        &format!("/api/budgets/{budget_id}"),
         Some(json!({
             "expectedRevision": created["revision"],
             "name": "Updated monthly",
@@ -139,7 +134,7 @@ async fn update_budget_replaces_open_configuration_and_rejects_stale_revision() 
     let (status, conflict) = request_json(
         &app,
         "PUT",
-        &format!("/api/cash-flow/budgets/{budget_id}"),
+        &format!("/api/budgets/{budget_id}"),
         Some(json!({
             "expectedRevision": 0,
             "name": "Stale",
@@ -164,7 +159,7 @@ async fn update_budget_rejects_cadence_changes() {
     let (_, created) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(budget_payload("Monthly")),
     )
     .await;
@@ -173,7 +168,7 @@ async fn update_budget_rejects_cadence_changes() {
     let (status, body) = request_json(
         &app,
         "PUT",
-        &format!("/api/cash-flow/budgets/{budget_id}"),
+        &format!("/api/budgets/{budget_id}"),
         Some(json!({
             "expectedRevision": 0,
             "name": "Monthly",
@@ -197,7 +192,7 @@ async fn pause_and_resume_keep_budget_history_without_active_list_gaps() {
     let (_, created) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(budget_payload("Lifecycle")),
     )
     .await;
@@ -206,7 +201,7 @@ async fn pause_and_resume_keep_budget_history_without_active_list_gaps() {
     let (pause_status, paused) = request_json(
         &app,
         "POST",
-        &format!("/api/cash-flow/budgets/{budget_id}/pause"),
+        &format!("/api/budgets/{budget_id}/pause"),
         Some(json!({ "expectedRevision": created["revision"] })),
     )
     .await;
@@ -214,24 +209,23 @@ async fn pause_and_resume_keep_budget_history_without_active_list_gaps() {
     assert_eq!(paused["paused"], true);
     assert_eq!(paused["revision"], 1);
 
-    let (active_status, active) = request_json(&app, "GET", "/api/cash-flow/budgets", None).await;
+    let (active_status, active) = request_json(&app, "GET", "/api/budgets", None).await;
     assert_eq!(active_status, StatusCode::OK);
     assert_eq!(active.as_array().expect("active list").len(), 0);
 
     let (paused_status, paused_list) =
-        request_json(&app, "GET", "/api/cash-flow/budgets?filter=paused", None).await;
+        request_json(&app, "GET", "/api/budgets?filter=paused", None).await;
     assert_eq!(paused_status, StatusCode::OK);
     assert_eq!(paused_list.as_array().expect("paused list").len(), 1);
 
-    let (all_status, all) =
-        request_json(&app, "GET", "/api/cash-flow/budgets?filter=all", None).await;
+    let (all_status, all) = request_json(&app, "GET", "/api/budgets?filter=all", None).await;
     assert_eq!(all_status, StatusCode::OK);
     assert_eq!(all.as_array().expect("all list").len(), 1);
 
     let (resume_status, resumed) = request_json(
         &app,
         "POST",
-        &format!("/api/cash-flow/budgets/{budget_id}/resume"),
+        &format!("/api/budgets/{budget_id}/resume"),
         Some(json!({ "expectedRevision": paused["revision"] })),
     )
     .await;
@@ -246,7 +240,7 @@ async fn delete_budget_returns_no_content_is_idempotent_and_releases_name() {
     let (_, created) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(budget_payload("Deletable")),
     )
     .await;
@@ -255,32 +249,26 @@ async fn delete_budget_returns_no_content_is_idempotent_and_releases_name() {
     let (status, body) = request_json(
         &app,
         "DELETE",
-        &format!("/api/cash-flow/budgets/{budget_id}"),
+        &format!("/api/budgets/{budget_id}"),
         Some(json!({ "expectedRevision": created["revision"] })),
     )
     .await;
     assert_eq!(status, StatusCode::NO_CONTENT);
     assert_eq!(body, Value::Null);
 
-    let (list_status, list) =
-        request_json(&app, "GET", "/api/cash-flow/budgets?filter=all", None).await;
+    let (list_status, list) = request_json(&app, "GET", "/api/budgets?filter=all", None).await;
     assert_eq!(list_status, StatusCode::OK);
     assert_eq!(list, json!([]));
 
-    let (detail_status, detail) = request_json(
-        &app,
-        "GET",
-        &format!("/api/cash-flow/budgets/{budget_id}"),
-        None,
-    )
-    .await;
+    let (detail_status, detail) =
+        request_json(&app, "GET", &format!("/api/budgets/{budget_id}"), None).await;
     assert_eq!(detail_status, StatusCode::NOT_FOUND);
     assert_eq!(detail["code"], "notFound");
 
     let (retry_status, retry_body) = request_json(
         &app,
         "DELETE",
-        &format!("/api/cash-flow/budgets/{budget_id}"),
+        &format!("/api/budgets/{budget_id}"),
         Some(json!({ "expectedRevision": created["revision"] })),
     )
     .await;
@@ -290,7 +278,7 @@ async fn delete_budget_returns_no_content_is_idempotent_and_releases_name() {
     let (_, replacement) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(budget_payload("Deletable")),
     )
     .await;
@@ -303,7 +291,7 @@ async fn delete_budget_rejects_stale_revision() {
     let (_, created) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(budget_payload("Revision")),
     )
     .await;
@@ -312,7 +300,7 @@ async fn delete_budget_rejects_stale_revision() {
     let (status, body) = request_json(
         &app,
         "DELETE",
-        &format!("/api/cash-flow/budgets/{budget_id}"),
+        &format!("/api/budgets/{budget_id}"),
         Some(json!({ "expectedRevision": 1 })),
     )
     .await;
@@ -327,7 +315,7 @@ async fn create_budget_accepts_cadence_scope_and_measurement_mode() {
     let (category_status, category) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/categories",
+        "/api/categories",
         Some(json!({
             "name": "Groceries",
             "role": "spending"
@@ -340,7 +328,7 @@ async fn create_budget_accepts_cadence_scope_and_measurement_mode() {
     let (status, budget) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(json!({
             "name": "Weekly cash flow",
             "baseAllowance": 10000,
@@ -363,7 +351,7 @@ async fn budget_history_rejects_invalid_page_size() {
     let (_, budget) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(budget_payload("History")),
     )
     .await;
@@ -372,7 +360,7 @@ async fn budget_history_rejects_invalid_page_size() {
     let (status, body) = request_json(
         &app,
         "GET",
-        &format!("/api/cash-flow/budgets/{budget_id}/history?perPage=101"),
+        &format!("/api/budgets/{budget_id}/history?perPage=101"),
         None,
     )
     .await;
@@ -383,7 +371,7 @@ async fn budget_history_rejects_invalid_page_size() {
     let (status, body) = request_json(
         &app,
         "GET",
-        &format!("/api/cash-flow/budgets/{budget_id}/history?page=not-a-number"),
+        &format!("/api/budgets/{budget_id}/history?page=not-a-number"),
         None,
     )
     .await;

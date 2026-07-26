@@ -14,13 +14,8 @@ async fn list_transactions_pagination_respects_page_and_per_page() {
     let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
-    let (status, body) = request_json(
-        &app,
-        "GET",
-        "/api/cash-flow/transactions?page=2&perPage=2",
-        None,
-    )
-    .await;
+    let (status, body) =
+        request_json(&app, "GET", "/api/transactions?page=2&perPage=2", None).await;
 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["page"], 2);
@@ -34,13 +29,7 @@ async fn list_transactions_filters_by_text_search() {
     let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
-    let (status, body) = request_json(
-        &app,
-        "GET",
-        "/api/cash-flow/transactions?query=coffee",
-        None,
-    )
-    .await;
+    let (status, body) = request_json(&app, "GET", "/api/transactions?query=coffee", None).await;
 
     assert_eq!(status, StatusCode::OK);
     let descriptions = transaction_descriptions(&body);
@@ -57,7 +46,7 @@ async fn list_transactions_filters_by_transaction_type() {
     let (status, body) = request_json(
         &app,
         "GET",
-        "/api/cash-flow/transactions?transactionType=income",
+        "/api/transactions?transactionType=income",
         None,
     )
     .await;
@@ -76,7 +65,7 @@ async fn list_transactions_filters_by_date_range() {
     let (status, body) = request_json(
         &app,
         "GET",
-        "/api/cash-flow/transactions?startDate=2026-07-10T00%3A00%3A00&endDate=2026-07-18T23%3A59%3A59",
+        "/api/transactions?startDate=2026-07-10T00%3A00%3A00&endDate=2026-07-18T23%3A59%3A59",
         None,
     )
     .await;
@@ -93,13 +82,8 @@ async fn list_transactions_filters_by_single_category() {
     let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
-    let (status, body) = request_json(
-        &app,
-        "GET",
-        "/api/cash-flow/transactions?categoryId=food-cat",
-        None,
-    )
-    .await;
+    let (status, body) =
+        request_json(&app, "GET", "/api/transactions?categoryId=food-cat", None).await;
 
     assert_eq!(status, StatusCode::OK);
     let descriptions = transaction_descriptions(&body);
@@ -116,7 +100,7 @@ async fn list_transactions_filters_by_multiple_categories() {
     let (status, body) = request_json(
         &app,
         "GET",
-        "/api/cash-flow/transactions?categoryId=food-cat&categoryId=travel-cat",
+        "/api/transactions?categoryId=food-cat&categoryId=travel-cat",
         None,
     )
     .await;
@@ -130,13 +114,8 @@ async fn list_transactions_filters_uncategorized_only() {
     let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
-    let (status, body) = request_json(
-        &app,
-        "GET",
-        "/api/cash-flow/transactions?uncategorized=true",
-        None,
-    )
-    .await;
+    let (status, body) =
+        request_json(&app, "GET", "/api/transactions?uncategorized=true", None).await;
 
     assert_eq!(status, StatusCode::OK);
     let rows = body["data"].as_array().expect("data");
@@ -155,7 +134,7 @@ async fn list_transactions_sorts_by_amount_desc() {
     let (status, body) = request_json(
         &app,
         "GET",
-        "/api/cash-flow/transactions?sortField=amount&sortDesc=true",
+        "/api/transactions?sortField=amount&sortDesc=true",
         None,
     )
     .await;
@@ -178,7 +157,7 @@ async fn list_transactions_sorts_by_amount_asc() {
     let (status, body) = request_json(
         &app,
         "GET",
-        "/api/cash-flow/transactions?sortField=amount&sortDesc=false",
+        "/api/transactions?sortField=amount&sortDesc=false",
         None,
     )
     .await;
@@ -201,7 +180,7 @@ async fn list_transactions_sorts_by_date_desc() {
     let (status, body) = request_json(
         &app,
         "GET",
-        "/api/cash-flow/transactions?sortField=date&sortDesc=true",
+        "/api/transactions?sortField=date&sortDesc=true",
         None,
     )
     .await;
@@ -227,7 +206,7 @@ async fn list_transactions_sorts_by_description_asc() {
     let (status, body) = request_json(
         &app,
         "GET",
-        "/api/cash-flow/transactions?sortField=description&sortDesc=false",
+        "/api/transactions?sortField=description&sortDesc=false",
         None,
     )
     .await;
@@ -253,7 +232,7 @@ async fn list_transactions_sorts_by_type_desc() {
     let (status, body) = request_json(
         &app,
         "GET",
-        "/api/cash-flow/transactions?sortField=type&sortDesc=true",
+        "/api/transactions?sortField=type&sortDesc=true",
         None,
     )
     .await;

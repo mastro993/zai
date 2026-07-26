@@ -280,7 +280,7 @@ describe("recurring web requests", () => {
     const result = build(args);
     expect(Result.isSuccess(result)).toBe(true);
     if (Result.isFailure(result)) return;
-    expect(result.value).toMatchObject({ api: "cash-flow", ...expected });
+    expect(result.value).toMatchObject({ ...expected });
   });
 
   it("uses backend defaults when optional values are omitted", () => {

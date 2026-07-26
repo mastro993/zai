@@ -32,19 +32,16 @@ const newBudget = {
 describe("budget web requests", () => {
   it("maps list and detail reads", () => {
     expect(unwrap(buildGetBudgetsRequest({}))).toEqual({
-      api: "cash-flow",
       method: "GET",
       path: "/budgets",
       query: undefined,
     });
     expect(unwrap(buildGetBudgetsRequest({ filter: "paused" }))).toEqual({
-      api: "cash-flow",
       method: "GET",
       path: "/budgets",
       query: { filter: "paused" },
     });
     expect(unwrap(buildGetBudgetRequest({ budgetId: "budget-1" }))).toEqual({
-      api: "cash-flow",
       method: "GET",
       path: "/budgets/budget-1",
     });
@@ -52,21 +49,18 @@ describe("budget web requests", () => {
 
   it("preserves budget payload and revision bodies", () => {
     expect(unwrap(buildCreateBudgetRequest({ newBudget }))).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/budgets",
       body: newBudget,
     });
     const updatedBudget = { ...newBudget, categoryIds: [], expectedRevision: 0 };
     expect(unwrap(buildUpdateBudgetRequest({ budgetId: "budget-1", updatedBudget }))).toEqual({
-      api: "cash-flow",
       method: "PUT",
       path: "/budgets/budget-1",
       body: updatedBudget,
     });
     expect(unwrap(buildDeleteBudgetRequest({ budgetId: "budget-1", expectedRevision: 3 }))).toEqual(
       {
-        api: "cash-flow",
         method: "DELETE",
         path: "/budgets/budget-1",
         body: { expectedRevision: 3 },
@@ -76,21 +70,18 @@ describe("budget web requests", () => {
 
   it("maps lifecycle and history requests", () => {
     expect(unwrap(buildPauseBudgetRequest({ budgetId: "budget-1", expectedRevision: 4 }))).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/budgets/budget-1/pause",
       body: { expectedRevision: 4 },
     });
     expect(unwrap(buildResumeBudgetRequest({ budgetId: "budget-1", expectedRevision: 5 }))).toEqual(
       {
-        api: "cash-flow",
         method: "POST",
         path: "/budgets/budget-1/resume",
         body: { expectedRevision: 5 },
       },
     );
     expect(unwrap(buildGetBudgetHistoryRequest({ budgetId: "budget-1" }))).toEqual({
-      api: "cash-flow",
       method: "GET",
       path: "/budgets/budget-1/history",
       query: { page: "1", perPage: "50" },

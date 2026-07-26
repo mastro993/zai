@@ -1,5 +1,5 @@
 {
-  "apps/server/src/api/cash_flow/transactions.rs": {
+  "apps/server/src/api/transactions.rs": {
     "reason": "Existing transport adapter combines transaction routes; split is outside issue 123 scope."
   },
   "crates/core/src/errors.rs": {
