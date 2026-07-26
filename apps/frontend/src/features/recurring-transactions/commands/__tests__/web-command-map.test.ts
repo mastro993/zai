@@ -30,10 +30,16 @@ const adoptionRequest = {
   template,
 };
 
+const adoptionPreviewRequest = {
+  transactionId,
+  schedule: { type: "interval", every: 2, unit: "month" },
+  totalOccurrences: null,
+};
+
 const repairRequest = {
   recurringTransactionId,
   expectedRevision: 7,
-  repairFieldKey: "template",
+  repairFieldKey: "amount",
   template,
 };
 
@@ -147,11 +153,11 @@ const validRequests: Array<{
   },
   {
     command: "preview_recurring_adoption",
-    args: { request: adoptionRequest },
+    args: { request: adoptionPreviewRequest },
     expected: {
       method: "POST",
       path: "/recurring-transactions/adoption-preview",
-      body: adoptionRequest,
+      body: adoptionPreviewRequest,
     },
   },
   ...(["pause", "resume", "stop", "delete"] as const).map((action) => ({
