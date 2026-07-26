@@ -4,8 +4,7 @@ use crate::connection::get_connection;
 use crate::schema::recurring_occurrences;
 use diesel::prelude::*;
 use zai_core::features::recurring_transactions::{
-    RecurringLifecycle, RecurringLifecycleOutcome, RecurringTransactionsServiceTrait,
-    UNCHANGED_INVALID_TRANSITION,
+    RecurringLifecycle, RecurringLifecycleOutcome, UNCHANGED_INVALID_TRANSITION,
 };
 
 #[tokio::test]

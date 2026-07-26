@@ -8,9 +8,8 @@ use crate::schema::{
 use diesel::prelude::*;
 use diesel::sql_types::BigInt;
 use zai_core::features::recurring_transactions::{
-    RecurringLifecycle, RecurringLifecycleOutcome, RecurringMutationOutcome,
-    RecurringTransactionsServiceTrait, ScheduleIntervalUnit, ScheduleRule,
-    UNCHANGED_GENERATION_BLOCKED,
+    RecurringLifecycle, RecurringLifecycleOutcome, RecurringMutationOutcome, ScheduleIntervalUnit,
+    ScheduleRule, UNCHANGED_GENERATION_BLOCKED,
 };
 
 #[tokio::test]

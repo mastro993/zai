@@ -4,8 +4,8 @@ use crate::schema::recurring_template_revisions;
 use diesel::prelude::*;
 use zai_core::features::recurring_transactions::{
     ProcessingWorkBudget, RecurringMutationOutcome, RecurringOccurrenceProcessor,
-    RecurringTemplateInput, RecurringTransactionDocument, RecurringTransactionsServiceTrait,
-    ScheduleIntervalUnit, ScheduleRule, UpdateRecurringTransaction,
+    RecurringTemplateInput, RecurringTransactionDocument, ScheduleIntervalUnit, ScheduleRule,
+    UpdateRecurringTransaction,
 };
 
 fn base_seed(id: &str, description: &str) -> SeedRecurringSource {

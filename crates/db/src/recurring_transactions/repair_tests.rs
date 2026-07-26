@@ -6,8 +6,8 @@ use crate::schema::{
 use diesel::prelude::*;
 use zai_core::features::recurring_transactions::{
     RecurringRecoveryOutcome, RecurringRepairField, RecurringTemplateInput,
-    RecurringTransactionsServiceTrait, RepairRecurringGenerationFailure,
-    RetryRecurringGenerationFailure, UNCHANGED_REPAIR_REQUIRED, process_failpoints,
+    RepairRecurringGenerationFailure, RetryRecurringGenerationFailure, UNCHANGED_REPAIR_REQUIRED,
+    process_failpoints,
 };
 
 fn base_seed(id: &str, description: &str) -> SeedRecurringSource {

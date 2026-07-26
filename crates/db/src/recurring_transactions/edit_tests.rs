@@ -2,8 +2,8 @@ use super::process_test_support::{local, seed_source, setup_service};
 use super::seed::SeedRecurringSource;
 use zai_core::features::recurring_transactions::{
     RecurringMutationOutcome, RecurringTemplateInput, RecurringTransactionDocument,
-    RecurringTransactionsServiceTrait, ScheduleIntervalUnit, ScheduleRule, UNCHANGED_NOT_EDITABLE,
-    UNCHANGED_SAME_VALUE, UpdateRecurringTransaction,
+    ScheduleIntervalUnit, ScheduleRule, UNCHANGED_NOT_EDITABLE, UNCHANGED_SAME_VALUE,
+    UpdateRecurringTransaction,
 };
 
 fn base_seed(id: &str, description: &str) -> SeedRecurringSource {

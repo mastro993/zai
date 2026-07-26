@@ -6,9 +6,8 @@ use crate::schema::{
 use diesel::prelude::*;
 use zai_core::Error;
 use zai_core::features::recurring_transactions::{
-    RecurringMutationOutcome, RecurringTemplateInput, RecurringTransactionDocument,
-    RecurringTransactionsServiceTrait, ScheduleRule, UNCHANGED_GENERATION_BLOCKED,
-    UpdateRecurringTransaction,
+    RecurringMutationOutcome, RecurringTemplateInput, RecurringTransactionDocument, ScheduleRule,
+    UNCHANGED_GENERATION_BLOCKED, UpdateRecurringTransaction,
 };
 
 fn base_seed(id: &str, description: &str) -> SeedRecurringSource {

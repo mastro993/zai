@@ -4,7 +4,7 @@ use super::seed::SeedRecurringSource;
 use zai_core::features::recurring_transactions::{
     MAX_BULK_SELECTION, RecurringBulkAction, RecurringBulkItem, RecurringBulkItemOutcomeKind,
     RecurringBulkRequest, RecurringFeedFilters, RecurringLifecycle, RecurringLifecycleOutcome,
-    RecurringTransactionsServiceTrait, UNCHANGED_REVISION_CONFLICT,
+    UNCHANGED_REVISION_CONFLICT,
 };
 
 fn bulk_item(id: &str, revision: i32) -> RecurringBulkItem {

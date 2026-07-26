@@ -12,10 +12,17 @@ use super::models::{
 use super::process::ProcessingWorkBudget;
 use super::schedule::scheduled_local_at;
 use super::service::RecurringTransactionsService;
-use super::traits::{RecurringOccurrenceProcessor, RecurringTransactionsServiceTrait};
+use super::traits::RecurringOccurrenceProcessor;
 use crate::{Error, Result};
 
 impl RecurringTransactionsService {
+    pub async fn update(
+        &self,
+        input: UpdateRecurringTransaction,
+    ) -> Result<RecurringMutationOutcome> {
+        self.update_inner(input).await
+    }
+
     pub(super) async fn update_inner(
         &self,
         mut input: UpdateRecurringTransaction,
@@ -172,6 +179,10 @@ impl RecurringTransactionsService {
                     "Missing template revision for recurring transaction {id}"
                 ))
             })
+    }
+
+    pub async fn adopt(&self, input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {
+        self.adopt_inner(input).await
     }
 
     pub(super) async fn adopt_inner(
