@@ -6,7 +6,7 @@ use crate::schema::{recurring_generation_failures, transaction_categories};
 use diesel::prelude::*;
 use zai_core::features::recurring_transactions::{
     FulfillmentKind, ProcessingWorkBudget, RECURRING_GENERATION_FAILURE_PRODUCER_KEY,
-    RecurringOccurrenceProcessor, RecurringTransactionsServiceTrait,
+    RecurringOccurrenceProcessor,
 };
 
 #[tokio::test]

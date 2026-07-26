@@ -9,7 +9,6 @@ use zai_core::features::recurring_transactions::{
 use zai_core::features::{
     budgets::{service::BudgetsService, traits::BudgetsServiceTrait},
     domain_alerts::{DomainAlertsService, DomainAlertsServiceTrait},
-    recurring_transactions::RecurringTransactionsServiceTrait,
     transaction_categories::{
         service::TransactionCategoriesService, traits::TransactionCategoriesServiceTrait,
     },
@@ -22,7 +21,7 @@ use recurring_supervisor::{ProcessDelayAlertPort, RepositorySupervisorHeads};
 pub struct ServiceContext {
     pub budgets_service: Arc<dyn BudgetsServiceTrait>,
     pub domain_alerts_service: Arc<dyn DomainAlertsServiceTrait>,
-    pub recurring_transactions_service: Arc<dyn RecurringTransactionsServiceTrait>,
+    pub recurring_transactions_service: Arc<RecurringTransactionsService>,
     pub transaction_categories_service: Arc<dyn TransactionCategoriesServiceTrait>,
     pub transactions_service: Arc<dyn TransactionsServiceTrait>,
     pub domain_alert_event_bus: Arc<DomainAlertEventBus>,
@@ -39,7 +38,7 @@ impl ServiceContext {
         Arc::clone(&self.domain_alerts_service)
     }
 
-    pub fn recurring_transactions_service(&self) -> Arc<dyn RecurringTransactionsServiceTrait> {
+    pub fn recurring_transactions_service(&self) -> Arc<RecurringTransactionsService> {
         Arc::clone(&self.recurring_transactions_service)
     }
 
