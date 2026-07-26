@@ -50,10 +50,15 @@ const adoptionRequest = {
   totalOccurrences: null,
   template,
 };
+const adoptionPreviewRequest = {
+  transactionId,
+  schedule: adoptionRequest.schedule,
+  totalOccurrences: adoptionRequest.totalOccurrences,
+};
 const repairRequest = {
   recurringTransactionId,
   expectedRevision: 7,
-  repairFieldKey: "template" as const,
+  repairFieldKey: "amount" as const,
   template,
 };
 const bulkRequest = {
@@ -175,11 +180,11 @@ const requestCases: Array<{
   {
     name: "adoption preview",
     build: buildPreviewRecurringAdoptionRequest as Builder,
-    args: { request: adoptionRequest } as never,
+    args: { request: adoptionPreviewRequest } as never,
     expected: {
       method: "POST",
       path: "/recurring-transactions/adoption-preview",
-      body: adoptionRequest,
+      body: adoptionPreviewRequest,
     },
   },
   ...(["pause", "resume", "stop", "delete"] as const).map((action) => ({
@@ -290,10 +295,28 @@ describe("recurring web requests", () => {
     expect(Result.isSuccess(matching) && matching.value.query).toEqual({});
   });
 
+  it("keeps adoption preview bodies separate from adoption templates", () => {
+    const result = buildPreviewRecurringAdoptionRequest({
+      request: { ...adoptionPreviewRequest, template } as never,
+    });
+    expect(Result.isSuccess(result)).toBe(true);
+    if (Result.isFailure(result)) return;
+    expect(result.value.body).toEqual(adoptionPreviewRequest);
+  });
+
   it("rejects malformed identifiers, revisions, and records locally", () => {
     expect(
       Result.isFailure(buildGetRecurringTransactionRequest({ recurringTransactionId: "" })),
     ).toBe(true);
+    for (const repairFieldKey of ["amount", "transactionCategoryId"] as const) {
+      expect(
+        Result.isSuccess(
+          buildPreviewRecurringRepairRequest({
+            request: { ...repairRequest, repairFieldKey },
+          }),
+        ),
+      ).toBe(true);
+    }
     expect(
       Result.isFailure(
         buildPauseRecurringTransactionRequest({ recurringTransactionId, expectedRevision: 0 }),
@@ -302,6 +325,20 @@ describe("recurring web requests", () => {
     expect(
       Result.isFailure(
         buildExecuteRecurringBulkRequest({ request: { action: "pause", items: "bad" as never } }),
+      ),
+    ).toBe(true);
+    expect(
+      Result.isFailure(
+        buildPreviewRecurringRepairRequest({
+          request: { ...repairRequest, repairFieldKey: "template" as never },
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      Result.isFailure(
+        buildRepairRecurringFailureRequest({
+          input: { ...repairRequest, repairFieldKey: "transaction_category_id" as never },
+        }),
       ),
     ).toBe(true);
   });

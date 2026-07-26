@@ -5,6 +5,7 @@ import type { WebRequestSpec } from "@/commands/web-request-spec";
 
 import type {
   AdoptionArgs,
+  AdoptionPreviewArgs,
   BulkArgs,
   CreateRecurringArgs,
   FailureHistoryArgs,
@@ -200,9 +201,25 @@ export const buildAdoptRecurringTransactionRequest = (
   buildAdoptionRequest(args, "/recurring-transactions/adopt");
 
 export const buildPreviewRecurringAdoptionRequest = (
-  args: AdoptionArgs,
-): Result.Result<WebRequestSpec, CommandError> =>
-  buildAdoptionRequest(args, "/recurring-transactions/adoption-preview");
+  args: AdoptionPreviewArgs,
+): Result.Result<WebRequestSpec, CommandError> => {
+  const valid = validateRequestRecord(args, "Recurring adoption preview requires a request record");
+  if (Result.isFailure(valid) || !isRecord(valid.value.request)) {
+    return Result.isFailure(valid)
+      ? valid
+      : Result.fail(new CommandError("Recurring adoption preview requires request"));
+  }
+  if (!isNonEmptyString(valid.value.request.transactionId)) {
+    return Result.fail(new CommandError("Adoption transaction id must be a non-empty string"));
+  }
+  const { transactionId, schedule, totalOccurrences } = valid.value.request;
+  return Result.succeed({
+    api: "cash-flow",
+    method: "POST",
+    path: "/recurring-transactions/adoption-preview",
+    body: { transactionId, schedule, totalOccurrences },
+  });
+};
 
 const buildRecurringLifecycleRequest = (
   args: LifecycleArgs,
@@ -273,7 +290,7 @@ const validateRepair = (value: unknown): value is Record<string, unknown> =>
   isRecord(value) &&
   isNonEmptyString(value.recurringTransactionId) &&
   isRevision(value.expectedRevision) &&
-  isNonEmptyString(value.repairFieldKey) &&
+  (value.repairFieldKey === "amount" || value.repairFieldKey === "transactionCategoryId") &&
   isRecord(value.template);
 
 export const buildPreviewRecurringRepairRequest = (

@@ -49,10 +49,18 @@ export interface AdoptionRequest {
   transactionId: string;
   schedule: ScheduleRule;
   totalOccurrences: number | null;
-  template?: RecurringTemplate;
+  template: RecurringTemplate;
+}
+export interface AdoptionPreviewRequest {
+  transactionId: string;
+  schedule: ScheduleRule;
+  totalOccurrences: number | null;
 }
 export interface AdoptionArgs {
   request: AdoptionRequest;
+}
+export interface AdoptionPreviewArgs {
+  request: AdoptionPreviewRequest;
 }
 export interface UpdateRecurringInput {
   recurringTransactionId: string;
