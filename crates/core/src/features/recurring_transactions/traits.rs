@@ -1,29 +1,15 @@
-use super::adopt::{AdoptRecurringTransaction, AdoptionPreview, AdoptionPreviewRequest};
-use super::bulk::{
-    RecurringBulkExecuteResult, RecurringBulkPreflight, RecurringBulkRequest,
-    RecurringMatchingIdentity, RecurringMatchingIds,
-};
+use super::adopt::AdoptRecurringTransaction;
+use super::bulk::RecurringMatchingIdentity;
 use super::create::{NewRecurringTransaction, RecurringTemplateInput};
-use super::document::{
-    RecurringAdoptOutcome, RecurringCreateOutcome, RecurringFeedResult,
-    RecurringTransactionDocument, TransactionRecurringProvenance,
-};
-use super::edit::{RecurringMutationOutcome, UpdateRecurringTransaction};
-use super::lifecycle::{
-    RecurringLifecycleCommand, RecurringLifecycleOutcome, RecurringLifecycleUpdate,
-};
+use super::edit::UpdateRecurringTransaction;
+use super::lifecycle::{RecurringLifecycleCommand, RecurringLifecycleUpdate};
 use super::models::{
     RecurringFailurePage, RecurringFeedFilters, RecurringFeedPage, RecurringGenerationFailure,
     RecurringOccurrence, RecurringOccurrenceHead, RecurringOccurrencePage,
     RecurringScheduleRevision, RecurringTemplateRevision, RecurringTransaction,
 };
 use super::process::{ProcessOneOutcome, ProcessingSliceOutcome, ProcessingWorkBudget};
-use super::projection::{BudgetProjectionQuery, BudgetProjectionResult};
-use super::repair::{
-    GenerationFailureDiagnostics, PreviewRecurringGenerationRepair, RecurringRecoveryOutcome,
-    RecurringRepairField, RecurringRepairPreview, RepairRecurringGenerationFailure,
-    RetryRecurringGenerationFailure,
-};
+use super::repair::RecurringRepairField;
 use crate::Result;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
@@ -178,97 +164,6 @@ pub trait RecurringTransactionsRepositoryTrait: Send + Sync {
         include_paused_budgets: bool,
         focus_recurring_transaction_id: Option<String>,
     ) -> Result<super::projection::ProjectionComputeInput>;
-}
-
-#[async_trait]
-pub trait RecurringTransactionsServiceTrait: Send + Sync {
-    async fn list_feed(
-        &self,
-        limit: Option<i64>,
-        cursor: Option<String>,
-    ) -> Result<RecurringFeedResult>;
-
-    async fn list_feed_filtered(
-        &self,
-        limit: Option<i64>,
-        cursor: Option<String>,
-        filters: RecurringFeedFilters,
-    ) -> Result<RecurringFeedResult>;
-
-    async fn get_document(&self, id: &str) -> Result<RecurringTransactionDocument>;
-
-    async fn list_linked_occurrences(
-        &self,
-        recurring_transaction_id: &str,
-        limit: Option<i64>,
-        cursor: Option<String>,
-    ) -> Result<RecurringOccurrencePage>;
-
-    async fn get_transaction_provenance(
-        &self,
-        transaction_id: &str,
-    ) -> Result<Option<TransactionRecurringProvenance>>;
-
-    async fn preview_adoption(&self, input: AdoptionPreviewRequest) -> Result<AdoptionPreview>;
-
-    async fn create(&self, input: NewRecurringTransaction) -> Result<RecurringCreateOutcome>;
-
-    async fn update(&self, input: UpdateRecurringTransaction) -> Result<RecurringMutationOutcome>;
-
-    async fn adopt(&self, input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome>;
-
-    async fn pause(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome>;
-
-    async fn resume(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome>;
-
-    async fn stop(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome>;
-
-    async fn delete(&self, input: RecurringLifecycleUpdate) -> Result<RecurringLifecycleOutcome>;
-
-    async fn preview_generation_repair(
-        &self,
-        input: PreviewRecurringGenerationRepair,
-    ) -> Result<RecurringRepairPreview>;
-
-    async fn repair_and_retry(
-        &self,
-        input: RepairRecurringGenerationFailure,
-    ) -> Result<RecurringRecoveryOutcome>;
-
-    async fn retry_generation(
-        &self,
-        input: RetryRecurringGenerationFailure,
-    ) -> Result<RecurringRecoveryOutcome>;
-
-    async fn generation_failure_diagnostics(
-        &self,
-        recurring_transaction_id: &str,
-    ) -> Result<GenerationFailureDiagnostics>;
-
-    async fn list_failure_history(
-        &self,
-        recurring_transaction_id: &str,
-        limit: Option<i64>,
-        cursor: Option<String>,
-    ) -> Result<RecurringFailurePage>;
-
-    async fn project_budgets(&self, query: BudgetProjectionQuery)
-    -> Result<BudgetProjectionResult>;
-
-    async fn list_matching_ids(&self) -> Result<RecurringMatchingIds>;
-
-    async fn list_matching_ids_filtered(
-        &self,
-        filters: RecurringFeedFilters,
-    ) -> Result<RecurringMatchingIds>;
-
-    async fn preflight_bulk(&self, request: RecurringBulkRequest)
-    -> Result<RecurringBulkPreflight>;
-
-    async fn execute_bulk(
-        &self,
-        request: RecurringBulkRequest,
-    ) -> Result<RecurringBulkExecuteResult>;
 }
 
 /// Internal occurrence processor used by trusted Rust orchestration.
