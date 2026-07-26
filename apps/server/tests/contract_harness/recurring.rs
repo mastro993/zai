@@ -17,13 +17,13 @@ pub async fn try_run_tauri_for_recurring(
 ) -> Option<Value> {
     let path_only = call.path.split('?').next().unwrap_or(&call.path);
     let value = match (call.method, path_only) {
-        ("GET", "/api/cash-flow/recurring-processing/status") => {
+        ("GET", "/api/recurring-processing/status") => {
             serde_json::to_value(RecurringProcessingStatusView {
                 status: context.recurring_processing_supervisor().status(),
             })
             .expect("serialize status")
         }
-        ("GET", "/api/cash-flow/recurring-transactions") => {
+        ("GET", "/api/recurring-transactions") => {
             let limit = parse_optional_query_value(&call.path, "limit")
                 .and_then(|value| value.parse().ok());
             let cursor = parse_optional_query_value(&call.path, "cursor");
@@ -36,14 +36,14 @@ pub async fn try_run_tauri_for_recurring(
                 "Failed to load recurring transactions",
             )
         }
-        ("GET", "/api/cash-flow/recurring-transactions/ids") => tauri_success(
+        ("GET", "/api/recurring-transactions/ids") => tauri_success(
             context
                 .recurring_transactions_service()
                 .list_matching_ids_filtered(recurring_feed_filters(&call.path))
                 .await,
             "Failed to resolve matching recurring ids",
         ),
-        ("GET", "/api/cash-flow/recurring-transactions/budget-projections") => {
+        ("GET", "/api/recurring-transactions/budget-projections") => {
             let horizon_months = parse_optional_query_value(&call.path, "horizonMonths")
                 .and_then(|value| value.parse().ok())
                 .unwrap_or(3);
@@ -65,12 +65,9 @@ pub async fn try_run_tauri_for_recurring(
                 "Failed to load budget projections",
             )
         }
-        ("GET", path) if path.starts_with("/api/cash-flow/recurring-transactions/provenance/") => {
-            let transaction_id = extract_suffix_id(
-                path,
-                "/api/cash-flow/recurring-transactions/provenance/",
-                "",
-            );
+        ("GET", path) if path.starts_with("/api/recurring-transactions/provenance/") => {
+            let transaction_id =
+                extract_suffix_id(path, "/api/recurring-transactions/provenance/", "");
             tauri_success(
                 context
                     .recurring_transactions_service()
@@ -79,7 +76,7 @@ pub async fn try_run_tauri_for_recurring(
                 "Failed to load transaction provenance",
             )
         }
-        ("POST", "/api/cash-flow/recurring-transactions") => {
+        ("POST", "/api/recurring-transactions") => {
             let payload: NewRecurringTransaction =
                 serde_json::from_value(call.body.clone().unwrap_or(Value::Null))
                     .expect("recurring create payload");
@@ -91,7 +88,7 @@ pub async fn try_run_tauri_for_recurring(
                 "Failed to create recurring transaction",
             )
         }
-        ("POST", "/api/cash-flow/recurring-transactions/adoption-preview") => {
+        ("POST", "/api/recurring-transactions/adoption-preview") => {
             let request: AdoptionPreviewRequest =
                 serde_json::from_value(call.body.clone().unwrap_or(Value::Null))
                     .expect("adoption preview");
@@ -103,7 +100,7 @@ pub async fn try_run_tauri_for_recurring(
                 "Failed to preview adoption",
             )
         }
-        ("POST", "/api/cash-flow/recurring-transactions/adopt") => {
+        ("POST", "/api/recurring-transactions/adopt") => {
             let request: AdoptRecurringTransaction =
                 serde_json::from_value(call.body.clone().unwrap_or(Value::Null))
                     .expect("adoption payload");
@@ -115,7 +112,7 @@ pub async fn try_run_tauri_for_recurring(
                 "Failed to adopt transaction",
             )
         }
-        ("POST", "/api/cash-flow/recurring-transactions/bulk/preflight") => {
+        ("POST", "/api/recurring-transactions/bulk/preflight") => {
             let request: RecurringBulkRequest =
                 serde_json::from_value(call.body.clone().unwrap_or(Value::Null))
                     .expect("bulk preflight");
@@ -127,7 +124,7 @@ pub async fn try_run_tauri_for_recurring(
                 "Failed to preflight recurring bulk action",
             )
         }
-        ("POST", "/api/cash-flow/recurring-transactions/bulk/execute") => {
+        ("POST", "/api/recurring-transactions/bulk/execute") => {
             let request: RecurringBulkRequest =
                 serde_json::from_value(call.body.clone().unwrap_or(Value::Null))
                     .expect("bulk execute");
@@ -140,14 +137,11 @@ pub async fn try_run_tauri_for_recurring(
             )
         }
         ("GET", path)
-            if path.starts_with("/api/cash-flow/recurring-transactions/")
+            if path.starts_with("/api/recurring-transactions/")
                 && path.ends_with("/occurrences") =>
         {
-            let recurring_transaction_id = extract_suffix_id(
-                path,
-                "/api/cash-flow/recurring-transactions/",
-                "/occurrences",
-            );
+            let recurring_transaction_id =
+                extract_suffix_id(path, "/api/recurring-transactions/", "/occurrences");
             let limit = parse_optional_query_value(&call.path, "limit")
                 .and_then(|value| value.parse().ok());
             let cursor = parse_optional_query_value(&call.path, "cursor");
@@ -160,11 +154,10 @@ pub async fn try_run_tauri_for_recurring(
             )
         }
         ("GET", path)
-            if path.starts_with("/api/cash-flow/recurring-transactions/")
-                && path.ends_with("/failures") =>
+            if path.starts_with("/api/recurring-transactions/") && path.ends_with("/failures") =>
         {
             let recurring_transaction_id =
-                extract_suffix_id(path, "/api/cash-flow/recurring-transactions/", "/failures");
+                extract_suffix_id(path, "/api/recurring-transactions/", "/failures");
             let limit = parse_optional_query_value(&call.path, "limit")
                 .and_then(|value| value.parse().ok());
             let cursor = parse_optional_query_value(&call.path, "cursor");
@@ -177,14 +170,11 @@ pub async fn try_run_tauri_for_recurring(
             )
         }
         ("GET", path)
-            if path.starts_with("/api/cash-flow/recurring-transactions/")
+            if path.starts_with("/api/recurring-transactions/")
                 && path.ends_with("/diagnostics") =>
         {
-            let recurring_transaction_id = extract_suffix_id(
-                path,
-                "/api/cash-flow/recurring-transactions/",
-                "/diagnostics",
-            );
+            let recurring_transaction_id =
+                extract_suffix_id(path, "/api/recurring-transactions/", "/diagnostics");
             tauri_success(
                 context
                     .recurring_transactions_service()
@@ -193,9 +183,9 @@ pub async fn try_run_tauri_for_recurring(
                 "Failed to load generation failure diagnostics",
             )
         }
-        ("GET", path) if path.starts_with("/api/cash-flow/recurring-transactions/") => {
+        ("GET", path) if path.starts_with("/api/recurring-transactions/") => {
             let recurring_transaction_id =
-                extract_suffix_id(path, "/api/cash-flow/recurring-transactions/", "");
+                extract_suffix_id(path, "/api/recurring-transactions/", "");
             tauri_success(
                 context
                     .recurring_transactions_service()
@@ -205,41 +195,34 @@ pub async fn try_run_tauri_for_recurring(
             )
         }
         ("POST", path)
-            if path.starts_with("/api/cash-flow/recurring-transactions/")
-                && path.ends_with("/pause") =>
+            if path.starts_with("/api/recurring-transactions/") && path.ends_with("/pause") =>
         {
             lifecycle(context, path, "/pause", "pause", call).await
         }
         ("POST", path)
-            if path.starts_with("/api/cash-flow/recurring-transactions/")
-                && path.ends_with("/resume") =>
+            if path.starts_with("/api/recurring-transactions/") && path.ends_with("/resume") =>
         {
             lifecycle(context, path, "/resume", "resume", call).await
         }
         ("POST", path)
-            if path.starts_with("/api/cash-flow/recurring-transactions/")
-                && path.ends_with("/stop") =>
+            if path.starts_with("/api/recurring-transactions/") && path.ends_with("/stop") =>
         {
             lifecycle(context, path, "/stop", "stop", call).await
         }
         ("POST", path)
-            if path.starts_with("/api/cash-flow/recurring-transactions/")
-                && path.ends_with("/delete") =>
+            if path.starts_with("/api/recurring-transactions/") && path.ends_with("/delete") =>
         {
             lifecycle(context, path, "/delete", "delete", call).await
         }
         ("POST", path)
-            if path.starts_with("/api/cash-flow/recurring-transactions/")
+            if path.starts_with("/api/recurring-transactions/")
                 && path.ends_with("/repair/preview") =>
         {
             let mut request: PreviewRecurringGenerationRepair =
                 serde_json::from_value(call.body.clone().unwrap_or(Value::Null))
                     .expect("repair preview");
-            request.recurring_transaction_id = extract_suffix_id(
-                path,
-                "/api/cash-flow/recurring-transactions/",
-                "/repair/preview",
-            );
+            request.recurring_transaction_id =
+                extract_suffix_id(path, "/api/recurring-transactions/", "/repair/preview");
             tauri_success(
                 context
                     .recurring_transactions_service()
@@ -249,14 +232,13 @@ pub async fn try_run_tauri_for_recurring(
             )
         }
         ("POST", path)
-            if path.starts_with("/api/cash-flow/recurring-transactions/")
-                && path.ends_with("/repair") =>
+            if path.starts_with("/api/recurring-transactions/") && path.ends_with("/repair") =>
         {
             let mut input: RepairRecurringGenerationFailure =
                 serde_json::from_value(call.body.clone().unwrap_or(Value::Null))
                     .expect("repair payload");
             input.recurring_transaction_id =
-                extract_suffix_id(path, "/api/cash-flow/recurring-transactions/", "/repair");
+                extract_suffix_id(path, "/api/recurring-transactions/", "/repair");
             tauri_success(
                 context
                     .recurring_transactions_service()
@@ -266,13 +248,12 @@ pub async fn try_run_tauri_for_recurring(
             )
         }
         ("POST", path)
-            if path.starts_with("/api/cash-flow/recurring-transactions/")
-                && path.ends_with("/retry") =>
+            if path.starts_with("/api/recurring-transactions/") && path.ends_with("/retry") =>
         {
             let body = call.body.clone().unwrap_or(Value::Null);
             let expected_revision = body["expectedRevision"].as_i64().expect("revision") as i32;
             let recurring_transaction_id =
-                extract_suffix_id(path, "/api/cash-flow/recurring-transactions/", "/retry");
+                extract_suffix_id(path, "/api/recurring-transactions/", "/retry");
             tauri_success(
                 context
                     .recurring_transactions_service()
@@ -284,12 +265,12 @@ pub async fn try_run_tauri_for_recurring(
                 "Failed to retry generation",
             )
         }
-        ("POST", path) if path.starts_with("/api/cash-flow/recurring-transactions/") => {
+        ("POST", path) if path.starts_with("/api/recurring-transactions/") => {
             let mut input: UpdateRecurringTransaction =
                 serde_json::from_value(call.body.clone().unwrap_or(Value::Null))
                     .expect("update payload");
             input.recurring_transaction_id =
-                extract_suffix_id(path, "/api/cash-flow/recurring-transactions/", "");
+                extract_suffix_id(path, "/api/recurring-transactions/", "");
             tauri_success(
                 context.recurring_transactions_service().update(input).await,
                 "Failed to update recurring transaction",
@@ -317,8 +298,7 @@ async fn lifecycle(
     action: &str,
     call: &HttpCall,
 ) -> Value {
-    let recurring_transaction_id =
-        extract_suffix_id(path, "/api/cash-flow/recurring-transactions/", suffix);
+    let recurring_transaction_id = extract_suffix_id(path, "/api/recurring-transactions/", suffix);
     let body = call.body.clone().unwrap_or(Value::Null);
     let update = RecurringLifecycleUpdate {
         recurring_transaction_id,

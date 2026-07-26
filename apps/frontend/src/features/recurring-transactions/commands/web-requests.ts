@@ -45,7 +45,6 @@ export const buildGetRecurringTransactionsRequest = (
   const filters = validateFilters(args.filters);
   if (Result.isFailure(filters)) return filters;
   return Result.succeed({
-    api: "cash-flow",
     method: "GET",
     path: "/recurring-transactions",
     query: {
@@ -63,7 +62,6 @@ export const buildGetRecurringTransactionRequest = (
   return Result.isFailure(validArgs)
     ? validArgs
     : Result.succeed({
-        api: "cash-flow",
         method: "GET",
         path: `/recurring-transactions/${validArgs.value.recurringTransactionId}`,
       });
@@ -81,7 +79,6 @@ export const buildGetRecurringOccurrencesRequest = (
   const cursor = parseCursor(args.cursor);
   if (Result.isFailure(cursor)) return cursor;
   return Result.succeed({
-    api: "cash-flow",
     method: "GET",
     path: `/recurring-transactions/${identifier.value.recurringTransactionId}/occurrences`,
     query: { limit: String(limit.value), ...(cursor.value ? { cursor: cursor.value } : {}) },
@@ -105,7 +102,6 @@ export const buildGetRecurringProjectionsRequest = (
     return Result.fail(new CommandError("Projection focus id must be a non-empty string"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "GET",
     path: "/recurring-transactions/budget-projections",
     query: {
@@ -121,7 +117,7 @@ export const buildGetRecurringProjectionsRequest = (
 export const buildGetRecurringProcessingStatusRequest = (
   _args: void,
 ): Result.Result<WebRequestSpec, CommandError> =>
-  Result.succeed({ api: "cash-flow", method: "GET", path: "/recurring-processing/status" });
+  Result.succeed({ method: "GET", path: "/recurring-processing/status" });
 
 export const buildGetTransactionProvenanceRequest = (
   args: ProvenanceArgs,
@@ -130,7 +126,6 @@ export const buildGetTransactionProvenanceRequest = (
     return Result.fail(new CommandError("Transaction id must be a non-empty string"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "GET",
     path: `/recurring-transactions/provenance/${args.transactionId}`,
   });
@@ -143,7 +138,6 @@ export const buildCreateRecurringTransactionRequest = (
     return Result.fail(new CommandError("Recurring transaction payload must be a record"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/recurring-transactions",
     body: args.newRecurringTransaction,
@@ -172,7 +166,6 @@ export const buildUpdateRecurringTransactionRequest = (
     return Result.fail(new CommandError("Recurring update requires id and revision"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: `/recurring-transactions/${valid.value.input.recurringTransactionId}`,
     body: valid.value.input,
@@ -192,7 +185,7 @@ const buildAdoptionRequest = (
   if (!isNonEmptyString(valid.value.request.transactionId)) {
     return Result.fail(new CommandError("Adoption transaction id must be a non-empty string"));
   }
-  return Result.succeed({ api: "cash-flow", method: "POST", path, body: valid.value.request });
+  return Result.succeed({ method: "POST", path, body: valid.value.request });
 };
 
 export const buildAdoptRecurringTransactionRequest = (
@@ -214,7 +207,6 @@ export const buildPreviewRecurringAdoptionRequest = (
   }
   const { transactionId, schedule, totalOccurrences } = valid.value.request;
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/recurring-transactions/adoption-preview",
     body: { transactionId, schedule, totalOccurrences },
@@ -228,7 +220,6 @@ const buildRecurringLifecycleRequest = (
   const valid = validateLifecycle(args);
   if (Result.isFailure(valid)) return valid;
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: `/recurring-transactions/${valid.value.recurringTransactionId}/${action}`,
     body: { expectedRevision: valid.value.expectedRevision },
@@ -260,7 +251,6 @@ export const buildGetRecurringFailureHistoryRequest = (
   const cursor = parseCursor(args.cursor);
   if (Result.isFailure(cursor)) return cursor;
   return Result.succeed({
-    api: "cash-flow",
     method: "GET",
     path: `/recurring-transactions/${identifier.value.recurringTransactionId}/failures`,
     query: { limit: String(limit.value), ...(cursor.value ? { cursor: cursor.value } : {}) },
@@ -275,7 +265,6 @@ const buildRecurringIdentifierRequest = (
   return Result.isFailure(valid)
     ? valid
     : Result.succeed({
-        api: "cash-flow",
         method: "GET",
         path: `/recurring-transactions/${valid.value.recurringTransactionId}/${suffix}`,
       });
@@ -299,7 +288,6 @@ export const buildPreviewRecurringRepairRequest = (
   if (!isRecord(args) || !validateRepair(args.request))
     return Result.fail(new CommandError("Recurring repair requires id, revision, and template"));
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: `/recurring-transactions/${args.request.recurringTransactionId}/repair/preview`,
     body: args.request,
@@ -312,7 +300,6 @@ export const buildRepairRecurringFailureRequest = (
   if (!isRecord(args) || !validateRepair(args.input))
     return Result.fail(new CommandError("Recurring repair requires id, revision, and template"));
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: `/recurring-transactions/${args.input.recurringTransactionId}/repair`,
     body: args.input,
@@ -331,7 +318,6 @@ export const buildRetryRecurringFailureRequest = (
     return Result.fail(new CommandError("Recurring retry requires id and revision"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: `/recurring-transactions/${args.input.recurringTransactionId}/retry`,
     body: { expectedRevision: args.input.expectedRevision },
@@ -347,7 +333,6 @@ export const buildMatchingRecurringIdsRequest = (
   return Result.isFailure(filters)
     ? filters
     : Result.succeed({
-        api: "cash-flow",
         method: "GET",
         path: "/recurring-transactions/ids",
         query: filterQuery(filters.value),
@@ -372,7 +357,7 @@ const buildRecurringBulkRequest = (
   ) {
     return Result.fail(new CommandError("Recurring bulk requires an action and valid items"));
   }
-  return Result.succeed({ api: "cash-flow", method: "POST", path, body: args.request });
+  return Result.succeed({ method: "POST", path, body: args.request });
 };
 
 export const buildPreflightRecurringBulkRequest = (

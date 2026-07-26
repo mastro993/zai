@@ -215,7 +215,6 @@ export const buildGetTransactionsRequest = (
     params.set("sortDesc", String(parsed.value.sort.desc));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "GET",
     path: "/transactions",
     query: queryFromParams(params),
@@ -231,7 +230,6 @@ export const buildGetFilteredTransactionIdsRequest = (
   const parsed = parseSortAndFilters(args.filters, args.sort);
   if (Result.isFailure(parsed)) return parsed;
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/transactions/ids",
     body: {
@@ -259,7 +257,6 @@ export const buildExportTransactionsRequest = (
     return Result.fail(new CommandError("Transaction export ids must be an array of strings"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/transactions/export",
     body: {
@@ -276,7 +273,6 @@ export const buildFindDuplicateKeysRequest = (
     return Result.fail(new CommandError("Duplicate lookup requires candidates"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/transactions/duplicate-keys",
     body: { candidates: args.request.candidates },
@@ -290,7 +286,6 @@ export const buildGetTransactionRequest = (
     return Result.fail(new CommandError("Transaction id must be a non-empty string"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "GET",
     path: `/transactions/${args.transactionId}`,
   });
@@ -310,7 +305,6 @@ export const buildCreateTransactionRequest = (
     return Result.fail(new CommandError("Transaction payload must be a valid record"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/transactions",
     body: args.newTransaction,
@@ -329,7 +323,6 @@ export const buildUpdateTransactionRequest = (
   }
   const { id: _id, ...body } = args.updatedTransaction;
   return Result.succeed({
-    api: "cash-flow",
     method: "PUT",
     path: `/transactions/${args.updatedTransaction.id}`,
     body,
@@ -343,7 +336,6 @@ export const buildDeleteTransactionRequest = (
     return Result.fail(new CommandError("Transaction id must be a non-empty string"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "DELETE",
     path: `/transactions/${args.transactionId}`,
   });
@@ -356,7 +348,6 @@ export const buildDeleteTransactionsRequest = (
     return Result.fail(new CommandError("Transaction deletion requires ids"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/transactions/bulk-delete",
     body: { transactionIds: args.transactionIds },
@@ -370,7 +361,6 @@ export const buildImportTransactionsRequest = (
     return Result.fail(new CommandError("Transaction import requires transactions"));
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/transactions/import",
     body: { transactions: args.transactions },
@@ -386,7 +376,6 @@ export const buildImportTransactionBatchRequest = (
     );
   }
   return Result.succeed({
-    api: "cash-flow",
     method: "POST",
     path: "/transactions/import-batch",
     body: { categories: args.categories, transactions: args.transactions },

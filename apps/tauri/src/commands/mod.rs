@@ -74,7 +74,7 @@ mod tests {
     }
 
     #[test]
-    fn serializes_cash_flow_errors_with_the_shared_envelope() {
+    fn serializes_validation_errors_with_the_shared_envelope() {
         let envelope = command_error(
             "Failed to create transaction",
             Error::InvalidData("Invalid transaction type: transfer".to_string()),

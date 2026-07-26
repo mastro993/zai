@@ -20,7 +20,7 @@ fn sample_transaction_payload() -> Value {
 async fn list_transactions_returns_paginated_defaults() {
     let (app, _context, _dir) = setup_app("zai-transactions").await;
 
-    let (status, body) = request_json(&app, "GET", "/api/cash-flow/transactions", None).await;
+    let (status, body) = request_json(&app, "GET", "/api/transactions", None).await;
 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["page"], 1);
@@ -33,12 +33,12 @@ async fn list_transactions_rejects_invalid_paging_values() {
     let (app, _context, _dir) = setup_app("zai-transactions-paging").await;
 
     for uri in [
-        "/api/cash-flow/transactions?page=0",
-        "/api/cash-flow/transactions?page=-1",
-        "/api/cash-flow/transactions?perPage=0",
-        "/api/cash-flow/transactions?perPage=-5",
-        "/api/cash-flow/transactions?perPage=101",
-        "/api/cash-flow/transactions?page=9223372036854775807&perPage=2",
+        "/api/transactions?page=0",
+        "/api/transactions?page=-1",
+        "/api/transactions?perPage=0",
+        "/api/transactions?perPage=-5",
+        "/api/transactions?perPage=101",
+        "/api/transactions?page=9223372036854775807&perPage=2",
     ] {
         let (status, body) = request_json(&app, "GET", uri, None).await;
 
@@ -62,8 +62,8 @@ async fn list_transactions_accepts_boundary_paging_values() {
     let (app, _context, _dir) = setup_app("zai-transactions-paging-boundary").await;
 
     for uri in [
-        "/api/cash-flow/transactions?page=1&perPage=1",
-        "/api/cash-flow/transactions?page=1&perPage=100",
+        "/api/transactions?page=1&perPage=1",
+        "/api/transactions?page=1&perPage=100",
     ] {
         let (status, body) = request_json(&app, "GET", uri, None).await;
 
@@ -79,7 +79,7 @@ async fn list_transactions_rejects_uncategorized_with_category_filters() {
     let (status, body) = request_json(
         &app,
         "GET",
-        "/api/cash-flow/transactions?uncategorized=true&categoryId=cat-1",
+        "/api/transactions?uncategorized=true&categoryId=cat-1",
         None,
     )
     .await;
@@ -99,7 +99,7 @@ async fn create_transaction_with_category_succeeds() {
     let (batch_status, _) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/transactions/import-batch",
+        "/api/transactions/import-batch",
         Some(json!({
             "categories": [{ "id": "food-cat", "name": "Food", "color": "#FF0000" }],
             "transactions": [{
@@ -117,7 +117,7 @@ async fn create_transaction_with_category_succeeds() {
     let (status, created) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/transactions",
+        "/api/transactions",
         Some(json!({
             "description": "Dinner",
             "amount": 1500,
@@ -139,7 +139,7 @@ async fn create_get_update_delete_transaction_round_trip() {
     let (create_status, created) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/transactions",
+        "/api/transactions",
         Some(sample_transaction_payload()),
     )
     .await;
@@ -154,7 +154,7 @@ async fn create_get_update_delete_transaction_round_trip() {
     let (get_status, fetched) = request_json(
         &app,
         "GET",
-        &format!("/api/cash-flow/transactions/{transaction_id}"),
+        &format!("/api/transactions/{transaction_id}"),
         None,
     )
     .await;
@@ -164,7 +164,7 @@ async fn create_get_update_delete_transaction_round_trip() {
     let (update_status, updated) = request_json(
         &app,
         "PUT",
-        &format!("/api/cash-flow/transactions/{transaction_id}"),
+        &format!("/api/transactions/{transaction_id}"),
         Some(json!({
             "description": "Updated coffee",
             "amount": 400,
@@ -182,7 +182,7 @@ async fn create_get_update_delete_transaction_round_trip() {
     let (delete_status, deleted) = request_json(
         &app,
         "DELETE",
-        &format!("/api/cash-flow/transactions/{transaction_id}"),
+        &format!("/api/transactions/{transaction_id}"),
         None,
     )
     .await;
@@ -192,7 +192,7 @@ async fn create_get_update_delete_transaction_round_trip() {
     let (missing_status, missing_body) = request_json(
         &app,
         "GET",
-        &format!("/api/cash-flow/transactions/{transaction_id}"),
+        &format!("/api/transactions/{transaction_id}"),
         None,
     )
     .await;
@@ -215,7 +215,7 @@ async fn bulk_delete_transactions_returns_deleted_rows() {
         let (_, created) = request_json(
             &app,
             "POST",
-            "/api/cash-flow/transactions",
+            "/api/transactions",
             Some(json!({
                 "description": description,
                 "amount": 100,
@@ -230,7 +230,7 @@ async fn bulk_delete_transactions_returns_deleted_rows() {
     let (status, deleted) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/transactions/bulk-delete",
+        "/api/transactions/bulk-delete",
         Some(json!({ "transactionIds": ids })),
     )
     .await;
@@ -246,7 +246,7 @@ async fn create_transaction_rejects_invalid_type() {
     let (status, body) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/transactions",
+        "/api/transactions",
         Some(json!({
             "description": "Bad",
             "amount": 100,
@@ -273,7 +273,7 @@ async fn create_transaction_returns_conflict_for_missing_category() {
     let (status, body) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/transactions",
+        "/api/transactions",
         Some(json!({
             "description": "Categorized",
             "amount": 100,
@@ -296,7 +296,7 @@ async fn import_transactions_returns_imported_rows() {
     let (status, imported) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/transactions/import",
+        "/api/transactions/import",
         Some(json!({
             "transactions": [
                 {
@@ -321,7 +321,7 @@ async fn import_transaction_batch_returns_imported_transactions_only() {
     let (status, imported) = request_json(
         &app,
         "POST",
-        "/api/cash-flow/transactions/import-batch",
+        "/api/transactions/import-batch",
         Some(json!({
             "categories": [
                 {
@@ -352,7 +352,7 @@ async fn malformed_json_returns_bad_request_message_body() {
 
     let request = axum::http::Request::builder()
         .method("POST")
-        .uri("/api/cash-flow/transactions")
+        .uri("/api/transactions")
         .header("content-type", "application/json")
         .body(axum::body::Body::from("{not-json"))
         .expect("request should build");

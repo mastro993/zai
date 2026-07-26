@@ -314,7 +314,7 @@ test.describe("alerts ledger", () => {
         body: JSON.stringify(readAlert),
       });
     });
-    await page.route("**/api/cash-flow/budgets/*/history*", async (route) => {
+    await page.route("**/api/budgets/*/history*", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -326,14 +326,14 @@ test.describe("alerts ledger", () => {
         }),
       });
     });
-    await page.route("**/api/cash-flow/transaction-categories**", async (route) => {
+    await page.route("**/api/categories**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify([]),
       });
     });
-    await page.route("**/api/cash-flow/budgets/*", async (route) => {
+    await page.route("**/api/budgets/*", async (route) => {
       expect(markedRead).toBe(true);
       await route.fulfill({
         status: 200,

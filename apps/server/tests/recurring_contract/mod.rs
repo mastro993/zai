@@ -30,7 +30,7 @@ pub async fn seed_recurring(harness: &ContractHarness, id: &str) -> (StatusCode,
     request_json(
         &harness.router,
         "POST",
-        "/api/cash-flow/recurring-transactions",
+        "/api/recurring-transactions",
         Some(recurring_create_payload(id)),
     )
     .await
@@ -40,7 +40,7 @@ pub fn create_success(id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: "/api/cash-flow/recurring-transactions".to_string(),
+            path: "/api/recurring-transactions".to_string(),
             body: Some(recurring_create_payload(id)),
             expected_status: StatusCode::CREATED,
         },
@@ -53,7 +53,7 @@ pub fn feed_success() -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: "/api/cash-flow/recurring-transactions".to_string(),
+            path: "/api/recurring-transactions".to_string(),
             body: None,
             expected_status: StatusCode::OK,
         },
@@ -66,7 +66,7 @@ pub fn detail_success(id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: format!("/api/cash-flow/recurring-transactions/{id}"),
+            path: format!("/api/recurring-transactions/{id}"),
             body: None,
             expected_status: StatusCode::OK,
         },
@@ -79,7 +79,7 @@ pub fn feed_cursor_validation_error() -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: "/api/cash-flow/recurring-transactions?cursor=not-a-cursor".to_string(),
+            path: "/api/recurring-transactions?cursor=not-a-cursor".to_string(),
             body: None,
             expected_status: StatusCode::BAD_REQUEST,
         },
@@ -92,7 +92,7 @@ pub fn pause_success(id: &str, revision: i64) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: format!("/api/cash-flow/recurring-transactions/{id}/pause"),
+            path: format!("/api/recurring-transactions/{id}/pause"),
             body: Some(json!({ "expectedRevision": revision })),
             expected_status: StatusCode::OK,
         },
@@ -105,7 +105,7 @@ pub fn provenance_success(transaction_id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: format!("/api/cash-flow/recurring-transactions/provenance/{transaction_id}"),
+            path: format!("/api/recurring-transactions/provenance/{transaction_id}"),
             body: None,
             expected_status: StatusCode::OK,
         },
@@ -118,8 +118,7 @@ pub fn projection_success() -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: "/api/cash-flow/recurring-transactions/budget-projections?horizonMonths=3"
-                .to_string(),
+            path: "/api/recurring-transactions/budget-projections?horizonMonths=3".to_string(),
             body: None,
             expected_status: StatusCode::OK,
         },
@@ -132,7 +131,7 @@ pub fn bulk_preflight_success(id: &str, revision: i64) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: "/api/cash-flow/recurring-transactions/bulk/preflight".to_string(),
+            path: "/api/recurring-transactions/bulk/preflight".to_string(),
             body: Some(json!({
                 "action": "pause",
                 "items": [{
@@ -151,7 +150,7 @@ pub fn processing_status_success() -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: "/api/cash-flow/recurring-processing/status".to_string(),
+            path: "/api/recurring-processing/status".to_string(),
             body: None,
             expected_status: StatusCode::OK,
         },
@@ -164,7 +163,7 @@ pub fn not_found_detail(id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: format!("/api/cash-flow/recurring-transactions/{id}"),
+            path: format!("/api/recurring-transactions/{id}"),
             body: None,
             expected_status: StatusCode::NOT_FOUND,
         },
@@ -177,7 +176,7 @@ pub fn create_validation_error() -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: "/api/cash-flow/recurring-transactions".to_string(),
+            path: "/api/recurring-transactions".to_string(),
             body: Some(json!({
                 "id": "rt-invalid",
                 "schedule": { "type": "interval", "every": 0, "unit": "month" },
@@ -214,7 +213,7 @@ fn lifecycle_success(id: &str, action: &str, revision: i64) -> ContractExpectati
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: format!("/api/cash-flow/recurring-transactions/{id}/{action}"),
+            path: format!("/api/recurring-transactions/{id}/{action}"),
             body: Some(json!({ "expectedRevision": revision })),
             expected_status: StatusCode::OK,
         },
@@ -227,7 +226,7 @@ pub fn update_success(id: &str, revision: i64) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: format!("/api/cash-flow/recurring-transactions/{id}"),
+            path: format!("/api/recurring-transactions/{id}"),
             body: Some(json!({
                 "recurringTransactionId": id,
                 "expectedRevision": revision,
@@ -253,7 +252,7 @@ pub fn adoption_preview_success(transaction_id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: "/api/cash-flow/recurring-transactions/adoption-preview".to_string(),
+            path: "/api/recurring-transactions/adoption-preview".to_string(),
             body: Some(json!({
                 "transactionId": transaction_id,
                 "schedule": { "type": "interval", "every": 1, "unit": "month" },
@@ -270,7 +269,7 @@ pub fn adopt_success(id: &str, transaction_id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: "/api/cash-flow/recurring-transactions/adopt".to_string(),
+            path: "/api/recurring-transactions/adopt".to_string(),
             body: Some(json!({
                 "id": id,
                 "transactionId": transaction_id,
@@ -295,7 +294,7 @@ pub fn failure_history_success(id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: format!("/api/cash-flow/recurring-transactions/{id}/failures"),
+            path: format!("/api/recurring-transactions/{id}/failures"),
             body: None,
             expected_status: StatusCode::OK,
         },
@@ -308,7 +307,7 @@ pub fn retry_without_failure_unchanged(id: &str, revision: i64) -> ContractExpec
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: format!("/api/cash-flow/recurring-transactions/{id}/retry"),
+            path: format!("/api/recurring-transactions/{id}/retry"),
             body: Some(json!({ "expectedRevision": revision })),
             expected_status: StatusCode::OK,
         },
@@ -321,7 +320,7 @@ pub fn repair_preview_without_failure_error(id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: format!("/api/cash-flow/recurring-transactions/{id}/repair/preview"),
+            path: format!("/api/recurring-transactions/{id}/repair/preview"),
             body: Some(json!({
                 "recurringTransactionId": id,
                 "repairFieldKey": "transactionCategoryId",
@@ -344,7 +343,7 @@ pub fn bulk_execute_success(id: &str, revision: i64) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: "/api/cash-flow/recurring-transactions/bulk/execute".to_string(),
+            path: "/api/recurring-transactions/bulk/execute".to_string(),
             body: Some(json!({
                 "action": "pause",
                 "items": [{
@@ -364,7 +363,7 @@ pub fn attribution_projection_success(id: &str) -> ContractExpectation {
         http: HttpCall {
             method: "GET",
             path: format!(
-                "/api/cash-flow/recurring-transactions/budget-projections?horizonMonths=3&focusRecurringTransactionId={id}"
+                "/api/recurring-transactions/budget-projections?horizonMonths=3&focusRecurringTransactionId={id}"
             ),
             body: None,
             expected_status: StatusCode::OK,

@@ -32,7 +32,7 @@ pub async fn seed_category(harness: &ContractHarness, name: &str) -> (StatusCode
     request_json(
         &harness.router,
         "POST",
-        "/api/cash-flow/categories",
+        "/api/categories",
         Some(category_payload(name, CategoryRole::Spending)),
     )
     .await
@@ -42,7 +42,7 @@ pub async fn seed_transaction(harness: &ContractHarness, description: &str) -> (
     request_json(
         &harness.router,
         "POST",
-        "/api/cash-flow/transactions",
+        "/api/transactions",
         Some(transaction_payload(description, 1500)),
     )
     .await

@@ -114,8 +114,7 @@ pub fn default_cors_layer() -> CorsLayer {
 pub fn create_router(context: Arc<ServiceContext>) -> Router {
     Router::new()
         .route("/health", get(health))
-        .nest("/api/cash-flow", api::cash_flow::router())
-        .nest("/api", api::alerts::router())
+        .nest("/api", api::router())
         .layer(middleware::from_fn(
             mutation_auth::require_mutation_authenticity,
         ))

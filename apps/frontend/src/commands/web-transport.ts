@@ -79,7 +79,7 @@ export const createWebCommandTransport = (): CommandTransport => ({
     }
     const spec = requestResult.value;
     const hasBody = spec.body !== undefined;
-    const response = await fetch(buildWebRequestUrl(resolveWebApiBaseUrl(spec.api), spec), {
+    const response = await fetch(buildWebRequestUrl(resolveWebApiBaseUrl(), spec), {
       method: spec.method,
       headers: buildWebRequestHeaders(hasBody),
       body: hasBody ? JSON.stringify(spec.body) : undefined,

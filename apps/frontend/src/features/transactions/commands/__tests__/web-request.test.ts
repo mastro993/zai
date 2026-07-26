@@ -32,7 +32,6 @@ const transaction = {
 describe("transaction web requests", () => {
   it("maps transaction pagination, filters, and sorting", () => {
     expect(unwrap(buildGetTransactionsRequest({}))).toEqual({
-      api: "cash-flow",
       method: "GET",
       path: "/transactions",
       query: { page: "1", perPage: "50" },
@@ -53,7 +52,6 @@ describe("transaction web requests", () => {
         }),
       ),
     ).toEqual({
-      api: "cash-flow",
       method: "GET",
       path: "/transactions",
       query: {
@@ -76,7 +74,6 @@ describe("transaction web requests", () => {
         }),
       ),
     ).toEqual({
-      api: "cash-flow",
       method: "GET",
       path: "/transactions",
       query: {
@@ -98,7 +95,6 @@ describe("transaction web requests", () => {
         }),
       ),
     ).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/transactions/ids",
       body: {
@@ -113,7 +109,6 @@ describe("transaction web requests", () => {
       { transactionDate: "2026-01-15T08:30:00", amount: 1250, description: "Groceries" },
     ];
     expect(unwrap(buildFindDuplicateKeysRequest({ request: { candidates } }))).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/transactions/duplicate-keys",
       body: { candidates },
@@ -128,7 +123,6 @@ describe("transaction web requests", () => {
         }),
       ),
     ).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/transactions/export",
       body: { query: "coffee", uncategorized: "true", transactionIds: ["txn-1", "txn-2"] },
@@ -137,12 +131,10 @@ describe("transaction web requests", () => {
 
   it("maps detail, mutation, deletion, and imports", () => {
     expect(unwrap(buildGetTransactionRequest({ transactionId: "txn-1" }))).toEqual({
-      api: "cash-flow",
       method: "GET",
       path: "/transactions/txn-1",
     });
     expect(unwrap(buildCreateTransactionRequest({ newTransaction: transaction }))).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/transactions",
       body: transaction,
@@ -152,32 +144,27 @@ describe("transaction web requests", () => {
         buildUpdateTransactionRequest({ updatedTransaction: { ...transaction, id: "txn-1" } }),
       ),
     ).toEqual({
-      api: "cash-flow",
       method: "PUT",
       path: "/transactions/txn-1",
       body: transaction,
     });
     expect(unwrap(buildDeleteTransactionRequest({ transactionId: "txn-1" }))).toEqual({
-      api: "cash-flow",
       method: "DELETE",
       path: "/transactions/txn-1",
     });
     expect(unwrap(buildDeleteTransactionsRequest({ transactionIds: ["txn-1", "txn-2"] }))).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/transactions/bulk-delete",
       body: { transactionIds: ["txn-1", "txn-2"] },
     });
     const transactions = [{ ...transaction, id: "txn-1" }];
     expect(unwrap(buildImportTransactionsRequest({ transactions }))).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/transactions/import",
       body: { transactions },
     });
     const categories = [{ name: "Food", color: "#ff0000" }];
     expect(unwrap(buildImportTransactionBatchRequest({ categories, transactions }))).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/transactions/import-batch",
       body: { categories, transactions },

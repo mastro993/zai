@@ -112,6 +112,27 @@ async fn health_route_returns_ok() {
 }
 
 #[tokio::test]
+async fn legacy_cash_flow_api_route_returns_not_found() {
+    let app_data_dir = TempAppDataDir::new();
+    let context = Arc::new(
+        initialize_context(app_data_dir.path()).expect("shared context should initialize"),
+    );
+    let app = create_router(context);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/cash-flow/transactions")
+                .body(Body::empty())
+                .expect("legacy API request should build"),
+        )
+        .await
+        .expect("legacy API request should complete");
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn server_starts_with_shared_context_from_app_data_dir() {
     let app_data_dir = TempAppDataDir::new();
     let config = ServerConfig {

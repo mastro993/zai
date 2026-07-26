@@ -15,17 +15,15 @@ fn public_inventory_keeps_process_due_as_internal_port_only() {
         workspace.join("apps/tauri/src/commands/recurring_transactions.rs"),
     )
     .expect("commands");
-    let server_api = std::fs::read_to_string(
-        workspace.join("apps/server/src/api/cash_flow/recurring_transactions.rs"),
-    )
-    .expect("api");
+    let server_api =
+        std::fs::read_to_string(workspace.join("apps/server/src/api/recurring_transactions.rs"))
+            .expect("api");
     let events_api = std::fs::read_to_string(
-        workspace.join("apps/server/src/api/cash_flow/recurring_processing_events.rs"),
+        workspace.join("apps/server/src/api/recurring_processing_events.rs"),
     )
     .expect("events api");
-    let bulk_api =
-        std::fs::read_to_string(workspace.join("apps/server/src/api/cash_flow/recurring_bulk.rs"))
-            .expect("bulk api");
+    let bulk_api = std::fs::read_to_string(workspace.join("apps/server/src/api/recurring_bulk.rs"))
+        .expect("bulk api");
     let traits = std::fs::read_to_string(
         workspace.join("crates/core/src/features/recurring_transactions/traits.rs"),
     )

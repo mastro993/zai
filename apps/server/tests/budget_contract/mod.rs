@@ -17,7 +17,7 @@ pub async fn seed_budget(harness: &ContractHarness, name: &str) -> (StatusCode, 
     request_json(
         &harness.router,
         "POST",
-        "/api/cash-flow/budgets",
+        "/api/budgets",
         Some(budget_payload(name)),
     )
     .await
@@ -27,7 +27,7 @@ pub fn create_success(name: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: "/api/cash-flow/budgets".to_string(),
+            path: "/api/budgets".to_string(),
             body: Some(budget_payload(name)),
             expected_status: StatusCode::CREATED,
         },
@@ -40,7 +40,7 @@ pub fn list_active_success() -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: "/api/cash-flow/budgets".to_string(),
+            path: "/api/budgets".to_string(),
             body: None,
             expected_status: StatusCode::OK,
         },
@@ -53,7 +53,7 @@ pub fn detail_success(budget_id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: format!("/api/cash-flow/budgets/{budget_id}"),
+            path: format!("/api/budgets/{budget_id}"),
             body: None,
             expected_status: StatusCode::OK,
         },
@@ -66,7 +66,7 @@ pub fn history_success(budget_id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: format!("/api/cash-flow/budgets/{budget_id}/history"),
+            path: format!("/api/budgets/{budget_id}/history"),
             body: None,
             expected_status: StatusCode::OK,
         },
@@ -79,7 +79,7 @@ pub fn name_conflict_error() -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: "/api/cash-flow/budgets".to_string(),
+            path: "/api/budgets".to_string(),
             body: Some(budget_payload(" monthly ")),
             expected_status: StatusCode::CONFLICT,
         },
@@ -92,7 +92,7 @@ pub fn revision_conflict_update(budget_id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "PUT",
-            path: format!("/api/cash-flow/budgets/{budget_id}"),
+            path: format!("/api/budgets/{budget_id}"),
             body: Some(json!({
                 "expectedRevision": 0,
                 "name": "Stale",
@@ -114,7 +114,7 @@ pub fn cadence_validation_error(budget_id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "PUT",
-            path: format!("/api/cash-flow/budgets/{budget_id}"),
+            path: format!("/api/budgets/{budget_id}"),
             body: Some(json!({
                 "expectedRevision": 0,
                 "name": "Monthly",
@@ -136,7 +136,7 @@ pub fn history_validation_error(budget_id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: format!("/api/cash-flow/budgets/{budget_id}/history?perPage=101"),
+            path: format!("/api/budgets/{budget_id}/history?perPage=101"),
             body: None,
             expected_status: StatusCode::BAD_REQUEST,
         },
@@ -149,7 +149,7 @@ pub fn not_found_detail(budget_id: &str) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "GET",
-            path: format!("/api/cash-flow/budgets/{budget_id}"),
+            path: format!("/api/budgets/{budget_id}"),
             body: None,
             expected_status: StatusCode::NOT_FOUND,
         },
@@ -162,7 +162,7 @@ pub fn delete_no_content(budget_id: &str, revision: i64) -> ContractExpectation 
     ContractExpectation {
         http: HttpCall {
             method: "DELETE",
-            path: format!("/api/cash-flow/budgets/{budget_id}"),
+            path: format!("/api/budgets/{budget_id}"),
             body: Some(json!({ "expectedRevision": revision })),
             expected_status: StatusCode::NO_CONTENT,
         },
@@ -175,7 +175,7 @@ pub fn pause_success(budget_id: &str, revision: i64) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: format!("/api/cash-flow/budgets/{budget_id}/pause"),
+            path: format!("/api/budgets/{budget_id}/pause"),
             body: Some(json!({ "expectedRevision": revision })),
             expected_status: StatusCode::OK,
         },
@@ -188,7 +188,7 @@ pub fn resume_success(budget_id: &str, revision: i64) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "POST",
-            path: format!("/api/cash-flow/budgets/{budget_id}/resume"),
+            path: format!("/api/budgets/{budget_id}/resume"),
             body: Some(json!({ "expectedRevision": revision })),
             expected_status: StatusCode::OK,
         },
@@ -201,7 +201,7 @@ pub fn update_success(budget_id: &str, revision: i64) -> ContractExpectation {
     ContractExpectation {
         http: HttpCall {
             method: "PUT",
-            path: format!("/api/cash-flow/budgets/{budget_id}"),
+            path: format!("/api/budgets/{budget_id}"),
             body: Some(json!({
                 "expectedRevision": revision,
                 "name": "Updated monthly",
@@ -227,7 +227,7 @@ pub async fn request_update(
     request_json(
         &harness.router,
         "PUT",
-        &format!("/api/cash-flow/budgets/{budget_id}"),
+        &format!("/api/budgets/{budget_id}"),
         Some(json!({
             "expectedRevision": revision,
             "name": "Updated monthly",
@@ -250,7 +250,7 @@ pub async fn request_pause(
     request_json(
         &harness.router,
         "POST",
-        &format!("/api/cash-flow/budgets/{budget_id}/pause"),
+        &format!("/api/budgets/{budget_id}/pause"),
         Some(json!({ "expectedRevision": revision })),
     )
     .await
@@ -264,7 +264,7 @@ pub async fn request_resume(
     request_json(
         &harness.router,
         "POST",
-        &format!("/api/cash-flow/budgets/{budget_id}/resume"),
+        &format!("/api/budgets/{budget_id}/resume"),
         Some(json!({ "expectedRevision": revision })),
     )
     .await
@@ -278,7 +278,7 @@ pub async fn request_delete(
     request_json(
         &harness.router,
         "DELETE",
-        &format!("/api/cash-flow/budgets/{budget_id}"),
+        &format!("/api/budgets/{budget_id}"),
         Some(json!({ "expectedRevision": revision })),
     )
     .await

@@ -7,7 +7,7 @@ pub async fn seed_filter_test_transactions(app: &axum::Router) {
     let (status, _) = request_json(
         app,
         "POST",
-        "/api/cash-flow/transactions/import-batch",
+        "/api/transactions/import-batch",
         Some(json!({
             "categories": [
                 { "id": "food-cat", "name": "Food", "color": "#FF0000" },

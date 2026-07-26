@@ -18,17 +18,15 @@ use super::recurring;
 pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Value {
     let path_only = call.path.split('?').next().unwrap_or(&call.path);
     match (call.method, path_only) {
-        ("GET", "/api/cash-flow/budgets") => {
+        ("GET", "/api/budgets") => {
             let filter = parse_budget_list_filter(&call.path);
             tauri_success(
                 context.budgets_service().list_budgets(filter).await,
                 "Failed to load budgets",
             )
         }
-        ("GET", path)
-            if path.starts_with("/api/cash-flow/budgets/") && path.ends_with("/history") =>
-        {
-            let budget_id = extract_suffix_id(path, "/api/cash-flow/budgets/", "/history");
+        ("GET", path) if path.starts_with("/api/budgets/") && path.ends_with("/history") => {
+            let budget_id = extract_suffix_id(path, "/api/budgets/", "/history");
             let (page, per_page) = parse_page_query(&call.path, 1, 50);
             tauri_success(
                 context
@@ -38,14 +36,14 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to load budget history",
             )
         }
-        ("GET", path) if path.starts_with("/api/cash-flow/budgets/") => {
-            let budget_id = extract_suffix_id(path, "/api/cash-flow/budgets/", "");
+        ("GET", path) if path.starts_with("/api/budgets/") => {
+            let budget_id = extract_suffix_id(path, "/api/budgets/", "");
             tauri_success(
                 context.budgets_service().get_budget(&budget_id).await,
                 "Failed to load budget",
             )
         }
-        ("POST", "/api/cash-flow/budgets") => {
+        ("POST", "/api/budgets") => {
             let new_budget: NewBudget =
                 serde_json::from_value(call.body.clone().unwrap_or(Value::Null))
                     .expect("budget payload");
@@ -54,8 +52,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to create budget",
             )
         }
-        ("PUT", path) if path.starts_with("/api/cash-flow/budgets/") => {
-            let budget_id = extract_suffix_id(path, "/api/cash-flow/budgets/", "");
+        ("PUT", path) if path.starts_with("/api/budgets/") => {
+            let budget_id = extract_suffix_id(path, "/api/budgets/", "");
             let update: BudgetUpdate =
                 serde_json::from_value(call.body.clone().unwrap_or(Value::Null))
                     .expect("budget update");
@@ -67,10 +65,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to update budget",
             )
         }
-        ("POST", path)
-            if path.starts_with("/api/cash-flow/budgets/") && path.ends_with("/pause") =>
-        {
-            let budget_id = extract_suffix_id(path, "/api/cash-flow/budgets/", "/pause");
+        ("POST", path) if path.starts_with("/api/budgets/") && path.ends_with("/pause") => {
+            let budget_id = extract_suffix_id(path, "/api/budgets/", "/pause");
             let update = lifecycle_update(call.body.as_ref());
             tauri_success(
                 context
@@ -80,10 +76,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to pause budget",
             )
         }
-        ("POST", path)
-            if path.starts_with("/api/cash-flow/budgets/") && path.ends_with("/resume") =>
-        {
-            let budget_id = extract_suffix_id(path, "/api/cash-flow/budgets/", "/resume");
+        ("POST", path) if path.starts_with("/api/budgets/") && path.ends_with("/resume") => {
+            let budget_id = extract_suffix_id(path, "/api/budgets/", "/resume");
             let update = lifecycle_update(call.body.as_ref());
             tauri_success(
                 context
@@ -93,8 +87,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to resume budget",
             )
         }
-        ("DELETE", path) if path.starts_with("/api/cash-flow/budgets/") => {
-            let budget_id = extract_suffix_id(path, "/api/cash-flow/budgets/", "");
+        ("DELETE", path) if path.starts_with("/api/budgets/") => {
+            let budget_id = extract_suffix_id(path, "/api/budgets/", "");
             let update = lifecycle_update(call.body.as_ref());
             match context
                 .budgets_service()
@@ -105,7 +99,7 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 Err(error) => tauri_error("Failed to delete budget", error),
             }
         }
-        ("GET", "/api/cash-flow/categories") => {
+        ("GET", "/api/categories") => {
             let parent_id = parse_optional_query_value(&call.path, "parentId");
             tauri_success(
                 context
@@ -115,8 +109,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to load transaction categories",
             )
         }
-        ("GET", path) if path.starts_with("/api/cash-flow/categories/") => {
-            let category_id = extract_suffix_id(path, "/api/cash-flow/categories/", "");
+        ("GET", path) if path.starts_with("/api/categories/") => {
+            let category_id = extract_suffix_id(path, "/api/categories/", "");
             tauri_success(
                 context
                     .transaction_categories_service()
@@ -125,7 +119,7 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to load transaction category",
             )
         }
-        ("POST", "/api/cash-flow/categories") => {
+        ("POST", "/api/categories") => {
             let new_category: NewTransactionCategory =
                 serde_json::from_value(call.body.clone().unwrap_or(Value::Null))
                     .expect("category payload");
@@ -137,8 +131,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to create transaction category",
             )
         }
-        ("PUT", path) if path.starts_with("/api/cash-flow/categories/") => {
-            let category_id = extract_suffix_id(path, "/api/cash-flow/categories/", "");
+        ("PUT", path) if path.starts_with("/api/categories/") => {
+            let category_id = extract_suffix_id(path, "/api/categories/", "");
             let body = call.body.clone().unwrap_or(Value::Null);
             let updated_category = TransactionCategoryUpdate {
                 id: category_id,
@@ -171,7 +165,7 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to update transaction category",
             )
         }
-        ("POST", "/api/cash-flow/categories/bulk-delete") => {
+        ("POST", "/api/categories/bulk-delete") => {
             let body = call.body.clone().unwrap_or(Value::Null);
             let category_ids = body["categoryIds"]
                 .as_array()
@@ -196,7 +190,7 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to delete transaction categories",
             )
         }
-        ("POST", "/api/cash-flow/categories/import") => {
+        ("POST", "/api/categories/import") => {
             let body = call.body.clone().unwrap_or(Value::Null);
             let categories: Vec<NewTransactionCategory> =
                 serde_json::from_value(body["categories"].clone()).expect("categories");
@@ -208,7 +202,7 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to import transaction categories",
             )
         }
-        ("GET", "/api/cash-flow/transactions") => {
+        ("GET", "/api/transactions") => {
             let (page, per_page) = parse_page_query(&call.path, 1, 50);
             tauri_success(
                 context
@@ -218,8 +212,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to load transactions",
             )
         }
-        ("GET", path) if path.starts_with("/api/cash-flow/transactions/") => {
-            let transaction_id = extract_suffix_id(path, "/api/cash-flow/transactions/", "");
+        ("GET", path) if path.starts_with("/api/transactions/") => {
+            let transaction_id = extract_suffix_id(path, "/api/transactions/", "");
             tauri_success(
                 context
                     .transactions_service()
@@ -228,7 +222,7 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to load transaction",
             )
         }
-        ("POST", "/api/cash-flow/transactions") => {
+        ("POST", "/api/transactions") => {
             let new_transaction: NewTransaction =
                 serde_json::from_value(call.body.clone().unwrap_or(Value::Null))
                     .expect("transaction payload");
@@ -240,8 +234,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to create transaction",
             )
         }
-        ("PUT", path) if path.starts_with("/api/cash-flow/transactions/") => {
-            let transaction_id = extract_suffix_id(path, "/api/cash-flow/transactions/", "");
+        ("PUT", path) if path.starts_with("/api/transactions/") => {
+            let transaction_id = extract_suffix_id(path, "/api/transactions/", "");
             let body = call.body.clone().unwrap_or(Value::Null);
             let update = TransactionUpdate {
                 id: transaction_id,
@@ -273,8 +267,8 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to update transaction",
             )
         }
-        ("DELETE", path) if path.starts_with("/api/cash-flow/transactions/") => {
-            let transaction_id = extract_suffix_id(path, "/api/cash-flow/transactions/", "");
+        ("DELETE", path) if path.starts_with("/api/transactions/") => {
+            let transaction_id = extract_suffix_id(path, "/api/transactions/", "");
             tauri_success(
                 context
                     .transactions_service()
@@ -283,7 +277,7 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to delete transaction",
             )
         }
-        ("POST", "/api/cash-flow/transactions/bulk-delete") => {
+        ("POST", "/api/transactions/bulk-delete") => {
             let body = call.body.clone().unwrap_or(Value::Null);
             let transaction_ids = body["transactionIds"]
                 .as_array()
@@ -299,7 +293,7 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to delete transactions",
             )
         }
-        ("POST", "/api/cash-flow/transactions/import") => {
+        ("POST", "/api/transactions/import") => {
             let body = call.body.clone().unwrap_or(Value::Null);
             let transactions: Vec<NewTransaction> =
                 serde_json::from_value(body["transactions"].clone()).expect("transactions");
@@ -311,7 +305,7 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to import transactions",
             )
         }
-        ("POST", "/api/cash-flow/transactions/import-batch") => {
+        ("POST", "/api/transactions/import-batch") => {
             let body = call.body.clone().unwrap_or(Value::Null);
             let categories: Vec<NewTransactionCategory> =
                 serde_json::from_value(body["categories"].clone()).expect("categories");

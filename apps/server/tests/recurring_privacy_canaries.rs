@@ -218,7 +218,7 @@ async fn bulk_preflight_feedback_omits_template_description_and_amount() {
     let (status, _) = request_json(
         &harness.router,
         "POST",
-        "/api/cash-flow/recurring-transactions",
+        "/api/recurring-transactions",
         Some(payload),
     )
     .await;
@@ -268,7 +268,7 @@ async fn seeded_source_surfaces_omit_canaries_from_status_errors_history_and_ale
     let (status, _) = request_json(
         &harness.router,
         "POST",
-        "/api/cash-flow/recurring-transactions",
+        "/api/recurring-transactions",
         Some(payload),
     )
     .await;
@@ -287,25 +287,21 @@ async fn seeded_source_surfaces_omit_canaries_from_status_errors_history_and_ale
     ];
 
     for (method, path, body) in [
+        ("GET", "/api/recurring-processing/status".to_string(), None),
         (
             "GET",
-            "/api/cash-flow/recurring-processing/status".to_string(),
+            "/api/recurring-transactions/rt-privacy-seed/failures".to_string(),
             None,
         ),
         (
             "GET",
-            "/api/cash-flow/recurring-transactions/rt-privacy-seed/failures".to_string(),
-            None,
-        ),
-        (
-            "GET",
-            "/api/cash-flow/recurring-transactions/rt-privacy-seed/diagnostics".to_string(),
+            "/api/recurring-transactions/rt-privacy-seed/diagnostics".to_string(),
             None,
         ),
         ("GET", "/api/alerts".to_string(), None),
         (
             "POST",
-            "/api/cash-flow/recurring-transactions/bulk/execute".to_string(),
+            "/api/recurring-transactions/bulk/execute".to_string(),
             Some(json!({
                 "action": "pause",
                 "items": [{ "recurringTransactionId": "rt-privacy-seed", "expectedRevision": 1 }]
@@ -332,14 +328,14 @@ async fn seeded_source_surfaces_omit_canaries_from_status_errors_history_and_ale
     let (status, retry_http) = request_json(
         &harness.router,
         "POST",
-        "/api/cash-flow/recurring-transactions/rt-privacy-seed/retry",
+        "/api/recurring-transactions/rt-privacy-seed/retry",
         Some(json!({ "expectedRevision": 2 })),
     )
     .await;
     assert_eq!(status, StatusCode::OK);
     let retry_call = crate::contract_harness::HttpCall {
         method: "POST",
-        path: "/api/cash-flow/recurring-transactions/rt-privacy-seed/retry".to_string(),
+        path: "/api/recurring-transactions/rt-privacy-seed/retry".to_string(),
         body: Some(json!({ "expectedRevision": 2 })),
         expected_status: StatusCode::OK,
     };

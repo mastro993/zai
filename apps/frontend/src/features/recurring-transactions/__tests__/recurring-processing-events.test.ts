@@ -67,7 +67,7 @@ describe("recurring processing event transports", () => {
     const source = FakeEventSource.instances[0];
 
     source?.emit("open", new Event("open"));
-    expect(source?.url).toBe("http://127.0.0.1:3000/api/cash-flow/recurring-processing/events");
+    expect(source?.url).toBe("http://127.0.0.1:3000/api/recurring-processing/events");
     await subscription.ready;
 
     source?.emit("message", { data: "payload" } as MessageEvent<string>);

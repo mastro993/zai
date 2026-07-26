@@ -21,19 +21,16 @@ const unwrap = <T>(result: Result.Result<T, CommandError>): T | undefined => {
 describe("category web requests", () => {
   it("maps category reads", () => {
     expect(unwrap(buildGetCategoriesRequest({ parentId: null }))).toEqual({
-      api: "cash-flow",
       method: "GET",
       path: "/categories",
       query: undefined,
     });
     expect(unwrap(buildGetCategoriesRequest({ parentId: "parent-1" }))).toEqual({
-      api: "cash-flow",
       method: "GET",
       path: "/categories",
       query: { parentId: "parent-1" },
     });
     expect(unwrap(buildGetCategoryRequest({ categoryId: "category-1" }))).toEqual({
-      api: "cash-flow",
       method: "GET",
       path: "/categories/category-1",
     });
@@ -42,7 +39,6 @@ describe("category web requests", () => {
   it("maps creation and removes ids from updates", () => {
     const newCategory = { name: "Food", parentId: null, description: null, color: "#ff0000" };
     expect(unwrap(buildCreateCategoryRequest({ newCategory }))).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/categories",
       body: newCategory,
@@ -54,7 +50,6 @@ describe("category web requests", () => {
         }),
       ),
     ).toEqual({
-      api: "cash-flow",
       method: "PUT",
       path: "/categories/category-1",
       body: { ...newCategory, confirmBudgetImpact: true },
@@ -71,20 +66,17 @@ describe("category web requests", () => {
         }),
       ),
     ).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/categories/bulk-delete",
       body: { categoryIds: ["category-1"], childrenStrategy: "block", confirmBudgetImpact: true },
     });
     expect(unwrap(buildPreviewDeleteCategoriesRequest({ categoryIds: ["category-1"] }))).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/categories/bulk-delete/preview",
       body: { categoryIds: ["category-1"] },
     });
     const categories = [{ name: "Food", color: "#ff0000" }];
     expect(unwrap(buildImportCategoriesRequest({ categories }))).toEqual({
-      api: "cash-flow",
       method: "POST",
       path: "/categories/import",
       body: { categories },
