@@ -18,7 +18,6 @@ pub(crate) mod failpoints;
 mod feed;
 mod fulfill;
 mod fulfill_head;
-mod fulfill_select;
 mod fulfill_validation;
 mod generation_failure;
 mod lifecycle;
