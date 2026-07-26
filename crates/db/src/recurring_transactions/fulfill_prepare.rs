@@ -1,25 +1,130 @@
 use super::models::RecurringOccurrenceHeadRow;
+use super::revisions::{find_schedule_revision_at, find_template_revision_at};
 use crate::domain_alerts::ensure_open_domain_alert;
 use crate::errors::{IntoStorage, Result, StorageError};
-use crate::schema::{domain_alerts, recurring_generation_failures};
+use crate::schema::{domain_alerts, recurring_generation_failures, transaction_categories};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use uuid::Uuid;
+use zai_core::Error;
 use zai_core::features::domain_alerts::{AlertInsertOutcome, CommittedOutcome};
 use zai_core::features::recurring_transactions::{
-    ProcessOneOutcome, RECURRING_GENERATION_FAILURE_PRODUCER_KEY, RecurringRepairField,
-    build_generation_failure_alert, occurrence_identity_key,
+    INVALID_CATEGORY_ERROR_CODE, ProcessOneOutcome, RECURRING_GENERATION_FAILURE_PRODUCER_KEY,
+    RecurringRepairField, RecurringScheduleRevision, RecurringTemplateRevision,
+    build_generation_failure_alert, occurrence_identity_key, scheduled_local_at,
 };
+use zai_core::features::transactions::models::NewTransaction;
 
-pub(super) fn record(
+pub(super) enum FulfillmentPreparation {
+    Ready {
+        schedule: RecurringScheduleRevision,
+        template: RecurringTemplateRevision,
+        scheduled_local: NaiveDateTime,
+    },
+    Failed(CommittedOutcome<ProcessOneOutcome>),
+}
+
+pub(super) fn prepare_generated_occurrence(
+    conn: &mut SqliteConnection,
+    head: &RecurringOccurrenceHeadRow,
+    now: NaiveDateTime,
+) -> Result<FulfillmentPreparation> {
+    let Some(schedule) = find_schedule_revision_at(
+        conn,
+        &head.recurring_transaction_id,
+        head.next_scheduled_local,
+    )
+    .map_err(StorageError::from)?
+    else {
+        return Err(StorageError::CoreError(Error::Repository(format!(
+            "Missing schedule revision for {}",
+            head.recurring_transaction_id
+        ))));
+    };
+    if schedule.id != head.schedule_revision_id {
+        return Err(StorageError::CoreError(Error::Repository(
+            "Occurrence head schedule revision does not match effective revision".to_string(),
+        )));
+    }
+
+    let Some(template) = find_template_revision_at(
+        conn,
+        &head.recurring_transaction_id,
+        head.next_scheduled_local,
+    )
+    .map_err(StorageError::from)?
+    else {
+        return failed(
+            conn,
+            head,
+            now,
+            "missing_template_revision",
+            "reference",
+            None,
+        );
+    };
+
+    let scheduled_local = scheduled_local_at(
+        &schedule.rule,
+        schedule.first_scheduled_local,
+        head.next_ordinal,
+    )
+    .map_err(StorageError::CoreError)?;
+    if scheduled_local != head.next_scheduled_local {
+        return Err(StorageError::CoreError(Error::Repository(
+            "Occurrence head scheduled local does not match schedule calculation".to_string(),
+        )));
+    }
+
+    if let Some(category_id) = template.transaction_category_id.as_deref() {
+        let category_exists = transaction_categories::table
+            .filter(transaction_categories::id.eq(category_id))
+            .filter(transaction_categories::deleted_at.is_null())
+            .select(transaction_categories::id)
+            .first::<String>(conn)
+            .optional()
+            .into_storage()?;
+        if category_exists.is_none() {
+            return failed(
+                conn,
+                head,
+                now,
+                INVALID_CATEGORY_ERROR_CODE,
+                "template",
+                Some(RecurringRepairField::TransactionCategoryId),
+            );
+        }
+    }
+
+    let candidate = NewTransaction {
+        id: Some("validation".to_string()),
+        description: Some(template.description.clone()),
+        amount: template.amount,
+        transaction_date: scheduled_local,
+        transaction_type: template.transaction_type.clone(),
+        transaction_category_id: template.transaction_category_id.clone(),
+        notes: template.notes.clone(),
+    };
+    if candidate.validate().is_err() {
+        return failed(conn, head, now, "invalid_template", "template", None);
+    }
+
+    Ok(FulfillmentPreparation::Ready {
+        schedule,
+        template,
+        scheduled_local,
+    })
+}
+
+fn failed(
     conn: &mut SqliteConnection,
     head: &RecurringOccurrenceHeadRow,
     now: NaiveDateTime,
     error_code: &str,
     cause_category: &str,
     repair_field_key: Option<RecurringRepairField>,
-) -> Result<CommittedOutcome<ProcessOneOutcome>> {
+) -> Result<FulfillmentPreparation> {
     let alert = build_generation_failure_alert(
         &head.recurring_transaction_id,
         &head.schedule_revision_id,
@@ -109,9 +214,10 @@ pub(super) fn record(
 
     let outcome =
         CommittedOutcome::with_alert_outcomes(ProcessOneOutcome::GenerationFailed, [alert_outcome]);
-    Ok(if outcome.created_alerts.is_empty() {
+    let outcome = if outcome.created_alerts.is_empty() {
         outcome.with_alert_state_changed()
     } else {
         outcome
-    })
+    };
+    Ok(FulfillmentPreparation::Failed(outcome))
 }

@@ -4,7 +4,7 @@ use super::fulfill_head::{
     complete_or_advance_after_fulfillment, find_occurrence,
     heal_stale_head_after_existing_occurrence,
 };
-use super::fulfill_validation::{GenerationValidation, validate_generation_inputs};
+use super::fulfill_prepare::{FulfillmentPreparation, prepare_generated_occurrence};
 use super::models::{
     RecurringOccurrenceHeadRow, RecurringOccurrenceRow, RecurringTransactionRow,
     build_recurring_transaction,
@@ -147,14 +147,14 @@ fn fulfill_generated_occurrence(
         ));
     }
 
-    let validation = validate_generation_inputs(conn, head, now)?;
-    let (schedule, template, scheduled_local) = match validation {
-        GenerationValidation::Ready {
+    let preparation = prepare_generated_occurrence(conn, head, now)?;
+    let (schedule, template, scheduled_local) = match preparation {
+        FulfillmentPreparation::Ready {
             schedule,
             template,
             scheduled_local,
         } => (schedule, template, scheduled_local),
-        GenerationValidation::Failed(outcome) => return Ok(outcome),
+        FulfillmentPreparation::Failed(outcome) => return Ok(outcome),
     };
 
     let fulfillment_position = recurring.fulfilled_count + 1;
