@@ -6,12 +6,28 @@ import {
   toCommandError,
   type CommandErrorEnvelope,
 } from "./errors";
-import type { CommandArgs, CommandTransport } from "./types";
-import {
-  buildWebRequestSpec,
-  buildWebRequestUrl,
-  resolveWebApiBaseUrlForCommand,
-} from "./web-command-map";
+import type { CommandDescriptor } from "./command-descriptor";
+import type { CommandTransport } from "./types";
+import { resolveWebApiBaseUrl } from "./web-api";
+import type { WebRequestSpec } from "./web-request-spec";
+
+export const buildWebRequestUrl = (baseUrl: string, spec: WebRequestSpec): string => {
+  const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
+  const normalizedPath = spec.path.startsWith("/") ? spec.path : `/${spec.path}`;
+  const url = new URL(`${normalizedBaseUrl}${normalizedPath}`);
+  if (spec.query) {
+    for (const [key, value] of Object.entries(spec.query)) {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          url.searchParams.append(key, item);
+        }
+      } else {
+        url.searchParams.set(key, value);
+      }
+    }
+  }
+  return url.toString();
+};
 
 const parseApiError = async (response: Response): Promise<CommandError> => {
   const bodyResult = await Result.try({
@@ -56,26 +72,27 @@ const buildWebRequestHeaders = (hasBody: boolean): Record<string, string> => {
 };
 
 export const createWebCommandTransport = (): CommandTransport => ({
-  invoke: async <T>(command: string, args?: CommandArgs) => {
-    const spec = buildWebRequestSpec(command, args);
+  invoke: async <TArgs, TResult>(descriptor: CommandDescriptor<TArgs, TResult>, args: TArgs) => {
+    const requestResult = descriptor.webRequest(args);
+    if (Result.isFailure(requestResult)) {
+      return Promise.reject(requestResult.error);
+    }
+    const spec = requestResult.value;
     const hasBody = spec.body !== undefined;
-    const response = await fetch(
-      buildWebRequestUrl(resolveWebApiBaseUrlForCommand(command), spec),
-      {
-        method: spec.method,
-        headers: buildWebRequestHeaders(hasBody),
-        body: hasBody ? JSON.stringify(spec.body) : undefined,
-      },
-    );
+    const response = await fetch(buildWebRequestUrl(resolveWebApiBaseUrl(spec.api), spec), {
+      method: spec.method,
+      headers: buildWebRequestHeaders(hasBody),
+      body: hasBody ? JSON.stringify(spec.body) : undefined,
+    });
 
     if (!response.ok) {
       return Promise.reject(await parseApiError(response));
     }
 
     if (response.status === 204) {
-      return undefined as T;
+      return undefined as TResult;
     }
 
-    return parseJsonResponse<T>(response);
+    return parseJsonResponse<TResult>(response);
   },
 });

@@ -1,128 +1,98 @@
+import { Result } from "@praha/byethrow";
 import { describe, expect, it } from "vitest";
 
-import { buildCategoryCommandRequestSpec } from "../web-command-map";
+import type { CommandError } from "@/commands/errors";
+
+import {
+  buildCreateCategoryRequest,
+  buildDeleteCategoriesRequest,
+  buildGetCategoriesRequest,
+  buildGetCategoryRequest,
+  buildImportCategoriesRequest,
+  buildPreviewDeleteCategoriesRequest,
+  buildUpdateCategoryRequest,
+} from "../web-requests";
+
+const unwrap = <T>(result: Result.Result<T, CommandError>): T | undefined => {
+  expect(Result.isSuccess(result)).toBe(true);
+  return Result.isSuccess(result) ? result.value : undefined;
+};
 
 describe("category web requests", () => {
-  it("maps category reads with and without a parent filter", () => {
-    expect(
-      buildCategoryCommandRequestSpec("get_transaction_categories", { parentId: null }),
-    ).toEqual({
+  it("maps category reads", () => {
+    expect(unwrap(buildGetCategoriesRequest({ parentId: null }))).toEqual({
+      api: "cash-flow",
       method: "GET",
       path: "/categories",
       query: undefined,
     });
-    expect(
-      buildCategoryCommandRequestSpec("get_transaction_categories", { parentId: "parent-1" }),
-    ).toEqual({
+    expect(unwrap(buildGetCategoriesRequest({ parentId: "parent-1" }))).toEqual({
+      api: "cash-flow",
       method: "GET",
       path: "/categories",
       query: { parentId: "parent-1" },
     });
-    expect(
-      buildCategoryCommandRequestSpec("get_transaction_category", {
-        categoryId: "category-1",
-      }),
-    ).toEqual({
+    expect(unwrap(buildGetCategoryRequest({ categoryId: "category-1" }))).toEqual({
+      api: "cash-flow",
       method: "GET",
       path: "/categories/category-1",
     });
   });
 
-  it("maps category creation without changing the payload", () => {
-    const newCategory = {
-      name: "Food",
-      parentId: null,
-      description: null,
-      color: "#ff0000",
-    };
-
-    expect(buildCategoryCommandRequestSpec("create_transaction_category", { newCategory })).toEqual(
-      {
-        method: "POST",
-        path: "/categories",
-        body: newCategory,
-      },
-    );
-  });
-
-  it("removes the category id from update bodies", () => {
+  it("maps creation and removes ids from updates", () => {
+    const newCategory = { name: "Food", parentId: null, description: null, color: "#ff0000" };
+    expect(unwrap(buildCreateCategoryRequest({ newCategory }))).toEqual({
+      api: "cash-flow",
+      method: "POST",
+      path: "/categories",
+      body: newCategory,
+    });
     expect(
-      buildCategoryCommandRequestSpec("update_transaction_category", {
-        updatedCategory: {
-          id: "category-1",
-          name: "Dining",
-          parentId: null,
-          description: "Restaurants",
-          color: "#123456",
-          confirmBudgetImpact: true,
-        },
-      }),
+      unwrap(
+        buildUpdateCategoryRequest({
+          updatedCategory: { ...newCategory, id: "category-1", confirmBudgetImpact: true },
+        }),
+      ),
     ).toEqual({
+      api: "cash-flow",
       method: "PUT",
       path: "/categories/category-1",
-      body: {
-        name: "Dining",
-        parentId: null,
-        description: "Restaurants",
-        color: "#123456",
-        confirmBudgetImpact: true,
-      },
+      body: { ...newCategory, confirmBudgetImpact: true },
     });
   });
 
-  it("maps bulk deletion and its optional confirmation", () => {
+  it("maps deletion previews, bulk options, and imports", () => {
     expect(
-      buildCategoryCommandRequestSpec("delete_transaction_categories", {
-        categoryIds: ["category-1", "category-2"],
-        childrenStrategy: "promote",
-      }),
+      unwrap(
+        buildDeleteCategoriesRequest({
+          categoryIds: ["category-1"],
+          childrenStrategy: "block",
+          confirmBudgetImpact: true,
+        }),
+      ),
     ).toEqual({
+      api: "cash-flow",
       method: "POST",
       path: "/categories/bulk-delete",
-      body: {
-        categoryIds: ["category-1", "category-2"],
-        childrenStrategy: "promote",
-      },
+      body: { categoryIds: ["category-1"], childrenStrategy: "block", confirmBudgetImpact: true },
     });
-    expect(
-      buildCategoryCommandRequestSpec("delete_transaction_categories", {
-        categoryIds: ["category-1"],
-        childrenStrategy: "block",
-        confirmBudgetImpact: true,
-      }),
-    ).toEqual({
-      method: "POST",
-      path: "/categories/bulk-delete",
-      body: {
-        categoryIds: ["category-1"],
-        childrenStrategy: "block",
-        confirmBudgetImpact: true,
-      },
-    });
-  });
-
-  it("maps deletion previews and imports", () => {
-    expect(
-      buildCategoryCommandRequestSpec("preview_delete_transaction_categories", {
-        categoryIds: ["category-1"],
-        childrenStrategy: "block",
-      }),
-    ).toEqual({
+    expect(unwrap(buildPreviewDeleteCategoriesRequest({ categoryIds: ["category-1"] }))).toEqual({
+      api: "cash-flow",
       method: "POST",
       path: "/categories/bulk-delete/preview",
-      body: {
-        categoryIds: ["category-1"],
-        childrenStrategy: "block",
-      },
+      body: { categoryIds: ["category-1"] },
     });
-
     const categories = [{ name: "Food", color: "#ff0000" }];
-    expect(
-      buildCategoryCommandRequestSpec("import_transaction_categories", { categories }),
-    ).toEqual({
+    expect(unwrap(buildImportCategoriesRequest({ categories }))).toEqual({
+      api: "cash-flow",
       method: "POST",
       path: "/categories/import",
       body: { categories },
     });
+  });
+
+  it("rejects malformed ids and arrays locally", () => {
+    expect(Result.isFailure(buildGetCategoryRequest({ categoryId: "" }))).toBe(true);
+    expect(Result.isFailure(buildDeleteCategoriesRequest({ categoryIds: [] }))).toBe(true);
   });
 });

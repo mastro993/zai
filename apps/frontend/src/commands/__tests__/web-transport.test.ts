@@ -3,10 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Result } from "@praha/byethrow";
 
 import { CommandError } from "../errors";
-import { invokeCommand } from "../shared";
-import { buildWebRequestUrl, resolveCashFlowApiBaseUrl } from "../web-command-map";
-import { joinWebApiUrl, resolveWebApiOrigin } from "../web-api";
+import { invokeDecodedCommand } from "../shared";
+import { buildWebRequestUrl } from "../web-transport";
+import { joinWebApiUrl, resolveCashFlowApiBaseUrl, resolveWebApiOrigin } from "../web-api";
 import { createWebCommandTransport } from "../web-transport";
+import { CATEGORY_COMMANDS } from "@/features/categories/commands/registry";
+import { BUDGET_COMMANDS } from "@/features/budgets/commands/registry";
+import { TRANSACTION_COMMANDS } from "@/features/transactions/commands/registry";
 
 const fetchMock = vi.hoisted(() => vi.fn());
 
@@ -14,6 +17,7 @@ describe("web request URL helpers", () => {
   it("builds an absolute URL from a request path and query", () => {
     expect(
       buildWebRequestUrl("http://127.0.0.1:3000/api/cash-flow", {
+        api: "cash-flow",
         method: "GET",
         path: "/categories",
         query: { parentId: "parent-1" },
@@ -70,7 +74,7 @@ describe("web command transport", () => {
     );
 
     const transport = createWebCommandTransport();
-    const result = await transport.invoke<Array<{ id: string }>>("get_transaction_categories", {
+    const result = await transport.invoke(CATEGORY_COMMANDS.get_transaction_categories, {
       parentId: null,
     });
 
@@ -91,7 +95,7 @@ describe("web command transport", () => {
     );
 
     const transport = createWebCommandTransport();
-    await transport.invoke("create_transaction_category", {
+    await transport.invoke(CATEGORY_COMMANDS.create_transaction_category, {
       newCategory: { name: "Food", parentId: null, description: null, color: "#ff0000" },
     });
 
@@ -116,7 +120,7 @@ describe("web command transport", () => {
     );
 
     const transport = createWebCommandTransport();
-    await transport.invoke("delete_transaction", { transactionId: "txn-1" });
+    await transport.invoke(TRANSACTION_COMMANDS.delete_transaction, { transactionId: "txn-1" });
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:3000/api/cash-flow/transactions/txn-1",
@@ -133,8 +137,28 @@ describe("web command transport", () => {
 
     const transport = createWebCommandTransport();
     await expect(
-      transport.invoke("delete_budget", { budgetId: "budget-1", expectedRevision: 2 }),
+      transport.invoke(BUDGET_COMMANDS.delete_budget, {
+        budgetId: "budget-1",
+        expectedRevision: 2,
+      }),
     ).resolves.toBe(undefined);
+  });
+
+  it("rejects malformed builder inputs before fetch", async () => {
+    const transport = createWebCommandTransport();
+
+    await expect(
+      transport.invoke(CATEGORY_COMMANDS.create_transaction_category, {
+        newCategory: "malformed" as never,
+      }),
+    ).rejects.toMatchObject({ name: "CommandError" });
+    await expect(
+      transport.invoke(BUDGET_COMMANDS.delete_budget, {
+        budgetId: "budget-1",
+        expectedRevision: "invalid" as never,
+      }),
+    ).rejects.toMatchObject({ name: "CommandError" });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("preserves structured fields from non-2xx JSON error bodies", async () => {
@@ -154,7 +178,7 @@ describe("web command transport", () => {
 
     const transport = createWebCommandTransport();
     await expect(
-      transport.invoke("get_transaction", { transactionId: "txn-404" }),
+      transport.invoke(TRANSACTION_COMMANDS.get_transaction, { transactionId: "txn-404" }),
     ).rejects.toMatchObject({
       name: "CommandError",
       code: "notFound",
@@ -168,11 +192,11 @@ describe("web command transport", () => {
 
     const transport = createWebCommandTransport();
     await expect(
-      transport.invoke("get_transaction_categories", { parentId: null }),
+      transport.invoke(CATEGORY_COMMANDS.get_transaction_categories, { parentId: null }),
     ).rejects.toEqual(new CommandError("Request failed with status 404"));
   });
 
-  it("preserves CommandResult semantics through invokeCommand", async () => {
+  it("preserves CommandResult semantics through decoded invocation", async () => {
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -186,7 +210,7 @@ describe("web command transport", () => {
       ),
     );
 
-    const result = await invokeCommand("create_transaction_category", {
+    const result = await invokeDecodedCommand(CATEGORY_COMMANDS.create_transaction_category, {
       newCategory: { name: "Food", parentId: null, description: null, color: "#ff0000" },
     });
 

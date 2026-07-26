@@ -9,7 +9,7 @@ import type {
 import { ALERT_COMMANDS } from "./registry";
 
 export const listAlerts = (query?: ListDomainAlertsQuery): CommandResult<DomainAlertListPage> => {
-  return invokeDecodedCommand(ALERT_COMMANDS.list_alerts, query ? { query } : undefined);
+  return invokeDecodedCommand(ALERT_COMMANDS.list_alerts, query ? { query } : {});
 };
 
 export const getUnreadAlertCount = (): CommandResult<number> => {

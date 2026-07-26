@@ -1,8 +1,9 @@
 import { CommandError } from "./errors";
-import type { CommandArgs, CommandTransport } from "./types";
+import type { CommandDescriptor } from "./command-descriptor";
+import type { CommandTransport } from "./types";
 
 export const createTauriCommandTransport = (): CommandTransport => ({
-  invoke: async <T>(command: string, args?: CommandArgs) => {
+  invoke: async <TArgs, TResult>(descriptor: CommandDescriptor<TArgs, TResult>, args: TArgs) => {
     if (typeof window === "undefined") {
       return Promise.reject(new CommandError("Desktop commands are only available in the client"));
     }
@@ -14,6 +15,8 @@ export const createTauriCommandTransport = (): CommandTransport => ({
       return Promise.reject(new CommandError("Tauri IPC is not available in this runtime"));
     }
 
-    return invoke<T>(command, args);
+    return args === undefined
+      ? invoke<TResult>(descriptor.name)
+      : invoke<TResult>(descriptor.name, args as never);
   },
 });

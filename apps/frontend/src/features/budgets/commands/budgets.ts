@@ -5,10 +5,7 @@ import type { Budget, BudgetFormValues, BudgetHistory, BudgetListFilter } from "
 import { BUDGET_COMMANDS } from "./registry";
 
 export const getBudgets = (filter: BudgetListFilter = "active"): CommandResult<Array<Budget>> => {
-  return invokeDecodedCommand(
-    BUDGET_COMMANDS.get_budgets,
-    filter === "active" ? undefined : { filter },
-  );
+  return invokeDecodedCommand(BUDGET_COMMANDS.get_budgets, filter === "active" ? {} : { filter });
 };
 
 export const getBudget = (budgetId: string): CommandResult<Budget> => {

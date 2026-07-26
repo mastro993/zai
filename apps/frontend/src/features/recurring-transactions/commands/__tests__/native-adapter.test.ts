@@ -40,7 +40,7 @@ describe("recurring Tauri command adapter", () => {
 
     const result = await getRecurringProcessingStatus();
 
-    expect(invokeMock).toHaveBeenCalledWith("get_recurring_processing_status", {});
+    expect(invokeMock).toHaveBeenCalledWith("get_recurring_processing_status");
     expect(Result.isSuccess(result)).toBe(true);
     if (Result.isFailure(result)) {
       return;
