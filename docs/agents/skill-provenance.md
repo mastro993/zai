@@ -108,8 +108,10 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
   because their blocking response contracts differ.
 - The configured `pnpm exec lefthook` launcher keeps generated agent commands
   worktree-portable and pinned to the project dependency. `no_auto_install`
-  prevents agent-only runs from synchronizing the shared Git hooks; existing
-  Git `pre-commit` job definitions remain unchanged.
+  prevents agent-only runs from synchronizing the shared Git hooks.
+- The Git `pre-commit` frontend quality command runs `oxlint --fix` followed by
+  `oxfmt --write` only for staged frontend source files. Lefthook's
+  `stage_fixed` option re-stages those files after both fixes complete.
 - Claude Code, Codex, and Cursor invoke the Impeccable detector after edits,
   before the Lefthook-managed fixer where the provider runs hooks sequentially.
 - `.github/hooks/impeccable.json` invokes the Impeccable detector after edits

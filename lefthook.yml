@@ -21,17 +21,13 @@ agent-fix:
 pre-commit:
   parallel: true
   commands:
-    frontend-format:
-      glob:
-        - "apps/frontend/src/*.{ts,tsx}"
-        - "apps/frontend/src/**/*.{ts,tsx}"
-      run: pnpm --filter frontend format:check
-    frontend-lint:
+    frontend-quality:
       root: apps/frontend/
       glob:
-        - "apps/frontend/src/*.{ts,tsx}"
-        - "apps/frontend/src/**/*.{ts,tsx}"
-      run: pnpm exec oxlint {staged_files}
+        - "apps/frontend/src/*.{js,jsx,ts,tsx}"
+        - "apps/frontend/src/**/*.{js,jsx,ts,tsx}"
+      run: pnpm exec oxlint --fix --no-error-on-unmatched-pattern {staged_files} && pnpm exec oxfmt --write --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true
     frontend-routes:
       glob:
         - "apps/frontend/src/routes/*"
