@@ -1,228 +1,373 @@
 ---
 name: Zai
-description: Confident minimal personal finance — local, precise, numbers-first.
+description: The Quiet Ledger — calm, private financial utility with soft geometry and exact data.
 colors:
-  growth-green: "oklch(0.527 0.154 150.069)"
-  growth-green-foreground: "oklch(0.982 0.018 155.826)"
-  growth-green-dark: "oklch(0.448 0.119 151.328)"
-  canvas: "oklch(1 0 0)"
-  ink: "oklch(0.145 0 0)"
-  surface: "oklch(1 0 0)"
-  surface-muted: "oklch(0.97 0 0)"
-  ink-muted: "oklch(0.556 0 0)"
-  border: "oklch(0.922 0 0)"
-  destructive: "oklch(0.577 0.245 27.325)"
-  sidebar: "oklch(0.985 0 0)"
+  ledger-green: "oklch(0.476 0.078 162.2)"
+  ledger-white: "oklch(1 0 0)"
+  ledger-ink: "oklch(0.25 0.023 162.2)"
+  sage-mist: "oklch(0.97 0.002 162.2)"
+  sage-wash: "oklch(0.955 0.008 162.2)"
+  muted-ink: "oklch(0.52 0.016 162.2)"
+  hairline: "oklch(0.925 0.004 162.2)"
+  audit-red: "oklch(0.584 0.239 28.5)"
+  night-canvas: "oklch(0.15 0.008 162.2)"
+  night-surface: "oklch(0.17 0.008 162.2)"
+  night-ink: "oklch(0.98 0 0)"
+  chart-ledger-1: "oklch(0.25 0.078 162.2)"
+  chart-ledger-2: "oklch(0.35 0.078 162.2)"
+  chart-ledger-3: "oklch(0.55 0.078 162.2)"
+  chart-ledger-4: "oklch(0.75 0.078 162.2)"
+  chart-ledger-5: "oklch(0.85 0.078 162.2)"
 typography:
   display:
-    fontFamily: '"Inter Variable", sans-serif'
+    fontFamily: '"Mona Sans", sans-serif'
+    fontSize: "1.875rem"
+    fontWeight: 600
+    lineHeight: 1.2
+    letterSpacing: "-0.025em"
+  headline:
+    fontFamily: '"Mona Sans", sans-serif'
     fontSize: "1.5rem"
+    fontWeight: 600
+    lineHeight: 1.25
+    letterSpacing: "-0.025em"
+  title:
+    fontFamily: '"Geist", sans-serif'
+    fontSize: "1rem"
     fontWeight: 500
     lineHeight: 1.25
     letterSpacing: "normal"
-  title:
-    fontFamily: '"Inter Variable", sans-serif'
-    fontSize: "1.125rem"
-    fontWeight: 500
-    lineHeight: 1.35
-    letterSpacing: "normal"
   body:
-    fontFamily: '"Inter Variable", sans-serif'
+    fontFamily: '"Geist", sans-serif'
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: "normal"
   label:
-    fontFamily: '"Inter Variable", sans-serif'
+    fontFamily: '"Geist", sans-serif'
     fontSize: "0.75rem"
     fontWeight: 500
     lineHeight: 1.4
     letterSpacing: "normal"
 rounded:
-  none: "0"
-  base: "0.625rem"
-  sm: "calc(0.625rem * 0.6)"
-  md: "calc(0.625rem * 0.8)"
-  lg: "0.625rem"
+  sm: "0.25rem"
+  md: "0.375rem"
+  lg: "0.5rem"
+  xl: "0.75rem"
+  pill: "2rem"
 spacing:
   xs: "0.25rem"
   sm: "0.5rem"
-  md: "1rem"
-  lg: "1.5rem"
+  md: "0.75rem"
+  lg: "1rem"
   xl: "1.5rem"
 components:
   button-primary:
-    backgroundColor: "{colors.growth-green}"
-    textColor: "{colors.growth-green-foreground}"
-    rounded: "{rounded.none}"
+    backgroundColor: "{colors.ledger-green}"
+    textColor: "{colors.ledger-white}"
+    typography: "{typography.body}"
+    rounded: "{rounded.lg}"
     padding: "0 0.625rem"
     height: "2rem"
-  button-primary-hover:
-    backgroundColor: "{colors.growth-green}"
-    textColor: "{colors.growth-green-foreground}"
-    rounded: "{rounded.none}"
   button-outline:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.none}"
+    backgroundColor: "{colors.ledger-white}"
+    textColor: "{colors.ledger-ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.lg}"
     padding: "0 0.625rem"
     height: "2rem"
   input-default:
     backgroundColor: "transparent"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.none}"
+    textColor: "{colors.ledger-ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.lg}"
     padding: "0.25rem 0.625rem"
     height: "2rem"
   badge-default:
-    backgroundColor: "{colors.growth-green}"
-    textColor: "{colors.growth-green-foreground}"
-    rounded: "{rounded.none}"
+    backgroundColor: "{colors.ledger-green}"
+    textColor: "{colors.ledger-white}"
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
     padding: "0.125rem 0.5rem"
     height: "1.25rem"
+  nav-item:
+    backgroundColor: "transparent"
+    textColor: "{colors.ledger-ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.md}"
+    padding: "0.5rem"
+    height: "2rem"
+  dialog-surface:
+    backgroundColor: "{colors.ledger-white}"
+    textColor: "{colors.ledger-ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.xl}"
+    padding: "1rem"
+    width: "24rem"
 ---
 
 # Design System: Zai
 
-## 1. Overview
+## Overview
 
-**Creative North Star: "The Workbench"**
+**Creative North Star: "The Quiet Ledger"**
 
-Zai reads like a personal finance workbench on a desktop: squared edges, tight type, neutral surfaces, and one Growth Green accent that marks action and brand — never decoration. Data tables, sidebar navigation, and form drawers carry the product; there is no marketing chrome inside the shell. Density follows Copilot Money and Linear: small controls (`text-xs`, 32px row height), clear hierarchy, and borders that structure space instead of shadows.
+Zai is a calm, private place to do consequential financial work. Its visual
+system pairs compact desktop utility with softened squircle geometry, a
+low-chroma ledger-green axis, and generous white or near-black canvases. The
+interface feels quiet rather than sparse: information remains dense where the
+task demands it, while color and elevation stay understated.
 
-The system explicitly rejects generic SaaS dashboards (card grids, gradient heroes, eyebrow kickers, hero-metric templates), decorative glass, and fintech neon. Motion stays functional; elevation stays flat.
+The system is neither neon fintech nor decorative glass. It communicates trust
+through legible data, stable spatial patterns, precise borders, and restrained
+state changes. Rounded Nova/Base UI primitives soften the tool without making it
+toy-like; tables, drawers, filters, and confirmations remain unmistakably
+operational.
 
 **Key Characteristics:**
 
-- Single sans family (Inter Variable) at compact sizes
-- Squared interactive controls (`rounded-none`) on Lyra/shadcn primitives
-- Growth Green accent on ≤10% of any screen
-- Depth via 1px borders and tonal steps, not drop shadows
-- Sidebar app shell with icon-collapsible rail
-- Dark mode parity on all semantic tokens
+- Low-chroma Ledger Green carried through actions, charts, and tinted neutrals
+- Geist body typography with Mona Sans reserved for the larger heading scale
+- Compact 32px controls with gentle squircle corners
+- Full-height desktop shell with a collapsible sidebar and fixed 48px route bar
+- Dense, border-led data surfaces with tabular numbers and quiet hover states
+- Layered overlays above flat work surfaces, with complete light/dark token parity
 
-## 2. Colors
+## Colors
 
-A restrained neutral canvas with one green accent tuned for clarity, not corporate banking.
+The palette is a single green-tinted continuum: Ledger Green supplies identity,
+while Ledger Ink, Sage Mist, and Hairline keep the working canvas quiet.
 
 ### Primary
 
-- **Growth Green** (oklch(0.527 0.154 150.069)): Primary actions, brand mark (財 / Zai), active nav emphasis, positive semantic emphasis. Dark mode: oklch(0.448 0.119 151.328).
-- **Growth Green Foreground** (oklch(0.982 0.018 155.826)): Text on primary-filled surfaces.
+- **Ledger Green** (`oklch(0.476 0.078 162.2)`): Primary actions, the Zai mark,
+  focus treatment, selected controls, and the shared hue axis for charts.
+- **Ledger White** (`oklch(1 0 0)`): Text on Ledger Green and the principal
+  light-mode canvas.
 
 ### Secondary
 
-- **Cool Secondary** (oklch(0.967 0.001 286.375)): Secondary buttons and subdued fills. Slight cool tint separates from warm green without a second accent.
-
-### Neutral
-
-- **Canvas** (oklch(1 0 0)): Page background (light).
-- **Ink** (oklch(0.145 0 0)): Primary text.
-- **Surface Muted** (oklch(0.97 0 0)): Table headers, hover fills, subtle bands.
-- **Ink Muted** (oklch(0.556 0 0)): Secondary text, placeholders — verify ≥4.5:1 on Canvas; bump toward Ink if borderline.
-- **Border** (oklch(0.922 0 0)): 1px dividers, input strokes, table outlines.
-- **Sidebar** (oklch(0.985 0 0)): App rail background, slightly off Canvas.
+- **Sage Wash** (`oklch(0.955 0.008 162.2)`): Secondary actions and restrained
+  selected surfaces.
+- **Sage Mist** (`oklch(0.97 0.002 162.2)`): Muted rows, hover states, table
+  bands, and quiet grouping.
 
 ### Tertiary
 
-- **Destructive** (oklch(0.577 0.245 27.325)): Errors, delete confirmations. Often at 10% fill with full hue text, not solid fills.
+- **Audit Red** (`oklch(0.584 0.239 28.5)`): Destructive actions, validation
+  failures, and financial-state warnings. Prefer tinted backgrounds with
+  Audit Red text over large solid fills.
+
+### Neutral
+
+- **Ledger Ink** (`oklch(0.25 0.023 162.2)`): Primary text in light mode; its
+  subtle green cast keeps typography inside the same color world.
+- **Muted Ink** (`oklch(0.52 0.016 162.2)`): Supporting copy, placeholders,
+  timestamps, and inactive metadata.
+- **Hairline** (`oklch(0.925 0.004 162.2)`): Borders, dividers, input strokes,
+  and table structure.
+- **Night Canvas** (`oklch(0.15 0.008 162.2)`), **Night Surface**
+  (`oklch(0.17 0.008 162.2)`), and **Night Ink** (`oklch(0.98 0 0)`): The
+  dark-mode foundation. Preserve the green cast rather than substituting a blue
+  or neutral-black scheme.
 
 ### Named Rules
 
-**The One Accent Rule.** Growth Green appears on primary CTAs, brand, and key active states only. If green is everywhere, it stops meaning "go."
+**The One Hue Axis Rule.** Product chrome and charts stay on the 162.2° ledger
+hue axis; category colors and Audit Red may break it only when they carry real
+semantic data.
 
-**The True Neutral Rule.** Body background stays achromatic (chroma 0). Warmth lives in the accent and category color dots, not cream-tinted page bg.
+**The No Neon Rule.** Never increase the accent into electric green, cyan, or a
+glowing fintech gradient. Ledger Green is muted on purpose.
 
-## 3. Typography
+**The No Glass Rule.** Do not introduce frosted cards, glossy panes, or
+translucent content surfaces. The current translucent select/menu treatment is
+an implementation exception, not a system pattern to propagate.
 
-**Display Font:** Inter Variable (sans-serif fallback)
-**Body Font:** Inter Variable (sans-serif fallback)
-**Label Font:** Inter Variable (same family, weight/size differentiation)
+## Typography
 
-**Character:** Technical-humanist sans at compact scale — readable at 12–14px, medium weight for headings, no second display face.
+**Display Font:** Mona Sans (sans-serif fallback)
+**Body Font:** Geist (sans-serif fallback)
+**Label Font:** Geist (same family, weight and size provide hierarchy)
+
+**Character:** The pairing is quiet and contemporary: Mona Sans gives large
+financial summaries a composed voice, while Geist keeps dense controls and data
+highly legible. The configured stylesheet currently imports Inter rather than
+the named Geist and Mona Sans faces, so environments without those fonts use
+the generic sans-serif fallback; treat the CSS font tokens as normative.
 
 ### Hierarchy
 
-- **Display** (500, 1.5rem / 24px, 1.25): Screen titles (`h1` on route pages).
-- **Title** (500, 1.125rem / 18px, 1.35): Section headers, drawer titles.
-- **Body** (400, 0.875rem / 14px, 1.5): Default UI copy, table cells; cap prose at 65–75ch where long text appears.
-- **Label** (500, 0.75rem / 12px, 1.4): Buttons, inputs, badges, table headers — default control size.
+- **Display** (600, 1.875rem / 30px, 1.2): High-value financial figures and
+  rare top-level statements.
+- **Headline** (600, 1.5rem / 24px, 1.25): Screen or major section headings
+  when breadcrumbs alone are insufficient.
+- **Title** (500, 1rem / 16px, 1.25): Dialog, drawer, and grouped-section titles.
+- **Body** (400, 0.875rem / 14px, 1.5): Default controls, tables, descriptions,
+  and form content.
+- **Label** (500, 0.75rem / 12px, 1.4): Table metadata, compact badges, field
+  support, and secondary status text.
 
 ### Named Rules
 
-**The Compact Default Rule.** Interactive UI defaults to `text-xs` (12px). Scale up for page titles only; never shrink below 12px for readable data.
+**The Data Stays Numeric Rule.** Right-align financial amounts and use tabular
+figures. Never rely on font weight or color alone to distinguish positive,
+negative, pending, or failed values.
 
-## 4. Elevation
+**The Two-Family Rule.** Mona Sans is for the larger heading scale; Geist owns
+all operational text. Do not add a decorative display face or use monospace as
+fintech decoration.
 
-Flat-by-default. Depth is communicated with borders (`border-border`), background steps (`bg-muted/40` on table headers), and sidebar/content separation — not ambient shadows. Overlays (dialog, sheet, drawer, popover) may use subtle shadow from shadcn primitives; data surfaces stay flat.
+## Layout
+
+The app occupies the full viewport (`h-svh`) and divides it into a collapsible
+16rem sidebar, a 3rem icon rail when collapsed, and a flexible content inset.
+Each route uses a fixed 3rem header with breadcrumbs and actions, followed by a
+scrolling content region at `1.5rem` padding and a `1rem` vertical gap.
+
+The working rhythm is compact: controls are normally 2rem high, table cells use
+`0.75rem` padding, forms use `1rem` groups, and major route sections use
+`1.5rem`. Tables keep their intrinsic density and scroll horizontally instead
+of compressing financial data into illegibility. Filters and action groups wrap
+before they collide.
+
+At the `sm` breakpoint (640px), stacked footer actions become horizontal and
+drawers or sheets adopt bounded widths. At `md` (768px), field layouts can move
+from vertical to horizontal and form text settles at 14px. Narrow windows retain
+the desktop information hierarchy but allow full-width sheets, wrapped actions,
+and horizontally scrollable tables.
+
+## Elevation & Depth
+
+Zai uses **layered restraint**. Route content, tables, field groups, empty
+states, and list rows remain flat, separated by Hairline borders and Sage Mist
+tonal steps. Dialogs, menus, popovers, sheets, and drawers may rise above the
+work surface using a fine ring, a low green-cast shadow, and short entrance
+motion. Depth describes interaction hierarchy; it is never ambient decoration.
 
 ### Shadow Vocabulary
 
-- **Overlay lift** (shadcn default on sheets/dialogs): Reserved for modal layers above the workbench. Tables and cards do not carry resting shadows.
+- **Edge** (`0 1px 2px 0 oklch(0.55 0.012 162.2 / 0.05)`): Small floating
+  controls and barely lifted boundaries.
+- **Overlay** (`0 4px 6px -1px oklch(0.55 0.012 162.2 / 0.1), 0 2px 4px -2px
+  oklch(0.55 0.012 162.2 / 0.1)`): Popovers and menus.
+- **Raised overlay** (`0 10px 15px -3px oklch(0.55 0.012 162.2 / 0.1), 0 4px
+  6px -4px oklch(0.55 0.012 162.2 / 0.1)`): Sheets and other larger temporary
+  layers.
 
 ### Named Rules
 
-**The Flat Table Rule.** Transaction and category tables use border + muted header band. No card wrapper around tables unless the section truly needs grouping.
+**The Work Surface Stays Flat Rule.** Never place resting shadows on tables,
+filters, route sections, or routine form containers. Borders and tonal
+separation are sufficient.
 
-## 5. Components
+**The Layer Must Earn Lift Rule.** A shadow means the surface is temporarily
+above another surface. Remove the shadow when that interaction layer closes.
 
-Tool-first primitives from shadcn (base-lyra) + Base UI. Squared corners on buttons, inputs, badges.
+## Shapes
+
+The root applies `corner-shape: squircle`, and Nova primitives use a
+`0.5rem` base radius. Buttons and inputs use the base 8px squircle, compact
+controls step down to 4–6px, and dialogs or drawer edges step up to 12px. Pills
+are reserved for badges and small categorical states.
+
+Feature-owned data containers remain mostly rectangular because their borders
+express grids, sequences, and selection regions. Dashed rectangles identify
+empty or drop-like states. Do not round every nested container: soft geometry
+belongs to interaction targets and floating layers, while data structure may
+stay crisp.
+
+## Components
+
+Components express **soft utility with understated states**: gentle edges,
+compact dimensions, and visible but quiet feedback.
 
 ### Buttons
 
-- **Shape:** Square corners (`rounded-none`, 0px radius on controls)
-- **Primary:** Growth Green fill, Growth Green Foreground text, h-8 (32px), px-2.5, text-xs font-medium
-- **Hover / Focus:** Primary at 80% opacity; `ring-1 ring-ring/50` on focus-visible; 1px active translate
-- **Outline:** Border-border, canvas bg, muted hover
-- **Ghost / Destructive:** Muted hover; destructive uses 10% fill + destructive text
+- **Shape:** 8px squircle at the default 32px height; 4–6px for 24–28px compact
+  variants.
+- **Primary:** Ledger Green background, Ledger White text, 14px medium type,
+  `0 0.625rem` horizontal padding.
+- **Hover / Focus:** Hover moves to 80% Ledger Green. Focus uses a Ledger Green
+  border and 3px 50%-alpha ring; press translates down by 1px.
+- **Outline / Secondary / Ghost:** Outline uses Hairline on the canvas,
+  Secondary uses Sage Wash, and Ghost is transparent until a Sage Mist hover.
+  Destructive uses a 10% Audit Red fill rather than a solid red button.
 
 ### Chips
 
-- **Badge default:** Growth Green fill, h-5, px-2, text-xs, squared
-- **Outline / secondary:** Border or secondary fill for category/status tags
+- **Style:** Default badges are 20px-high pills with 12px medium type and
+  `0.125rem 0.5rem` padding.
+- **State:** Ledger Green is reserved for primary status; Sage Wash, outline,
+  ghost, and Audit Red tints handle supporting or destructive states. Feature
+  metadata may square a badge only when it sits inside a compact data snapshot.
 
 ### Cards / Containers
 
-- **Corner Style:** Base radius token (0.625rem) available but many surfaces are border-defined rectangles
-- **Background:** Canvas or surface-muted bands
-- **Shadow Strategy:** None at rest (see Elevation)
-- **Border:** 1px border-border on tables and grouped sections
-- **Internal Padding:** p-3 on table cells; p-6 on route sections
+- **Corner Style:** There is no generic card wrapper in the current component
+  set. Feature containers are usually rectangular; floating containers use
+  8–12px squircles.
+- **Background:** Ledger White or Night Surface, with Sage Mist for subordinate
+  bands.
+- **Shadow Strategy:** None for resting content; see Layered Restraint.
+- **Border:** 1px Hairline.
+- **Internal Padding:** 12px for dense summaries, 16px for overlays, 24px for
+  route-level empty states.
 
 ### Inputs / Fields
 
-- **Style:** 1px border-input, transparent bg, h-8, rounded-none, text-xs
-- **Focus:** border-ring + ring-1 ring-ring/50
-- **Error:** border-destructive + destructive ring tint
-- **Placeholder:** text-muted-foreground — verify contrast
+- **Style:** 32px high, transparent canvas, 1px Hairline stroke, 8px squircle,
+  14px text, and `0.625rem` horizontal padding.
+- **Focus:** Ledger Green border plus a 3px 50%-alpha ring.
+- **Error / Disabled:** Audit Red border and ring for invalid input; disabled
+  fields use a 50% input fill and 50% opacity without removing their label.
 
 ### Navigation
 
-- **Sidebar:** 16rem expanded / 3rem icon rail; Sidebar bg, ink text, Growth Green on brand + active items
-- **Items:** text-sm in nav labels; Hugeicons stroke 2; tooltips when collapsed
-- **Mobile:** Sheet overlay for sidebar
+The sidebar uses the Sage-tinted sidebar canvas and 32px menu rows with 14px
+text, 16px Hugeicons at stroke width 2, and 6px squircles. Hover and active
+states use the sidebar accent fill; active items gain medium weight rather than
+an extra color stripe. The rail collapses to 3rem with tooltips, while narrow
+screens use the sheet behavior provided by the sidebar primitive.
 
-### Data Table (signature)
+### Data Tables
 
-- **Header:** bg-muted/40, font-medium, text-xs, border-b
-- **Rows:** text-sm body, right-align amounts, sticky actions column on wide tables
-- **Category:** Color dot + name inline
+Tables are the signature work surface. Use a 1px enclosing border, a
+`bg-muted/40` header band, 12px cell padding, 14px body type, quiet
+`bg-muted/50` row hover, and right-aligned tabular amounts. Preserve horizontal
+scroll, sticky headers or actions where already established, and full-row
+selection feedback without turning rows into individual cards.
 
-## 6. Do's and Don'ts
+### Dialogs, Drawers, and Popovers
+
+Dialogs use a 12px squircle, 16px padding, a 1px low-contrast ring, and a muted
+footer band. Drawers use a rounded leading edge and a 450ms decelerating
+gesture-aware transition. Popovers and menus use the 8px squircle and the
+Overlay shadow. Keep overlay copy at 14px, titles at 16px medium, and reserve
+backdrop blur for the minimal inherited overlay treatment—not a glass aesthetic.
+
+## Do's and Don'ts
 
 ### Do:
 
-- **Do** lead screens with the number or table the user came for.
-- **Do** use Growth Green sparingly for primary actions and brand.
-- **Do** keep controls at 32px height and 12px type unless the element is a page title.
-- **Do** use borders and muted bands to separate regions.
-- **Do** support dark mode with the paired `.dark` token set.
-- **Do** respect `prefers-reduced-motion` for non-essential transitions.
+- **Do** use Ledger Green as a quiet semantic anchor for primary action, focus,
+  and data continuity.
+- **Do** keep routine controls at 32px and default operational text at 14px.
+- **Do** use borders, muted bands, and whitespace to organize tables and forms.
+- **Do** reserve shadows for temporary interaction layers.
+- **Do** preserve equal information hierarchy and token parity in dark mode.
+- **Do** let feature-owned category colors carry meaning without recoloring the
+  surrounding product chrome.
 
 ### Don't:
 
-- **Don't** use generic SaaS dashboards: identical card grids, gradient heroes, eyebrow kickers, hero-metric templates.
-- **Don't** add decorative motion, glass chrome, or marketing-page patterns inside the app shell.
-- **Don't** use border-left/right >1px colored stripes on rows, alerts, or cards.
-- **Don't** tint the page background warm cream/sand — stay achromatic neutral.
-- **Don't** wrap every section in nested cards.
-- **Don't** use gradient text or neon chart colors as default semantics.
+- **Don't** introduce neon green, cyan glows, gradient text, or luminous fintech
+  effects.
+- **Don't** propagate glassmorphism, frosted cards, glossy panels, or translucent
+  content surfaces.
+- **Don't** wrap every route section or table in a rounded card.
+- **Don't** use a shadow on a resting data surface.
+- **Don't** make financial data smaller than 12px or encode meaning through
+  color alone.
+- **Don't** replace compact utility with oversized marketing typography inside
+  the application shell.
