@@ -9,11 +9,8 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TableHeadActions,
   TableHeader,
   TableRow,
-  TableRowActions,
-  TableRowWithActions,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { formatCurrencyFromMinor } from "@/lib/currency";
@@ -32,6 +29,11 @@ import type { Transaction } from "../types/model";
 import type { TransactionCategory } from "@/features/categories/types/model";
 import type { TransactionFormMode } from "../types/transaction-types";
 import { CategoryBadge } from "@/features/categories/components/category-badge";
+import {
+  TransactionTableHeadActions,
+  TransactionTableRow,
+  TransactionTableRowActions,
+} from "./transaction-table-actions";
 import { TransactionTypeBadge } from "./transaction-type-badge";
 
 type TransactionTableProps = {
@@ -148,7 +150,7 @@ function TransactionTable({
               Amount
             </TableHead>
             <TableHead className="p-3 font-medium">Description</TableHead>
-            <TableHeadActions />
+            <TransactionTableHeadActions />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -161,7 +163,7 @@ function TransactionTable({
             const transactionLabel = transaction.description || transaction.id;
 
             return (
-              <TableRowWithActions
+              <TransactionTableRow
                 key={transaction.id}
                 data-state={isSelected ? "selected" : undefined}
                 className={cn("border-t", isSelected && "bg-muted/30", "cursor-pointer")}
@@ -210,7 +212,7 @@ function TransactionTable({
                     {transaction.description || "No description"}
                   </span>
                 </TableCell>
-                <TableRowActions>
+                <TransactionTableRowActions>
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -245,8 +247,8 @@ function TransactionTable({
                   >
                     <HugeiconsIcon icon={Delete02Icon} />
                   </Button>
-                </TableRowActions>
-              </TableRowWithActions>
+                </TransactionTableRowActions>
+              </TransactionTableRow>
             );
           })}
         </TableBody>
