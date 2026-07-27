@@ -25,7 +25,7 @@ if printf '%s' "$INPUT" | jq -e 'has("status")' >/dev/null 2>&1; then
   fi
 fi
 
-# Paths that affect `pnpm check` (file-size + frontend + backend).
+# Paths that affect `pnpm check` (frontend + backend).
 is_check_relevant_path() {
   local path="${1#./}"
   case "$path" in

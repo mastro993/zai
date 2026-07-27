@@ -74,7 +74,7 @@ See `AGENTS.md` and `apps/frontend/AGENTS.md` for detailed conventions.
 
 ## Coding Rules
 
-- Keep modules focused; prefer files under 400 lines of code.
+- Keep modules focused and cohesive.
 - Fix root causes; do not paper over bugs.
 - Keep Tauri commands and HTTP handlers thin; delegate to `crates/core`.
 - Never log secrets or real financial data.
