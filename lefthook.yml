@@ -39,3 +39,15 @@ pre-commit:
         - "apps/frontend/src/routes/**/*"
         - "apps/frontend/src/routeTree.gen.ts"
       run: pnpm --filter frontend check:routes
+
+pre-push:
+  parallel: true
+  commands:
+    type-check:
+      run: pnpm type-check
+    frontend-lint:
+      run: pnpm lint
+    format-check:
+      run: pnpm format:check
+    backend-lint:
+      run: cargo clippy --workspace --all-targets --all-features -- -D warnings

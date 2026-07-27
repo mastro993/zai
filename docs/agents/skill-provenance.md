@@ -116,6 +116,9 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
 - The Git `pre-commit` backend quality command is selected by the `*.rs` glob.
   It formats the staged Rust files directly, runs the full workspace Clippy
   check without auto-fixing unrelated files, then re-stages the formatted files.
+- Git `pre-push` runs TypeScript, frontend lint, repository formatting, and
+  workspace Clippy checks in parallel. These checks never fix or stage files;
+  a non-zero check blocks the push with its diagnostics.
 - Claude Code, Codex, and Cursor invoke the Impeccable detector after edits,
   before the Lefthook-managed fixer where the provider runs hooks sequentially.
 - `.github/hooks/impeccable.json` invokes the Impeccable detector after edits
