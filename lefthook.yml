@@ -1,20 +1,35 @@
+output: false
+
 pre-commit:
   parallel: true
   commands:
-    frontend-format:
-      glob:
-        - "apps/frontend/src/*.{ts,tsx}"
-        - "apps/frontend/src/**/*.{ts,tsx}"
-      run: pnpm --filter frontend format:check
-    frontend-lint:
+    backend-quality:
+      glob: "*.rs"
+      run: rustfmt --edition 2024 {staged_files} && cargo clippy --workspace --all-targets --all-features -- -D warnings
+      stage_fixed: true
+    frontend-quality:
       root: apps/frontend/
       glob:
-        - "apps/frontend/src/*.{ts,tsx}"
-        - "apps/frontend/src/**/*.{ts,tsx}"
-      run: pnpm exec oxlint {staged_files}
+        - "apps/frontend/src/*.{js,jsx,ts,tsx}"
+        - "apps/frontend/src/**/*.{js,jsx,ts,tsx}"
+      exclude: "apps/frontend/src/routeTree.gen.ts"
+      run: pnpm exec oxlint --fix --no-error-on-unmatched-pattern {staged_files} && pnpm exec oxfmt --write --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true
     frontend-routes:
       glob:
         - "apps/frontend/src/routes/*"
         - "apps/frontend/src/routes/**/*"
         - "apps/frontend/src/routeTree.gen.ts"
       run: pnpm --filter frontend check:routes
+
+pre-push:
+  parallel: true
+  commands:
+    type-check:
+      run: pnpm type-check
+    frontend-lint:
+      run: pnpm lint
+    format-check:
+      run: pnpm format:check
+    backend-lint:
+      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
