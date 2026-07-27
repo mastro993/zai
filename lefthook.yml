@@ -1,34 +1,4 @@
-lefthook: cd "$(git rev-parse --show-toplevel)" && node .agents/hooks/run-lefthook.mjs lefthook
-no_auto_install: true
 output: false
-
-ai:
-  claude:
-    PostToolUse: agent-fix
-    Stop: agent-stop
-  codex:
-    PostToolUse: agent-fix
-    Stop: agent-stop
-  cursor:
-    afterFileEdit: agent-fix
-    stop: agent-stop
-  copilot:
-    postToolUse: agent-fix
-    agentStop: agent-stop
-
-agent-fix:
-  commands:
-    quality:
-      run: node .agents/hooks/quality.mjs fix
-      timeout: 120s
-      use_stdin: true
-
-agent-stop:
-  commands:
-    quality:
-      run: node .agents/hooks/quality.mjs stop
-      timeout: 900s
-      use_stdin: true
 
 pre-commit:
   parallel: true

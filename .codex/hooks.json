@@ -1,22 +1,33 @@
 {
   "hooks": {
-    "PostToolUse": [
+    "SessionStart": [
       {
-        "hooks": [
-          {
-            "command": "[ ! -f \"$(git rev-parse --show-toplevel)/.agents/skills/impeccable/scripts/hook.mjs\" ] || node \"$(git rev-parse --show-toplevel)/.agents/skills/impeccable/scripts/hook.mjs\"",
-            "statusMessage": "Checking UI changes",
-            "timeout": 5,
-            "type": "command"
-          }
-        ],
-        "matcher": "Edit|Write|apply_patch"
-      },
-      {
+        "matcher": "startup|resume",
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(git rev-parse --show-toplevel)\" && node .agents/hooks/run-lefthook.mjs lefthook run agent-fix"
+            "command": "bash \"$(git rev-parse --show-toplevel)/.agents/hooks/install.sh\"",
+            "timeout": 300,
+            "statusMessage": "Installing dependencies"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ ! -f \"$(git rev-parse --show-toplevel)/.agents/skills/impeccable/scripts/hook.mjs\" ] || node \"$(git rev-parse --show-toplevel)/.agents/skills/impeccable/scripts/hook.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Checking UI changes"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.agents/hooks/format.sh\"",
+            "timeout": 120,
+            "statusMessage": "Format and lint autofix"
           }
         ]
       }
@@ -26,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(git rev-parse --show-toplevel)\" && node .agents/hooks/run-lefthook.mjs lefthook run agent-stop",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.agents/hooks/check-gate.sh\"",
             "timeout": 900,
             "statusMessage": "Running repository checks"
           }

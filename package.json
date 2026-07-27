@@ -8,7 +8,7 @@
     "apps/frontend"
   ],
   "scripts": {
-    "prepare": "pnpm exec lefthook install && node .agents/hooks/sync-lefthook-ai.mjs",
+    "prepare": "pnpm exec lefthook install",
     "dev": "pnpm --filter frontend dev",
     "dev:web": "node scripts/dev-web.mjs",
     "dev:tauri": "pnpm tauri dev",

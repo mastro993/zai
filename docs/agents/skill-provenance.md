@@ -32,16 +32,16 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 | Path | Role | Notes |
 | ---- | ---- | ----- |
 | `.agents/skills/` | Canonical shared skill store | Nine real skill directories plus the linked Impeccable skill |
-| `.agents/hooks/` | Shared agent lifecycle hooks | `run-lefthook.mjs` launches project Lefthook; `sync-lefthook-ai.mjs` normalizes generated manifests; `quality.mjs` handles edited-file fixes and completion checks |
+| `.agents/hooks/` | Shared agent lifecycle hooks | `install.sh`, `format.sh`, and `check-gate.sh` are consumed by Codex, Claude Code, and Cursor |
 | `.claude/skills/` | Claude Code consumer tree | `byethrow` is a real copy; the other nine entries symlink into `.agents/skills/` |
-| `.claude/settings.json` | Claude Code consumer config | Impeccable PostToolUse plus Lefthook-managed edited-file and Stop quality hooks |
-| `.codex/` | Codex consumer config | `hooks.json` invokes Impeccable PostToolUse plus Lefthook-managed edited-file and Stop quality hooks |
-| `.cursor/` | Cursor consumer config | `hooks.json` invokes Impeccable afterFileEdit plus Lefthook-managed edited-file and stop quality hooks |
+| `.claude/settings.json` | Claude Code consumer config | SessionStart, Impeccable PostToolUse, and shared format/check hooks |
+| `.codex/` | Codex consumer config | `hooks.json` invokes Impeccable PostToolUse plus the shared install, format, and check-gate hooks |
+| `.cursor/` | Cursor consumer config | `hooks.json` invokes Impeccable afterFileEdit plus the shared install, format, and check-gate hooks |
+| `.cursor/hooks/` | Cursor hook adapters | Thin executable wrappers around the shared `.agents/hooks/` scripts |
 | `apps/frontend/.impeccable/` | Frontend Impeccable project data | Tracked design artifacts (`design.json`, `live/config.json`) and the vendored submodule |
 | `apps/frontend/.impeccable/vendor/` | Impeccable Git submodule | `pbakaus/impeccable` checkout; source for all linked provider skills |
 | `.github/skills/impeccable` | GitHub skill link | Symlink into the frontend Impeccable submodule |
-| `.github/hooks/` | GitHub hook manifests | Impeccable plus Lefthook-managed edited-file and agentStop quality hooks |
-| `lefthook.yml` | Git and agent hook source | Git quality hooks plus beta `ai` mappings to agent edit and Stop hooks |
+| `.github/hooks/` | GitHub hook manifests | `impeccable.json` invokes the GitHub Impeccable hook |
 | `skills-lock.json` | Install/lock record | Source + `computedHash` for eight canonical skills; no licensing or consumer map |
 | `docs/agents/` | Project agent policy docs | Includes this provenance document |
 
@@ -49,11 +49,10 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 
 | Consumer config | Reads / executes | Target |
 | --------------- | ---------------- | ------ |
-| `.codex/hooks.json` | Impeccable, Lefthook `agent-fix`/`agent-stop`, `.agents/hooks/{run-lefthook.mjs,quality.mjs}` | PostToolUse design detection plus path-scoped autofix; Stop quality gate |
-| `.claude/settings.json` | Impeccable, Lefthook `agent-fix`/`agent-stop`, `.agents/hooks/{run-lefthook.mjs,quality.mjs}` | PostToolUse design detection plus path-scoped autofix; Stop quality gate |
-| `.cursor/hooks.json` | Impeccable, Lefthook `agent-fix`/`agent-stop`, `.agents/hooks/{run-lefthook.mjs,quality.mjs}` | afterFileEdit design detection plus path-scoped autofix; stop quality gate |
+| `.codex/hooks.json` | Impeccable plus `.agents/hooks/{install,format,check-gate}.sh` | SessionStart install; PostToolUse design detection plus format + lint autofix; Stop → `pnpm check` when check-relevant |
+| `.claude/settings.json` | Impeccable plus `.agents/hooks/{install,format,check-gate}.sh` | SessionStart install; PostToolUse design detection plus format + lint autofix; Stop → `pnpm check` when check-relevant |
+| `.cursor/hooks.json` | Impeccable plus `.agents/hooks/{install,format,check-gate}.sh` | sessionStart install; afterFileEdit design detection plus format + lint autofix; stop → `pnpm check` when check-relevant |
 | `.github/hooks/impeccable.json` | `node "$(git rev-parse --show-toplevel)/.github/skills/impeccable/scripts/hook.mjs"` | GitHub Impeccable tree only |
-| `.github/hooks/lefthook.json` | Lefthook `agent-fix`/`agent-stop` through `run-lefthook.mjs` | Generated postToolUse fixer and agentStop quality gate |
 | Claude Code | `.claude/skills/*` | Nine symlinks to `.agents/skills/*` plus the real `byethrow` copy |
 | Generic agents | `.agents/skills/*/SKILL.md` | Canonical skill docs; Impeccable resolves through the frontend submodule |
 
@@ -91,31 +90,14 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
 
 ## Executable tooling (verified)
 
-- `quality.mjs` is invoked through Node and has two agent-only modes:
-  - `fix` accepts native edit/create event JSON, validates repository-local file
-    paths, runs frontend `oxlint --fix`, runs stdin-based `rustfmt` for each
-    edited Rust file, then runs `oxfmt --write` on the edited files.
-  - `stop` always runs `pnpm type-check`, `pnpm lint`, and
-    `pnpm format:check` in parallel. It emits provider-specific continuation
-    JSON containing every failing check.
-- `lefthook.yml` maps Claude Code, Codex, Cursor, and GitHub Copilot post-edit
-  events to `agent-fix` and Stop events to `agent-stop`. Lefthook-managed
-  entries are committed in each provider manifest. Stop invocations select only
-  command output so provider-specific continuation JSON remains unpolluted.
-- `run-lefthook.mjs` keeps generated agent commands worktree-portable, invokes
-  the project Lefthook dependency, and selects command-output-only mode for
-  `agent-stop`. Its ignored leading `lefthook` marker makes generated commands
-  recognizable to Lefthook's AI installer. Every consumer first changes to
-  `git rev-parse --show-toplevel`, so hook execution does not depend on the
-  provider's current directory.
-- `pnpm prepare` runs `sync-lefthook-ai.mjs` after installation. The normalizer
-  collapses managed duplicates and restores provider-only Stop timeout and loop
-  metadata that Lefthook's beta generator does not model. Repeated prepare runs
-  therefore produce byte-identical manifests. `no_auto_install` prevents
-  agent-only runs from synchronizing the shared Git hooks.
-- Lefthook output is disabled globally so successful hooks stay silent and
-  failures remain visible. Stop invocations opt into command output only to
-  return only the adapter's JSON response.
+- Shared hooks under `.agents/hooks/` and Cursor adapters under
+  `.cursor/hooks/` are mode `+x`:
+  - `install.sh` runs `pnpm install --frozen-lockfile --ignore-scripts` at
+    session start.
+  - `format.sh` runs `pnpm format` and fail-open `pnpm lint:fix` after edits.
+  - `check-gate.sh` runs `pnpm check` at completion only when the branch has
+    check-relevant code changes. It emits consumer-specific follow-up JSON on
+    failure.
 - The Git `pre-commit` frontend quality command runs `oxlint --fix` followed by
   `oxfmt --write` only for staged frontend source files. Lefthook's
   `stage_fixed` option re-stages those files after both fixes complete.
@@ -127,10 +109,10 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
   workspace Clippy checks in parallel. These checks never fix or stage files;
   a non-zero check blocks the push with its diagnostics.
 - Claude Code, Codex, and Cursor invoke the Impeccable detector after edits,
-  before the Lefthook-managed fixer where the provider runs hooks sequentially.
+  before the shared formatter where the provider runs hooks sequentially. Their
+  existing Stop/stop hooks continue to run only the shared completion gate.
 - `.github/hooks/impeccable.json` invokes the Impeccable detector after edits
   through `.github/skills/impeccable/scripts/hook.mjs`.
-- Git hooks and agent lifecycle hooks remain separate and do not share jobs.
 
 ## Provenance table
 

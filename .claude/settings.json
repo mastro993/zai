@@ -1,22 +1,31 @@
 {
   "hooks": {
-    "PostToolUse": [
+    "SessionStart": [
       {
-        "hooks": [
-          {
-            "command": "[ ! -f \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/hook.mjs\" ] || node \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/hook.mjs\"",
-            "statusMessage": "Checking UI changes",
-            "timeout": 5,
-            "type": "command"
-          }
-        ],
-        "matcher": "Edit|Write|MultiEdit"
-      },
-      {
+        "matcher": "startup|resume",
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(git rev-parse --show-toplevel)\" && node .agents/hooks/run-lefthook.mjs lefthook run agent-fix"
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.agents/hooks/install.sh\"",
+            "timeout": 300
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ ! -f \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/hook.mjs\" ] || node \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/hook.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Checking UI changes"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.agents/hooks/format.sh\"",
+            "timeout": 120
           }
         ]
       }
@@ -26,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(git rev-parse --show-toplevel)\" && node .agents/hooks/run-lefthook.mjs lefthook run agent-stop",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.agents/hooks/check-gate.sh\"",
             "timeout": 900
           }
         ]

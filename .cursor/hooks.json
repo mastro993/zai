@@ -1,18 +1,25 @@
 {
   "version": 1,
   "hooks": {
-    "afterFileEdit": [
+    "sessionStart": [
       {
+        "command": ".agents/hooks/install.sh",
+        "timeout": 300
+      }
+    ],
+    "afterFileEdit": [
+       {
         "command": "[ ! -f \".cursor/skills/impeccable/scripts/hook-before-edit.mjs\" ] || node \".cursor/skills/impeccable/scripts/hook-before-edit.mjs\"",
         "timeout": 5
       },
       {
-        "command": "cd \"$(git rev-parse --show-toplevel)\" && node .agents/hooks/run-lefthook.mjs lefthook run agent-fix"
+        "command": ".agents/hooks/format.sh",
+        "timeout": 120
       }
     ],
     "stop": [
       {
-        "command": "cd \"$(git rev-parse --show-toplevel)\" && node .agents/hooks/run-lefthook.mjs lefthook run agent-stop",
+        "command": ".agents/hooks/check-gate.sh",
         "timeout": 900,
         "loop_limit": 5
       }
