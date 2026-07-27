@@ -1,3 +1,23 @@
+lefthook: pnpm exec lefthook
+no_auto_install: true
+
+ai:
+  claude:
+    PostToolUse: agent-fix
+  codex:
+    PostToolUse: agent-fix
+  cursor:
+    afterFileEdit: agent-fix
+  copilot:
+    postToolUse: agent-fix
+
+agent-fix:
+  commands:
+    quality:
+      run: node .agents/hooks/quality.mjs fix
+      timeout: 120s
+      use_stdin: true
+
 pre-commit:
   parallel: true
   commands:

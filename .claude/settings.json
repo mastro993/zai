@@ -21,11 +21,14 @@
             "command": "[ ! -f \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/hook.mjs\" ] || node \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/hook.mjs\"",
             "timeout": 5,
             "statusMessage": "Checking UI changes"
-          },
+          }
+        ]
+      },
+      {
+        "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PROJECT_DIR}/.agents/hooks/format.sh\"",
-            "timeout": 120
+            "command": "pnpm exec lefthook run agent-fix"
           }
         ]
       }
@@ -35,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PROJECT_DIR}/.agents/hooks/check-gate.sh\"",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.agents/hooks/quality.mjs\" stop",
             "timeout": 900
           }
         ]
