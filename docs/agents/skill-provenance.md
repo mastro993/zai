@@ -32,17 +32,16 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 | Path | Role | Notes |
 | ---- | ---- | ----- |
 | `.agents/skills/` | Canonical shared skill store | Nine real skill directories plus the linked Impeccable skill |
-| `.agents/hooks/` | Shared agent lifecycle hooks | `install.sh` handles dependency sync; `quality.mjs` handles agent-only edited-file fixes and completion checks |
+| `.agents/hooks/` | Shared agent lifecycle hooks | `run-lefthook.mjs` launches project Lefthook; `quality.mjs` handles edited-file fixes and completion checks |
 | `.claude/skills/` | Claude Code consumer tree | `byethrow` is a real copy; the other nine entries symlink into `.agents/skills/` |
-| `.claude/settings.json` | Claude Code consumer config | SessionStart, Impeccable PostToolUse, Lefthook-managed edited-file fixes, and native Stop quality checks |
-| `.codex/` | Codex consumer config | `hooks.json` invokes SessionStart, Impeccable PostToolUse, Lefthook-managed edited-file fixes, and native Stop quality checks |
-| `.cursor/` | Cursor consumer config | `hooks.json` invokes sessionStart, Impeccable afterFileEdit, Lefthook-managed edited-file fixes, and native stop quality checks |
-| `.cursor/hooks/` | Cursor hook adapters | Retains only the dependency-install adapter |
+| `.claude/settings.json` | Claude Code consumer config | Impeccable PostToolUse plus Lefthook-managed edited-file and Stop quality hooks |
+| `.codex/` | Codex consumer config | `hooks.json` invokes Impeccable PostToolUse plus Lefthook-managed edited-file and Stop quality hooks |
+| `.cursor/` | Cursor consumer config | `hooks.json` invokes Impeccable afterFileEdit plus Lefthook-managed edited-file and stop quality hooks |
 | `apps/frontend/.impeccable/` | Frontend Impeccable project data | Tracked design artifacts (`design.json`, `live/config.json`) and the vendored submodule |
 | `apps/frontend/.impeccable/vendor/` | Impeccable Git submodule | `pbakaus/impeccable` checkout; source for all linked provider skills |
 | `.github/skills/impeccable` | GitHub skill link | Symlink into the frontend Impeccable submodule |
-| `.github/hooks/` | GitHub hook manifests | Impeccable, Lefthook-managed edited-file fixes, and native agentStop quality checks |
-| `lefthook.yml` | Git and agent hook source | Existing pre-commit jobs plus beta `ai` mappings to the agent-only fixer |
+| `.github/hooks/` | GitHub hook manifests | Impeccable plus Lefthook-managed edited-file and agentStop quality hooks |
+| `lefthook.yml` | Git and agent hook source | Git quality hooks plus beta `ai` mappings to agent edit and Stop hooks |
 | `skills-lock.json` | Install/lock record | Source + `computedHash` for eight canonical skills; no licensing or consumer map |
 | `docs/agents/` | Project agent policy docs | Includes this provenance document |
 
@@ -50,12 +49,11 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 
 | Consumer config | Reads / executes | Target |
 | --------------- | ---------------- | ------ |
-| `.codex/hooks.json` | Impeccable, Lefthook `agent-fix`, `.agents/hooks/{install.sh,quality.mjs}` | SessionStart install; PostToolUse design detection plus path-scoped autofix; Stop quality gate |
-| `.claude/settings.json` | Impeccable, Lefthook `agent-fix`, `.agents/hooks/{install.sh,quality.mjs}` | SessionStart install; PostToolUse design detection plus path-scoped autofix; Stop quality gate |
-| `.cursor/hooks.json` | Impeccable, Lefthook `agent-fix`, `.agents/hooks/{install.sh,quality.mjs}` | sessionStart install; afterFileEdit design detection plus path-scoped autofix; stop quality gate |
+| `.codex/hooks.json` | Impeccable, Lefthook `agent-fix`/`agent-stop`, `.agents/hooks/{run-lefthook.mjs,quality.mjs}` | PostToolUse design detection plus path-scoped autofix; Stop quality gate |
+| `.claude/settings.json` | Impeccable, Lefthook `agent-fix`/`agent-stop`, `.agents/hooks/{run-lefthook.mjs,quality.mjs}` | PostToolUse design detection plus path-scoped autofix; Stop quality gate |
+| `.cursor/hooks.json` | Impeccable, Lefthook `agent-fix`/`agent-stop`, `.agents/hooks/{run-lefthook.mjs,quality.mjs}` | afterFileEdit design detection plus path-scoped autofix; stop quality gate |
 | `.github/hooks/impeccable.json` | `node "$(git rev-parse --show-toplevel)/.github/skills/impeccable/scripts/hook.mjs"` | GitHub Impeccable tree only |
-| `.github/hooks/lefthook.json` | Lefthook `agent-fix` | Generated postToolUse edited-file fixer entry |
-| `.github/hooks/quality.json` | `.agents/hooks/quality.mjs` | Native agentStop quality gate |
+| `.github/hooks/lefthook.json` | Lefthook `agent-fix`/`agent-stop` through `run-lefthook.mjs` | Generated postToolUse fixer and agentStop quality gate |
 | Claude Code | `.claude/skills/*` | Nine symlinks to `.agents/skills/*` plus the real `byethrow` copy |
 | Generic agents | `.agents/skills/*/SKILL.md` | Canonical skill docs; Impeccable resolves through the frontend submodule |
 
@@ -93,8 +91,6 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
 
 ## Executable tooling (verified)
 
-- `install.sh` under `.agents/hooks/` and its Cursor adapter are mode `+x`; it
-  runs `pnpm install --frozen-lockfile --ignore-scripts` at session start.
 - `quality.mjs` is invoked through Node and has two agent-only modes:
   - `fix` accepts native edit/create event JSON, validates repository-local file
     paths, runs frontend `oxlint --fix`, runs stdin-based `rustfmt` for each
@@ -103,12 +99,16 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
     `pnpm format:check` in parallel. It emits provider-specific continuation
     JSON containing every failing check.
 - `lefthook.yml` maps Claude Code, Codex, Cursor, and GitHub Copilot post-edit
-  events to the agent-only `agent-fix` hook. Lefthook-managed entries are
-  committed in each provider manifest; native Stop entries remain separate
-  because their blocking response contracts differ.
-- The configured `pnpm exec lefthook` launcher keeps generated agent commands
-  worktree-portable and pinned to the project dependency. `no_auto_install`
-  prevents agent-only runs from synchronizing the shared Git hooks.
+  events to `agent-fix` and Stop events to `agent-stop`. Lefthook-managed
+  entries are committed in each provider manifest. Stop invocations select only
+  command output so provider-specific continuation JSON remains unpolluted.
+- `run-lefthook.mjs` keeps generated agent commands worktree-portable, invokes
+  the project Lefthook dependency, and selects command-output-only mode for
+  `agent-stop`. `no_auto_install` prevents agent-only runs from synchronizing
+  the shared Git hooks.
+- Lefthook output is disabled globally so successful hooks stay silent and
+  failures remain visible. Stop invocations opt into command output only to
+  return only the adapter's JSON response.
 - The Git `pre-commit` frontend quality command runs `oxlint --fix` followed by
   `oxfmt --write` only for staged frontend source files. Lefthook's
   `stage_fixed` option re-stages those files after both fixes complete.
@@ -123,7 +123,7 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
   before the Lefthook-managed fixer where the provider runs hooks sequentially.
 - `.github/hooks/impeccable.json` invokes the Impeccable detector after edits
   through `.github/skills/impeccable/scripts/hook.mjs`.
-- Git `pre-commit` jobs are unchanged and do not share agent lifecycle jobs.
+- Git hooks and agent lifecycle hooks remain separate and do not share jobs.
 
 ## Provenance table
 

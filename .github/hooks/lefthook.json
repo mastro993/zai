@@ -3,7 +3,14 @@
   "hooks": {
     "postToolUse": [
       {
-        "command": "pnpm exec lefthook run agent-fix"
+        "command": "node .agents/hooks/run-lefthook.mjs run agent-fix"
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "command": "node .agents/hooks/run-lefthook.mjs run agent-stop",
+        "timeoutSec": 900
       }
     ]
   }

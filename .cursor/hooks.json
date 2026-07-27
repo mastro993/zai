@@ -1,24 +1,18 @@
 {
   "version": 1,
   "hooks": {
-    "sessionStart": [
-      {
-        "command": ".agents/hooks/install.sh",
-        "timeout": 300
-      }
-    ],
     "afterFileEdit": [
       {
         "command": "[ ! -f \".cursor/skills/impeccable/scripts/hook-before-edit.mjs\" ] || node \".cursor/skills/impeccable/scripts/hook-before-edit.mjs\"",
         "timeout": 5
       },
       {
-        "command": "pnpm exec lefthook run agent-fix"
+        "command": "node .agents/hooks/run-lefthook.mjs run agent-fix"
       }
     ],
     "stop": [
       {
-        "command": "node .agents/hooks/quality.mjs stop",
+        "command": "node .agents/hooks/run-lefthook.mjs run agent-stop",
         "timeout": 900,
         "loop_limit": 5
       }
