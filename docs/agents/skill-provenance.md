@@ -104,8 +104,10 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
   command output so provider-specific continuation JSON remains unpolluted.
 - `run-lefthook.mjs` keeps generated agent commands worktree-portable, invokes
   the project Lefthook dependency, and selects command-output-only mode for
-  `agent-stop`. `no_auto_install` prevents agent-only runs from synchronizing
-  the shared Git hooks.
+  `agent-stop`. Every consumer resolves the launcher from
+  `git rev-parse --show-toplevel`, so hook execution does not depend on the
+  provider's current directory. `no_auto_install` prevents agent-only runs from
+  synchronizing the shared Git hooks.
 - Lefthook output is disabled globally so successful hooks stay silent and
   failures remain visible. Stop invocations opt into command output only to
   return only the adapter's JSON response.

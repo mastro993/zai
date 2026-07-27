@@ -1,4 +1,4 @@
-lefthook: node .agents/hooks/run-lefthook.mjs
+lefthook: node "$(git rev-parse --show-toplevel)/.agents/hooks/run-lefthook.mjs"
 no_auto_install: true
 output: false
 

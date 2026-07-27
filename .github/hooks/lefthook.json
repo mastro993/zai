@@ -3,13 +3,13 @@
   "hooks": {
     "postToolUse": [
       {
-        "command": "node .agents/hooks/run-lefthook.mjs run agent-fix"
+        "command": "node \"$(git rev-parse --show-toplevel)/.agents/hooks/run-lefthook.mjs\" run agent-fix"
       }
     ],
     "agentStop": [
       {
         "type": "command",
-        "command": "node .agents/hooks/run-lefthook.mjs run agent-stop",
+        "command": "node \"$(git rev-parse --show-toplevel)/.agents/hooks/run-lefthook.mjs\" run agent-stop",
         "timeoutSec": 900
       }
     ]

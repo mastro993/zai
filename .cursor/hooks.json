@@ -7,12 +7,12 @@
         "timeout": 5
       },
       {
-        "command": "node .agents/hooks/run-lefthook.mjs run agent-fix"
+        "command": "node \"$(git rev-parse --show-toplevel)/.agents/hooks/run-lefthook.mjs\" run agent-fix"
       }
     ],
     "stop": [
       {
-        "command": "node .agents/hooks/run-lefthook.mjs run agent-stop",
+        "command": "node \"$(git rev-parse --show-toplevel)/.agents/hooks/run-lefthook.mjs\" run agent-stop",
         "timeout": 900,
         "loop_limit": 5
       }
