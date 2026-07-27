@@ -21,11 +21,16 @@ agent-fix:
 pre-commit:
   parallel: true
   commands:
+    backend-quality:
+      glob: "*.rs"
+      run: rustfmt --edition 2024 {staged_files} && cargo clippy --workspace --all-targets --all-features -- -D warnings
+      stage_fixed: true
     frontend-quality:
       root: apps/frontend/
       glob:
         - "apps/frontend/src/*.{js,jsx,ts,tsx}"
         - "apps/frontend/src/**/*.{js,jsx,ts,tsx}"
+      exclude: "apps/frontend/src/routeTree.gen.ts"
       run: pnpm exec oxlint --fix --no-error-on-unmatched-pattern {staged_files} && pnpm exec oxfmt --write --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
     frontend-routes:

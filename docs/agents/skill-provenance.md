@@ -112,6 +112,10 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
 - The Git `pre-commit` frontend quality command runs `oxlint --fix` followed by
   `oxfmt --write` only for staged frontend source files. Lefthook's
   `stage_fixed` option re-stages those files after both fixes complete.
+  `routeTree.gen.ts` is excluded because route generation owns that file.
+- The Git `pre-commit` backend quality command is selected by the `*.rs` glob.
+  It formats the staged Rust files directly, runs the full workspace Clippy
+  check without auto-fixing unrelated files, then re-stages the formatted files.
 - Claude Code, Codex, and Cursor invoke the Impeccable detector after edits,
   before the Lefthook-managed fixer where the provider runs hooks sequentially.
 - `.github/hooks/impeccable.json` invokes the Impeccable detector after edits
