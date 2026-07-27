@@ -1,94 +1,315 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-07-07T10:30:00.000Z",
+  "generatedAt": "2026-07-27T14:01:55.000Z",
   "title": "Design System: Zai",
   "extensions": {
     "colorMeta": {
-      "growth-green": {
+      "ledger-green": {
         "role": "primary",
-        "displayName": "Growth Green",
-        "canonical": "oklch(0.527 0.154 150.069)",
+        "displayName": "Ledger Green",
+        "canonical": "oklch(0.476 0.078 162.2)",
         "tonalRamp": [
-          "oklch(0.20 0.08 150)",
-          "oklch(0.28 0.10 150)",
-          "oklch(0.36 0.12 150)",
-          "oklch(0.44 0.13 150)",
-          "oklch(0.527 0.154 150)",
-          "oklch(0.60 0.14 150)",
-          "oklch(0.72 0.10 150)",
-          "oklch(0.88 0.04 150)"
+          "oklch(0.15 0.078 162.2)",
+          "oklch(0.25 0.078 162.2)",
+          "oklch(0.35 0.078 162.2)",
+          "oklch(0.476 0.078 162.2)",
+          "oklch(0.60 0.078 162.2)",
+          "oklch(0.72 0.078 162.2)",
+          "oklch(0.84 0.078 162.2)",
+          "oklch(0.95 0.078 162.2)"
         ]
       },
-      "canvas": {
+      "ledger-white": {
         "role": "neutral",
-        "displayName": "Canvas",
+        "displayName": "Ledger White",
         "canonical": "oklch(1 0 0)",
         "tonalRamp": [
           "oklch(0.15 0 0)",
-          "oklch(0.25 0 0)",
-          "oklch(0.35 0 0)",
-          "oklch(0.45 0 0)",
-          "oklch(0.55 0 0)",
-          "oklch(0.70 0 0)",
-          "oklch(0.85 0 0)",
-          "oklch(1 0 0)"
+          "oklch(0.27 0 0)",
+          "oklch(0.39 0 0)",
+          "oklch(0.51 0 0)",
+          "oklch(0.63 0 0)",
+          "oklch(0.75 0 0)",
+          "oklch(0.87 0 0)",
+          "oklch(0.99 0 0)"
         ]
       },
-      "ink": {
+      "ledger-ink": {
         "role": "neutral",
-        "displayName": "Ink",
-        "canonical": "oklch(0.145 0 0)",
+        "displayName": "Ledger Ink",
+        "canonical": "oklch(0.25 0.023 162.2)",
         "tonalRamp": [
-          "oklch(0.10 0 0)",
+          "oklch(0.15 0.023 162.2)",
+          "oklch(0.25 0.023 162.2)",
+          "oklch(0.37 0.023 162.2)",
+          "oklch(0.49 0.023 162.2)",
+          "oklch(0.61 0.023 162.2)",
+          "oklch(0.73 0.023 162.2)",
+          "oklch(0.85 0.023 162.2)",
+          "oklch(0.95 0.023 162.2)"
+        ]
+      },
+      "sage-mist": {
+        "role": "neutral",
+        "displayName": "Sage Mist",
+        "canonical": "oklch(0.97 0.002 162.2)",
+        "tonalRamp": [
+          "oklch(0.15 0.002 162.2)",
+          "oklch(0.27 0.002 162.2)",
+          "oklch(0.39 0.002 162.2)",
+          "oklch(0.51 0.002 162.2)",
+          "oklch(0.63 0.002 162.2)",
+          "oklch(0.75 0.002 162.2)",
+          "oklch(0.87 0.002 162.2)",
+          "oklch(0.97 0.002 162.2)"
+        ]
+      },
+      "sage-wash": {
+        "role": "secondary",
+        "displayName": "Sage Wash",
+        "canonical": "oklch(0.955 0.008 162.2)",
+        "tonalRamp": [
+          "oklch(0.15 0.008 162.2)",
+          "oklch(0.27 0.008 162.2)",
+          "oklch(0.39 0.008 162.2)",
+          "oklch(0.51 0.008 162.2)",
+          "oklch(0.63 0.008 162.2)",
+          "oklch(0.75 0.008 162.2)",
+          "oklch(0.87 0.008 162.2)",
+          "oklch(0.955 0.008 162.2)"
+        ]
+      },
+      "muted-ink": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "oklch(0.52 0.016 162.2)",
+        "tonalRamp": [
+          "oklch(0.15 0.016 162.2)",
+          "oklch(0.27 0.016 162.2)",
+          "oklch(0.39 0.016 162.2)",
+          "oklch(0.52 0.016 162.2)",
+          "oklch(0.63 0.016 162.2)",
+          "oklch(0.75 0.016 162.2)",
+          "oklch(0.87 0.016 162.2)",
+          "oklch(0.95 0.016 162.2)"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(0.925 0.004 162.2)",
+        "tonalRamp": [
+          "oklch(0.15 0.004 162.2)",
+          "oklch(0.27 0.004 162.2)",
+          "oklch(0.39 0.004 162.2)",
+          "oklch(0.51 0.004 162.2)",
+          "oklch(0.63 0.004 162.2)",
+          "oklch(0.75 0.004 162.2)",
+          "oklch(0.87 0.004 162.2)",
+          "oklch(0.925 0.004 162.2)"
+        ]
+      },
+      "audit-red": {
+        "role": "tertiary",
+        "displayName": "Audit Red",
+        "canonical": "oklch(0.584 0.239 28.5)",
+        "tonalRamp": [
+          "oklch(0.15 0.239 28.5)",
+          "oklch(0.27 0.239 28.5)",
+          "oklch(0.39 0.239 28.5)",
+          "oklch(0.50 0.239 28.5)",
+          "oklch(0.584 0.239 28.5)",
+          "oklch(0.70 0.239 28.5)",
+          "oklch(0.82 0.239 28.5)",
+          "oklch(0.94 0.239 28.5)"
+        ]
+      },
+      "night-canvas": {
+        "role": "neutral",
+        "displayName": "Night Canvas",
+        "canonical": "oklch(0.15 0.008 162.2)",
+        "tonalRamp": [
+          "oklch(0.15 0.008 162.2)",
+          "oklch(0.27 0.008 162.2)",
+          "oklch(0.39 0.008 162.2)",
+          "oklch(0.51 0.008 162.2)",
+          "oklch(0.63 0.008 162.2)",
+          "oklch(0.75 0.008 162.2)",
+          "oklch(0.87 0.008 162.2)",
+          "oklch(0.95 0.008 162.2)"
+        ]
+      },
+      "night-surface": {
+        "role": "neutral",
+        "displayName": "Night Surface",
+        "canonical": "oklch(0.17 0.008 162.2)",
+        "tonalRamp": [
+          "oklch(0.15 0.008 162.2)",
+          "oklch(0.27 0.008 162.2)",
+          "oklch(0.39 0.008 162.2)",
+          "oklch(0.51 0.008 162.2)",
+          "oklch(0.63 0.008 162.2)",
+          "oklch(0.75 0.008 162.2)",
+          "oklch(0.87 0.008 162.2)",
+          "oklch(0.95 0.008 162.2)"
+        ]
+      },
+      "night-ink": {
+        "role": "neutral",
+        "displayName": "Night Ink",
+        "canonical": "oklch(0.98 0 0)",
+        "tonalRamp": [
           "oklch(0.15 0 0)",
-          "oklch(0.20 0 0)",
-          "oklch(0.30 0 0)",
-          "oklch(0.45 0 0)",
-          "oklch(0.60 0 0)",
+          "oklch(0.27 0 0)",
+          "oklch(0.39 0 0)",
+          "oklch(0.51 0 0)",
+          "oklch(0.63 0 0)",
           "oklch(0.75 0 0)",
-          "oklch(0.90 0 0)"
+          "oklch(0.87 0 0)",
+          "oklch(0.98 0 0)"
         ]
       },
-      "border": {
-        "role": "neutral",
-        "displayName": "Border",
-        "canonical": "oklch(0.922 0 0)",
+      "chart-ledger-1": {
+        "role": "primary",
+        "displayName": "Ledger Scale 1",
+        "canonical": "oklch(0.25 0.078 162.2)",
         "tonalRamp": [
-          "oklch(0.20 0 0)",
-          "oklch(0.30 0 0)",
-          "oklch(0.40 0 0)",
-          "oklch(0.50 0 0)",
-          "oklch(0.60 0 0)",
-          "oklch(0.75 0 0)",
-          "oklch(0.85 0 0)",
-          "oklch(0.922 0 0)"
+          "oklch(0.15 0.078 162.2)",
+          "oklch(0.25 0.078 162.2)",
+          "oklch(0.35 0.078 162.2)",
+          "oklch(0.476 0.078 162.2)",
+          "oklch(0.55 0.078 162.2)",
+          "oklch(0.75 0.078 162.2)",
+          "oklch(0.85 0.078 162.2)",
+          "oklch(0.95 0.078 162.2)"
+        ]
+      },
+      "chart-ledger-2": {
+        "role": "primary",
+        "displayName": "Ledger Scale 2",
+        "canonical": "oklch(0.35 0.078 162.2)",
+        "tonalRamp": [
+          "oklch(0.15 0.078 162.2)",
+          "oklch(0.25 0.078 162.2)",
+          "oklch(0.35 0.078 162.2)",
+          "oklch(0.476 0.078 162.2)",
+          "oklch(0.55 0.078 162.2)",
+          "oklch(0.75 0.078 162.2)",
+          "oklch(0.85 0.078 162.2)",
+          "oklch(0.95 0.078 162.2)"
+        ]
+      },
+      "chart-ledger-3": {
+        "role": "primary",
+        "displayName": "Ledger Scale 3",
+        "canonical": "oklch(0.55 0.078 162.2)",
+        "tonalRamp": [
+          "oklch(0.15 0.078 162.2)",
+          "oklch(0.25 0.078 162.2)",
+          "oklch(0.35 0.078 162.2)",
+          "oklch(0.476 0.078 162.2)",
+          "oklch(0.55 0.078 162.2)",
+          "oklch(0.75 0.078 162.2)",
+          "oklch(0.85 0.078 162.2)",
+          "oklch(0.95 0.078 162.2)"
+        ]
+      },
+      "chart-ledger-4": {
+        "role": "primary",
+        "displayName": "Ledger Scale 4",
+        "canonical": "oklch(0.75 0.078 162.2)",
+        "tonalRamp": [
+          "oklch(0.15 0.078 162.2)",
+          "oklch(0.25 0.078 162.2)",
+          "oklch(0.35 0.078 162.2)",
+          "oklch(0.476 0.078 162.2)",
+          "oklch(0.55 0.078 162.2)",
+          "oklch(0.75 0.078 162.2)",
+          "oklch(0.85 0.078 162.2)",
+          "oklch(0.95 0.078 162.2)"
+        ]
+      },
+      "chart-ledger-5": {
+        "role": "primary",
+        "displayName": "Ledger Scale 5",
+        "canonical": "oklch(0.85 0.078 162.2)",
+        "tonalRamp": [
+          "oklch(0.15 0.078 162.2)",
+          "oklch(0.25 0.078 162.2)",
+          "oklch(0.35 0.078 162.2)",
+          "oklch(0.476 0.078 162.2)",
+          "oklch(0.55 0.078 162.2)",
+          "oklch(0.75 0.078 162.2)",
+          "oklch(0.85 0.078 162.2)",
+          "oklch(0.95 0.078 162.2)"
         ]
       }
     },
     "typographyMeta": {
       "display": {
         "displayName": "Display",
-        "purpose": "Screen titles on route pages (Dashboard, Transactions)."
+        "purpose": "Rare high-value financial figures and top-level statements."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Screen and major section headings when breadcrumbs are insufficient."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Dialog, drawer, and grouped-section titles."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "Table cells, descriptions, form copy."
+        "purpose": "Default controls, tables, descriptions, and form content."
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Buttons, inputs, badges, table headers — default 12px control text."
+        "purpose": "Table metadata, badges, field support, and secondary status."
       }
     },
-    "shadows": [],
+    "shadows": [
+      {
+        "name": "edge",
+        "value": "0 1px 2px 0 oklch(0.55 0.012 162.2 / 0.05)",
+        "purpose": "Small floating controls and barely lifted boundaries."
+      },
+      {
+        "name": "overlay",
+        "value": "0 4px 6px -1px oklch(0.55 0.012 162.2 / 0.1), 0 2px 4px -2px oklch(0.55 0.012 162.2 / 0.1)",
+        "purpose": "Popovers and menus."
+      },
+      {
+        "name": "raised-overlay",
+        "value": "0 10px 15px -3px oklch(0.55 0.012 162.2 / 0.1), 0 4px 6px -4px oklch(0.55 0.012 162.2 / 0.1)",
+        "purpose": "Sheets and larger temporary interaction layers."
+      }
+    ],
     "motion": [
       {
-        "name": "ease-standard",
-        "value": "cubic-bezier(0.25, 0.1, 0.25, 1)",
-        "purpose": "Button and input state transitions (transition-all on controls)."
+        "name": "state-fast",
+        "value": "100ms ease-out",
+        "purpose": "Dialog and popover opacity or scale states."
+      },
+      {
+        "name": "state-standard",
+        "value": "150ms ease-out",
+        "purpose": "Button, input, row, and navigation feedback."
+      },
+      {
+        "name": "drawer-decelerate",
+        "value": "450ms cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Gesture-aware drawer entry, exit, and settling."
       }
     ],
     "breakpoints": [
-      { "name": "md", "value": "768px" }
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      }
     ]
   },
   "components": [
@@ -96,99 +317,122 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "Main action — import, save, confirm.",
+      "description": "The main action on a route, form, or confirmation.",
       "html": "<button class=\"ds-btn-primary\" type=\"button\">Save transaction</button>",
-      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 0.625rem; font-family: \"Inter Variable\", sans-serif; font-size: 0.75rem; font-weight: 500; line-height: 1; color: oklch(0.982 0.018 155.826); background: oklch(0.527 0.154 150.069); border: 1px solid transparent; border-radius: 0; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; } .ds-btn-primary:hover { background: color-mix(in oklch, oklch(0.527 0.154 150.069), transparent 20%); } .ds-btn-primary:focus-visible { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 1px oklch(0.708 0 0 / 0.5); } .ds-btn-primary:active { transform: translateY(1px); }"
+      "css": ".ds-btn-primary { display: inline-flex; height: 2rem; align-items: center; justify-content: center; padding: 0 0.625rem; border: 1px solid transparent; border-radius: var(--radius, 0.5rem); corner-shape: squircle; background: var(--primary, oklch(0.476 0.078 162.2)); color: var(--primary-foreground, white); font-family: var(--font-sans, \"Geist\", sans-serif); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background-color 150ms ease-out, transform 100ms ease-out, box-shadow 150ms ease-out; } .ds-btn-primary:hover { background: color-mix(in oklch, var(--primary, oklch(0.476 0.078 162.2)) 80%, transparent); } .ds-btn-primary:focus-visible { outline: none; border-color: var(--ring, oklch(0.476 0.078 162.2 / 0.9)); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, oklch(0.476 0.078 162.2)) 50%, transparent); } .ds-btn-primary:active { transform: translateY(1px); }"
     },
     {
       "name": "Outline Button",
       "kind": "button",
       "refersTo": "button-outline",
-      "description": "Secondary actions — cancel, export, filter.",
-      "html": "<button class=\"ds-btn-outline\" type=\"button\">Cancel</button>",
-      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 0.625rem; font-family: \"Inter Variable\", sans-serif; font-size: 0.75rem; font-weight: 500; color: oklch(0.145 0 0); background: oklch(1 0 0); border: 1px solid oklch(0.922 0 0); border-radius: 0; cursor: pointer; transition: background 0.15s ease; } .ds-btn-outline:hover { background: oklch(0.97 0 0); } .ds-btn-outline:focus-visible { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 1px oklch(0.708 0 0 / 0.5); }"
+      "description": "Secondary action that stays quiet until hovered.",
+      "html": "<button class=\"ds-btn-outline\" type=\"button\">Export</button>",
+      "css": ".ds-btn-outline { display: inline-flex; height: 2rem; align-items: center; justify-content: center; padding: 0 0.625rem; border: 1px solid var(--border, oklch(0.925 0.004 162.2)); border-radius: var(--radius, 0.5rem); corner-shape: squircle; background: var(--background, white); color: var(--foreground, oklch(0.25 0.023 162.2)); font-family: var(--font-sans, \"Geist\", sans-serif); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background-color 150ms ease-out, box-shadow 150ms ease-out; } .ds-btn-outline:hover { background: var(--muted, oklch(0.97 0.002 162.2)); } .ds-btn-outline:focus-visible { outline: none; border-color: var(--ring, oklch(0.476 0.078 162.2 / 0.9)); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, oklch(0.476 0.078 162.2)) 50%, transparent); }"
     },
     {
       "name": "Text Input",
       "kind": "input",
       "refersTo": "input-default",
-      "description": "Form fields, search, import mapping.",
+      "description": "Compact financial entry field with an explicit focus state.",
       "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Description\" />",
-      "css": ".ds-input { display: block; width: 100%; height: 2rem; padding: 0.25rem 0.625rem; font-family: \"Inter Variable\", sans-serif; font-size: 0.75rem; color: oklch(0.145 0 0); background: transparent; border: 1px solid oklch(0.922 0 0); border-radius: 0; transition: border-color 0.15s ease, box-shadow 0.15s ease; } .ds-input::placeholder { color: oklch(0.556 0 0); } .ds-input:focus-visible { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 1px oklch(0.708 0 0 / 0.5); }"
+      "css": ".ds-input { display: block; width: 100%; height: 2rem; padding: 0.25rem 0.625rem; border: 1px solid var(--input, oklch(0.925 0.004 162.2)); border-radius: var(--radius, 0.5rem); corner-shape: squircle; background: transparent; color: var(--foreground, oklch(0.25 0.023 162.2)); font-family: var(--font-sans, \"Geist\", sans-serif); font-size: 0.875rem; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; } .ds-input::placeholder { color: var(--muted-foreground, oklch(0.52 0.016 162.2)); } .ds-input:focus-visible { outline: none; border-color: var(--ring, oklch(0.476 0.078 162.2 / 0.9)); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, oklch(0.476 0.078 162.2)) 50%, transparent); }"
     },
     {
-      "name": "Badge",
+      "name": "Status Badge",
       "kind": "chip",
       "refersTo": "badge-default",
-      "description": "Status and category tags.",
+      "description": "Small primary status or category label.",
       "html": "<span class=\"ds-badge\">Income</span>",
-      "css": ".ds-badge { display: inline-flex; align-items: center; height: 1.25rem; padding: 0.125rem 0.5rem; font-family: \"Inter Variable\", sans-serif; font-size: 0.75rem; font-weight: 500; color: oklch(0.982 0.018 155.826); background: oklch(0.527 0.154 150.069); border: 1px solid transparent; border-radius: 0; }"
+      "css": ".ds-badge { display: inline-flex; height: 1.25rem; align-items: center; justify-content: center; padding: 0.125rem 0.5rem; border: 1px solid transparent; border-radius: 2rem; background: var(--primary, oklch(0.476 0.078 162.2)); color: var(--primary-foreground, white); font-family: var(--font-sans, \"Geist\", sans-serif); font-size: 0.75rem; font-weight: 500; white-space: nowrap; }"
     },
     {
-      "name": "Sidebar Nav Item",
+      "name": "Sidebar Navigation Item",
       "kind": "nav",
-      "refersTo": "button-ghost",
-      "description": "App shell navigation — active state uses accent on brand.",
-      "html": "<a class=\"ds-nav-item ds-nav-item-active\" href=\"#\"><span class=\"ds-nav-icon\">▣</span><span>Dashboard</span></a>",
-      "css": ".ds-nav-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; font-family: \"Inter Variable\", sans-serif; font-size: 0.875rem; font-weight: 400; color: oklch(0.145 0 0); text-decoration: none; border-radius: 0; transition: background 0.15s ease; } .ds-nav-item:hover { background: oklch(0.97 0 0); } .ds-nav-item-active { background: oklch(0.97 0 0); font-weight: 500; } .ds-nav-icon { color: oklch(0.527 0.154 150.069); font-size: 1rem; }"
+      "refersTo": "nav-item",
+      "description": "Quiet route navigation with an understated active state.",
+      "html": "<a class=\"ds-nav-item ds-nav-item-active\" href=\"#\"><svg class=\"ds-nav-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 10.5 12 4l8 6.5V20H4z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg><span>Dashboard</span></a>",
+      "css": ".ds-nav-item { display: flex; height: 2rem; align-items: center; gap: 0.5rem; padding: 0.5rem; border-radius: 0.375rem; corner-shape: squircle; color: var(--sidebar-foreground, oklch(0.25 0.023 162.2)); font-family: var(--font-sans, \"Geist\", sans-serif); font-size: 0.875rem; text-decoration: none; transition: background-color 150ms ease-out, box-shadow 150ms ease-out; } .ds-nav-item:hover, .ds-nav-item-active { background: var(--sidebar-accent, oklch(0.965 0.002 162.2)); color: var(--sidebar-accent-foreground, oklch(0.25 0.023 162.2)); } .ds-nav-item-active { font-weight: 500; } .ds-nav-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--sidebar-ring, oklch(0.925 0.004 162.2)); } .ds-nav-icon { width: 1rem; height: 1rem; flex: none; }"
     },
     {
-      "name": "Data Table Header",
+      "name": "Data Table",
       "kind": "custom",
-      "refersTo": "badge-default",
-      "description": "Transaction/category tables — muted band + border.",
-      "html": "<table class=\"ds-table\"><thead><tr><th class=\"ds-th\">Date</th><th class=\"ds-th ds-th-right\">Amount</th></tr></thead></table>",
-      "css": ".ds-table { width: 100%; border: 1px solid oklch(0.922 0 0); border-collapse: collapse; font-family: \"Inter Variable\", sans-serif; font-size: 0.875rem; } .ds-th { padding: 0.75rem; font-size: 0.75rem; font-weight: 500; text-align: left; background: oklch(0.97 0 0 / 0.4); border-bottom: 1px solid oklch(0.922 0 0); } .ds-th-right { text-align: right; }"
+      "refersTo": "nav-item",
+      "description": "The signature border-led financial work surface.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Date</th><th>Description</th><th class=\"ds-amount\">Amount</th></tr></thead><tbody><tr><td>27 Jul 2026</td><td>Local market</td><td class=\"ds-amount\">−€42.80</td></tr><tr><td>25 Jul 2026</td><td>Salary</td><td class=\"ds-amount\">€2,850.00</td></tr></tbody></table>",
+      "css": ".ds-table { width: 100%; border: 1px solid var(--border, oklch(0.925 0.004 162.2)); border-collapse: collapse; background: var(--background, white); color: var(--foreground, oklch(0.25 0.023 162.2)); font-family: var(--font-sans, \"Geist\", sans-serif); font-size: 0.875rem; } .ds-table th, .ds-table td { padding: 0.75rem; border-bottom: 1px solid var(--border, oklch(0.925 0.004 162.2)); text-align: left; } .ds-table th { background: color-mix(in oklch, var(--muted, oklch(0.97 0.002 162.2)) 40%, transparent); font-weight: 500; } .ds-table tbody tr { transition: background-color 150ms ease-out; } .ds-table tbody tr:hover { background: color-mix(in oklch, var(--muted, oklch(0.97 0.002 162.2)) 50%, transparent); } .ds-table .ds-amount { text-align: right; font-variant-numeric: tabular-nums; } .ds-table tbody tr:last-child td { border-bottom: 0; }"
+    },
+    {
+      "name": "Dialog Surface",
+      "kind": "custom",
+      "refersTo": "dialog-surface",
+      "description": "A restrained temporary layer for consequential choices.",
+      "html": "<section class=\"ds-dialog\" role=\"dialog\" aria-labelledby=\"ds-dialog-title\"><h2 id=\"ds-dialog-title\">Delete transaction?</h2><p>This action cannot be undone.</p><div class=\"ds-dialog-footer\"><button class=\"ds-dialog-cancel\" type=\"button\">Cancel</button><button class=\"ds-dialog-delete\" type=\"button\">Delete</button></div></section>",
+      "css": ".ds-dialog { width: min(24rem, calc(100vw - 2rem)); padding: 1rem; border-radius: 0.75rem; corner-shape: squircle; background: var(--popover, white); color: var(--popover-foreground, oklch(0.25 0.023 162.2)); box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground, oklch(0.25 0.023 162.2)) 10%, transparent), 0 4px 6px -1px oklch(0.55 0.012 162.2 / 0.1); font-family: var(--font-sans, \"Geist\", sans-serif); font-size: 0.875rem; } .ds-dialog h2 { margin: 0; font-size: 1rem; font-weight: 500; line-height: 1.25; } .ds-dialog p { margin: 0.5rem 0 1rem; color: var(--muted-foreground, oklch(0.52 0.016 162.2)); } .ds-dialog-footer { display: flex; justify-content: flex-end; gap: 0.5rem; margin: 0 -1rem -1rem; padding: 1rem; border-top: 1px solid var(--border, oklch(0.925 0.004 162.2)); border-radius: 0 0 0.75rem 0.75rem; background: color-mix(in oklch, var(--muted, oklch(0.97 0.002 162.2)) 50%, transparent); } .ds-dialog button { height: 2rem; padding: 0 0.625rem; border-radius: 0.5rem; corner-shape: squircle; font: inherit; font-weight: 500; cursor: pointer; } .ds-dialog-cancel { border: 1px solid var(--border, oklch(0.925 0.004 162.2)); background: var(--background, white); color: var(--foreground, oklch(0.25 0.023 162.2)); } .ds-dialog-delete { border: 1px solid transparent; background: color-mix(in oklch, var(--destructive, oklch(0.584 0.239 28.5)) 10%, transparent); color: var(--destructive, oklch(0.584 0.239 28.5)); } .ds-dialog button:hover { filter: brightness(0.97); } .ds-dialog button:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, oklch(0.476 0.078 162.2)) 50%, transparent); }"
     }
   ],
   "narrative": {
-    "northStar": "The Workbench",
-    "overview": "Zai reads like a personal finance workbench on a desktop: squared edges, tight type, neutral surfaces, and one Growth Green accent that marks action and brand — never decoration. Data tables, sidebar navigation, and form drawers carry the product; there is no marketing chrome inside the shell.",
+    "northStar": "The Quiet Ledger",
+    "overview": "Zai is a calm, private place to do consequential financial work. Its visual system pairs compact desktop utility with softened squircle geometry, a low-chroma ledger-green axis, and generous white or near-black canvases. The interface feels quiet rather than sparse: information remains dense where the task demands it, while color and elevation stay understated.\n\nThe system is neither neon fintech nor decorative glass. It communicates trust through legible data, stable spatial patterns, precise borders, and restrained state changes. Rounded Nova/Base UI primitives soften the tool without making it toy-like; tables, drawers, filters, and confirmations remain unmistakably operational.",
     "keyCharacteristics": [
-      "Single sans family (Inter Variable) at compact sizes",
-      "Squared interactive controls on Lyra/shadcn primitives",
-      "Growth Green accent on ≤10% of any screen",
-      "Depth via 1px borders and tonal steps, not drop shadows",
-      "Sidebar app shell with icon-collapsible rail",
-      "Dark mode parity on all semantic tokens"
+      "Low-chroma Ledger Green carried through actions, charts, and tinted neutrals",
+      "Geist body typography with Mona Sans reserved for the larger heading scale",
+      "Compact 32px controls with gentle squircle corners",
+      "Full-height desktop shell with a collapsible sidebar and fixed 48px route bar",
+      "Dense, border-led data surfaces with tabular numbers and quiet hover states",
+      "Layered overlays above flat work surfaces, with complete light/dark token parity"
     ],
     "rules": [
       {
-        "name": "The One Accent Rule",
-        "body": "Growth Green appears on primary CTAs, brand, and key active states only. If green is everywhere, it stops meaning \"go.\"",
+        "name": "The One Hue Axis Rule",
+        "body": "Product chrome and charts stay on the 162.2° ledger hue axis; category colors and Audit Red may break it only when they carry real semantic data.",
         "section": "colors"
       },
       {
-        "name": "The True Neutral Rule",
-        "body": "Body background stays achromatic (chroma 0). Warmth lives in the accent and category color dots, not cream-tinted page bg.",
+        "name": "The No Neon Rule",
+        "body": "Never increase the accent into electric green, cyan, or a glowing fintech gradient. Ledger Green is muted on purpose.",
         "section": "colors"
       },
       {
-        "name": "The Compact Default Rule",
-        "body": "Interactive UI defaults to text-xs (12px). Scale up for page titles only; never shrink below 12px for readable data.",
+        "name": "The No Glass Rule",
+        "body": "Do not introduce frosted cards, glossy panes, or translucent content surfaces. The current translucent select/menu treatment is an implementation exception, not a system pattern to propagate.",
+        "section": "colors"
+      },
+      {
+        "name": "The Data Stays Numeric Rule",
+        "body": "Right-align financial amounts and use tabular figures. Never rely on font weight or color alone to distinguish positive, negative, pending, or failed values.",
         "section": "typography"
       },
       {
-        "name": "The Flat Table Rule",
-        "body": "Transaction and category tables use border + muted header band. No card wrapper around tables unless the section truly needs grouping.",
+        "name": "The Two-Family Rule",
+        "body": "Mona Sans is for the larger heading scale; Geist owns all operational text. Do not add a decorative display face or use monospace as fintech decoration.",
+        "section": "typography"
+      },
+      {
+        "name": "The Work Surface Stays Flat Rule",
+        "body": "Never place resting shadows on tables, filters, route sections, or routine form containers. Borders and tonal separation are sufficient.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Layer Must Earn Lift Rule",
+        "body": "A shadow means the surface is temporarily above another surface. Remove the shadow when that interaction layer closes.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do lead screens with the number or table the user came for.",
-      "Do use Growth Green sparingly for primary actions and brand.",
-      "Do keep controls at 32px height and 12px type unless the element is a page title.",
-      "Do use borders and muted bands to separate regions.",
-      "Do support dark mode with the paired .dark token set.",
-      "Do respect prefers-reduced-motion for non-essential transitions."
+      "Do use Ledger Green as a quiet semantic anchor for primary action, focus, and data continuity.",
+      "Do keep routine controls at 32px and default operational text at 14px.",
+      "Do use borders, muted bands, and whitespace to organize tables and forms.",
+      "Do reserve shadows for temporary interaction layers.",
+      "Do preserve equal information hierarchy and token parity in dark mode.",
+      "Do let feature-owned category colors carry meaning without recoloring the surrounding product chrome."
     ],
     "donts": [
-      "Don't use generic SaaS dashboards: identical card grids, gradient heroes, eyebrow kickers, hero-metric templates.",
-      "Don't add decorative motion, glass chrome, or marketing-page patterns inside the app shell.",
-      "Don't use border-left/right >1px colored stripes on rows, alerts, or cards.",
-      "Don't tint the page background warm cream/sand — stay achromatic neutral.",
-      "Don't wrap every section in nested cards.",
-      "Don't use gradient text or neon chart colors as default semantics."
+      "Don't introduce neon green, cyan glows, gradient text, or luminous fintech effects.",
+      "Don't propagate glassmorphism, frosted cards, glossy panels, or translucent content surfaces.",
+      "Don't wrap every route section or table in a rounded card.",
+      "Don't use a shadow on a resting data surface.",
+      "Don't make financial data smaller than 12px or encode meaning through color alone.",
+      "Don't replace compact utility with oversized marketing typography inside the application shell."
     ]
   }
 }
