@@ -98,6 +98,16 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
   - `check-gate.sh` runs `pnpm check` at completion only when the branch has
     check-relevant code changes. It emits consumer-specific follow-up JSON on
     failure.
+- The Git `pre-commit` frontend quality command runs `oxlint --fix` followed by
+  `oxfmt --write` only for staged frontend source files. Lefthook's
+  `stage_fixed` option re-stages those files after both fixes complete.
+  `routeTree.gen.ts` is excluded because route generation owns that file.
+- The Git `pre-commit` backend quality command is selected by the `*.rs` glob.
+  It formats the staged Rust files directly, runs the full workspace Clippy
+  check without auto-fixing unrelated files, then re-stages the formatted files.
+- Git `pre-push` runs TypeScript, frontend lint, repository formatting, and
+  workspace Clippy checks in parallel. These checks never fix or stage files;
+  a non-zero check blocks the push with its diagnostics.
 - Claude Code, Codex, and Cursor invoke the Impeccable detector after edits,
   before the shared formatter where the provider runs hooks sequentially. Their
   existing Stop/stop hooks continue to run only the shared completion gate.
