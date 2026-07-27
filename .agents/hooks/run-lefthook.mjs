@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const lefthookEntry = path.join(root, "node_modules/lefthook/bin/index.js");
-const args = process.argv.slice(2);
+const receivedArgs = process.argv.slice(2);
+const args = receivedArgs[0] === "lefthook" ? receivedArgs.slice(1) : receivedArgs;
 const env = { ...process.env };
 
 if (args[0] === "run" && args[1] === "agent-stop") {

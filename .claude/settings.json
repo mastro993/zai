@@ -2,21 +2,21 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
-            "type": "command",
             "command": "[ ! -f \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/hook.mjs\" ] || node \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/hook.mjs\"",
+            "statusMessage": "Checking UI changes",
             "timeout": 5,
-            "statusMessage": "Checking UI changes"
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": "Edit|Write|MultiEdit"
       },
       {
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.agents/hooks/run-lefthook.mjs\" run agent-fix"
+            "command": "cd \"$(git rev-parse --show-toplevel)\" && node .agents/hooks/run-lefthook.mjs lefthook run agent-fix"
           }
         ]
       }
@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/.agents/hooks/run-lefthook.mjs\" run agent-stop",
+            "command": "cd \"$(git rev-parse --show-toplevel)\" && node .agents/hooks/run-lefthook.mjs lefthook run agent-stop",
             "timeout": 900
           }
         ]

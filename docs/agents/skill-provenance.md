@@ -32,7 +32,7 @@ unknown and needs follow-up — it does **not** mean the skill is project-GPL.
 | Path | Role | Notes |
 | ---- | ---- | ----- |
 | `.agents/skills/` | Canonical shared skill store | Nine real skill directories plus the linked Impeccable skill |
-| `.agents/hooks/` | Shared agent lifecycle hooks | `run-lefthook.mjs` launches project Lefthook; `quality.mjs` handles edited-file fixes and completion checks |
+| `.agents/hooks/` | Shared agent lifecycle hooks | `run-lefthook.mjs` launches project Lefthook; `sync-lefthook-ai.mjs` normalizes generated manifests; `quality.mjs` handles edited-file fixes and completion checks |
 | `.claude/skills/` | Claude Code consumer tree | `byethrow` is a real copy; the other nine entries symlink into `.agents/skills/` |
 | `.claude/settings.json` | Claude Code consumer config | Impeccable PostToolUse plus Lefthook-managed edited-file and Stop quality hooks |
 | `.codex/` | Codex consumer config | `hooks.json` invokes Impeccable PostToolUse plus Lefthook-managed edited-file and Stop quality hooks |
@@ -104,10 +104,15 @@ The removed `.agents/skills/improve` path is absent and has no active consumer.
   command output so provider-specific continuation JSON remains unpolluted.
 - `run-lefthook.mjs` keeps generated agent commands worktree-portable, invokes
   the project Lefthook dependency, and selects command-output-only mode for
-  `agent-stop`. Every consumer resolves the launcher from
+  `agent-stop`. Its ignored leading `lefthook` marker makes generated commands
+  recognizable to Lefthook's AI installer. Every consumer first changes to
   `git rev-parse --show-toplevel`, so hook execution does not depend on the
-  provider's current directory. `no_auto_install` prevents agent-only runs from
-  synchronizing the shared Git hooks.
+  provider's current directory.
+- `pnpm prepare` runs `sync-lefthook-ai.mjs` after installation. The normalizer
+  collapses managed duplicates and restores provider-only Stop timeout and loop
+  metadata that Lefthook's beta generator does not model. Repeated prepare runs
+  therefore produce byte-identical manifests. `no_auto_install` prevents
+  agent-only runs from synchronizing the shared Git hooks.
 - Lefthook output is disabled globally so successful hooks stay silent and
   failures remain visible. Stop invocations opt into command output only to
   return only the adapter's JSON response.
