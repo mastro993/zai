@@ -1,19 +1,18 @@
 import { z } from "zod";
 
 export const CATEGORY_COLORS = [
-  "#C55B26",
-  "#C5C526",
-  "#5BC526",
-  "#26C55B",
-  "#26C5C5",
-  "#265BC5",
-  "#5B26C5",
-  "#C526C5",
-  "#C5265B",
+  "#C32828",
+  "#C39B28",
+  "#75C328",
+  "#28C34E",
+  "#28C3C3",
+  "#284EC3",
+  "#7528C3",
+  "#C3289B",
   "#737373",
 ] as const;
 
-export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLORS[9];
+export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLORS[8];
 export const CATEGORY_ROLES = ["spending", "income"] as const;
 
 const nullableStringSchema = z.string().nullable().optional();

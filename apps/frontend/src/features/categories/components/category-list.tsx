@@ -82,18 +82,13 @@ function CategoryRowContent({
   childCount?: number;
 }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-1">
-      <div className="flex min-w-0 items-center gap-2">
-        <CategoryBadge color={getCategoryDisplayColor(category)}>{category.name}</CategoryBadge>
-        <span className="shrink-0 border px-1.5 py-0.5 text-[10px] text-muted-foreground">
-          {getCategoryRoleLabel(category.role)}
-        </span>
-        {childCount !== undefined && childCount > 0 ? (
-          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">+{childCount}</span>
-        ) : null}
-      </div>
-      {category.description ? (
-        <span className="truncate text-xs text-muted-foreground">{category.description}</span>
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      <CategoryBadge color={getCategoryDisplayColor(category)}>{category.name}</CategoryBadge>
+      <span className="shrink-0 border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+        {getCategoryRoleLabel(category.role)}
+      </span>
+      {childCount !== undefined && childCount > 0 ? (
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">+{childCount}</span>
       ) : null}
     </div>
   );
@@ -198,27 +193,7 @@ function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryList
     return map;
   }, [categories]);
 
-  const expandableParentIds = useMemo(
-    () =>
-      rootCategories
-        .filter((category) => (childrenByParent.get(category.id)?.length ?? 0) > 0)
-        .map((category) => category.id),
-    [childrenByParent, rootCategories],
-  );
-
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
-
-  const allExpanded =
-    expandableParentIds.length > 0 && expandableParentIds.every((id) => expandedIds.has(id));
-  const allCollapsed = expandableParentIds.every((id) => !expandedIds.has(id));
-
-  const expandAll = () => {
-    setExpandedIds(new Set(expandableParentIds));
-  };
-
-  const collapseAll = () => {
-    setExpandedIds(new Set());
-  };
 
   const setParentOpen = (parentId: string, open: boolean) => {
     setExpandedIds((current) => {
@@ -233,20 +208,7 @@ function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryList
   };
 
   return (
-    <div className="border">
-      <div className="flex items-center justify-between gap-3 border-b bg-muted/40 px-3 py-2">
-        <span className="text-xs font-medium">Categories</span>
-        {expandableParentIds.length > 0 ? (
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="xs" disabled={allExpanded} onClick={expandAll}>
-              Expand all
-            </Button>
-            <Button variant="ghost" size="xs" disabled={allCollapsed} onClick={collapseAll}>
-              Collapse all
-            </Button>
-          </div>
-        ) : null}
-      </div>
+    <div className="overflow-hidden rounded-lg border">
       <ul className="divide-y">
         {rootCategories.map((category) => {
           const children = childrenByParent.get(category.id) ?? [];
@@ -302,14 +264,7 @@ function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryList
 
 function CategoryListSkeleton() {
   return (
-    <div className="border">
-      <div className="flex items-center justify-between gap-3 border-b bg-muted/40 px-3 py-2">
-        <Skeleton className="h-4 w-20" />
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-6 w-16" />
-          <Skeleton className="h-6 w-20" />
-        </div>
-      </div>
+    <div className="overflow-hidden rounded-lg border">
       <ul className="divide-y">
         {[0, 1, 2, 3].map((row) => (
           <li key={row} className="flex items-center gap-2 px-3 py-2.5">

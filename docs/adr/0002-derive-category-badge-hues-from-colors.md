@@ -9,8 +9,12 @@ the durable contract stable while allowing badge contrast, chroma, and opacity
 to evolve independently. Achromatic HEX colors have no hue and use the neutral
 badge treatment.
 
-The category form offers ten distinct HEX choices, including an achromatic
-neutral choice. A stored custom HEX color remains valid even when it is not one
-of those choices; the picker simply leaves every curated swatch unselected.
-Child categories do not choose a separate color in the frontend and display
-their root category's effective color.
+The category form offers eight chromatic HEX choices spaced 45 degrees apart,
+starting with red: `#C32828`, `#C39B28`, `#75C328`, `#28C34E`, `#28C3C3`,
+`#284EC3`, `#7528C3`, and `#C3289B`. An achromatic neutral is the ninth choice.
+A tenth custom color control opens a color picker. After selection, that
+control previews the chosen custom color, remains selected, and can reopen the
+picker. Stored colors outside the curated choices remain unchanged and appear
+as custom; no palette migration recolors existing categories. Child categories
+do not choose a separate color in the frontend and display their root
+category's effective color.

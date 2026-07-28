@@ -40,11 +40,11 @@ describe("CategoryFormDrawer", () => {
     );
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Food" } });
-    fireEvent.click(screen.getByRole("button", { name: "Select Orange" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select Red" }));
     fireEvent.click(screen.getByRole("button", { name: "Save category" }));
 
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ color: "#C55B26" })),
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ color: "#C32828" })),
     );
   });
 });
