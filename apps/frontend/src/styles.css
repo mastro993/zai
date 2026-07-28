@@ -92,7 +92,7 @@
   --font-sans: "Geist", sans-serif;
   --font-heading: "Mona Sans", sans-serif;
   --radius: 0.5rem;
-  --category-badge-foreground-lightness: 0.4;
+  --category-badge-foreground-lightness: 0.48;
   --category-badge-foreground-chroma: 0.075;
   --shadow-2xs: 0 1px 0 0 oklch(0.55 0.012 162.2 / 0.05);
   --shadow-xs: 0 1px 2px 0 oklch(0.55 0.012 162.2 / 0.05);
@@ -139,7 +139,7 @@
   --sidebar-accent-foreground: oklch(0.98 0 0);
   --sidebar-border: oklch(0.28 0.005 162.2);
   --sidebar-ring: oklch(0.556 0.078 162.2);
-  --category-badge-foreground-lightness: 0.9;
+  --category-badge-foreground-lightness: 0.95;
   --category-badge-foreground-chroma: 0.095;
   --shadow-2xs: 0 1px 3px 0 hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.05);
