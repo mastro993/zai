@@ -57,6 +57,32 @@ describe("CategoryColorPicker", () => {
     expect(customChoice.style.color).toBe(referenceBadge?.style.color);
   });
 
+  it("renders the custom color choice as a borderless opaque surface", () => {
+    render(<CategoryColorPicker value="#C32828" onChange={vi.fn()} />);
+
+    const customChoice = screen.getByRole("button", {
+      name: "Choose custom color",
+    });
+
+    expect(customChoice.classList.contains("border-0")).toBe(true);
+    expect(customChoice.style.backgroundColor).toBe("var(--background)");
+  });
+
+  it("softens the custom color gradient without fading the tile", () => {
+    render(<CategoryColorPicker value="#C32828" onChange={vi.fn()} />);
+
+    const customChoice = screen.getByRole("button", {
+      name: "Choose custom color",
+    });
+    const gradientLayer = customChoice.querySelector<HTMLElement>("[aria-hidden='true']");
+    const icon = customChoice.querySelector("svg");
+
+    expect(gradientLayer).not.toBeNull();
+    expect(gradientLayer?.classList.contains("opacity-60")).toBe(true);
+    expect(gradientLayer?.style.backgroundImage).toContain("conic-gradient");
+    expect(icon?.classList.contains("text-white/80")).toBe(true);
+  });
+
   it("opens the custom picker at the current selected color", async () => {
     render(<CategoryColorPicker value="#C32828" onChange={vi.fn()} />);
 

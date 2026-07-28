@@ -87,7 +87,7 @@ function CategoryColorPicker({
               type="button"
               aria-label={isCustom ? "Edit custom color" : "Choose custom color"}
               aria-pressed={isCustom}
-              className={cn(swatchClassName, isCustom ? "border-foreground" : null)}
+              className={cn(swatchClassName, isCustom ? "border-foreground" : "border-0")}
               style={
                 customColors
                   ? {
@@ -95,15 +95,32 @@ function CategoryColorPicker({
                       color: customColors.foreground,
                     }
                   : {
-                      background:
-                        "conic-gradient(from 45deg, #C32828, #C39B28, #75C328, #28C34E, #28C3C3, #284EC3, #7528C3, #C3289B, #C32828)",
-                      color: "white",
+                      backgroundColor: "var(--background)",
+                      color: "var(--foreground)",
                     }
               }
             />
           }
         >
-          {isCustom ? "Aa" : <HugeiconsIcon icon={ColorsIcon} className="size-4" strokeWidth={2} />}
+          {isCustom ? (
+            "Aa"
+          ) : (
+            <>
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 rounded-[inherit] opacity-60"
+                style={{
+                  backgroundImage:
+                    "conic-gradient(from 45deg, #C32828, #C39B28, #75C328, #28C34E, #28C3C3, #284EC3, #7528C3, #C3289B, #C32828)",
+                }}
+              />
+              <HugeiconsIcon
+                icon={ColorsIcon}
+                className="relative z-10 size-4 text-white/80"
+                strokeWidth={2}
+              />
+            </>
+          )}
         </PopoverTrigger>
         <PopoverContent className="w-auto" align="end" side="left" sideOffset={8}>
           <PopoverHeader>
