@@ -11,7 +11,7 @@ describe("category badge colors", () => {
 
   it("uses a 30% OKLCH background and theme-aware readable foreground", () => {
     expect(getCategoryBadgeColors(20)).toEqual({
-      background: "oklch(0.68 0.11 20 / 30%)",
+      background: "oklch(0.74 0.11 20 / 30%)",
       foreground:
         "oklch(var(--category-badge-foreground-lightness) var(--category-badge-foreground-chroma) 20)",
     });
@@ -19,7 +19,7 @@ describe("category badge colors", () => {
 
   it("uses neutral tokens without a chromatic hue", () => {
     expect(getCategoryBadgeColors(null)).toEqual({
-      background: "oklch(0.68 0 0 / 30%)",
+      background: "oklch(0.74 0 0 / 30%)",
       foreground: "var(--foreground)",
     });
   });
