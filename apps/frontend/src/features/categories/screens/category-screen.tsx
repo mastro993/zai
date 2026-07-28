@@ -1,3 +1,5 @@
+import { DownloadIcon, UploadIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
 import { useMemo, useState } from "react";
 import { toast } from "@/components/toaster/toast";
@@ -5,7 +7,9 @@ import { toast } from "@/components/toaster/toast";
 import { getAffectedBudgets, type BudgetImpact } from "@/commands/errors";
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Drawer } from "@/components/ui/drawer";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { exportCategories } from "../commands/category-export";
 import {
@@ -198,25 +202,51 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
     }
   };
 
+  const importCategoriesButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon-sm"
+      aria-label="Import categories"
+      disabled={isLoading}
+      onClick={() => setIsImportDialogOpen(true)}
+    >
+      <HugeiconsIcon icon={UploadIcon} strokeWidth={2} />
+    </Button>
+  );
+  const exportCategoriesButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon-sm"
+      aria-label={isExporting ? "Exporting categories" : "Export categories"}
+      aria-busy={isExporting}
+      disabled={isLoading || isExporting || categoriesInScreenOrder.length === 0}
+      onClick={exportCategoryCsv}
+    >
+      <HugeiconsIcon icon={DownloadIcon} strokeWidth={2} />
+    </Button>
+  );
+
   return (
     <ScreenBase
       actions={
         <>
-          <Button
-            variant="outline"
-            disabled={isLoading}
-            onClick={() => setIsImportDialogOpen(true)}
-          >
-            Import categories
+          <TooltipProvider>
+            <ButtonGroup aria-label="Category file actions">
+              <Tooltip>
+                <TooltipTrigger render={importCategoriesButton} />
+                <TooltipContent>Import categories</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger render={exportCategoriesButton} />
+                <TooltipContent>Export categories</TooltipContent>
+              </Tooltip>
+            </ButtonGroup>
+          </TooltipProvider>
+          <Button size="sm" onClick={() => openFormDrawer({ type: "create-root" })}>
+            New category
           </Button>
-          <Button
-            variant="outline"
-            disabled={isLoading || isExporting || categoriesInScreenOrder.length === 0}
-            onClick={exportCategoryCsv}
-          >
-            {isExporting ? "Exporting..." : "Export categories"}
-          </Button>
-          <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
         </>
       }
     >

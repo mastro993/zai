@@ -26,7 +26,7 @@ export function AlertsBell() {
       <Button
         ref={bellRef}
         type="button"
-        variant="ghost"
+        variant="outline"
         size="icon-sm"
         className="relative"
         aria-label={alertsBellLabel(unreadCount)}
