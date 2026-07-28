@@ -16,5 +16,6 @@ migration with no legacy color compatibility path. Hue angles use OKLCH because
 Zai's theme tokens already use that color space and its perceptual axes let
 lightness and chroma change for contrast without changing hue identity. The
 database, backend models, and API rename `color` to `hue` atomically; no legacy
-field alias is retained. Category CSV import and export use `hue` with the same
-numeric/null contract and do not recognize the legacy `color` header.
+field alias is retained. User-facing category forms and CSV import/export
+continue to call the value `color`; the frontend maps that value to the backend
+`hue` field at the transport boundary.

@@ -28,7 +28,8 @@ function CategoryColorSwatch({
   isSelected: boolean;
   onSelect: (hue: CategoryHue) => void;
 }) {
-  const label = hue === null ? "Select neutral" : `Select ${getHueLabel(hue)}, ${hue} degrees`;
+  const label =
+    hue === null ? "Select neutral color" : `Select ${getHueLabel(hue)}, ${hue} degrees`;
 
   return (
     <button
@@ -59,7 +60,7 @@ function CategoryColorPicker({
   const choices: ReadonlyArray<CategoryHue> = [...CATEGORY_HUES, null];
 
   return (
-    <div className="grid grid-cols-5 gap-2" role="group" aria-label="Category hues">
+    <div className="grid grid-cols-5 gap-2" role="group" aria-label="Category colors">
       {choices.map((hue) => (
         <CategoryColorSwatch
           key={hue ?? "neutral"}

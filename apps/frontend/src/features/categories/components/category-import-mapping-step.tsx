@@ -211,10 +211,10 @@ export function CategoryImportMappingStep({
             />
           )}
           <ColumnSelect
-            label="Hue column"
-            value={mapping.hue}
+            label="Color column"
+            value={mapping.color}
             headers={headers}
-            onChange={(value) => onMappingChange("hue", value)}
+            onChange={(value) => onMappingChange("color", value)}
           />
           <ColumnSelect
             label="Description column"

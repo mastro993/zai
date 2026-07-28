@@ -1,7 +1,10 @@
 import { invokeDecodedCommand } from "@/commands/shared";
 import type { CommandResult } from "@/commands/shared";
 
-import type { CategoryImportPayload } from "@/features/categories/lib/category-import";
+import {
+  toCategoryBackendImportPayload,
+  type CategoryImportPayload,
+} from "@/features/categories/lib/category-import";
 import { toBackendDateTime } from "../lib/transaction";
 import type { PaginatedTransactions, Transaction, TransactionFormValues } from "../types/model";
 import { TRANSACTION_COMMANDS } from "./registry";
@@ -142,7 +145,7 @@ export const importTransactionBatch = (
   transactions: Array<TransactionPayload & { id?: string }>,
 ): CommandResult<Array<Transaction>> => {
   return invokeDecodedCommand(TRANSACTION_COMMANDS.import_transaction_batch, {
-    categories,
+    categories: categories.map(toCategoryBackendImportPayload),
     transactions,
   });
 };

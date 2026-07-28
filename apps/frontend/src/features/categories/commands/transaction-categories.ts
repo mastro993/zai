@@ -1,7 +1,7 @@
 import { invokeDecodedCommand } from "@/commands/shared";
 import type { CommandResult } from "@/commands/shared";
 
-import type { CategoryImportPayload } from "../lib/category-import";
+import { toCategoryBackendImportPayload, type CategoryImportPayload } from "../lib/category-import";
 import type {
   CategoryChildrenDeleteStrategy,
   CategoryDeletionPreview,
@@ -24,7 +24,7 @@ const toCategoryPayload = (values: CategoryFormValues): CategoryPayload => ({
   name: values.name,
   parentId: values.parentId || null,
   description: values.description || null,
-  hue: values.hue ?? null,
+  hue: values.color ?? null,
   role: values.parentId ? null : (values.role ?? null),
 });
 
@@ -84,6 +84,6 @@ export const importTransactionCategories = (
   categories: Array<CategoryImportPayload>,
 ): CommandResult<Array<TransactionCategory>> => {
   return invokeDecodedCommand(CATEGORY_COMMANDS.import_transaction_categories, {
-    categories,
+    categories: categories.map(toCategoryBackendImportPayload),
   });
 };

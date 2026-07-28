@@ -7,7 +7,7 @@ export type CategoryImportPreviewStatus = "import" | "duplicate" | "invalid" | "
 export type CategoryImportColumnMapping = {
   name: number | null;
   parentName: number | null;
-  hue: number | null;
+  color: number | null;
   description: number | null;
 };
 
@@ -16,14 +16,26 @@ export type CategoryImportPayload = {
   parentId?: string | null;
   name: string;
   description?: string | null;
+  color?: number | null;
+};
+
+export type CategoryBackendImportPayload = Omit<CategoryImportPayload, "color"> & {
   hue?: number | null;
 };
+
+export const toCategoryBackendImportPayload = ({
+  color,
+  ...category
+}: CategoryImportPayload): CategoryBackendImportPayload => ({
+  ...category,
+  hue: color ?? null,
+});
 
 export type CategoryImportPreviewRow = {
   rowNumber: number;
   parentName: string;
   name: string;
-  hue: string;
+  color: string;
   description: string;
   status: CategoryImportPreviewStatus;
   message: string;
@@ -67,7 +79,7 @@ const HUE_REGEX = /^\d{1,3}$/;
 const emptyMapping: CategoryImportColumnMapping = {
   name: null,
   parentName: null,
-  hue: null,
+  color: null,
   description: null,
 };
 
@@ -104,7 +116,7 @@ export const inferCategoryImportMapping = (
 ): CategoryImportColumnMapping => ({
   name: findHeaderIndex(headers, ["name", "category", "category_name"]),
   parentName: findHeaderIndex(headers, ["parent_name", "parent", "root", "root_category"]),
-  hue: findHeaderIndex(headers, ["hue"]),
+  color: findHeaderIndex(headers, ["color"]),
   description: findHeaderIndex(headers, ["description", "notes"]),
 });
 
@@ -170,7 +182,7 @@ const buildInvalidPreviewRow = (
   rowNumber,
   parentName: normalizeName(getCell(row, mapping.parentName)),
   name: normalizeName(getCell(row, mapping.name)),
-  hue: normalizeName(getCell(row, mapping.hue)),
+  color: normalizeName(getCell(row, mapping.color)),
   description: normalizeName(getCell(row, mapping.description)),
   status: "invalid",
   message,
@@ -208,7 +220,7 @@ export const buildCategoryImportPreview = (
         rowNumber,
         parentName: "",
         name: "",
-        hue: "",
+        color: "",
         description: "",
         status: "empty",
         message: "Empty row skipped",
@@ -227,7 +239,7 @@ export const buildCategoryImportPreview = (
       options.linkMode === "single-column"
         ? parseSingleColumnCategory(row, mapping, options.separator)
         : parseColumnCategory(row, mapping);
-    const hueText = normalizeName(getCell(row, mapping.hue));
+    const hueText = normalizeName(getCell(row, mapping.color));
     const hueValue = hueText === "" ? null : Number(hueText);
     const isValidHue =
       hueText === "" || (HUE_REGEX.test(hueText) && hueValue !== null && hueValue <= 360);
@@ -248,7 +260,7 @@ export const buildCategoryImportPreview = (
 
     if (!parsed.isChild && !isValidHue) {
       previewRows.push(
-        buildInvalidPreviewRow(rowNumber, row, mapping, "Hue must be an integer from 0 to 360"),
+        buildInvalidPreviewRow(rowNumber, row, mapping, "Color must be an integer from 0 to 360"),
       );
       continue;
     }
@@ -257,7 +269,7 @@ export const buildCategoryImportPreview = (
       rowNumber,
       parentName: parsed.parentName,
       name: parsed.name,
-      hue: parsed.isChild ? "" : hue === null ? "" : String(hue),
+      color: parsed.isChild ? "" : hue === null ? "" : String(hue),
       description,
       status: "import",
       message: "Ready to import",
@@ -299,7 +311,7 @@ export const buildCategoryImportPreview = (
       parentId: null,
       name,
       description: null,
-      hue: null,
+      color: null,
     });
     autoCreatedParents += 1;
 
@@ -325,7 +337,7 @@ export const buildCategoryImportPreview = (
         parentId: null,
         name: candidate.name,
         description: candidate.description || null,
-        hue: candidate.hue,
+        color: candidate.hue,
       });
       continue;
     }
@@ -353,7 +365,7 @@ export const buildCategoryImportPreview = (
       parentId,
       name: candidate.name,
       description: candidate.description || null,
-      hue: null,
+      color: null,
     });
   }
 

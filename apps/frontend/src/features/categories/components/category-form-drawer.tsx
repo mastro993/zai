@@ -35,7 +35,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       name: "",
       parentId: "",
       description: "",
-      hue: DEFAULT_CATEGORY_HUE,
+      color: DEFAULT_CATEGORY_HUE,
       role: "spending",
     };
   }
@@ -45,7 +45,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       name: "",
       parentId: mode.parentId,
       description: "",
-      hue: undefined,
+      color: undefined,
       role: undefined,
     };
   }
@@ -54,7 +54,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
     name: mode.category.name,
     parentId: mode.category.parentId ?? "",
     description: mode.category.description ?? "",
-    hue: isCategoryHue(mode.category.hue) ? mode.category.hue : DEFAULT_CATEGORY_HUE,
+    color: isCategoryHue(mode.category.hue) ? mode.category.hue : DEFAULT_CATEGORY_HUE,
     role: mode.category.parentId ? undefined : mode.category.role,
   };
 };
@@ -64,7 +64,7 @@ const getFormCopy = (mode: CategoryFormMode) => {
     return {
       title: "Edit category",
       description:
-        "Update the name, role, parent, or hue. Names must stay unique at the same level.",
+        "Update the name, role, parent, or color. Names must stay unique at the same level.",
     };
   }
 
@@ -72,7 +72,7 @@ const getFormCopy = (mode: CategoryFormMode) => {
     return {
       title: "New subcategory",
       description:
-        "Subcategories inherit their parent hue in lists and reports. Pick a clear, specific name.",
+        "Subcategories inherit their parent color in lists and reports. Pick a clear, specific name.",
     };
   }
 
@@ -146,7 +146,7 @@ function CategoryFormDrawer({
   const selectedHue =
     useWatch({
       control: form.control,
-      name: "hue",
+      name: "color",
     }) ?? DEFAULT_CATEGORY_HUE;
   const isChildCategory = Boolean(parentId);
   const parentCategory = parentId ? categoryById.get(parentId) : undefined;
@@ -163,7 +163,7 @@ function CategoryFormDrawer({
   const { title, description } = getFormCopy(mode);
   const { errors, isSubmitting } = form.formState;
   const nameErrorId = "category-name-error";
-  const hueErrorId = "category-hue-error";
+  const colorErrorId = "category-color-error";
 
   return (
     <DrawerContent className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem]">
@@ -232,14 +232,14 @@ function CategoryFormDrawer({
                           shouldDirty: true,
                           shouldValidate: true,
                         });
-                        form.setValue("hue", undefined, {
+                        form.setValue("color", undefined, {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
                         return;
                       }
 
-                      const currentHue = form.getValues("hue");
+                      const currentHue = form.getValues("color");
                       if (!form.getValues("role")) {
                         form.setValue("role", "spending", {
                           shouldDirty: true,
@@ -247,7 +247,7 @@ function CategoryFormDrawer({
                         });
                       }
                       if (currentHue === undefined) {
-                        form.setValue("hue", DEFAULT_CATEGORY_HUE, {
+                        form.setValue("color", DEFAULT_CATEGORY_HUE, {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
@@ -314,11 +314,11 @@ function CategoryFormDrawer({
           </Field>
 
           {!isChildCategory ? (
-            <Field data-invalid={Boolean(errors.hue)}>
-              <FieldLabel>Hue</FieldLabel>
+            <Field data-invalid={Boolean(errors.color)}>
+              <FieldLabel>Color</FieldLabel>
               <Controller
                 control={form.control}
-                name="hue"
+                name="color"
                 render={({ field }) => (
                   <CategoryColorPicker
                     value={(field.value as number | null | undefined) ?? DEFAULT_CATEGORY_HUE}
@@ -331,7 +331,7 @@ function CategoryFormDrawer({
                   />
                 )}
               />
-              <FieldError id={hueErrorId}>{errors.hue?.message}</FieldError>
+              <FieldError id={colorErrorId}>{errors.color?.message}</FieldError>
             </Field>
           ) : null}
 

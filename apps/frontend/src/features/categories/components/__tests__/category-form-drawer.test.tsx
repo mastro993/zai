@@ -10,7 +10,7 @@ import { CategoryFormDrawer } from "../category-form-drawer";
 describe("CategoryFormDrawer", () => {
   afterEach(() => cleanup());
 
-  it("submits the selected root hue", async () => {
+  it("submits the selected root color", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
     render(
@@ -29,7 +29,7 @@ describe("CategoryFormDrawer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save category" }));
 
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ hue: 20 })),
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ color: 20 })),
     );
   });
 });

@@ -26,7 +26,7 @@ export const categoryFormSchema = z
     name: z.string().trim().min(1, "Name is required"),
     parentId: z.string().optional(),
     description: z.string().trim().optional(),
-    hue: z.number().int().min(0).max(360).nullable().optional(),
+    color: z.number().int().min(0).max(360).nullable().optional(),
     role: categoryRoleSchema.optional(),
   })
   .superRefine((values, context) => {

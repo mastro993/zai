@@ -59,14 +59,14 @@ describe("category import", () => {
         parentId: null,
         name: 'Food, "Home"',
         description: "Monthly\nneeds",
-        hue: 20,
+        color: 20,
       },
       {
         id: "id-2",
         parentId: "id-1",
         name: "Groceries",
         description: null,
-        hue: null,
+        color: null,
       },
     ]);
   });
@@ -104,7 +104,7 @@ describe("category import", () => {
 
   it("splits single-column paths on the first separator", () => {
     const preview = buildPreview("path\nFood - Restaurants - Pizza", {
-      mapping: { name: 0, parentName: null, hue: null, description: null },
+      mapping: { name: 0, parentName: null, color: null, description: null },
       linkMode: "single-column",
       separator: " - ",
     });
@@ -127,7 +127,7 @@ describe("category import", () => {
       parent: null,
     };
     const content = [
-      "name,parent_name,hue",
+      "name,parent_name,color",
       "Food,,100",
       "Broken,,361",
       "Groceries,Food,220",
@@ -149,21 +149,21 @@ describe("category import", () => {
         parentId: "existing-food",
         name: "Groceries",
         description: null,
-        hue: null,
+        color: null,
       },
       {
         id: "id-2",
         parentId: "existing-food",
         name: "Restaurants",
         description: null,
-        hue: null,
+        color: null,
       },
     ]);
   });
 
-  it("accepts integer hues through 360 and stores 360 as zero", () => {
-    const preview = buildPreview("name,hue\nLeading zero,020\nFull turn,360");
+  it("accepts integer colors through 360 and stores 360 as zero", () => {
+    const preview = buildPreview("name,color\nLeading zero,020\nFull turn,360");
 
-    expect(preview.categories.map((category) => category.hue)).toEqual([20, 0]);
+    expect(preview.categories.map((category) => category.color)).toEqual([20, 0]);
   });
 });

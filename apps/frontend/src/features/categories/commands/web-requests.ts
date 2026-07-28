@@ -3,7 +3,7 @@ import { Result } from "@praha/byethrow";
 import { CommandError } from "@/commands/errors";
 import type { WebRequestSpec } from "@/commands/web-request-spec";
 
-import type { CategoryImportPayload } from "../lib/category-import";
+import type { CategoryBackendImportPayload } from "../lib/category-import";
 import type { CategoryChildrenDeleteStrategy, CategoryRole } from "../types/model";
 
 export interface GetCategoriesArgs {
@@ -44,7 +44,7 @@ export interface PreviewDeleteCategoriesArgs {
 }
 
 export interface ImportCategoriesArgs {
-  categories: Array<CategoryImportPayload>;
+  categories: Array<CategoryBackendImportPayload>;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

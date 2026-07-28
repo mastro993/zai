@@ -10,7 +10,7 @@ describe("category export", () => {
     expect(filename).toBe("zai_transaction_categories_20260706_162830.csv");
   });
 
-  it("exports categories in input order with parent names and blank child hues", () => {
+  it("exports categories in input order with parent names and blank child colors", () => {
     const root: TransactionCategory = {
       id: "root",
       parentId: null,
@@ -34,7 +34,7 @@ describe("category export", () => {
 
     expect(csv).toBe(
       [
-        "name,parent_name,hue,description",
+        "name,parent_name,color,description",
         '"Food, ""Home""",,20,"Monthly\nneeds"',
         'Groceries,"Food, ""Home""",,',
       ].join("\n"),
@@ -53,7 +53,7 @@ describe("category export", () => {
     };
 
     expect(toCategoryExportCsv([root])).toBe(
-      ["name,parent_name,hue,description", '"\t=1+1",,20,"\t@SUM(A1)"'].join("\n"),
+      ["name,parent_name,color,description", '"\t=1+1",,20,"\t@SUM(A1)"'].join("\n"),
     );
   });
 });

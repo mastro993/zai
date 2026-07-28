@@ -110,7 +110,7 @@ export function CategoryImportReviewStep({
                 <TableHead className="w-12 text-muted-foreground">#</TableHead>
                 <TableHead>Parent</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Hue</TableHead>
+                <TableHead>Color</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
@@ -133,7 +133,7 @@ export function CategoryImportReviewStep({
                     <TableCell className="max-w-[12rem] truncate" title={row.name}>
                       {row.name || "—"}
                     </TableCell>
-                    <TableCell className="tabular-nums">{row.hue || "—"}</TableCell>
+                    <TableCell className="tabular-nums">{row.color || "—"}</TableCell>
                     <TableCell className="max-w-[14rem] truncate" title={row.description}>
                       {row.description || "—"}
                     </TableCell>

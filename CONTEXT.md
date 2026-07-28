@@ -22,17 +22,18 @@ root categories.
 A category nested under a root category. Child category names are unique among
 children of the same root category.
 
-**Category hue**:
-A user-selected presentation value assigned to a root category, independent of
-the concrete colors used to render it. Chromatic hues are numeric angles from
-zero inclusive to 360 exclusive in the OKLCH color space; no angle represents
+**Category color**:
+A user-selected presentation value assigned to a root category. The interface
+and user-authored imports call this value a color; it is stored and transported
+internally as a numeric hue angle. Chromatic hues are numeric angles from zero
+inclusive to 360 exclusive in the OKLCH color space; no angle represents
 neutral. A child category inherits its root category's hue.
-_Avoid_: Category color, hex color, named color
+_Avoid_: Category hue in user-facing copy, hex color, named color
 
-**Effective category hue**:
-The hue used to present a category, including neutral. A root category uses its
-own hue; a child category uses its root category's hue.
-_Avoid_: Effective category color
+**Effective category color**:
+The color used to present a category, including neutral. A root category uses
+its own stored hue; a child category uses its root category's hue.
+_Avoid_: Effective category hue in user-facing copy
 
 **Category path**:
 The category's identity in the category hierarchy. A root category's path is its
@@ -53,7 +54,7 @@ changes may rewrite closed results.
 
 **Budget-impacting category change**:
 A category reparent, deletion, or future merge that can change budget matching
-or history and therefore requires user warning. Renaming and hue changes do not;
+or history and therefore requires user warning. Renaming and color changes do not;
 deletion is blocked while the category is directly selected by a current budget
 configuration, but indirect and historical coverage does not block it.
 

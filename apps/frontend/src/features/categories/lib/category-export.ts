@@ -1,7 +1,7 @@
 import type { TransactionCategory } from "../types/model";
 import { escapeCsvValue } from "@/lib/csv";
 
-const CATEGORY_EXPORT_HEADERS = ["name", "parent_name", "hue", "description"] as const;
+const CATEGORY_EXPORT_HEADERS = ["name", "parent_name", "color", "description"] as const;
 
 type CategoryExportHeader = (typeof CATEGORY_EXPORT_HEADERS)[number];
 type CategoryExportRow = Record<CategoryExportHeader, string>;
@@ -28,7 +28,7 @@ const toCategoryExportRow = (
     category.parent?.name ??
     (category.parentId ? categoryById.get(category.parentId)?.name : undefined) ??
     "",
-  hue: category.parentId ? "" : category.hue == null ? "" : String(category.hue),
+  color: category.parentId ? "" : category.hue == null ? "" : String(category.hue),
   description: category.description ?? "",
 });
 

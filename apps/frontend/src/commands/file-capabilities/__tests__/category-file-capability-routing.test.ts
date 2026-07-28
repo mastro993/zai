@@ -73,7 +73,7 @@ describe("category file capability routing", () => {
     const result = await downloadTextFile({
       title: "Export categories",
       filename: "zai_transaction_categories_20260706_162830.csv",
-      content: "name,parent_name,hue,description",
+      content: "name,parent_name,color,description",
     });
 
     expect(webDownloadMock).toHaveBeenCalled();
@@ -88,7 +88,7 @@ describe("category file capability routing", () => {
     const result = await downloadTextFile({
       title: "Export categories",
       filename: "zai_transaction_categories_20260706_162830.csv",
-      content: "name,parent_name,hue,description",
+      content: "name,parent_name,color,description",
     });
 
     expect(tauriDownloadMock).toHaveBeenCalled();

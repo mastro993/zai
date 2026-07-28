@@ -31,7 +31,7 @@ interface CategoryImportDialogProps {
 const EMPTY_MAPPING: CategoryImportColumnMapping = {
   name: null,
   parentName: null,
-  hue: null,
+  color: null,
   description: null,
 };
 
