@@ -7,7 +7,7 @@ export type CategoryImportPreviewStatus = "import" | "duplicate" | "invalid" | "
 export type CategoryImportColumnMapping = {
   name: number | null;
   parentName: number | null;
-  color: number | null;
+  hue: number | null;
   description: number | null;
 };
 
@@ -16,14 +16,14 @@ export type CategoryImportPayload = {
   parentId?: string | null;
   name: string;
   description?: string | null;
-  color?: string | null;
+  hue?: number | null;
 };
 
 export type CategoryImportPreviewRow = {
   rowNumber: number;
   parentName: string;
   name: string;
-  color: string;
+  hue: string;
   description: string;
   status: CategoryImportPreviewStatus;
   message: string;
@@ -57,17 +57,17 @@ type ParsedCandidate = {
   previewIndex: number;
   parentName: string;
   name: string;
-  color: string;
+  hue: number | null;
   description: string;
   isChild: boolean;
 };
 
-const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
+const HUE_REGEX = /^\d{1,3}$/;
 
 const emptyMapping: CategoryImportColumnMapping = {
   name: null,
   parentName: null,
-  color: null,
+  hue: null,
   description: null,
 };
 
@@ -104,7 +104,7 @@ export const inferCategoryImportMapping = (
 ): CategoryImportColumnMapping => ({
   name: findHeaderIndex(headers, ["name", "category", "category_name"]),
   parentName: findHeaderIndex(headers, ["parent_name", "parent", "root", "root_category"]),
-  color: findHeaderIndex(headers, ["color", "colour"]),
+  hue: findHeaderIndex(headers, ["hue"]),
   description: findHeaderIndex(headers, ["description", "notes"]),
 });
 
@@ -170,7 +170,7 @@ const buildInvalidPreviewRow = (
   rowNumber,
   parentName: normalizeName(getCell(row, mapping.parentName)),
   name: normalizeName(getCell(row, mapping.name)),
-  color: normalizeName(getCell(row, mapping.color)),
+  hue: normalizeName(getCell(row, mapping.hue)),
   description: normalizeName(getCell(row, mapping.description)),
   status: "invalid",
   message,
@@ -208,7 +208,7 @@ export const buildCategoryImportPreview = (
         rowNumber,
         parentName: "",
         name: "",
-        color: "",
+        hue: "",
         description: "",
         status: "empty",
         message: "Empty row skipped",
@@ -227,7 +227,11 @@ export const buildCategoryImportPreview = (
       options.linkMode === "single-column"
         ? parseSingleColumnCategory(row, mapping, options.separator)
         : parseColumnCategory(row, mapping);
-    const color = normalizeName(getCell(row, mapping.color));
+    const hueText = normalizeName(getCell(row, mapping.hue));
+    const hueValue = hueText === "" ? null : Number(hueText);
+    const isValidHue =
+      hueText === "" || (HUE_REGEX.test(hueText) && hueValue !== null && hueValue <= 360);
+    const hue = hueValue === null ? null : isValidHue ? hueValue % 360 : null;
     const description = normalizeName(getCell(row, mapping.description));
 
     if (!parsed.name) {
@@ -242,8 +246,10 @@ export const buildCategoryImportPreview = (
       continue;
     }
 
-    if (!parsed.isChild && color && !HEX_COLOR_REGEX.test(color)) {
-      previewRows.push(buildInvalidPreviewRow(rowNumber, row, mapping, "Color must be #RRGGBB"));
+    if (!parsed.isChild && !isValidHue) {
+      previewRows.push(
+        buildInvalidPreviewRow(rowNumber, row, mapping, "Hue must be an integer from 0 to 360"),
+      );
       continue;
     }
 
@@ -251,7 +257,7 @@ export const buildCategoryImportPreview = (
       rowNumber,
       parentName: parsed.parentName,
       name: parsed.name,
-      color: parsed.isChild ? "" : color.toUpperCase(),
+      hue: parsed.isChild ? "" : hue === null ? "" : String(hue),
       description,
       status: "import",
       message: "Ready to import",
@@ -261,7 +267,7 @@ export const buildCategoryImportPreview = (
       previewIndex: previewRows.length,
       parentName: parsed.parentName,
       name: parsed.name,
-      color: previewRow.color,
+      hue: parsed.isChild ? null : hue,
       description,
       isChild: parsed.isChild,
     });
@@ -293,7 +299,7 @@ export const buildCategoryImportPreview = (
       parentId: null,
       name,
       description: null,
-      color: null,
+      hue: null,
     });
     autoCreatedParents += 1;
 
@@ -319,7 +325,7 @@ export const buildCategoryImportPreview = (
         parentId: null,
         name: candidate.name,
         description: candidate.description || null,
-        color: candidate.color || null,
+        hue: candidate.hue,
       });
       continue;
     }
@@ -347,7 +353,7 @@ export const buildCategoryImportPreview = (
       parentId,
       name: candidate.name,
       description: candidate.description || null,
-      color: null,
+      hue: null,
     });
   }
 

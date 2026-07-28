@@ -11,7 +11,7 @@ const category: TransactionCategory = {
   parentId: null,
   name: "Housing",
   description: null,
-  color: null,
+  hue: null,
   role: "spending",
   parent: null,
 };

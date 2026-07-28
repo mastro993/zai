@@ -1,7 +1,6 @@
 use super::models::{
     CategoryChildrenDeleteStrategy, CategoryDeletionPreview, CategoryRole, NewTransactionCategory,
-    TransactionCategory, TransactionCategoryUpdate, normalize_category_name,
-    normalize_optional_color,
+    TransactionCategory, TransactionCategoryUpdate, normalize_category_name, normalize_hue,
 };
 use super::traits::{TransactionCategoriesRepositoryTrait, TransactionCategoriesServiceTrait};
 use crate::errors::{Error, Result};
@@ -29,7 +28,7 @@ impl TransactionCategoriesService {
         self.apply_parent_rules(
             None,
             &mut category.parent_id,
-            &mut category.color,
+            &mut category.hue,
             &mut category.role,
         )
         .await?;
@@ -46,7 +45,7 @@ impl TransactionCategoriesService {
         self.apply_parent_rules(
             Some(category.id.as_str()),
             &mut category.parent_id,
-            &mut category.color,
+            &mut category.hue,
             &mut category.role,
         )
         .await?;
@@ -62,12 +61,12 @@ impl TransactionCategoriesService {
         &self,
         category_id: Option<&str>,
         parent_id: &mut Option<String>,
-        color: &mut Option<String>,
+        hue: &mut Option<i32>,
         role: &mut Option<CategoryRole>,
     ) -> Result<()> {
         let Some(pid) = parent_id.as_deref().filter(|id| !id.trim().is_empty()) else {
             *parent_id = None;
-            *color = normalize_optional_color(color.as_deref())?;
+            *hue = normalize_hue(*hue)?;
             return Ok(());
         };
 
@@ -89,7 +88,7 @@ impl TransactionCategoriesService {
 
         *parent_id = Some(parent.id);
         *role = Some(parent.role);
-        *color = normalize_optional_color(color.as_deref())?;
+        *hue = None;
         Ok(())
     }
 
@@ -124,7 +123,7 @@ pub(crate) fn normalize_import_categories(
                 category.role.get_or_insert_default();
             }
             category.validate()?;
-            category.color = normalize_optional_color(category.color.as_deref())?;
+            category.hue = normalize_hue(category.hue)?;
             Ok(category)
         })
         .collect()
@@ -320,7 +319,7 @@ impl TransactionCategoriesServiceTrait for TransactionCategoriesService {
                     .unwrap_or_else(|| Uuid::new_v4().to_string()),
             );
             owned_child.parent_id = Some(resolved_parent_id);
-            owned_child.color = None;
+            owned_child.hue = None;
             owned_child.role = Some(resolved_parent_role);
             categories_to_import.push(owned_child);
         }
@@ -423,7 +422,7 @@ mod tests {
                 parent_id: new_category.parent_id,
                 name: new_category.name,
                 description: new_category.description,
-                color: new_category.color,
+                hue: new_category.hue,
                 role: new_category.role.unwrap_or_default(),
                 parent: None,
             };
@@ -440,7 +439,7 @@ mod tests {
                 parent_id: updated_category.parent_id,
                 name: updated_category.name,
                 description: updated_category.description,
-                color: updated_category.color,
+                hue: updated_category.hue,
                 role: updated_category.role.unwrap_or_default(),
                 parent: None,
             };
@@ -486,7 +485,7 @@ mod tests {
                     parent_id: category.parent_id,
                     name: category.name,
                     description: category.description,
-                    color: category.color,
+                    hue: category.hue,
                     role: category.role.unwrap_or_default(),
                     parent: None,
                 })
@@ -495,13 +494,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_category_preserves_child_color() {
+    async fn create_category_clears_child_hue() {
         let repository = Arc::new(FakeRepository::with_categories(vec![TransactionCategory {
             id: "parent".to_string(),
             parent_id: None,
             name: "Parent".to_string(),
             description: None,
-            color: Some("#FFFFFF".to_string()),
+            hue: Some(340),
             role: CategoryRole::Spending,
             parent: None,
         }]));
@@ -513,13 +512,13 @@ mod tests {
                 name: "Child".to_string(),
                 parent_id: Some("parent".to_string()),
                 description: None,
-                color: Some("#000000".to_string()),
+                hue: Some(260),
                 role: None,
             })
             .await
             .unwrap();
 
-        assert_eq!(category.color.as_deref(), Some("#000000"));
+        assert_eq!(category.hue, None);
     }
 
     #[tokio::test]
@@ -529,7 +528,7 @@ mod tests {
             parent_id: None,
             name: "Salary".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: CategoryRole::Income,
             parent: None,
         }]));
@@ -541,7 +540,7 @@ mod tests {
                 name: "Bonus".to_string(),
                 parent_id: Some("parent".to_string()),
                 description: None,
-                color: None,
+                hue: None,
                 role: None,
             })
             .await
@@ -551,14 +550,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn import_categories_ignores_child_color() {
+    async fn import_categories_ignores_child_hue() {
         let service = TransactionCategoriesService::new(Arc::new(FakeRepository::default()));
         let parent = NewTransactionCategory {
             id: Some("parent1".to_string()),
             name: "Parent Category".to_string(),
             parent_id: None,
             description: Some("Parent description".to_string()),
-            color: Some("#D31212".to_string()),
+            hue: Some(20),
             role: Some(CategoryRole::Spending),
         };
         let child = NewTransactionCategory {
@@ -566,7 +565,7 @@ mod tests {
             name: "Child Category".to_string(),
             parent_id: Some("parent1".to_string()),
             description: Some("Child description".to_string()),
-            color: None,
+            hue: None,
             role: None,
         };
 
@@ -583,7 +582,7 @@ mod tests {
             .find(|category| category.parent_id.as_deref() == Some(imported_parent.id.as_str()))
             .unwrap();
 
-        assert_eq!(imported_child.color, None);
+        assert_eq!(imported_child.hue, None);
     }
 
     #[tokio::test]
@@ -593,7 +592,7 @@ mod tests {
             parent_id: None,
             name: "Food".to_string(),
             description: Some("Existing wins".to_string()),
-            color: Some("#C92A2A".to_string()),
+            hue: Some(20),
             role: CategoryRole::Spending,
             parent: None,
         };
@@ -602,7 +601,7 @@ mod tests {
             parent_id: Some("existing-root".to_string()),
             name: "Groceries".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: CategoryRole::Spending,
             parent: None,
         };
@@ -619,7 +618,7 @@ mod tests {
                     name: " food ".to_string(),
                     parent_id: None,
                     description: Some("Imported ignored".to_string()),
-                    color: Some("#FFFFFF".to_string()),
+                    hue: Some(340),
                     role: Some(CategoryRole::Income),
                 },
                 NewTransactionCategory {
@@ -627,7 +626,7 @@ mod tests {
                     name: " groceries ".to_string(),
                     parent_id: Some("incoming-root".to_string()),
                     description: None,
-                    color: None,
+                    hue: None,
                     role: None,
                 },
                 NewTransactionCategory {
@@ -635,7 +634,7 @@ mod tests {
                     name: "Restaurants".to_string(),
                     parent_id: Some("incoming-root".to_string()),
                     description: None,
-                    color: Some("#000000".to_string()),
+                    hue: Some(260),
                     role: None,
                 },
             ])
@@ -645,7 +644,7 @@ mod tests {
         assert_eq!(imported.len(), 1);
         assert_eq!(imported[0].name, "Restaurants");
         assert_eq!(imported[0].parent_id.as_deref(), Some("existing-root"));
-        assert_eq!(imported[0].color, None);
+        assert_eq!(imported[0].hue, None);
     }
 
     #[tokio::test]
@@ -655,7 +654,7 @@ mod tests {
             parent_id: None,
             name: "Income".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: CategoryRole::Income,
             parent: None,
         }]));
@@ -667,7 +666,7 @@ mod tests {
                 name: "Bonus".to_string(),
                 parent_id: Some("existing-income-root".to_string()),
                 description: None,
-                color: None,
+                hue: None,
                 role: None,
             }])
             .await
@@ -685,7 +684,7 @@ mod tests {
                 parent_id: None,
                 name: "Income".to_string(),
                 description: None,
-                color: None,
+                hue: None,
                 role: CategoryRole::Income,
                 parent: None,
             },
@@ -694,7 +693,7 @@ mod tests {
                 parent_id: None,
                 name: "Spending".to_string(),
                 description: None,
-                color: None,
+                hue: None,
                 role: CategoryRole::Spending,
                 parent: None,
             },
@@ -708,7 +707,7 @@ mod tests {
                     name: "Income".to_string(),
                     parent_id: None,
                     description: None,
-                    color: None,
+                    hue: None,
                     role: Some(CategoryRole::Income),
                 },
                 NewTransactionCategory {
@@ -716,7 +715,7 @@ mod tests {
                     name: "Bonus".to_string(),
                     parent_id: Some("spending-root".to_string()),
                     description: None,
-                    color: None,
+                    hue: None,
                     role: None,
                 },
             ])
@@ -739,7 +738,7 @@ mod tests {
                     name: "Food".to_string(),
                     parent_id: None,
                     description: None,
-                    color: Some("#C92A2A".to_string()),
+                    hue: Some(20),
                     role: Some(CategoryRole::Spending),
                 },
                 NewTransactionCategory {
@@ -747,7 +746,7 @@ mod tests {
                     name: " food ".to_string(),
                     parent_id: None,
                     description: Some("Duplicate ignored".to_string()),
-                    color: Some("#FFFFFF".to_string()),
+                    hue: Some(340),
                     role: Some(CategoryRole::Spending),
                 },
                 NewTransactionCategory {
@@ -755,7 +754,7 @@ mod tests {
                     name: "Groceries".to_string(),
                     parent_id: Some("root-1".to_string()),
                     description: None,
-                    color: None,
+                    hue: None,
                     role: None,
                 },
                 NewTransactionCategory {
@@ -763,7 +762,7 @@ mod tests {
                     name: " groceries ".to_string(),
                     parent_id: Some("root-2".to_string()),
                     description: Some("Duplicate ignored".to_string()),
-                    color: None,
+                    hue: None,
                     role: None,
                 },
             ])
@@ -796,7 +795,7 @@ mod tests {
                     name: "Food".to_string(),
                     parent_id: None,
                     description: None,
-                    color: Some("#C92A2A".to_string()),
+                    hue: Some(20),
                     role: Some(CategoryRole::Spending),
                 },
                 NewTransactionCategory {
@@ -804,7 +803,7 @@ mod tests {
                     name: "Groceries".to_string(),
                     parent_id: Some(client_root_id.to_string()),
                     description: None,
-                    color: None,
+                    hue: None,
                     role: None,
                 },
             ])
@@ -835,7 +834,7 @@ mod tests {
                 name: "".to_string(),
                 parent_id: None,
                 description: None,
-                color: None,
+                hue: None,
                 role: Some(CategoryRole::Spending),
             }])
             .await;
@@ -850,7 +849,7 @@ mod tests {
             parent_id: None,
             name: "Food".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: CategoryRole::Spending,
             parent: None,
         }]));
@@ -862,7 +861,7 @@ mod tests {
                 name: " food ".to_string(),
                 parent_id: None,
                 description: None,
-                color: None,
+                hue: None,
                 role: Some(CategoryRole::Spending),
             })
             .await;
@@ -878,7 +877,7 @@ mod tests {
                 parent_id: None,
                 name: "Parent".to_string(),
                 description: None,
-                color: None,
+                hue: None,
                 role: CategoryRole::Spending,
                 parent: None,
             },
@@ -887,7 +886,7 @@ mod tests {
                 parent_id: None,
                 name: "Target".to_string(),
                 description: None,
-                color: None,
+                hue: None,
                 role: CategoryRole::Spending,
                 parent: None,
             },
@@ -896,7 +895,7 @@ mod tests {
                 parent_id: Some("target".to_string()),
                 name: "Child".to_string(),
                 description: None,
-                color: None,
+                hue: None,
                 role: CategoryRole::Spending,
                 parent: None,
             },
@@ -909,7 +908,7 @@ mod tests {
                 name: "Target".to_string(),
                 parent_id: Some("parent".to_string()),
                 description: None,
-                color: None,
+                hue: None,
                 role: Some(CategoryRole::Spending),
                 confirm_budget_impact: false,
             })
@@ -926,7 +925,7 @@ mod tests {
                 parent_id: None,
                 name: "Parent".to_string(),
                 description: None,
-                color: None,
+                hue: None,
                 role: CategoryRole::Spending,
                 parent: None,
             },
@@ -935,7 +934,7 @@ mod tests {
                 parent_id: Some("parent".to_string()),
                 name: "Child".to_string(),
                 description: None,
-                color: None,
+                hue: None,
                 role: CategoryRole::Spending,
                 parent: None,
             },

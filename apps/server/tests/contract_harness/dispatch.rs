@@ -145,10 +145,10 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                     .get("description")
                     .and_then(Value::as_str)
                     .map(str::to_string),
-                color: body
-                    .get("color")
-                    .and_then(Value::as_str)
-                    .map(str::to_string),
+                hue: body
+                    .get("hue")
+                    .and_then(Value::as_i64)
+                    .map(|value| value as i32),
                 role: body
                     .get("role")
                     .and_then(|value| serde_json::from_value(value.clone()).ok()),

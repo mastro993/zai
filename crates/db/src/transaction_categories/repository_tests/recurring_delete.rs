@@ -87,7 +87,7 @@ async fn preview_delete_reports_visible_recurring_sources_with_unfulfilled_templ
             name: "Rent".to_string(),
             parent_id: None,
             description: None,
-            color: None,
+            hue: None,
             role: None,
             id: Some("rent-category".to_string()),
         })
@@ -123,7 +123,7 @@ async fn delete_preserves_fulfilled_recurring_snapshot_and_splits_future_templat
             name: "Rent".to_string(),
             parent_id: None,
             description: None,
-            color: None,
+            hue: None,
             role: None,
             id: Some("rent-category-history".to_string()),
         })

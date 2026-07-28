@@ -9,7 +9,7 @@ async fn test_create_category() {
         name: "Test Category".to_string(),
         parent_id: None,
         description: Some("Descrizione test".to_string()),
-        color: Some("#FF0000".to_string()),
+        hue: Some(20),
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -19,7 +19,7 @@ async fn test_create_category() {
     assert!(!created.id.is_empty());
     assert_eq!(created.name, "Test Category");
     assert_eq!(created.description.as_deref(), Some("Descrizione test"));
-    assert_eq!(created.color.as_deref(), Some("#FF0000"));
+    assert_eq!(created.hue, Some(20));
 }
 
 #[tokio::test]
@@ -31,7 +31,7 @@ async fn test_update_category() {
         name: "Original".to_string(),
         parent_id: None,
         description: None,
-        color: Some("#D31212".to_string()),
+        hue: Some(20),
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -42,7 +42,7 @@ async fn test_update_category() {
         name: "Updated".to_string(),
         parent_id: None,
         description: Some("Updated description".to_string()),
-        color: Some("#3C99F6".to_string()),
+        hue: Some(220),
         role: None,
         confirm_budget_impact: false,
     };
@@ -54,7 +54,7 @@ async fn test_update_category() {
         updated_category.description.as_deref(),
         Some("Updated description")
     );
-    assert_eq!(updated_category.color.as_deref(), Some("#3C99F6"));
+    assert_eq!(updated_category.hue, Some(220));
 }
 
 #[tokio::test]
@@ -67,7 +67,7 @@ async fn updating_a_root_role_updates_child_effective_roles() {
             name: "Salary".to_string(),
             parent_id: None,
             description: None,
-            color: None,
+            hue: None,
             role: Some(CategoryRole::Income),
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -78,7 +78,7 @@ async fn updating_a_root_role_updates_child_effective_roles() {
             name: "Bonus".to_string(),
             parent_id: Some(parent.id.clone()),
             description: None,
-            color: None,
+            hue: None,
             role: Some(CategoryRole::Income),
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -90,7 +90,7 @@ async fn updating_a_root_role_updates_child_effective_roles() {
         name: "Salary".to_string(),
         parent_id: None,
         description: None,
-        color: None,
+        hue: None,
         role: Some(CategoryRole::Spending),
         confirm_budget_impact: false,
     })
@@ -113,7 +113,7 @@ async fn update_category_promotes_child_to_root_in_database() {
             name: "Parent".to_string(),
             parent_id: None,
             description: None,
-            color: Some("#D31212".to_string()),
+            hue: Some(20),
             role: Some(CategoryRole::Spending),
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -124,7 +124,7 @@ async fn update_category_promotes_child_to_root_in_database() {
             name: "Child".to_string(),
             parent_id: Some(parent.id.clone()),
             description: None,
-            color: Some("#DB1313".to_string()),
+            hue: Some(20),
             role: None,
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -137,7 +137,7 @@ async fn update_category_promotes_child_to_root_in_database() {
             name: "Promoted Child".to_string(),
             parent_id: None,
             description: None,
-            color: Some("#AB63F2".to_string()),
+            hue: Some(300),
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         })
@@ -149,7 +149,7 @@ async fn update_category_promotes_child_to_root_in_database() {
 }
 
 #[tokio::test]
-async fn update_category_clears_root_color_in_database() {
+async fn update_category_clears_root_hue_in_database() {
     let temp_db = TempDb::new();
     let repo = setup_test_repo(temp_db.path());
 
@@ -158,7 +158,7 @@ async fn update_category_clears_root_color_in_database() {
             name: "Original".to_string(),
             parent_id: None,
             description: None,
-            color: Some("#D31212".to_string()),
+            hue: Some(20),
             role: Some(CategoryRole::Spending),
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -171,15 +171,15 @@ async fn update_category_clears_root_color_in_database() {
             name: "Original".to_string(),
             parent_id: None,
             description: None,
-            color: None,
+            hue: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         })
         .await
         .unwrap();
 
-    assert_eq!(updated.color, None);
-    assert_eq!(repo.get_category(&created.id).await.unwrap().color, None);
+    assert_eq!(updated.hue, None);
+    assert_eq!(repo.get_category(&created.id).await.unwrap().hue, None);
 }
 
 #[tokio::test]
@@ -192,7 +192,7 @@ async fn update_category_clears_description_in_database() {
             name: "Original".to_string(),
             parent_id: None,
             description: Some("Original description".to_string()),
-            color: Some("#D31212".to_string()),
+            hue: Some(20),
             role: Some(CategoryRole::Spending),
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -205,7 +205,7 @@ async fn update_category_clears_description_in_database() {
             name: "Original".to_string(),
             parent_id: None,
             description: None,
-            color: Some("#D31212".to_string()),
+            hue: Some(20),
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         })

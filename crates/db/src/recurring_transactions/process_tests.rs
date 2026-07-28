@@ -330,7 +330,7 @@ async fn invalid_deleted_category_records_failure_and_other_sources_continue() {
                     transaction_categories::parent_id.eq(None::<String>),
                     transaction_categories::name.eq("Deleted"),
                     transaction_categories::description.eq(None::<String>),
-                    transaction_categories::color.eq(None::<String>),
+                    transaction_categories::hue.eq(None::<i32>),
                     transaction_categories::role.eq("spending"),
                     transaction_categories::created_at.eq(category_now),
                     transaction_categories::updated_at.eq(category_now),

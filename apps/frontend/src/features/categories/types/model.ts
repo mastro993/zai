@@ -1,36 +1,23 @@
 import { z } from "zod";
 
-export const CATEGORY_COLORS = [
-  "#C91D1D",
-  "#C9841D",
-  "#3FC91D",
-  "#1DC962",
-  "#1DC9C9",
-  "#1D62C9",
-  "#3F1DC9",
-  "#A61DC9",
-  "#C91D84",
-  "#64748B",
-] as const;
+export const CATEGORY_HUES = [20, 60, 100, 140, 180, 220, 260, 300, 340] as const;
 
-export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLORS[0];
+export const DEFAULT_CATEGORY_HUE = null;
 export const CATEGORY_ROLES = ["spending", "income"] as const;
 
 const nullableStringSchema = z.string().nullable().optional();
 
-// Wire decode: tolerate legacy named colors (e.g. "orange") so one bad row
-// cannot take down get_transaction_categories.
-const categoryColorWireSchema = z.union([z.string(), z.null()]).transform((value) => {
-  if (value == null || value === "") {
-    return null;
-  }
-
-  if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
-    return value.toUpperCase();
-  }
-
-  return null;
-});
+const categoryHueWireSchema = z
+  .preprocess(
+    (value) =>
+      value === null || value === ""
+        ? null
+        : typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 360
+          ? value
+          : undefined,
+    z.union([z.number().int().min(0).max(360), z.null()]).optional(),
+  )
+  .transform((value) => (value == null ? null : value === 360 ? 0 : value));
 
 export const categoryRoleSchema = z.enum(CATEGORY_ROLES);
 
@@ -39,10 +26,7 @@ export const categoryFormSchema = z
     name: z.string().trim().min(1, "Name is required"),
     parentId: z.string().optional(),
     description: z.string().trim().optional(),
-    color: z
-      .string()
-      .regex(/^#?[0-9a-f]{6}$/i)
-      .optional(),
+    hue: z.number().int().min(0).max(360).nullable().optional(),
     role: categoryRoleSchema.optional(),
   })
   .superRefine((values, context) => {
@@ -66,7 +50,7 @@ const categoryBaseSchema = z.object({
   parentId: nullableStringSchema,
   name: z.string().min(1),
   description: nullableStringSchema,
-  color: categoryColorWireSchema.optional(),
+  hue: categoryHueWireSchema,
   role: categoryRoleSchema,
 });
 
@@ -91,7 +75,7 @@ export const categoryDeletionPreviewSchema = z.object({
 });
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
-export type CategoryColor = (typeof CATEGORY_COLORS)[number];
+export type CategoryHue = number | null;
 export type CategoryRole = z.infer<typeof categoryRoleSchema>;
 export type TransactionCategory = z.infer<typeof categorySchema>;
 export type CategoryChildrenDeleteStrategy = "block" | "promote" | "delete";

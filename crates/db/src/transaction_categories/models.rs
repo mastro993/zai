@@ -15,7 +15,7 @@ pub struct TransactionCategoryRowUpdate {
     #[diesel(treat_none_as_null = true)]
     pub description: Option<String>,
     #[diesel(treat_none_as_null = true)]
-    pub color: Option<String>,
+    pub hue: Option<i32>,
     pub role: String,
     pub updated_at: NaiveDateTime,
 }
@@ -29,7 +29,7 @@ pub struct TransactionCategoryRow {
     pub parent_id: Option<String>,
     pub name: String,
     pub description: Option<String>,
-    pub color: Option<String>,
+    pub hue: Option<i32>,
     pub role: String,
     #[diesel(skip_insertion)]
     pub created_at: NaiveDateTime,
@@ -51,7 +51,7 @@ impl TryFrom<TransactionCategoryRow> for TransactionCategory {
             parent_id: value.parent_id,
             name: value.name,
             description: value.description,
-            color: value.color,
+            hue: value.hue,
             role,
             parent: None,
         })
@@ -66,7 +66,7 @@ impl From<NewTransactionCategory> for TransactionCategoryRow {
             parent_id: value.parent_id,
             name: value.name,
             description: value.description,
-            color: value.color,
+            hue: value.hue,
             role: value.role.unwrap_or_default().to_string(),
             created_at: now,
             updated_at: now,
@@ -81,7 +81,7 @@ impl From<TransactionCategoryUpdate> for TransactionCategoryRowUpdate {
             parent_id: value.parent_id,
             name: value.name,
             description: value.description,
-            color: value.color,
+            hue: value.hue,
             role: value.role.unwrap_or_default().to_string(),
             updated_at: chrono::Utc::now().naive_utc(),
         }

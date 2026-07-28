@@ -9,7 +9,7 @@ async fn test_delete_categories() {
         name: "To Delete".to_string(),
         parent_id: None,
         description: None,
-        color: None,
+        hue: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -19,7 +19,7 @@ async fn test_delete_categories() {
         name: "To Delete Too".to_string(),
         parent_id: None,
         description: None,
-        color: None,
+        hue: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };

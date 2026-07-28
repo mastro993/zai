@@ -4,32 +4,19 @@ use std::str::FromStr;
 
 use crate::{BudgetImpact, Error};
 
-const INVALID_COLOR_MESSAGE: &str =
-    "Category color must be a valid hex color in the format #RRGGBB";
+const INVALID_HUE_MESSAGE: &str = "Category hue must be an integer from 0 to 360";
 
-fn validate_color(color: Option<&str>) -> Result<(), Error> {
-    if let Some(color) = color {
-        let is_valid_hex = color.len() == 7
-            && color.starts_with('#')
-            && color.as_bytes()[1..]
-                .iter()
-                .all(|byte| byte.is_ascii_hexdigit());
-
-        if !is_valid_hex {
-            return Err(Error::InvalidData(INVALID_COLOR_MESSAGE.to_string()));
-        }
+fn validate_hue(hue: Option<i32>) -> Result<(), Error> {
+    if hue.is_some_and(|value| !(0..=360).contains(&value)) {
+        return Err(Error::InvalidData(INVALID_HUE_MESSAGE.to_string()));
     }
 
     Ok(())
 }
 
-pub(crate) fn normalize_hex_color(color: &str) -> Result<String, Error> {
-    validate_color(Some(color))?;
-    Ok(color.to_ascii_uppercase())
-}
-
-pub(crate) fn normalize_optional_color(color: Option<&str>) -> Result<Option<String>, Error> {
-    color.map(normalize_hex_color).transpose()
+pub(crate) fn normalize_hue(hue: Option<i32>) -> Result<Option<i32>, Error> {
+    validate_hue(hue)?;
+    Ok(hue.map(|value| if value == 360 { 0 } else { value }))
 }
 
 pub(crate) fn normalize_category_name(name: &str) -> String {
@@ -78,7 +65,7 @@ pub struct TransactionCategory {
     pub parent_id: Option<String>,
     pub name: String,
     pub description: Option<String>,
-    pub color: Option<String>,
+    pub hue: Option<i32>,
     pub role: CategoryRole,
     pub parent: Option<Box<Self>>,
 }
@@ -114,7 +101,7 @@ pub struct NewTransactionCategory {
     pub parent_id: Option<String>,
     pub name: String,
     pub description: Option<String>,
-    pub color: Option<String>,
+    pub hue: Option<i32>,
     pub role: Option<CategoryRole>,
 }
 
@@ -125,7 +112,7 @@ impl NewTransactionCategory {
                 "Category name cannot be empty".to_string(),
             ));
         }
-        validate_color(self.color.as_deref())?;
+        validate_hue(self.hue)?;
         validate_category_role(self.parent_id.as_deref(), self.role)?;
         Ok(())
     }
@@ -138,7 +125,7 @@ pub struct TransactionCategoryUpdate {
     pub parent_id: Option<String>,
     pub name: String,
     pub description: Option<String>,
-    pub color: Option<String>,
+    pub hue: Option<i32>,
     pub role: Option<CategoryRole>,
     #[serde(default)]
     pub confirm_budget_impact: bool,
@@ -163,7 +150,7 @@ impl TransactionCategoryUpdate {
                 "A category cannot be its own parent".to_string(),
             ));
         }
-        validate_color(self.color.as_deref())?;
+        validate_hue(self.hue)?;
         validate_category_role(self.parent_id.as_deref(), self.role)?;
         Ok(())
     }
@@ -196,7 +183,7 @@ mod tests {
             name: "Test Category".to_string(),
             parent_id: None,
             description: Some("Descrizione test".to_string()),
-            color: Some("#FF0000".to_string()),
+            hue: Some(20),
             role: Some(CategoryRole::Spending),
             id: None,
         };
@@ -209,13 +196,13 @@ mod tests {
             new_category.description.as_deref(),
             Some("Descrizione test")
         );
-        assert_eq!(new_category.color.as_deref(), Some("#FF0000"));
+        assert_eq!(new_category.hue, Some(20));
 
         let new_category_invalid = NewTransactionCategory {
             name: "".to_string(),
             parent_id: None,
             description: Some("Descrizione test".to_string()),
-            color: Some("#FF0000".to_string()),
+            hue: Some(20),
             role: Some(CategoryRole::Spending),
             id: None,
         };
@@ -226,12 +213,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_new_transaction_category_rejects_invalid_color() {
+    async fn test_new_transaction_category_rejects_invalid_hue() {
         let new_category_invalid = NewTransactionCategory {
             name: "Test Category".to_string(),
             parent_id: None,
             description: Some("Descrizione test".to_string()),
-            color: Some("red".to_string()),
+            hue: Some(361),
             role: Some(CategoryRole::Spending),
             id: None,
         };
@@ -243,7 +230,7 @@ mod tests {
             result
                 .unwrap_err()
                 .to_string()
-                .contains(INVALID_COLOR_MESSAGE)
+                .contains(INVALID_HUE_MESSAGE)
         );
     }
 
@@ -254,7 +241,7 @@ mod tests {
             name: "Test Category".to_string(),
             parent_id: None,
             description: Some("Descrizione test".to_string()),
-            color: Some("#FF0000".to_string()),
+            hue: Some(20),
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -266,14 +253,14 @@ mod tests {
             new_category.description.as_deref(),
             Some("Descrizione test")
         );
-        assert_eq!(new_category.color.as_deref(), Some("#FF0000"));
+        assert_eq!(new_category.hue, Some(20));
 
         let new_category_invalid = TransactionCategoryUpdate {
             id: "".to_string(),
             name: "Test".to_string(),
             parent_id: None,
             description: Some("Descrizione test".to_string()),
-            color: Some("#FF0000".to_string()),
+            hue: Some(20),
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -288,7 +275,7 @@ mod tests {
             name: "Test Category".to_string(),
             parent_id: Some("same-id".to_string()),
             description: None,
-            color: None,
+            hue: None,
             role: None,
             confirm_budget_impact: false,
         };
@@ -302,36 +289,36 @@ mod tests {
                 .contains("cannot be its own parent")
         );
 
-        let invalid_color = TransactionCategoryUpdate {
+        let invalid_hue = TransactionCategoryUpdate {
             id: "some-id".to_string(),
             name: "Test Category".to_string(),
             parent_id: None,
             description: None,
-            color: Some("#12345".to_string()),
+            hue: Some(-1),
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
 
-        let result = invalid_color.validate();
+        let result = invalid_hue.validate();
         assert!(result.is_err());
         assert!(
             result
                 .unwrap_err()
                 .to_string()
-                .contains(INVALID_COLOR_MESSAGE)
+                .contains(INVALID_HUE_MESSAGE)
         );
     }
 
     #[tokio::test]
-    async fn test_normalize_optional_color_uppercases_valid_hex() {
-        let normalized = normalize_optional_color(Some("#ff0000")).expect("normalize");
+    async fn test_normalize_hue_wraps_360() {
+        let normalized = normalize_hue(Some(360)).expect("normalize");
 
-        assert_eq!(normalized.as_deref(), Some("#FF0000"));
+        assert_eq!(normalized, Some(0));
     }
 
     #[tokio::test]
-    async fn test_normalize_optional_color_keeps_none() {
-        let normalized = normalize_optional_color(None).expect("normalize");
+    async fn test_normalize_hue_keeps_none() {
+        let normalized = normalize_hue(None).expect("normalize");
 
         assert!(normalized.is_none());
     }
@@ -343,7 +330,7 @@ mod tests {
             parent_id: None,
             name: "Salary".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: None,
         };
 
@@ -357,7 +344,7 @@ mod tests {
             parent_id: Some("root".to_string()),
             name: "Groceries".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: Some(CategoryRole::Income),
         };
 

@@ -10,8 +10,8 @@ pub async fn seed_filter_test_transactions(app: &axum::Router) {
         "/api/transactions/import-batch",
         Some(json!({
             "categories": [
-                { "id": "food-cat", "name": "Food", "color": "#FF0000" },
-                { "id": "travel-cat", "name": "Travel", "color": "#00FF00" }
+                { "id": "food-cat", "name": "Food", "hue": 20 },
+                { "id": "travel-cat", "name": "Travel", "hue": 20 }
             ],
             "transactions": [
                 {

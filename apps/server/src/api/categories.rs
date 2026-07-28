@@ -37,7 +37,7 @@ pub struct UpdateCategoryRequest {
     pub parent_id: Option<String>,
     pub name: String,
     pub description: Option<String>,
-    pub color: Option<String>,
+    pub hue: Option<i32>,
     pub role: Option<CategoryRole>,
     #[serde(default)]
     pub confirm_budget_impact: bool,
@@ -127,7 +127,7 @@ pub async fn update_category(
         parent_id: body.parent_id,
         name: body.name,
         description: body.description,
-        color: body.color,
+        hue: body.hue,
         role: body.role,
         confirm_budget_impact: body.confirm_budget_impact,
     };

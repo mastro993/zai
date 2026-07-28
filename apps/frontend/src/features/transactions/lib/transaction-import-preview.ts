@@ -66,7 +66,7 @@ export const buildTransactionImportPreview = (
 
     const id = createId();
     importedRootIdByKey.set(rootKey, id);
-    categories.push({ id, parentId: null, name, description: null, color: null });
+    categories.push({ id, parentId: null, name, description: null, hue: null });
     return id;
   };
 
@@ -112,7 +112,7 @@ export const buildTransactionImportPreview = (
     const parentId = ensureRootCategory(parsed.parentName);
     const id = createId();
     importedChildIdByPath.set(pathKey, id);
-    categories.push({ id, parentId, name: parsed.name, description: null, color: null });
+    categories.push({ id, parentId, name: parsed.name, description: null, hue: null });
     return { categoryId: id, message: "Category will be created" };
   };
 

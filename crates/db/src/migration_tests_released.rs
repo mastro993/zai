@@ -36,7 +36,18 @@ fn released_schema_fixtures_upgrade_to_head() {
             diesel::sql_query("SELECT COUNT(*) AS count FROM __diesel_schema_migrations")
                 .get_result::<CountRow>(&mut connection)
                 .expect("migration history");
-        assert_eq!(migration_count.count, 10, "{}", fixture.name);
+        assert_eq!(migration_count.count, 11, "{}", fixture.name);
+
+        let populated_hue_count = diesel::sql_query(
+            "SELECT COUNT(*) AS count FROM transaction_categories WHERE hue IS NOT NULL",
+        )
+        .get_result::<CountRow>(&mut connection)
+        .expect("category hues");
+        assert_eq!(
+            populated_hue_count.count, 0,
+            "{} neutral migration",
+            fixture.name
+        );
 
         assert_eq!(
             fixture_data_snapshot(&mut connection, fixture.name),
@@ -151,12 +162,12 @@ fn fixture_data_snapshot(
         "v0000_initial" | "v0001_category_invariants" | "v0002_transaction_indexes"
     ) {
         "SELECT quote(id) || '|' || quote(parent_id) || '|' || quote(name) || '|' ||
-         quote(description) || '|' || quote(color) || '|' || quote('spending') || '|' ||
+         quote(description) || '|' || quote('spending') || '|' ||
          quote(created_at) || '|' || quote(updated_at) || '|' || quote(deleted_at) AS value
          FROM transaction_categories ORDER BY id"
     } else {
         "SELECT quote(id) || '|' || quote(parent_id) || '|' || quote(name) || '|' ||
-         quote(description) || '|' || quote(color) || '|' || quote(role) || '|' ||
+         quote(description) || '|' || quote(role) || '|' ||
          quote(created_at) || '|' || quote(updated_at) || '|' || quote(deleted_at) AS value
          FROM transaction_categories ORDER BY id"
     };

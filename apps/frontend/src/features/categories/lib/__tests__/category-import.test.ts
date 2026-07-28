@@ -37,7 +37,7 @@ describe("category import", () => {
       parentId: null,
       name: 'Food, "Home"',
       description: "Monthly\nneeds",
-      color: "#C92A2A",
+      hue: 20,
       role: "spending",
       parent: null,
     };
@@ -46,7 +46,7 @@ describe("category import", () => {
       parentId: "root",
       name: "Groceries",
       description: null,
-      color: null,
+      hue: null,
       role: "spending",
       parent: root,
     };
@@ -59,14 +59,14 @@ describe("category import", () => {
         parentId: null,
         name: 'Food, "Home"',
         description: "Monthly\nneeds",
-        color: "#C92A2A",
+        hue: 20,
       },
       {
         id: "id-2",
         parentId: "id-1",
         name: "Groceries",
         description: null,
-        color: null,
+        hue: null,
       },
     ]);
   });
@@ -77,7 +77,7 @@ describe("category import", () => {
       parentId: null,
       name: "=1+1",
       description: "@SUM(A1)",
-      color: "#C92A2A",
+      hue: 20,
       role: "spending",
       parent: null,
     };
@@ -104,7 +104,7 @@ describe("category import", () => {
 
   it("splits single-column paths on the first separator", () => {
     const preview = buildPreview("path\nFood - Restaurants - Pizza", {
-      mapping: { name: 0, parentName: null, color: null, description: null },
+      mapping: { name: 0, parentName: null, hue: null, description: null },
       linkMode: "single-column",
       separator: " - ",
     });
@@ -122,15 +122,15 @@ describe("category import", () => {
       parentId: null,
       name: "Food",
       description: "Existing wins",
-      color: "#C92A2A",
+      hue: 20,
       role: "spending",
       parent: null,
     };
     const content = [
-      "name,parent_name,color",
-      "Food,,#FFFFFF",
-      "Broken,,red",
-      "Groceries,Food,#123456",
+      "name,parent_name,hue",
+      "Food,,100",
+      "Broken,,361",
+      "Groceries,Food,220",
       "Restaurants,Food,",
     ].join("\n");
 
@@ -149,15 +149,21 @@ describe("category import", () => {
         parentId: "existing-food",
         name: "Groceries",
         description: null,
-        color: null,
+        hue: null,
       },
       {
         id: "id-2",
         parentId: "existing-food",
         name: "Restaurants",
         description: null,
-        color: null,
+        hue: null,
       },
     ]);
+  });
+
+  it("accepts integer hues through 360 and stores 360 as zero", () => {
+    const preview = buildPreview("name,hue\nLeading zero,020\nFull turn,360");
+
+    expect(preview.categories.map((category) => category.hue)).toEqual([20, 0]);
   });
 });

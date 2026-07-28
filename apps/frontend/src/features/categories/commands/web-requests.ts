@@ -19,7 +19,7 @@ export interface CategoryPayload {
   parentId?: string | null;
   name: string;
   description?: string | null;
-  color?: string | null;
+  hue?: number | null;
   role?: CategoryRole | null;
   confirmBudgetImpact?: boolean;
 }
@@ -88,7 +88,14 @@ export const buildGetCategoryRequest = (
 };
 
 const validCategoryPayload = (value: unknown): value is CategoryPayload =>
-  isRecord(value) && isNonEmptyString(value.name);
+  isRecord(value) &&
+  isNonEmptyString(value.name) &&
+  (value.hue === undefined ||
+    value.hue === null ||
+    (typeof value.hue === "number" &&
+      Number.isInteger(value.hue) &&
+      value.hue >= 0 &&
+      value.hue <= 360));
 
 export const buildCreateCategoryRequest = (
   args: CreateCategoryArgs,

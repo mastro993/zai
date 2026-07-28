@@ -37,7 +37,7 @@ describe("category web requests", () => {
   });
 
   it("maps creation and removes ids from updates", () => {
-    const newCategory = { name: "Food", parentId: null, description: null, color: "#ff0000" };
+    const newCategory = { name: "Food", parentId: null, description: null, hue: 20 };
     expect(unwrap(buildCreateCategoryRequest({ newCategory }))).toEqual({
       method: "POST",
       path: "/categories",
@@ -75,7 +75,7 @@ describe("category web requests", () => {
       path: "/categories/bulk-delete/preview",
       body: { categoryIds: ["category-1"] },
     });
-    const categories = [{ name: "Food", color: "#ff0000" }];
+    const categories = [{ name: "Food", hue: 20 }];
     expect(unwrap(buildImportCategoriesRequest({ categories }))).toEqual({
       method: "POST",
       path: "/categories/import",

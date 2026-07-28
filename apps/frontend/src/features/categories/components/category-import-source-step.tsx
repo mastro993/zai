@@ -42,7 +42,7 @@ export function CategoryImportSourceStep({
             {isPickingFile ? "Opening file picker…" : "Select a CSV file"}
           </span>
           <span className="text-xs text-muted-foreground">
-            A comma-separated list of category names, parents, and optional colors.
+            A comma-separated list of category names, parents, and optional hues.
           </span>
         </span>
       </button>

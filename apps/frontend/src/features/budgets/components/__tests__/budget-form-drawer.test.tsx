@@ -164,7 +164,7 @@ describe("BudgetFormDrawer", () => {
       id: "food",
       parentId: null,
       name: "Food",
-      color: "#147B1E",
+      hue: 140,
       role: "spending",
     } as TransactionCategory;
     const groceries = {

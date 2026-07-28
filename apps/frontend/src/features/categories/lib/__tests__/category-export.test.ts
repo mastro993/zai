@@ -10,13 +10,13 @@ describe("category export", () => {
     expect(filename).toBe("zai_transaction_categories_20260706_162830.csv");
   });
 
-  it("exports categories in input order with parent names and blank child colors", () => {
+  it("exports categories in input order with parent names and blank child hues", () => {
     const root: TransactionCategory = {
       id: "root",
       parentId: null,
       name: 'Food, "Home"',
       description: "Monthly\nneeds",
-      color: "#C92A2A",
+      hue: 20,
       role: "spending",
       parent: null,
     };
@@ -25,7 +25,7 @@ describe("category export", () => {
       parentId: "root",
       name: "Groceries",
       description: null,
-      color: "#B95F00",
+      hue: 60,
       role: "spending",
       parent: root,
     };
@@ -34,8 +34,8 @@ describe("category export", () => {
 
     expect(csv).toBe(
       [
-        "name,parent_name,color,description",
-        '"Food, ""Home""",,#C92A2A,"Monthly\nneeds"',
+        "name,parent_name,hue,description",
+        '"Food, ""Home""",,20,"Monthly\nneeds"',
         'Groceries,"Food, ""Home""",,',
       ].join("\n"),
     );
@@ -47,13 +47,13 @@ describe("category export", () => {
       parentId: null,
       name: "=1+1",
       description: "@SUM(A1)",
-      color: "#C92A2A",
+      hue: 20,
       role: "spending",
       parent: null,
     };
 
     expect(toCategoryExportCsv([root])).toBe(
-      ["name,parent_name,color,description", '"\t=1+1",,#C92A2A,"\t@SUM(A1)"'].join("\n"),
+      ["name,parent_name,hue,description", '"\t=1+1",,20,"\t@SUM(A1)"'].join("\n"),
     );
   });
 });

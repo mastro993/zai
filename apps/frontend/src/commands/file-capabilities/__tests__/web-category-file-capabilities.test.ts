@@ -101,7 +101,7 @@ describe("web category file capabilities", () => {
     const exportPromise = webDownloadTextFile({
       title: "Export categories",
       filename: "zai_transaction_categories_20260706_162830.csv",
-      content: "name,parent_name,color,description",
+      content: "name,parent_name,hue,description",
     });
 
     expect(showSaveFilePicker).toHaveBeenCalled();
@@ -119,7 +119,7 @@ describe("web category file capabilities", () => {
     });
 
     await expect(exportPromise).resolves.toBe("zai_transaction_categories_20260706_162830.csv");
-    expect(write).toHaveBeenCalledWith("name,parent_name,color,description");
+    expect(write).toHaveBeenCalledWith("name,parent_name,hue,description");
     expect(close).toHaveBeenCalled();
   });
 
@@ -134,7 +134,7 @@ describe("web category file capabilities", () => {
     const filename = await webDownloadTextFile({
       title: "Export categories",
       filename: "zai_transaction_categories_20260706_162830.csv",
-      content: "name,parent_name,color,description",
+      content: "name,parent_name,hue,description",
     });
 
     expect(filename).toBeNull();
@@ -153,7 +153,7 @@ describe("web category file capabilities", () => {
     const filename = await webDownloadTextFile({
       title: "Export categories",
       filename: "zai_transaction_categories_20260706_162830.csv",
-      content: "name,parent_name,color,description",
+      content: "name,parent_name,hue,description",
     });
 
     expect(filename).toBe("zai_transaction_categories_20260706_162830.csv");

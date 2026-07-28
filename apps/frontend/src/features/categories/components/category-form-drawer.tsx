@@ -15,10 +15,10 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-import { getCategoryDisplayColor, getCategoryRoleLabel, isCategoryColor } from "../lib/category";
+import { getCategoryDisplayHue, getCategoryRoleLabel, isCategoryHue } from "../lib/category";
 import type { CategoryFormMode } from "../types/category-types";
 import {
-  DEFAULT_CATEGORY_COLOR,
+  DEFAULT_CATEGORY_HUE,
   categoryFormSchema,
   type CategoryFormValues,
   type CategoryRole,
@@ -35,7 +35,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       name: "",
       parentId: "",
       description: "",
-      color: DEFAULT_CATEGORY_COLOR,
+      hue: DEFAULT_CATEGORY_HUE,
       role: "spending",
     };
   }
@@ -45,7 +45,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       name: "",
       parentId: mode.parentId,
       description: "",
-      color: undefined,
+      hue: undefined,
       role: undefined,
     };
   }
@@ -54,10 +54,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
     name: mode.category.name,
     parentId: mode.category.parentId ?? "",
     description: mode.category.description ?? "",
-    color:
-      mode.category.color && isCategoryColor(mode.category.color)
-        ? mode.category.color
-        : DEFAULT_CATEGORY_COLOR,
+    hue: isCategoryHue(mode.category.hue) ? mode.category.hue : DEFAULT_CATEGORY_HUE,
     role: mode.category.parentId ? undefined : mode.category.role,
   };
 };
@@ -67,7 +64,7 @@ const getFormCopy = (mode: CategoryFormMode) => {
     return {
       title: "Edit category",
       description:
-        "Update the name, role, parent, or color. Names must stay unique at the same level.",
+        "Update the name, role, parent, or hue. Names must stay unique at the same level.",
     };
   }
 
@@ -75,7 +72,7 @@ const getFormCopy = (mode: CategoryFormMode) => {
     return {
       title: "New subcategory",
       description:
-        "Subcategories inherit their parent color in lists and reports. Pick a clear, specific name.",
+        "Subcategories inherit their parent hue in lists and reports. Pick a clear, specific name.",
     };
   }
 
@@ -89,12 +86,12 @@ const getFormCopy = (mode: CategoryFormMode) => {
 function CategoryFormPreview({
   name,
   description,
-  displayColor,
+  displayHue,
   parentName,
 }: {
   name: string;
   description: string;
-  displayColor: string;
+  displayHue: number | null;
   parentName?: string;
 }) {
   const previewName = name.trim() || "Category name";
@@ -105,7 +102,7 @@ function CategoryFormPreview({
     <div className="border bg-muted/40 px-3 py-2.5">
       <p className="mb-2 text-xs font-medium text-muted-foreground">List preview</p>
       <div className="flex min-w-0 flex-col gap-1">
-        <CategoryBadge color={displayColor} className={isPlaceholderName ? "italic" : undefined}>
+        <CategoryBadge hue={displayHue} className={isPlaceholderName ? "italic" : undefined}>
           {parentName ? `${parentName} / ${previewName}` : previewName}
         </CategoryBadge>
         {previewDescription ? (
@@ -146,27 +143,27 @@ function CategoryFormDrawer({
   const watchedName = useWatch({ control: form.control, name: "name" }) ?? "";
   const watchedDescription = useWatch({ control: form.control, name: "description" }) ?? "";
   const parentId = useWatch({ control: form.control, name: "parentId" });
-  const selectedColor =
+  const selectedHue =
     useWatch({
       control: form.control,
-      name: "color",
-    }) ?? DEFAULT_CATEGORY_COLOR;
+      name: "hue",
+    }) ?? DEFAULT_CATEGORY_HUE;
   const isChildCategory = Boolean(parentId);
   const parentCategory = parentId ? categoryById.get(parentId) : undefined;
-  const previewColor = isChildCategory
-    ? getCategoryDisplayColor({
+  const previewHue = isChildCategory
+    ? getCategoryDisplayHue({
         id: "preview",
         parentId: parentId || null,
         name: watchedName,
-        color: null,
+        hue: null,
         role: parentCategory?.role ?? "spending",
         parent: parentCategory ?? null,
       })
-    : selectedColor;
+    : selectedHue;
   const { title, description } = getFormCopy(mode);
   const { errors, isSubmitting } = form.formState;
   const nameErrorId = "category-name-error";
-  const colorErrorId = "category-color-error";
+  const hueErrorId = "category-hue-error";
 
   return (
     <DrawerContent className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem]">
@@ -199,7 +196,7 @@ function CategoryFormDrawer({
             <Field>
               <FieldLabel>Parent category</FieldLabel>
               <div className="flex h-8 items-center border border-input px-2.5">
-                <CategoryBadge color={getCategoryDisplayColor(lockedParent)}>
+                <CategoryBadge hue={getCategoryDisplayHue(lockedParent)}>
                   {lockedParent.name}
                 </CategoryBadge>
               </div>
@@ -235,22 +232,22 @@ function CategoryFormDrawer({
                           shouldDirty: true,
                           shouldValidate: true,
                         });
-                        form.setValue("color", undefined, {
+                        form.setValue("hue", undefined, {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
                         return;
                       }
 
-                      const currentColor = form.getValues("color");
+                      const currentHue = form.getValues("hue");
                       if (!form.getValues("role")) {
                         form.setValue("role", "spending", {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
                       }
-                      if (!currentColor) {
-                        form.setValue("color", DEFAULT_CATEGORY_COLOR, {
+                      if (currentHue === undefined) {
+                        form.setValue("hue", DEFAULT_CATEGORY_HUE, {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
@@ -317,17 +314,17 @@ function CategoryFormDrawer({
           </Field>
 
           {!isChildCategory ? (
-            <Field data-invalid={Boolean(errors.color)}>
-              <FieldLabel>Color</FieldLabel>
-              <input type="hidden" {...form.register("color")} />
+            <Field data-invalid={Boolean(errors.hue)}>
+              <FieldLabel>Hue</FieldLabel>
+              <input type="hidden" {...form.register("hue")} />
               <Controller
                 control={form.control}
-                name="color"
+                name="hue"
                 render={({ field }) => (
                   <CategoryColorPicker
-                    value={(field.value as string | undefined) ?? DEFAULT_CATEGORY_COLOR}
-                    onChange={(color) =>
-                      field.onChange(color, {
+                    value={(field.value as number | null | undefined) ?? DEFAULT_CATEGORY_HUE}
+                    onChange={(hue) =>
+                      field.onChange(hue, {
                         shouldDirty: true,
                         shouldValidate: true,
                       })
@@ -335,14 +332,14 @@ function CategoryFormDrawer({
                   />
                 )}
               />
-              <FieldError id={colorErrorId}>{errors.color?.message}</FieldError>
+              <FieldError id={hueErrorId}>{errors.hue?.message}</FieldError>
             </Field>
           ) : null}
 
           <CategoryFormPreview
             name={watchedName}
             description={watchedDescription}
-            displayColor={previewColor}
+            displayHue={previewHue}
             parentName={lockedParent?.name ?? parentCategory?.name}
           />
         </FieldGroup>

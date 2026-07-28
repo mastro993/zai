@@ -11,7 +11,7 @@ async fn test_import_categories() {
         name: "Test Category 1".to_string(),
         parent_id: None,
         description: Some("Descrizione test".to_string()),
-        color: Some("#FF0000".to_string()),
+        hue: Some(20),
         role: None,
     };
 
@@ -20,7 +20,7 @@ async fn test_import_categories() {
         name: "Test Category 2".to_string(),
         parent_id: None,
         description: Some("Descrizione test".to_string()),
-        color: Some("#FF0000".to_string()),
+        hue: Some(20),
         role: None,
     };
 
@@ -29,7 +29,7 @@ async fn test_import_categories() {
         name: "Test Category 3".to_string(),
         parent_id: Some(new_category_1.id.as_deref().unwrap().to_string()),
         description: Some("Descrizione test".to_string()),
-        color: Some("#DB1313".to_string()),
+        hue: Some(20),
         role: None,
     };
 
@@ -39,11 +39,7 @@ async fn test_import_categories() {
         .unwrap();
 
     assert_eq!(created.len(), 3);
-    assert!(
-        created
-            .iter()
-            .any(|category| category.color.as_deref() == Some("#DB1313"))
-    );
+    assert!(created.iter().any(|category| category.hue == Some(20)));
 }
 
 #[tokio::test]
@@ -58,7 +54,7 @@ async fn import_category_validation_avoids_per_row_statements() {
             name: format!("Category {index}"),
             parent_id: None,
             description: None,
-            color: None,
+            hue: None,
             role: Some(CategoryRole::Spending),
         })
         .collect();

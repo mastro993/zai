@@ -6,7 +6,7 @@ diesel::table! {
         parent_id -> Nullable<Text>,
         name -> Text,
         description -> Nullable<Text>,
-        color -> Nullable<Text>,
+        hue -> Nullable<Integer>,
         role -> Text,
         created_at -> Timestamp,
         updated_at -> Timestamp,

@@ -27,7 +27,7 @@ async fn create_root(repo: &TransactionCategoriesRepository, name: &str) -> Stri
             name: name.to_string(),
             parent_id: None,
             description: None,
-            color: None,
+            hue: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -41,7 +41,7 @@ fn child_update(id: &str, parent_id: &str, name: &str) -> TransactionCategoryUpd
         parent_id: Some(parent_id.to_string()),
         name: name.to_string(),
         description: None,
-        color: None,
+        hue: None,
         role: Some(CategoryRole::Spending),
         confirm_budget_impact: false,
     }
@@ -112,7 +112,7 @@ async fn concurrent_updates_cannot_create_depth_three() {
             name: "Child".to_string(),
             parent_id: Some(parent_id.clone()),
             description: None,
-            color: None,
+            hue: None,
             role: None,
         })
         .await
@@ -137,7 +137,7 @@ async fn concurrent_updates_cannot_create_depth_three() {
             parent_id: Some(parent_id.clone()),
             name: "Child renamed".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -176,7 +176,7 @@ async fn concurrent_sibling_name_updates_leave_one_conflict() {
             parent_id: None,
             name: "Shared".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -193,7 +193,7 @@ async fn concurrent_sibling_name_updates_leave_one_conflict() {
             parent_id: None,
             name: " shared ".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -231,7 +231,7 @@ async fn unrelated_concurrent_updates_both_succeed() {
             parent_id: None,
             name: "Groceries".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -248,7 +248,7 @@ async fn unrelated_concurrent_updates_both_succeed() {
             parent_id: None,
             name: "Flights".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };

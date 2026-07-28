@@ -15,10 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 
-import {
-  getCategoryDisplayColor,
-  getCategoryDisplayName,
-} from "@/features/categories/lib/category";
+import { getCategoryDisplayHue, getCategoryDisplayName } from "@/features/categories/lib/category";
 import {
   computeFilteredTotalCount,
   shouldShowSelectAllMatching,
@@ -197,7 +194,7 @@ function TransactionTable({
                 </TableCell>
                 <TableCell className="whitespace-nowrap p-3">
                   {category ? (
-                    <CategoryBadge color={getCategoryDisplayColor(category)}>
+                    <CategoryBadge hue={getCategoryDisplayHue(category)}>
                       {getCategoryDisplayName(category, categoryById)}
                     </CategoryBadge>
                   ) : (

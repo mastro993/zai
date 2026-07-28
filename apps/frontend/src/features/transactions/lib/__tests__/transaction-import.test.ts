@@ -280,7 +280,7 @@ describe("transaction import", () => {
       parentId: null,
       name: "Food",
       description: null,
-      color: "#C92A2A",
+      hue: 20,
       role: "spending",
       parent: null,
     };
@@ -289,7 +289,7 @@ describe("transaction import", () => {
       parentId: "root",
       name: "Groceries",
       description: null,
-      color: null,
+      hue: null,
       role: "spending",
       parent: root,
     };
@@ -311,7 +311,7 @@ describe("transaction import", () => {
       parentId: null,
       name: "Health",
       description: null,
-      color: "#C92A2A",
+      hue: 20,
       role: "spending",
       parent: null,
     };

@@ -163,7 +163,7 @@ describe("transaction web requests", () => {
       path: "/transactions/import",
       body: { transactions },
     });
-    const categories = [{ name: "Food", color: "#ff0000" }];
+    const categories = [{ name: "Food", hue: 20 }];
     expect(unwrap(buildImportTransactionBatchRequest({ categories, transactions }))).toEqual({
       method: "POST",
       path: "/transactions/import-batch",

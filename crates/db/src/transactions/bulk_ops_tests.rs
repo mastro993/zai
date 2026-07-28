@@ -102,7 +102,7 @@ async fn export_transactions_csv_matches_frontend_fixture() {
             parent_id: None,
             name: "Food".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: None,
         })
         .await
@@ -113,7 +113,7 @@ async fn export_transactions_csv_matches_frontend_fixture() {
             parent_id: Some(root.id.clone()),
             name: "Groceries".to_string(),
             description: None,
-            color: None,
+            hue: None,
             role: None,
         })
         .await

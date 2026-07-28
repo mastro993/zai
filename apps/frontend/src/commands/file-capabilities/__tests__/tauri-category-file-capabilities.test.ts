@@ -73,7 +73,7 @@ describe("tauri category file capabilities", () => {
     const result = await tauriDownloadTextFile({
       title: "Export categories",
       filename: "zai_transaction_categories_20260706_162830.csv",
-      content: "name,parent_name,color,description",
+      content: "name,parent_name,hue,description",
     });
 
     expect(documentDirMock).toHaveBeenCalled();
@@ -84,7 +84,7 @@ describe("tauri category file capabilities", () => {
     });
     expect(writeTextFileMock).toHaveBeenCalledWith(
       "/Users/me/Documents/zai_transaction_categories_20260706_162830.csv",
-      "name,parent_name,color,description",
+      "name,parent_name,hue,description",
     );
     expect(result).toBe("zai_transaction_categories_20260706_162830.csv");
   });
@@ -95,7 +95,7 @@ describe("tauri category file capabilities", () => {
     const result = await tauriDownloadTextFile({
       title: "Export categories",
       filename: "zai_transaction_categories_20260706_162830.csv",
-      content: "name,parent_name,color,description",
+      content: "name,parent_name,hue,description",
     });
 
     expect(result).toBeNull();
