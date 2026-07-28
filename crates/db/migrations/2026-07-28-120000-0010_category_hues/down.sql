@@ -46,13 +46,78 @@ FROM transaction_categories;
 DROP TABLE transaction_categories;
 ALTER TABLE transaction_categories_old RENAME TO transaction_categories;
 
-CREATE UNIQUE INDEX transaction_categories_root_name_unique
+-- Preserve the same collision-safe invariant when reverting the schema.
+CREATE INDEX transaction_categories_root_name_unique
 ON transaction_categories (lower(trim(name)))
 WHERE parent_id IS NULL AND deleted_at IS NULL;
 
-CREATE UNIQUE INDEX transaction_categories_child_name_unique
+CREATE INDEX transaction_categories_child_name_unique
 ON transaction_categories (parent_id, lower(trim(name)))
 WHERE parent_id IS NOT NULL AND deleted_at IS NULL;
+
+CREATE TRIGGER transaction_categories_root_name_unique_insert
+BEFORE INSERT ON transaction_categories
+WHEN NEW.parent_id IS NULL
+    AND NEW.deleted_at IS NULL
+    AND EXISTS (
+        SELECT 1
+        FROM transaction_categories
+        WHERE id <> NEW.id
+          AND parent_id IS NULL
+          AND deleted_at IS NULL
+          AND lower(trim(name)) = lower(trim(NEW.name))
+    )
+BEGIN
+    SELECT RAISE(ABORT, 'UNIQUE constraint failed: index transaction_categories_root_name_unique');
+END;
+
+CREATE TRIGGER transaction_categories_root_name_unique_update
+BEFORE UPDATE OF parent_id, name, deleted_at ON transaction_categories
+WHEN NEW.parent_id IS NULL
+    AND NEW.deleted_at IS NULL
+    AND EXISTS (
+        SELECT 1
+        FROM transaction_categories
+        WHERE id <> NEW.id
+          AND parent_id IS NULL
+          AND deleted_at IS NULL
+          AND lower(trim(name)) = lower(trim(NEW.name))
+    )
+BEGIN
+    SELECT RAISE(ABORT, 'UNIQUE constraint failed: index transaction_categories_root_name_unique');
+END;
+
+CREATE TRIGGER transaction_categories_child_name_unique_insert
+BEFORE INSERT ON transaction_categories
+WHEN NEW.parent_id IS NOT NULL
+    AND NEW.deleted_at IS NULL
+    AND EXISTS (
+        SELECT 1
+        FROM transaction_categories
+        WHERE id <> NEW.id
+          AND parent_id = NEW.parent_id
+          AND deleted_at IS NULL
+          AND lower(trim(name)) = lower(trim(NEW.name))
+    )
+BEGIN
+    SELECT RAISE(ABORT, 'UNIQUE constraint failed: index transaction_categories_child_name_unique');
+END;
+
+CREATE TRIGGER transaction_categories_child_name_unique_update
+BEFORE UPDATE OF parent_id, name, deleted_at ON transaction_categories
+WHEN NEW.parent_id IS NOT NULL
+    AND NEW.deleted_at IS NULL
+    AND EXISTS (
+        SELECT 1
+        FROM transaction_categories
+        WHERE id <> NEW.id
+          AND parent_id = NEW.parent_id
+          AND deleted_at IS NULL
+          AND lower(trim(name)) = lower(trim(NEW.name))
+    )
+BEGIN
+    SELECT RAISE(ABORT, 'UNIQUE constraint failed: index transaction_categories_child_name_unique');
+END;
 
 UPDATE transactions
 SET transaction_category_id = (

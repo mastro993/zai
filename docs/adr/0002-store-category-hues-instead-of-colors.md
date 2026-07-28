@@ -18,4 +18,7 @@ lightness and chroma change for contrast without changing hue identity. The
 database, backend models, and API rename `color` to `hue` atomically; no legacy
 field alias is retained. User-facing category forms and CSV import/export
 continue to call the value `color`; the frontend maps that value to the backend
-`hue` field at the transport boundary.
+`hue` field at the transport boundary. The migration preserves legacy rows even
+if a pre-invariant database contains normalized-name collisions; lookup indexes
+and write triggers retain the uniqueness behavior for subsequent changes without
+silently renaming or deleting user data.
