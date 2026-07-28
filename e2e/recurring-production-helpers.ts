@@ -86,7 +86,7 @@ export async function createApiCategory(
     name,
     parentId: null,
     description: null,
-    hue: null,
+    color: null,
     role: "spending",
   });
 }

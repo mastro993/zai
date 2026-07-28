@@ -85,7 +85,7 @@ async fn create_budget_uses_existing_month_transactions_and_materializes_project
             parent_id: None,
             name: "Groceries".to_string(),
             description: None,
-            hue: None,
+            color: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -129,7 +129,7 @@ async fn spending_budget_counts_refunds_but_ignores_income_category_income() {
             parent_id: None,
             name: "Shopping".to_string(),
             description: None,
-            hue: None,
+            color: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -140,7 +140,7 @@ async fn spending_budget_counts_refunds_but_ignores_income_category_income() {
             parent_id: None,
             name: "Salary".to_string(),
             description: None,
-            hue: None,
+            color: None,
             role: Some(CategoryRole::Income),
         })
         .await
@@ -235,7 +235,7 @@ async fn category_scope_includes_children_and_canonicalizes_redundant_selection(
             parent_id: None,
             name: "Groceries".to_string(),
             description: None,
-            hue: None,
+            color: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -246,7 +246,7 @@ async fn category_scope_includes_children_and_canonicalizes_redundant_selection(
             parent_id: Some(root.id.clone()),
             name: "Produce".to_string(),
             description: None,
-            hue: None,
+            color: None,
             role: None,
         })
         .await
@@ -257,7 +257,7 @@ async fn category_scope_includes_children_and_canonicalizes_redundant_selection(
             parent_id: None,
             name: "Travel".to_string(),
             description: None,
-            hue: None,
+            color: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -309,7 +309,7 @@ async fn measurement_mode_applies_signed_income_rules_to_empty_scope() {
             parent_id: None,
             name: "Shopping".to_string(),
             description: None,
-            hue: None,
+            color: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -320,7 +320,7 @@ async fn measurement_mode_applies_signed_income_rules_to_empty_scope() {
             parent_id: None,
             name: "Salary".to_string(),
             description: None,
-            hue: None,
+            color: None,
             role: Some(CategoryRole::Income),
         })
         .await

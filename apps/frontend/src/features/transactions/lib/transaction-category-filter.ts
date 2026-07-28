@@ -1,4 +1,7 @@
-import { getCategoryDisplayHue, getCategoryDisplayName } from "@/features/categories/lib/category";
+import {
+  getCategoryDisplayColor,
+  getCategoryDisplayName,
+} from "@/features/categories/lib/category";
 import type { TransactionCategory } from "@/features/categories/types/model";
 
 export type CategoryFilterSelection = {
@@ -201,4 +204,5 @@ export const matchesCategorySearch = (
   return getCategoryDisplayName(category, categoryById).toLowerCase().includes(normalizedQuery);
 };
 
-export const getCategoryDotHue = (category: TransactionCategory) => getCategoryDisplayHue(category);
+export const getCategoryDotHue = (category: TransactionCategory) =>
+  getCategoryDisplayColor(category);

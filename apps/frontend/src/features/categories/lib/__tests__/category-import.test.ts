@@ -37,7 +37,7 @@ describe("category import", () => {
       parentId: null,
       name: 'Food, "Home"',
       description: "Monthly\nneeds",
-      hue: 20,
+      color: "#C55B26",
       role: "spending",
       parent: null,
     };
@@ -46,7 +46,7 @@ describe("category import", () => {
       parentId: "root",
       name: "Groceries",
       description: null,
-      hue: null,
+      color: null,
       role: "spending",
       parent: root,
     };
@@ -59,7 +59,7 @@ describe("category import", () => {
         parentId: null,
         name: 'Food, "Home"',
         description: "Monthly\nneeds",
-        color: 20,
+        color: "#C55B26",
       },
       {
         id: "id-2",
@@ -77,7 +77,7 @@ describe("category import", () => {
       parentId: null,
       name: "=1+1",
       description: "@SUM(A1)",
-      hue: 20,
+      color: "#C55B26",
       role: "spending",
       parent: null,
     };
@@ -122,15 +122,15 @@ describe("category import", () => {
       parentId: null,
       name: "Food",
       description: "Existing wins",
-      hue: 20,
+      color: "#C55B26",
       role: "spending",
       parent: null,
     };
     const content = [
       "name,parent_name,color",
-      "Food,,100",
-      "Broken,,361",
-      "Groceries,Food,220",
+      "Food,,#5BC526",
+      "Broken,,red",
+      "Groceries,Food,#265BC5",
       "Restaurants,Food,",
     ].join("\n");
 
@@ -161,9 +161,9 @@ describe("category import", () => {
     ]);
   });
 
-  it("accepts integer colors through 360 and stores 360 as zero", () => {
-    const preview = buildPreview("name,color\nLeading zero,020\nFull turn,360");
+  it("accepts lowercase HEX and canonicalizes it", () => {
+    const preview = buildPreview("name,color\nLower,#c55b26\nNeutral,#737373");
 
-    expect(preview.categories.map((category) => category.color)).toEqual([20, 0]);
+    expect(preview.categories.map((category) => category.color)).toEqual(["#C55B26", "#737373"]);
   });
 });

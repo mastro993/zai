@@ -34,7 +34,7 @@ struct ImportCategoryInsert<'a> {
     parent_id: Option<&'a str>,
     name: &'a str,
     description: Option<&'a str>,
-    hue: Option<i32>,
+    color: Option<&'a str>,
     role: &'a str,
 }
 
@@ -45,7 +45,7 @@ impl<'a> From<&'a TransactionCategoryRow> for ImportCategoryInsert<'a> {
             parent_id: row.parent_id.as_deref(),
             name: &row.name,
             description: row.description.as_deref(),
-            hue: row.hue,
+            color: row.color.as_deref(),
             role: &row.role,
         }
     }

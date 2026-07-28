@@ -10,7 +10,7 @@ async fn test_delete_parent_category_promotes_children() {
             name: "Parent".to_string(),
             parent_id: None,
             description: None,
-            hue: None,
+            color: None,
             role: None,
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -21,7 +21,7 @@ async fn test_delete_parent_category_promotes_children() {
             name: "Child".to_string(),
             parent_id: Some(parent.id.clone()),
             description: None,
-            hue: None,
+            color: None,
             role: None,
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -50,7 +50,7 @@ async fn test_delete_parent_category_deletes_children() {
             name: "Parent".to_string(),
             parent_id: None,
             description: None,
-            hue: None,
+            color: None,
             role: None,
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -61,7 +61,7 @@ async fn test_delete_parent_category_deletes_children() {
             name: "Child".to_string(),
             parent_id: Some(parent.id.clone()),
             description: None,
-            hue: None,
+            color: None,
             role: None,
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -90,7 +90,7 @@ async fn test_delete_category_uncategorizes_transactions() {
             name: "Food".to_string(),
             parent_id: None,
             description: None,
-            hue: None,
+            color: None,
             role: None,
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -124,7 +124,7 @@ async fn role_changes_require_confirmation_when_budget_scope_is_affected() {
             name: "Food".to_string(),
             parent_id: None,
             description: None,
-            hue: None,
+            color: None,
             role: Some(CategoryRole::Spending),
             id: Some("food".to_string()),
         })
@@ -140,7 +140,7 @@ async fn role_changes_require_confirmation_when_budget_scope_is_affected() {
         parent_id: None,
         name: "Food".to_string(),
         description: None,
-        hue: None,
+        color: None,
         role: Some(CategoryRole::Income),
         confirm_budget_impact,
     };
@@ -177,7 +177,7 @@ async fn direct_current_budget_selection_blocks_category_deletion() {
             name: "Food".to_string(),
             parent_id: None,
             description: None,
-            hue: None,
+            color: None,
             role: Some(CategoryRole::Spending),
             id: Some("food".to_string()),
         })
@@ -210,7 +210,7 @@ async fn preview_reports_budget_impact_before_delete() {
             name: "Food".to_string(),
             parent_id: None,
             description: None,
-            hue: None,
+            color: None,
             role: Some(CategoryRole::Spending),
             id: Some("food-preview".to_string()),
         })
@@ -246,7 +246,7 @@ async fn indirectly_covered_deletion_requires_confirmation_then_rebuilds_budget(
             name: "Food".to_string(),
             parent_id: None,
             description: None,
-            hue: None,
+            color: None,
             role: Some(CategoryRole::Spending),
             id: Some("food".to_string()),
         })
@@ -257,7 +257,7 @@ async fn indirectly_covered_deletion_requires_confirmation_then_rebuilds_budget(
             name: "Groceries".to_string(),
             parent_id: Some(root.id.clone()),
             description: None,
-            hue: None,
+            color: None,
             role: None,
             id: Some("groceries".to_string()),
         })
@@ -296,7 +296,7 @@ async fn block_delete_rechecks_children_inside_writer() {
             name: "Parent".to_string(),
             parent_id: None,
             description: None,
-            hue: None,
+            color: None,
             role: None,
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -306,7 +306,7 @@ async fn block_delete_rechecks_children_inside_writer() {
         name: "Child".to_string(),
         parent_id: Some(parent.id.clone()),
         description: None,
-        hue: None,
+        color: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     })

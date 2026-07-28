@@ -28,7 +28,7 @@ const toCategoryExportRow = (
     category.parent?.name ??
     (category.parentId ? categoryById.get(category.parentId)?.name : undefined) ??
     "",
-  color: category.parentId ? "" : category.hue == null ? "" : String(category.hue),
+  color: category.parentId ? "" : (category.color ?? ""),
   description: category.description ?? "",
 });
 

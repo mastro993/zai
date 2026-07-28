@@ -49,7 +49,7 @@ describe("transaction export", () => {
       parentId: null,
       name: "Food",
       description: null,
-      hue: 20,
+      color: "#C55B26",
       role: "spending",
       parent: null,
     };
@@ -58,7 +58,7 @@ describe("transaction export", () => {
       parentId: "root",
       name: "Groceries",
       description: null,
-      hue: null,
+      color: null,
       role: "spending",
       parent: root,
     };
@@ -127,7 +127,7 @@ describe("transaction export", () => {
       parentId: null,
       name: "Food",
       description: null,
-      hue: 20,
+      color: "#C55B26",
       role: "spending",
       parent: null,
     };
@@ -136,7 +136,7 @@ describe("transaction export", () => {
       parentId: "root",
       name: "Groceries",
       description: null,
-      hue: null,
+      color: null,
       role: "spending",
       parent: root,
     };

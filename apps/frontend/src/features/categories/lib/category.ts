@@ -1,11 +1,15 @@
-import { DEFAULT_CATEGORY_HUE, type CategoryRole, type TransactionCategory } from "../types/model";
+import {
+  DEFAULT_CATEGORY_COLOR,
+  type CategoryRole,
+  type TransactionCategory,
+} from "../types/model";
 
-export const getCategoryDisplayHue = (category: TransactionCategory) => {
+export const getCategoryDisplayColor = (category: TransactionCategory) => {
   if (category.parentId) {
-    return category.parent?.hue ?? DEFAULT_CATEGORY_HUE;
+    return category.parent?.color ?? DEFAULT_CATEGORY_COLOR;
   }
 
-  return category.hue ?? DEFAULT_CATEGORY_HUE;
+  return category.color ?? DEFAULT_CATEGORY_COLOR;
 };
 
 export const getCategoryDisplayName = (
@@ -22,5 +26,5 @@ export const getCategoryDisplayName = (
 export const getCategoryRoleLabel = (role: CategoryRole) =>
   role === "income" ? "Income" : "Spending";
 
-export const isCategoryHue = (hue: unknown): hue is number | null =>
-  hue === null || (typeof hue === "number" && Number.isInteger(hue) && hue >= 0 && hue <= 360);
+export const isCategoryColor = (color: unknown): color is string | null =>
+  color === null || (typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color));

@@ -101,7 +101,7 @@ async fn create_transaction_with_category_succeeds() {
         "POST",
         "/api/transactions/import-batch",
         Some(json!({
-            "categories": [{ "id": "food-cat", "name": "Food", "hue": 20 }],
+            "categories": [{ "id": "food-cat", "name": "Food", "color": "#FF0000" }],
             "transactions": [{
                 "description": "Lunch",
                 "amount": 1200,
@@ -326,7 +326,7 @@ async fn import_transaction_batch_returns_imported_transactions_only() {
             "categories": [
                 {
                     "name": "Food",
-                    "hue": 20
+                    "color": "#FF0000"
                 }
             ],
             "transactions": [

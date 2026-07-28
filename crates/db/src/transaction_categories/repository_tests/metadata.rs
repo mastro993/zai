@@ -1,7 +1,7 @@
 use super::*;
 
 #[tokio::test]
-async fn test_create_category_clears_child_hue() {
+async fn test_create_category_preserves_child_color() {
     let temp_db = TempDb::new();
     let repo = setup_test_repo(temp_db.path());
 
@@ -9,7 +9,7 @@ async fn test_create_category_clears_child_hue() {
         name: "Parent".to_string(),
         parent_id: None,
         description: None,
-        hue: Some(20),
+        color: Some("#D31212".to_string()),
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -19,17 +19,17 @@ async fn test_create_category_clears_child_hue() {
         name: "Child".to_string(),
         parent_id: Some(created_parent.id.clone()),
         description: None,
-        hue: Some(220),
+        color: Some("#3C99F6".to_string()),
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
     let created_child = repo.create_category(child).await.unwrap();
 
-    assert_eq!(created_child.hue, None);
+    assert_eq!(created_child.color.as_deref(), Some("#3C99F6"));
 }
 
 #[tokio::test]
-async fn test_create_category_preserves_missing_child_hue() {
+async fn test_create_category_preserves_missing_child_color() {
     let temp_db = TempDb::new();
     let repo = setup_test_repo(temp_db.path());
 
@@ -37,7 +37,7 @@ async fn test_create_category_preserves_missing_child_hue() {
         name: "Parent".to_string(),
         parent_id: None,
         description: None,
-        hue: Some(20),
+        color: Some("#D31212".to_string()),
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -47,17 +47,17 @@ async fn test_create_category_preserves_missing_child_hue() {
         name: "Child".to_string(),
         parent_id: Some(created_parent.id),
         description: None,
-        hue: None,
+        color: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
     let created_child = repo.create_category(child).await.unwrap();
 
-    assert_eq!(created_child.hue, None);
+    assert_eq!(created_child.color, None);
 }
 
 #[tokio::test]
-async fn test_update_category_clears_child_hue() {
+async fn test_update_category_preserves_child_color() {
     let temp_db = TempDb::new();
     let repo = setup_test_repo(temp_db.path());
 
@@ -65,7 +65,7 @@ async fn test_update_category_clears_child_hue() {
         name: "Parent".to_string(),
         parent_id: None,
         description: None,
-        hue: Some(20),
+        color: Some("#D31212".to_string()),
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -75,7 +75,7 @@ async fn test_update_category_clears_child_hue() {
         name: "Child".to_string(),
         parent_id: Some(created_parent.id.clone()),
         description: None,
-        hue: Some(20),
+        color: Some("#DB1313".to_string()),
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -86,18 +86,18 @@ async fn test_update_category_clears_child_hue() {
         name: "Child Updated".to_string(),
         parent_id: Some(created_parent.id),
         description: None,
-        hue: Some(300),
+        color: Some("#AB63F2".to_string()),
         role: None,
         confirm_budget_impact: false,
     };
 
     let updated_child = repo.update_category(updated_child).await.unwrap();
 
-    assert_eq!(updated_child.hue, None);
+    assert_eq!(updated_child.color.as_deref(), Some("#AB63F2"));
 }
 
 #[tokio::test]
-async fn test_update_category_keeps_root_hue_when_parent_is_removed() {
+async fn test_update_category_keeps_root_color_when_parent_is_removed() {
     let temp_db = TempDb::new();
     let repo = setup_test_repo(temp_db.path());
 
@@ -105,7 +105,7 @@ async fn test_update_category_keeps_root_hue_when_parent_is_removed() {
         name: "Parent".to_string(),
         parent_id: None,
         description: None,
-        hue: Some(20),
+        color: Some("#D31212".to_string()),
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -115,7 +115,7 @@ async fn test_update_category_keeps_root_hue_when_parent_is_removed() {
         name: "Child".to_string(),
         parent_id: Some(created_parent.id.clone()),
         description: None,
-        hue: Some(20),
+        color: Some("#DB1313".to_string()),
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -126,14 +126,14 @@ async fn test_update_category_keeps_root_hue_when_parent_is_removed() {
         name: "Promoted Child".to_string(),
         parent_id: None,
         description: None,
-        hue: Some(300),
+        color: Some("#AB63F2".to_string()),
         role: None,
         confirm_budget_impact: false,
     };
 
     let updated_child = repo.update_category(updated_child).await.unwrap();
 
-    assert_eq!(updated_child.hue, Some(300));
+    assert_eq!(updated_child.color.as_deref(), Some("#AB63F2"));
 }
 
 #[tokio::test]
@@ -145,7 +145,7 @@ async fn test_sibling_name_exists_compares_trimmed_names_case_insensitively() {
         name: "Food".to_string(),
         parent_id: None,
         description: None,
-        hue: None,
+        color: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     })

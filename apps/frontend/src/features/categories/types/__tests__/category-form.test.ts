@@ -7,7 +7,7 @@ describe("categoryFormSchema", () => {
     const result = categoryFormSchema.safeParse({
       name: "Salary",
       parentId: "",
-      color: 20,
+      color: "#C55B26",
     });
 
     expect(result.success).toBe(false);

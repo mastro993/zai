@@ -2,34 +2,33 @@ import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-import { CATEGORY_HUES, type CategoryHue } from "../types/model";
+import { CATEGORY_COLORS, type CategoryColor } from "../types/model";
 
-const HUE_LABELS: Record<number, string> = {
-  20: "Red",
-  60: "Orange",
-  100: "Yellow",
-  140: "Green",
-  180: "Teal",
-  220: "Cyan",
-  260: "Blue",
-  300: "Violet",
-  340: "Pink",
-};
-
-const getHueLabel = (hue: CategoryHue) =>
-  hue === null ? "Neutral" : (HUE_LABELS[hue] ?? "Custom");
+const COLOR_LABELS = [
+  "Orange",
+  "Yellow",
+  "Lime",
+  "Green",
+  "Teal",
+  "Blue",
+  "Indigo",
+  "Violet",
+  "Pink",
+  "Neutral",
+] as const;
 
 function CategoryColorSwatch({
-  hue,
+  color,
   isSelected,
   onSelect,
 }: {
-  hue: CategoryHue;
+  color: CategoryColor;
   isSelected: boolean;
-  onSelect: (hue: CategoryHue) => void;
+  onSelect: (color: CategoryColor) => void;
 }) {
+  const colorIndex = CATEGORY_COLORS.findIndex((choice) => choice === color);
   const label =
-    hue === null ? "Select neutral color" : `Select ${getHueLabel(hue)}, ${hue} degrees`;
+    colorIndex === -1 ? `Select custom color ${color ?? ""}` : `Select ${COLOR_LABELS[colorIndex]}`;
 
   return (
     <button
@@ -42,8 +41,8 @@ function CategoryColorSwatch({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         isSelected ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : null,
       )}
-      style={{ backgroundColor: hue === null ? "oklch(0.68 0 0)" : `oklch(0.68 0.11 ${hue})` }}
-      onClick={() => onSelect(hue)}
+      style={{ backgroundColor: color ?? "#737373" }}
+      onClick={() => onSelect(color)}
     >
       {isSelected ? <Check aria-hidden="true" className="size-4 text-white drop-shadow" /> : null}
     </button>
@@ -54,18 +53,18 @@ function CategoryColorPicker({
   value,
   onChange,
 }: {
-  value: CategoryHue;
-  onChange: (hue: CategoryHue) => void;
+  value: CategoryColor;
+  onChange: (color: CategoryColor) => void;
 }) {
-  const choices: ReadonlyArray<CategoryHue> = [...CATEGORY_HUES, null];
+  const choices: ReadonlyArray<CategoryColor> = CATEGORY_COLORS;
 
   return (
     <div className="grid grid-cols-5 gap-2" role="group" aria-label="Category colors">
-      {choices.map((hue) => (
+      {choices.map((color) => (
         <CategoryColorSwatch
-          key={hue ?? "neutral"}
-          hue={hue}
-          isSelected={value === hue}
+          key={color ?? "neutral"}
+          color={color}
+          isSelected={value === color}
           onSelect={onChange}
         />
       ))}

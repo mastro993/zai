@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
 
-import { getCategoryDisplayHue } from "../lib/category";
+import { getCategoryDisplayColor } from "../lib/category";
 import type { TransactionCategory } from "../types/model";
 import { CategoryBadge } from "./category-badge";
 
@@ -35,7 +35,7 @@ function CategoryCheckboxRow({
     >
       <Checkbox id={inputId} checked={checked} onCheckedChange={onCheckedChange} />
       <FieldLabel htmlFor={inputId} className="min-w-0 flex-1 cursor-pointer font-normal">
-        <CategoryBadge hue={getCategoryDisplayHue(category)}>{category.name}</CategoryBadge>
+        <CategoryBadge color={getCategoryDisplayColor(category)}>{category.name}</CategoryBadge>
       </FieldLabel>
     </Field>
   );
@@ -73,7 +73,7 @@ function CategoryOptionRow({
       )}
       onClick={onSelect}
     >
-      <CategoryBadge hue={getCategoryDisplayHue(category)}>{category.name}</CategoryBadge>
+      <CategoryBadge color={getCategoryDisplayColor(category)}>{category.name}</CategoryBadge>
       <span
         className={cn(
           "ml-auto flex size-4 shrink-0 items-center justify-center",

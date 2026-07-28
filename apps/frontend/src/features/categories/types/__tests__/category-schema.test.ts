@@ -3,39 +3,39 @@ import { describe, expect, it } from "vitest";
 import { categorySchema } from "../model";
 
 describe("categorySchema wire decode", () => {
-  it("accepts and canonicalizes numeric hues", () => {
+  it("accepts valid hex colors", () => {
     const parsed = categorySchema.parse({
       id: "root",
       parentId: null,
       name: "Food",
       description: null,
-      hue: 360,
+      color: "#f6caca",
       role: "spending",
       parent: null,
     });
 
-    expect(parsed.hue).toBe(0);
+    expect(parsed.color).toBe("#F6CACA");
   });
 
-  it("coerces invalid wire hues to neutral instead of failing the payload", () => {
+  it("coerces legacy named colors to null instead of failing the whole payload", () => {
     const parsed = categorySchema.parse({
       id: "child",
       parentId: "root",
       name: "Groceries",
       description: null,
-      hue: "orange",
+      color: "orange",
       role: "spending",
       parent: {
         id: "root",
         parentId: null,
         name: "Food",
         description: null,
-        hue: 20,
+        color: "#C55B26",
         role: "spending",
       },
     });
 
-    expect(parsed.hue).toBeNull();
-    expect(parsed.parent?.hue).toBe(20);
+    expect(parsed.color).toBeNull();
+    expect(parsed.parent?.color).toBe("#C55B26");
   });
 });

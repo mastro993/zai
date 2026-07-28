@@ -9,7 +9,7 @@ async fn test_get_categories() {
         name: "Cat 1".to_string(),
         parent_id: None,
         description: None,
-        hue: None,
+        color: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -17,7 +17,7 @@ async fn test_get_categories() {
         name: "Cat 2".to_string(),
         parent_id: None,
         description: None,
-        hue: None,
+        color: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -25,7 +25,7 @@ async fn test_get_categories() {
         name: "Cat 3".to_string(),
         parent_id: None,
         description: None,
-        hue: None,
+        color: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -54,7 +54,7 @@ async fn test_get_category() {
         name: "Parent".to_string(),
         parent_id: None,
         description: None,
-        hue: None,
+        color: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -64,7 +64,7 @@ async fn test_get_category() {
         name: "Child".to_string(),
         parent_id: Some(parent.id.clone()),
         description: None,
-        hue: None,
+        color: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -85,7 +85,7 @@ async fn test_get_categories_by_parent_id() {
         name: "Parent".to_string(),
         parent_id: None,
         description: None,
-        hue: None,
+        color: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -95,7 +95,7 @@ async fn test_get_categories_by_parent_id() {
         name: "Cat 1".to_string(),
         parent_id: Some(parent.id.clone()),
         description: None,
-        hue: None,
+        color: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -103,7 +103,7 @@ async fn test_get_categories_by_parent_id() {
         name: "Cat 2".to_string(),
         parent_id: None,
         description: None,
-        hue: None,
+        color: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -111,7 +111,7 @@ async fn test_get_categories_by_parent_id() {
         name: "Cat 3".to_string(),
         parent_id: Some(parent.id.clone()),
         description: None,
-        hue: None,
+        color: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };

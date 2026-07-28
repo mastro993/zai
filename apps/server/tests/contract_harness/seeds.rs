@@ -12,7 +12,7 @@ pub fn category_payload(name: &str, role: CategoryRole) -> Value {
         "name": name,
         "parentId": null,
         "description": null,
-        "hue": 20,
+        "color": "#951818",
         "role": role
     })
 }

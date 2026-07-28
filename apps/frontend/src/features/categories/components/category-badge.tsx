@@ -6,17 +6,17 @@ import { cn } from "@/lib/utils";
 import { getCategoryBadgeColors } from "../lib/category-color";
 
 function CategoryBadge({
-  hue,
+  color,
   className,
   truncate = true,
   children,
 }: {
-  hue: number | null;
+  color: string | null;
   className?: string;
   truncate?: boolean;
   children: ReactNode;
 }) {
-  const { background, foreground } = getCategoryBadgeColors(hue);
+  const { background, foreground } = getCategoryBadgeColors(color);
   return (
     <Badge
       className={cn(

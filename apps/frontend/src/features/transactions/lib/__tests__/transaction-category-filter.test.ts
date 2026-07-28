@@ -13,24 +13,24 @@ import {
 } from "../transaction-category-filter";
 
 const categories: Array<TransactionCategory> = [
-  { id: "food", name: "Food", parentId: null, hue: 20, role: "spending" },
+  { id: "food", name: "Food", parentId: null, color: "#C55B26", role: "spending" },
   {
     id: "groceries",
     name: "Groceries",
     parentId: "food",
-    hue: null,
+    color: null,
     role: "spending",
-    parent: { id: "food", name: "Food", parentId: null, hue: 20, role: "spending" },
+    parent: { id: "food", name: "Food", parentId: null, color: "#C55B26", role: "spending" },
   },
   {
     id: "restaurants",
     name: "Restaurants",
     parentId: "food",
-    hue: null,
+    color: null,
     role: "spending",
-    parent: { id: "food", name: "Food", parentId: null, hue: 20, role: "spending" },
+    parent: { id: "food", name: "Food", parentId: null, color: "#C55B26", role: "spending" },
   },
-  { id: "transport", name: "Transport", parentId: null, hue: 20, role: "spending" },
+  { id: "transport", name: "Transport", parentId: null, color: "#C55B26", role: "spending" },
 ];
 
 const childrenByParent = new Map([

@@ -152,7 +152,6 @@ pub(crate) fn apply_resolved_parent(
     match resolved_parent {
         Some(parent) => {
             category.parent_id = Some(parent.id);
-            category.hue = None;
             category.role = parent.role.to_string();
         }
         None => {
@@ -168,7 +167,6 @@ pub(crate) fn apply_resolved_parent_to_changeset(
     match resolved_parent {
         Some(parent) => {
             changeset.parent_id = Some(parent.id);
-            changeset.hue = None;
             changeset.role = parent.role.to_string();
         }
         None => {

@@ -16,7 +16,7 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { cn } from "@/lib/utils";
 
-import { getCategoryDisplayHue } from "../lib/category";
+import { getCategoryDisplayColor } from "../lib/category";
 import {
   getCategorySelectionItems,
   getRootState,
@@ -266,7 +266,9 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
                         htmlFor={`${searchInputId}-${root.id}`}
                         className="min-w-0 flex-1 cursor-pointer font-normal"
                       >
-                        <CategoryBadge hue={getCategoryDisplayHue(root)}>{root.name}</CategoryBadge>
+                        <CategoryBadge color={getCategoryDisplayColor(root)}>
+                          {root.name}
+                        </CategoryBadge>
                       </FieldLabel>
                     </Field>
                     {children.length > 0 && !showChildren ? (

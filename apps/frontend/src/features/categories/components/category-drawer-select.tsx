@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerTrigger } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 
-import { getCategoryDisplayHue } from "../lib/category";
+import { getCategoryDisplayColor } from "../lib/category";
 import { getCategorySelectionItems } from "../lib/category-selection";
 import type { TransactionCategory } from "../types/model";
 import { CategoryBadge } from "./category-badge";
@@ -138,7 +138,7 @@ function CategoryDrawerSelect(props: CategoryDrawerSelectProps) {
             selectionItems.map(({ category, label }) => (
               <CategoryBadge
                 key={category.id}
-                hue={getCategoryDisplayHue(category)}
+                color={getCategoryDisplayColor(category)}
                 truncate={false}
                 className="max-w-full shrink"
               >

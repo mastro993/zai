@@ -27,7 +27,7 @@ import {
   toggleUncategorized,
   type CategoryFilterSelection,
 } from "../lib/transaction-category-filter";
-import type { CategoryHue, TransactionCategory } from "@/features/categories/types/model";
+import type { CategoryColor, TransactionCategory } from "@/features/categories/types/model";
 
 type TransactionCategoryFilterProps = {
   categories: Array<TransactionCategory>;
@@ -36,12 +36,12 @@ type TransactionCategoryFilterProps = {
   onSelectionChange: (selection: CategoryFilterSelection) => void;
 };
 
-function CategoryDot({ hue }: { hue: CategoryHue }) {
+function CategoryDot({ color }: { color: CategoryColor }) {
   return (
     <span
       aria-hidden
       className="size-2 shrink-0 rounded-full"
-      style={{ backgroundColor: getCategoryBadgeColors(hue).foreground }}
+      style={{ backgroundColor: getCategoryBadgeColors(color).foreground }}
     />
   );
 }
@@ -180,7 +180,7 @@ export function TransactionCategoryFilter({
                               );
                             }}
                           >
-                            <CategoryDot hue={getCategoryDotHue(root)} />
+                            <CategoryDot color={getCategoryDotHue(root)} />
                             {root.name}
                           </Button>
                         ) : null}
@@ -201,7 +201,7 @@ export function TransactionCategoryFilter({
                               );
                             }}
                           >
-                            <CategoryDot hue={getCategoryDotHue(child)} />
+                            <CategoryDot color={getCategoryDotHue(child)} />
                             {getCategoryDisplayName(child, categoryById)}
                           </Button>
                         ))}

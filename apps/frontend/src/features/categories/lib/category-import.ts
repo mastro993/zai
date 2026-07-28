@@ -16,19 +16,17 @@ export type CategoryImportPayload = {
   parentId?: string | null;
   name: string;
   description?: string | null;
-  color?: number | null;
+  color?: string | null;
 };
 
-export type CategoryBackendImportPayload = Omit<CategoryImportPayload, "color"> & {
-  hue?: number | null;
-};
+export type CategoryBackendImportPayload = CategoryImportPayload;
 
 export const toCategoryBackendImportPayload = ({
   color,
   ...category
 }: CategoryImportPayload): CategoryBackendImportPayload => ({
   ...category,
-  hue: color ?? null,
+  color: color ?? null,
 });
 
 export type CategoryImportPreviewRow = {
@@ -69,12 +67,12 @@ type ParsedCandidate = {
   previewIndex: number;
   parentName: string;
   name: string;
-  hue: number | null;
+  color: string;
   description: string;
   isChild: boolean;
 };
 
-const HUE_REGEX = /^\d{1,3}$/;
+const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
 
 const emptyMapping: CategoryImportColumnMapping = {
   name: null,
@@ -116,7 +114,7 @@ export const inferCategoryImportMapping = (
 ): CategoryImportColumnMapping => ({
   name: findHeaderIndex(headers, ["name", "category", "category_name"]),
   parentName: findHeaderIndex(headers, ["parent_name", "parent", "root", "root_category"]),
-  color: findHeaderIndex(headers, ["color"]),
+  color: findHeaderIndex(headers, ["color", "colour"]),
   description: findHeaderIndex(headers, ["description", "notes"]),
 });
 
@@ -239,11 +237,7 @@ export const buildCategoryImportPreview = (
       options.linkMode === "single-column"
         ? parseSingleColumnCategory(row, mapping, options.separator)
         : parseColumnCategory(row, mapping);
-    const hueText = normalizeName(getCell(row, mapping.color));
-    const hueValue = hueText === "" ? null : Number(hueText);
-    const isValidHue =
-      hueText === "" || (HUE_REGEX.test(hueText) && hueValue !== null && hueValue <= 360);
-    const hue = hueValue === null ? null : isValidHue ? hueValue % 360 : null;
+    const color = normalizeName(getCell(row, mapping.color));
     const description = normalizeName(getCell(row, mapping.description));
 
     if (!parsed.name) {
@@ -258,10 +252,8 @@ export const buildCategoryImportPreview = (
       continue;
     }
 
-    if (!parsed.isChild && !isValidHue) {
-      previewRows.push(
-        buildInvalidPreviewRow(rowNumber, row, mapping, "Color must be an integer from 0 to 360"),
-      );
+    if (!parsed.isChild && color && !HEX_COLOR_REGEX.test(color)) {
+      previewRows.push(buildInvalidPreviewRow(rowNumber, row, mapping, "Color must be #RRGGBB"));
       continue;
     }
 
@@ -269,7 +261,7 @@ export const buildCategoryImportPreview = (
       rowNumber,
       parentName: parsed.parentName,
       name: parsed.name,
-      color: parsed.isChild ? "" : hue === null ? "" : String(hue),
+      color: parsed.isChild ? "" : color.toUpperCase(),
       description,
       status: "import",
       message: "Ready to import",
@@ -279,7 +271,7 @@ export const buildCategoryImportPreview = (
       previewIndex: previewRows.length,
       parentName: parsed.parentName,
       name: parsed.name,
-      hue: parsed.isChild ? null : hue,
+      color: previewRow.color,
       description,
       isChild: parsed.isChild,
     });
@@ -337,7 +329,7 @@ export const buildCategoryImportPreview = (
         parentId: null,
         name: candidate.name,
         description: candidate.description || null,
-        color: candidate.hue,
+        color: candidate.color || null,
       });
       continue;
     }

@@ -116,9 +116,6 @@ fn recurring_migration_failure_during_alert_rebuild_restores_previous_schema() {
     run_migrations(&pool).expect("migrations");
     connection
         .revert_last_migration(TEST_MIGRATIONS)
-        .expect("revert category hue migration");
-    connection
-        .revert_last_migration(TEST_MIGRATIONS)
         .expect("revert recurring migration");
 
     connection
@@ -156,9 +153,6 @@ fn recurring_migration_failure_after_schema_build_restores_previous_schema() {
     let mut connection = SqliteConnection::establish(temp_db.path()).expect("connect");
     let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
     run_migrations(&pool).expect("migrations");
-    connection
-        .revert_last_migration(TEST_MIGRATIONS)
-        .expect("revert category hue migration");
     connection
         .revert_last_migration(TEST_MIGRATIONS)
         .expect("revert recurring migration");

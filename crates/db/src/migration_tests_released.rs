@@ -5,7 +5,6 @@ use crate::migration_fixture_support::{
 };
 use diesel::Connection;
 use diesel::RunQueryDsl;
-use diesel::connection::SimpleConnection;
 use diesel::prelude::QueryableByName;
 use diesel::sqlite::SqliteConnection;
 use diesel_migrations::MigrationHarness;
@@ -37,18 +36,7 @@ fn released_schema_fixtures_upgrade_to_head() {
             diesel::sql_query("SELECT COUNT(*) AS count FROM __diesel_schema_migrations")
                 .get_result::<CountRow>(&mut connection)
                 .expect("migration history");
-        assert_eq!(migration_count.count, 11, "{}", fixture.name);
-
-        let populated_hue_count = diesel::sql_query(
-            "SELECT COUNT(*) AS count FROM transaction_categories WHERE hue IS NOT NULL",
-        )
-        .get_result::<CountRow>(&mut connection)
-        .expect("category hues");
-        assert_eq!(
-            populated_hue_count.count, 0,
-            "{} neutral migration",
-            fixture.name
-        );
+        assert_eq!(migration_count.count, 10, "{}", fixture.name);
 
         assert_eq!(
             fixture_data_snapshot(&mut connection, fixture.name),
@@ -79,41 +67,6 @@ fn released_schema_fixtures_upgrade_to_head() {
             assert_eq!(revision_column_count.count, 1);
         }
     }
-}
-
-#[test]
-fn category_hue_migration_preserves_legacy_duplicate_root_names() {
-    let fixture = RELEASED_SCHEMA_FIXTURES
-        .iter()
-        .find(|fixture| fixture.name == "v0009_recurring_transactions")
-        .expect("recurring fixture");
-    let (temp_db, mut connection, _) = setup_fixture_at_version(fixture);
-
-    connection
-        .batch_execute(
-            "DROP INDEX transaction_categories_root_name_unique;
-             INSERT INTO transaction_categories (id, name, role, created_at, updated_at)
-             VALUES ('duplicate-root-a', 'Legacy Root', 'spending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
-             INSERT INTO transaction_categories (id, name, role, created_at, updated_at)
-             VALUES ('duplicate-root-b', ' legacy root ', 'spending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
-        )
-        .expect("seed duplicate roots");
-
-    let mut connection = migrate_fixture_to_head(&temp_db);
-    let duplicate_count = diesel::sql_query(
-        "SELECT COUNT(*) AS count FROM transaction_categories
-         WHERE lower(trim(name)) = 'legacy root' AND parent_id IS NULL",
-    )
-    .get_result::<CountRow>(&mut connection)
-    .expect("count duplicate roots");
-
-    assert_eq!(duplicate_count.count, 2);
-    assert!(connection
-        .batch_execute(
-            "INSERT INTO transaction_categories (id, name, role, created_at, updated_at)
-             VALUES ('duplicate-root-c', 'LEGACY ROOT', 'spending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
-        )
-        .is_err());
 }
 
 #[test]
@@ -198,12 +151,12 @@ fn fixture_data_snapshot(
         "v0000_initial" | "v0001_category_invariants" | "v0002_transaction_indexes"
     ) {
         "SELECT quote(id) || '|' || quote(parent_id) || '|' || quote(name) || '|' ||
-         quote(description) || '|' || quote('spending') || '|' ||
+         quote(description) || '|' || quote(color) || '|' || quote('spending') || '|' ||
          quote(created_at) || '|' || quote(updated_at) || '|' || quote(deleted_at) AS value
          FROM transaction_categories ORDER BY id"
     } else {
         "SELECT quote(id) || '|' || quote(parent_id) || '|' || quote(name) || '|' ||
-         quote(description) || '|' || quote(role) || '|' ||
+         quote(description) || '|' || quote(color) || '|' || quote(role) || '|' ||
          quote(created_at) || '|' || quote(updated_at) || '|' || quote(deleted_at) AS value
          FROM transaction_categories ORDER BY id"
     };

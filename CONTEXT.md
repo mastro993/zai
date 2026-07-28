@@ -24,15 +24,16 @@ children of the same root category.
 
 **Category color**:
 A user-selected presentation value assigned to a root category. The interface
-and user-authored imports call this value a color; it is stored and transported
-internally as a numeric hue angle. Chromatic hues are numeric angles from zero
-inclusive to 360 exclusive in the OKLCH color space; no angle represents
-neutral. A child category inherits its root category's hue.
-_Avoid_: Category hue in user-facing copy, hex color, named color
+and user-authored imports call this value a color. It is stored and transported
+as a validated `#RRGGBB` HEX color. A child category inherits its root
+category's color.
+_Avoid_: Category hue in user-facing copy, named color
 
 **Effective category color**:
-The color used to present a category, including neutral. A root category uses
-its own stored hue; a child category uses its root category's hue.
+The color used to present a category. A root category uses its own stored HEX
+color; a child category uses its root category's color. The frontend extracts
+the HEX color's hue and derives theme-aware badge colors from it; an achromatic
+HEX color produces the neutral badge treatment.
 _Avoid_: Effective category hue in user-facing copy
 
 **Category path**:

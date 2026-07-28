@@ -15,10 +15,10 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-import { getCategoryDisplayHue, getCategoryRoleLabel, isCategoryHue } from "../lib/category";
+import { getCategoryDisplayColor, getCategoryRoleLabel, isCategoryColor } from "../lib/category";
 import type { CategoryFormMode } from "../types/category-types";
 import {
-  DEFAULT_CATEGORY_HUE,
+  DEFAULT_CATEGORY_COLOR,
   categoryFormSchema,
   type CategoryFormValues,
   type CategoryRole,
@@ -35,7 +35,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       name: "",
       parentId: "",
       description: "",
-      color: DEFAULT_CATEGORY_HUE,
+      color: DEFAULT_CATEGORY_COLOR,
       role: "spending",
     };
   }
@@ -54,7 +54,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
     name: mode.category.name,
     parentId: mode.category.parentId ?? "",
     description: mode.category.description ?? "",
-    color: isCategoryHue(mode.category.hue) ? mode.category.hue : DEFAULT_CATEGORY_HUE,
+    color: isCategoryColor(mode.category.color) ? mode.category.color : DEFAULT_CATEGORY_COLOR,
     role: mode.category.parentId ? undefined : mode.category.role,
   };
 };
@@ -86,12 +86,12 @@ const getFormCopy = (mode: CategoryFormMode) => {
 function CategoryFormPreview({
   name,
   description,
-  displayHue,
+  displayColor,
   parentName,
 }: {
   name: string;
   description: string;
-  displayHue: number | null;
+  displayColor: string | null;
   parentName?: string;
 }) {
   const previewName = name.trim() || "Category name";
@@ -102,7 +102,7 @@ function CategoryFormPreview({
     <div className="border bg-muted/40 px-3 py-2.5">
       <p className="mb-2 text-xs font-medium text-muted-foreground">List preview</p>
       <div className="flex min-w-0 flex-col gap-1">
-        <CategoryBadge hue={displayHue} className={isPlaceholderName ? "italic" : undefined}>
+        <CategoryBadge color={displayColor} className={isPlaceholderName ? "italic" : undefined}>
           {parentName ? `${parentName} / ${previewName}` : previewName}
         </CategoryBadge>
         {previewDescription ? (
@@ -143,23 +143,23 @@ function CategoryFormDrawer({
   const watchedName = useWatch({ control: form.control, name: "name" }) ?? "";
   const watchedDescription = useWatch({ control: form.control, name: "description" }) ?? "";
   const parentId = useWatch({ control: form.control, name: "parentId" });
-  const selectedHue =
+  const selectedColor =
     useWatch({
       control: form.control,
       name: "color",
-    }) ?? DEFAULT_CATEGORY_HUE;
+    }) ?? DEFAULT_CATEGORY_COLOR;
   const isChildCategory = Boolean(parentId);
   const parentCategory = parentId ? categoryById.get(parentId) : undefined;
-  const previewHue = isChildCategory
-    ? getCategoryDisplayHue({
+  const previewColor = isChildCategory
+    ? getCategoryDisplayColor({
         id: "preview",
         parentId: parentId || null,
         name: watchedName,
-        hue: null,
+        color: null,
         role: parentCategory?.role ?? "spending",
         parent: parentCategory ?? null,
       })
-    : selectedHue;
+    : selectedColor;
   const { title, description } = getFormCopy(mode);
   const { errors, isSubmitting } = form.formState;
   const nameErrorId = "category-name-error";
@@ -196,7 +196,7 @@ function CategoryFormDrawer({
             <Field>
               <FieldLabel>Parent category</FieldLabel>
               <div className="flex h-8 items-center border border-input px-2.5">
-                <CategoryBadge hue={getCategoryDisplayHue(lockedParent)}>
+                <CategoryBadge color={getCategoryDisplayColor(lockedParent)}>
                   {lockedParent.name}
                 </CategoryBadge>
               </div>
@@ -239,15 +239,15 @@ function CategoryFormDrawer({
                         return;
                       }
 
-                      const currentHue = form.getValues("color");
+                      const currentColor = form.getValues("color");
                       if (!form.getValues("role")) {
                         form.setValue("role", "spending", {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
                       }
-                      if (currentHue === undefined) {
-                        form.setValue("color", DEFAULT_CATEGORY_HUE, {
+                      if (currentColor === undefined) {
+                        form.setValue("color", DEFAULT_CATEGORY_COLOR, {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
@@ -321,9 +321,9 @@ function CategoryFormDrawer({
                 name="color"
                 render={({ field }) => (
                   <CategoryColorPicker
-                    value={(field.value as number | null | undefined) ?? DEFAULT_CATEGORY_HUE}
-                    onChange={(hue) =>
-                      field.onChange(hue, {
+                    value={field.value ?? DEFAULT_CATEGORY_COLOR}
+                    onChange={(color) =>
+                      field.onChange(color, {
                         shouldDirty: true,
                         shouldValidate: true,
                       })
@@ -338,7 +338,7 @@ function CategoryFormDrawer({
           <CategoryFormPreview
             name={watchedName}
             description={watchedDescription}
-            displayHue={previewHue}
+            displayColor={previewColor}
             parentName={lockedParent?.name ?? parentCategory?.name}
           />
         </FieldGroup>

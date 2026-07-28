@@ -13,7 +13,7 @@ async fn create_category(
     let mut payload = json!({
         "name": name,
         "parentId": parent_id,
-        "hue": null,
+        "color": null,
     });
     if let Some(role) = role {
         payload["role"] = json!(role);
@@ -36,7 +36,7 @@ async fn transaction_batch_rejects_blank_category_without_persisting_it() {
             "categories": [{
                 "id": "blank-category",
                 "name": "   ",
-                "hue": 20
+                "color": "#FF0000"
             }],
             "transactions": []
         })),
@@ -67,7 +67,7 @@ async fn transaction_batch_child_inherits_existing_income_root_role() {
                 "id": "bonus-child",
                 "parentId": root_id,
                 "name": "Bonus",
-                "hue": null
+                "color": null
             }],
             "transactions": [{
                 "id": "income-transaction",
@@ -119,7 +119,7 @@ async fn transaction_batch_rejects_third_category_level_without_mutation() {
                 "id": "forbidden-third-level",
                 "parentId": child_id,
                 "name": "Fresh",
-                "hue": null
+                "color": null
             }],
             "transactions": []
         })),

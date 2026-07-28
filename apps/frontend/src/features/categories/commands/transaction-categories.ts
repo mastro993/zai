@@ -16,7 +16,7 @@ type CategoryPayload = {
   parentId?: string | null;
   name: string;
   description?: string | null;
-  hue?: number | null;
+  color?: string | null;
   role?: CategoryRole | null;
 };
 
@@ -24,7 +24,7 @@ const toCategoryPayload = (values: CategoryFormValues): CategoryPayload => ({
   name: values.name,
   parentId: values.parentId || null,
   description: values.description || null,
-  hue: values.color ?? null,
+  color: values.color ?? null,
   role: values.parentId ? null : (values.role ?? null),
 });
 

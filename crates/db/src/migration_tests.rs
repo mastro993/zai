@@ -41,17 +41,7 @@ fn fresh_database_applies_squashed_budget_migration_with_current_schema() {
         "SELECT COUNT(*) AS count FROM pragma_table_info('transaction_categories') WHERE name = 'role'",
     )
     .get_result::<CountRow>(&mut connection)
-        .expect("category role column");
-    let hue_column_count = diesel::sql_query(
-        "SELECT COUNT(*) AS count FROM pragma_table_info('transaction_categories') WHERE name = 'hue'",
-    )
-    .get_result::<CountRow>(&mut connection)
-    .expect("category hue column");
-    let color_column_count = diesel::sql_query(
-        "SELECT COUNT(*) AS count FROM pragma_table_info('transaction_categories') WHERE name = 'color'",
-    )
-    .get_result::<CountRow>(&mut connection)
-    .expect("legacy category color column");
+    .expect("category role column");
     let index_count = diesel::sql_query(
         "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'index' AND name IN ('transactions_type_index', 'transaction_categories_id_index', 'transaction_categories_root_name_unique', 'transaction_categories_child_name_unique', 'transactions_active_date_index', 'transactions_active_category_date_index', 'budgets_active_name_unique', 'budget_period_results_budget_period_index')",
     )
@@ -63,11 +53,9 @@ fn fresh_database_applies_squashed_budget_migration_with_current_schema() {
     .get_result::<SqlRow>(&mut connection)
     .expect("budget table");
 
-    assert_eq!(migration_count.count, 11);
+    assert_eq!(migration_count.count, 10);
     assert_eq!(table_count.count, 5);
     assert_eq!(role_column_count.count, 1);
-    assert_eq!(hue_column_count.count, 1);
-    assert_eq!(color_column_count.count, 0);
     assert_eq!(index_count.count, 8);
     assert!(
         budget_table
@@ -130,9 +118,6 @@ fn baseline_migration_can_be_reverted() {
     run_migrations(&pool).expect("migrations");
     connection
         .revert_last_migration(TEST_MIGRATIONS)
-        .expect("revert category hue migration");
-    connection
-        .revert_last_migration(TEST_MIGRATIONS)
         .expect("revert recurring migration");
     connection
         .revert_last_migration(TEST_MIGRATIONS)
@@ -172,9 +157,6 @@ fn pre_alert_finance_data_survives_domain_alerts_migration() {
     let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
 
     run_migrations(&pool).expect("migrations");
-    connection
-        .revert_last_migration(TEST_MIGRATIONS)
-        .expect("revert category hue migration");
     connection
         .revert_last_migration(TEST_MIGRATIONS)
         .expect("revert recurring migration");
@@ -268,9 +250,6 @@ fn populated_alerts_and_finance_survive_recurring_migration() {
     run_migrations(&pool).expect("migrations");
     connection
         .revert_last_migration(TEST_MIGRATIONS)
-        .expect("revert category hue migration");
-    connection
-        .revert_last_migration(TEST_MIGRATIONS)
         .expect("revert recurring");
 
     diesel::sql_query(
@@ -335,9 +314,6 @@ fn recurring_downgrade_refuses_when_data_present_and_succeeds_when_empty() {
     let mut connection = SqliteConnection::establish(temp_db.path()).expect("connect");
     let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
     run_migrations(&pool).expect("migrations");
-    connection
-        .revert_last_migration(TEST_MIGRATIONS)
-        .expect("revert category hue migration");
 
     diesel::sql_query(
         "INSERT INTO recurring_transactions (\
