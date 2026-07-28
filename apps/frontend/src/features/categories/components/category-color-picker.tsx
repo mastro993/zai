@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-import { CATEGORY_DARK_COLORS, CATEGORY_LIGHT_COLORS } from "../types/model";
+import { CATEGORY_COLORS } from "../types/model";
 
 function CategoryColorSwatch({
   color,
@@ -66,14 +66,8 @@ function CategoryColorPicker({
   return (
     <div className="flex flex-col gap-2">
       <CategoryColorRow
-        label="Saturated category colors"
-        colors={CATEGORY_DARK_COLORS}
-        value={value}
-        onChange={onChange}
-      />
-      <CategoryColorRow
-        label="Light category colors"
-        colors={CATEGORY_LIGHT_COLORS}
+        label="Category colors"
+        colors={CATEGORY_COLORS}
         value={value}
         onChange={onChange}
       />
