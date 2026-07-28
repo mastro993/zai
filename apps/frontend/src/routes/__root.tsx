@@ -22,7 +22,6 @@ import {
   SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
-  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/toaster/toaster";
 import { navigationItems, settingsItem } from "@/lib/navigation";
@@ -139,7 +138,6 @@ function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <SidebarSeparator />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
