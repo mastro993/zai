@@ -1,7 +1,7 @@
 import type { CategoryColor } from "../types/model";
 
 const CATEGORY_BACKGROUND_ALPHA = "25%";
-const CATEGORY_BACKGROUND_LIGHTNESS = 0.584;
+const CATEGORY_BACKGROUND_LIGHTNESS = 0.684;
 const HEX_COLOR = /^#([0-9a-f]{6})$/i;
 
 export interface CategoryBadgeColors {
