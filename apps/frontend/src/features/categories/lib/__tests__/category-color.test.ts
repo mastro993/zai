@@ -22,7 +22,7 @@ describe("category badge colors", () => {
 
   it("extracts the hue from a stored HEX color", () => {
     expect(getCategoryBadgeColors("#ff0000")).toEqual({
-      background: "oklch(0.584 0.239 0 / 25%)",
+      background: "oklch(0.684 0.239 0 / 25%)",
       foreground:
         "oklch(var(--category-badge-foreground-lightness) var(--category-badge-foreground-chroma) 0)",
     });
@@ -30,7 +30,7 @@ describe("category badge colors", () => {
 
   it("uses neutral foreground tokens", () => {
     expect(getCategoryBadgeColors(null)).toEqual({
-      background: "oklch(0.584 0 0 / 25%)",
+      background: "oklch(0.684 0 0 / 25%)",
       foreground: "var(--foreground)",
     });
   });

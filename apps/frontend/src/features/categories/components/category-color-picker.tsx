@@ -1,7 +1,6 @@
-import { Check } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 
+import { getCategoryBadgeColors } from "../lib/category-color";
 import { CATEGORY_COLORS, type CategoryColor } from "../types/model";
 
 const COLOR_LABELS = [
@@ -29,6 +28,7 @@ function CategoryColorSwatch({
   const colorIndex = CATEGORY_COLORS.findIndex((choice) => choice === color);
   const label =
     colorIndex === -1 ? `Select custom color ${color ?? ""}` : `Select ${COLOR_LABELS[colorIndex]}`;
+  const { background, foreground } = getCategoryBadgeColors(color);
 
   return (
     <button
@@ -36,15 +36,15 @@ function CategoryColorSwatch({
       aria-label={label}
       aria-pressed={isSelected}
       className={cn(
-        "relative flex aspect-square min-h-11 min-w-11 items-center justify-center border border-border transition-[box-shadow,transform] duration-150",
+        "relative flex aspect-square min-h-11 min-w-11 items-center justify-center rounded-(--radius) border-2 border-border/50 text-sm font-semibold transition-[border-color,box-shadow] duration-150",
         "hover:border-foreground/40 motion-reduce:transition-none",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        isSelected ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : null,
+        isSelected ? "border-foreground" : null,
       )}
-      style={{ backgroundColor: color ?? "#737373" }}
+      style={{ backgroundColor: background, color: foreground }}
       onClick={() => onSelect(color)}
     >
-      {isSelected ? <Check aria-hidden="true" className="size-4 text-white drop-shadow" /> : null}
+      Aa
     </button>
   );
 }

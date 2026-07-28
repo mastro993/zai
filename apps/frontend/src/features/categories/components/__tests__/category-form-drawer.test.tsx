@@ -10,6 +10,21 @@ import { CategoryFormDrawer } from "../category-form-drawer";
 describe("CategoryFormDrawer", () => {
   afterEach(() => cleanup());
 
+  it("does not render a separate list preview", () => {
+    render(
+      <Drawer open swipeDirection="right">
+        <CategoryFormDrawer
+          open
+          mode={{ type: "create-root" }}
+          categories={[]}
+          onSubmit={vi.fn()}
+        />
+      </Drawer>,
+    );
+
+    expect(screen.queryByText("List preview")).toBeNull();
+  });
+
   it("submits the selected root color", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
