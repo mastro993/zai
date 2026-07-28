@@ -1,7 +1,7 @@
 import type { CategoryHue } from "../types/model";
 
-const CATEGORY_BACKGROUND_ALPHA = "30%";
-const CATEGORY_BACKGROUND_LIGHTNESS = 0.74;
+const CATEGORY_BACKGROUND_ALPHA = "25%";
+const CATEGORY_BACKGROUND_LIGHTNESS = 0.584;
 
 export interface CategoryBadgeColors {
   background: string;
@@ -13,13 +13,13 @@ const badgeCache = new Map<CategoryHue, CategoryBadgeColors>();
 const computeBadgeColors = (hue: CategoryHue): CategoryBadgeColors => {
   if (hue === null) {
     return {
-      background: `oklch(${CATEGORY_BACKGROUND_LIGHTNESS} 0 0 / ${CATEGORY_BACKGROUND_ALPHA})`,
+      background: `oklch(${CATEGORY_BACKGROUND_LIGHTNESS} 0.239 0 / ${CATEGORY_BACKGROUND_ALPHA})`,
       foreground: "var(--foreground)",
     };
   }
 
   return {
-    background: `oklch(${CATEGORY_BACKGROUND_LIGHTNESS} 0.11 ${hue} / ${CATEGORY_BACKGROUND_ALPHA})`,
+    background: `oklch(${CATEGORY_BACKGROUND_LIGHTNESS} 0.239 ${hue} / ${CATEGORY_BACKGROUND_ALPHA})`,
     foreground: `oklch(var(--category-badge-foreground-lightness) var(--category-badge-foreground-chroma) ${hue})`,
   };
 };

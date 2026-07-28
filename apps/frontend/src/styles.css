@@ -93,7 +93,7 @@
   --font-heading: "Mona Sans", sans-serif;
   --radius: 0.5rem;
   --category-badge-foreground-lightness: 0.48;
-  --category-badge-foreground-chroma: 0.12;
+  --category-badge-foreground-chroma: 0.15;
   --shadow-2xs: 0 1px 0 0 oklch(0.55 0.012 162.2 / 0.05);
   --shadow-xs: 0 1px 2px 0 oklch(0.55 0.012 162.2 / 0.05);
   --shadow-sm:
