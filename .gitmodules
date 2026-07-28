@@ -1,3 +1,4 @@
 [submodule ".impeccable"]
 	path = apps/frontend/.impeccable/vendor
 	url = https://github.com/pbakaus/impeccable
+	ignore = all
