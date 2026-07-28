@@ -316,7 +316,6 @@ function CategoryFormDrawer({
           {!isChildCategory ? (
             <Field data-invalid={Boolean(errors.hue)}>
               <FieldLabel>Hue</FieldLabel>
-              <input type="hidden" {...form.register("hue")} />
               <Controller
                 control={form.control}
                 name="hue"
