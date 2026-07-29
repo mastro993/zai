@@ -35,8 +35,8 @@ zai.db
 
 # Impeccable
 # Ephemeral output, runtime state, and per-developer overrides. Shared design
-# artifacts and the vendored submodule remain tracked. The `**/` prefix covers
-# the frontend project and any future nested projects.
+# artifacts and the project-scoped npx-installed skill remain tracked. The
+# `**/` prefix covers the frontend project and any future nested projects.
 **/.impeccable/config.local.json
 **/.impeccable/hook.cache.json
 **/.impeccable/hook.pending.json
