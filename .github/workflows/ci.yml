@@ -38,7 +38,7 @@ jobs:
         run: pnpm build:web
 
   web-e2e:
-    name: Web mode smoke
+    name: Web E2E
     runs-on: ubuntu-latest
     env:
       CARGO_INCREMENTAL: 0
@@ -70,7 +70,7 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install chromium --with-deps
 
-      - name: Run web mode smoke test
+      - name: Run web E2E tests
         run: pnpm test:e2e:web
 
   backend:

@@ -14,7 +14,8 @@ use zai_app::ServiceContext;
 use crate::common::{TempAppDataDir, request_json};
 
 pub use seeds::{
-    category_payload, seed_alert, seed_category, seed_transaction, transaction_payload,
+    category_payload, seed_alert, seed_category, seed_transaction, seed_transaction_at,
+    transaction_payload,
 };
 
 pub struct ContractHarness {
