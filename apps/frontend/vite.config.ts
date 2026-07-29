@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   test: {
-    exclude: [...configDefaults.exclude, "**/.impeccable/vendor/**"],
+    exclude: configDefaults.exclude,
   },
   build: {
     outDir: "../../dist",
