@@ -39,13 +39,17 @@ pub async fn seed_category(harness: &ContractHarness, name: &str) -> (StatusCode
 }
 
 pub async fn seed_transaction(harness: &ContractHarness, description: &str) -> (StatusCode, Value) {
-    request_json(
-        &harness.router,
-        "POST",
-        "/api/transactions",
-        Some(transaction_payload(description, 1500)),
-    )
-    .await
+    seed_transaction_at(harness, description, "2026-01-15T12:00:00").await
+}
+
+pub async fn seed_transaction_at(
+    harness: &ContractHarness,
+    description: &str,
+    transaction_date: &str,
+) -> (StatusCode, Value) {
+    let mut payload = transaction_payload(description, 1500);
+    payload["transactionDate"] = Value::String(transaction_date.to_string());
+    request_json(&harness.router, "POST", "/api/transactions", Some(payload)).await
 }
 
 pub async fn seed_alert(dir: &std::path::Path, occurrence_key: &str, title: &str) -> String {
