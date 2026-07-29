@@ -175,7 +175,8 @@ test("web keeps recurring budget impact and forecast drill-down attributable", a
 }, testInfo) => {
   const suffix = `${testInfo.workerIndex}-${testInfo.repeatEachIndex}`;
   const category = await createApiCategory(page.request, `E2E forecast category ${suffix}`);
-  await createApiBudget(page.request, `E2E forecast budget ${suffix}`, category.id);
+  const budgetName = `E2E forecast budget ${suffix}`;
+  await createApiBudget(page.request, budgetName, category.id);
   const description = `E2E forecast source ${suffix}`;
   const document = await createApiRecurring(page.request, {
     description,
@@ -208,20 +209,38 @@ test("web keeps recurring budget impact and forecast drill-down attributable", a
   }
 
   await page.goto("/cash-flow/forecast");
-  await expect(page.getByRole("table", { name: "Budget forecast matrix" })).toBeVisible();
-  const cell = page
-    .getByRole("table", { name: "Budget forecast matrix" })
-    .getByRole("button")
-    .first();
-  await cell.focus();
-  await page.keyboard.press("Enter");
+  const matrix = page.getByRole("table", { name: "Budget forecast matrix" });
+  await expect(matrix).toBeVisible();
+  const budgetRow = matrix
+    .getByRole("row")
+    .filter({ has: page.getByRole("rowheader", { name: budgetName, exact: true }) });
+  await expect(budgetRow).toHaveCount(1);
+  const cells = budgetRow.getByRole("button");
+  const cellCount = await cells.count();
+  expect(cellCount).toBeGreaterThan(0);
   const detail = page.getByRole("dialog");
-  await expect(detail).toBeVisible();
-  await expect(detail.getByText("Source attribution")).toBeVisible();
-  await expect(detail.getByRole("link", { name: description })).toHaveCount(3);
-  await page.keyboard.press("Escape");
-  await expect(detail).toBeHidden();
-  await expect(cell).toBeFocused();
+  const forecastAttributionText: Array<string> = [];
+
+  for (let index = 0; index < cellCount; index += 1) {
+    const cell = cells.nth(index);
+    await cell.focus();
+    await page.keyboard.press("Enter");
+    await expect(detail).toBeVisible();
+    await expect(detail.getByText("Source attribution")).toBeVisible();
+    forecastAttributionText.push(
+      ...(await detail.getByRole("link", { name: description }).allTextContents()),
+    );
+    await page.keyboard.press("Escape");
+    await expect(detail).toBeHidden();
+    await expect(cell).toBeFocused();
+  }
+
+  expect(forecastAttributionText).toHaveLength(3);
+  for (const ordinal of [1, 2, 3]) {
+    expect(forecastAttributionText.some((text) => text.includes(`occurrence ${ordinal}`))).toBe(
+      true,
+    );
+  }
 });
 
 test("recurring creation and dialogs return focus predictably", async ({ page }) => {

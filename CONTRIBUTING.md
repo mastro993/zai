@@ -97,6 +97,9 @@ When transport or web behavior changes, also run:
 pnpm test:e2e:web
 ```
 
+See [Web end-to-end tests](docs/web-e2e.md) for coverage, reliability rules,
+focused commands, and explicit exclusions.
+
 ## Pull Requests
 
 - Keep changes focused and reviewable.
