@@ -5,7 +5,7 @@ mod recurring_contract;
 use axum::http::StatusCode;
 
 use common::request_json;
-use contract_harness::seed_transaction;
+use contract_harness::seed_transaction_at;
 use recurring_contract::{
     CONTRACT_RECURRING_ID, adopt_success, adoption_preview_success, assert_read_parity,
     attribution_projection_success, bulk_execute_success, bulk_preflight_success,
@@ -198,9 +198,10 @@ async fn recurring_contract_lifecycle_edit_bulk_status_and_recovery_errors_match
 async fn recurring_contract_adoption_and_public_errors_match() {
     let http = setup_contract("recurring-adopt-http").await;
     let tauri = setup_contract("recurring-adopt-tauri").await;
-    let (status, http_txn) = seed_transaction(&http, "Adopt seed").await;
+    let (status, http_txn) = seed_transaction_at(&http, "Adopt seed", "2026-07-15T12:00:00").await;
     assert_eq!(status, StatusCode::CREATED);
-    let (status, tauri_txn) = seed_transaction(&tauri, "Adopt seed").await;
+    let (status, tauri_txn) =
+        seed_transaction_at(&tauri, "Adopt seed", "2026-07-15T12:00:00").await;
     assert_eq!(status, StatusCode::CREATED);
     let http_txn_id = http_txn["id"].as_str().expect("http txn id").to_string();
     let tauri_txn_id = tauri_txn["id"].as_str().expect("tauri txn id").to_string();

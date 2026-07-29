@@ -1,4 +1,4 @@
-use super::process_test_support::{local, setup_service};
+use super::process_test_support::{local, process_until_caught_up, setup_service};
 use crate::connection::get_connection;
 use crate::schema::{domain_alerts, recurring_occurrences, recurring_transactions, transactions};
 use crate::transactions::models::TransactionRow;
@@ -92,6 +92,18 @@ async fn adopt_preserves_transaction_records_occurrence_one_without_alert_and_ca
         } => document,
     };
     assert_eq!(document.recurring_transaction.id, "rt-adopt");
+    assert!(
+        (2..=4).contains(&document.recurring_transaction.fulfilled_count),
+        "adoption should commit occurrence one and start bounded catch-up"
+    );
+
+    process_until_caught_up(&service, observed, preview.later_due_count as usize)
+        .await
+        .expect("finish bounded catch-up");
+    let document = service
+        .get_document("rt-adopt")
+        .await
+        .expect("caught-up document");
     assert_eq!(document.recurring_transaction.fulfilled_count, 4);
     assert_eq!(document.links.occurrences.items.len(), 4);
 
