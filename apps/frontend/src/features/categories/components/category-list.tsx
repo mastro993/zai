@@ -5,10 +5,11 @@ import {
   PencilEdit02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatePresence, domAnimation, LazyMotion, useReducedMotion } from "motion/react";
+import * as m from "motion/react-m";
 import { useMemo, useState, type KeyboardEvent } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -176,6 +177,51 @@ function CategoryChildRow({
   );
 }
 
+function CategoryChildren({
+  category,
+  childCategories,
+  isOpen,
+  onEdit,
+  onDelete,
+}: {
+  category: TransactionCategory;
+  childCategories: Array<TransactionCategory>;
+  isOpen: boolean;
+  onEdit: (mode: CategoryFormMode) => void;
+  onDelete: (category: TransactionCategory) => void;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <AnimatePresence initial={false} mode="sync">
+      {isOpen ? (
+        <m.ul
+          key={category.id}
+          aria-label={`Subcategories of ${category.name}`}
+          className="divide-y overflow-hidden border-t"
+          initial={shouldReduceMotion ? false : { height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={
+            shouldReduceMotion
+              ? { duration: 0 }
+              : {
+                  height: { duration: 0.2, ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: 0.15, ease: "easeOut" },
+                }
+          }
+        >
+          {childCategories.map((child) => (
+            <li key={child.id}>
+              <CategoryChildRow category={child} onEdit={onEdit} onDelete={onDelete} />
+            </li>
+          ))}
+        </m.ul>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
 function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryListProps) {
   const rootCategories = useMemo(
     () => categories.filter((category) => !category.parentId),
@@ -208,33 +254,33 @@ function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryList
   };
 
   return (
-    <div className="overflow-hidden rounded-lg border">
-      <ul className="divide-y">
-        {rootCategories.map((category) => {
-          const children = childrenByParent.get(category.id) ?? [];
-          const hasChildren = children.length > 0;
+    <LazyMotion features={domAnimation}>
+      <div className="overflow-hidden rounded-lg border">
+        <ul className="divide-y">
+          {rootCategories.map((category) => {
+            const children = childrenByParent.get(category.id) ?? [];
+            const hasChildren = children.length > 0;
 
-          if (!hasChildren) {
+            if (!hasChildren) {
+              return (
+                <li key={category.id}>
+                  <div className="group/row flex items-center gap-2 px-3 py-2.5 hover:bg-muted/50">
+                    <CategoryRowContent category={category} />
+                    <CategoryRowActions
+                      category={category}
+                      onAddChild={onAddChild}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                    />
+                  </div>
+                </li>
+              );
+            }
+
+            const isOpen = expandedIds.has(category.id);
+
             return (
               <li key={category.id}>
-                <div className="group/row flex items-center gap-2 px-3 py-2.5 hover:bg-muted/50">
-                  <CategoryRowContent category={category} />
-                  <CategoryRowActions
-                    category={category}
-                    onAddChild={onAddChild}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                  />
-                </div>
-              </li>
-            );
-          }
-
-          const isOpen = expandedIds.has(category.id);
-
-          return (
-            <li key={category.id}>
-              <Collapsible open={isOpen} onOpenChange={(open) => setParentOpen(category.id, open)}>
                 <CategoryParentRow
                   category={category}
                   childCount={children.length}
@@ -244,21 +290,19 @@ function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryList
                   onEdit={onEdit}
                   onDelete={onDelete}
                 />
-                <CollapsibleContent>
-                  <ul className="divide-y border-t">
-                    {children.map((child) => (
-                      <li key={child.id}>
-                        <CategoryChildRow category={child} onEdit={onEdit} onDelete={onDelete} />
-                      </li>
-                    ))}
-                  </ul>
-                </CollapsibleContent>
-              </Collapsible>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+                <CategoryChildren
+                  category={category}
+                  childCategories={children}
+                  isOpen={isOpen}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </LazyMotion>
   );
 }
 
