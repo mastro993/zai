@@ -73,3 +73,8 @@ playwright-report/
 
 # Worktrees
 .worktrees
+
+# Impeccable
+apps/frontend/.impeccable/*
+!apps/frontend/.impeccable/design.json
+!apps/frontend/.impeccable/live/config.json

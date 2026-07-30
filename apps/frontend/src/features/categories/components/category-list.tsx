@@ -5,16 +5,17 @@ import {
   PencilEdit02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatePresence, domAnimation, LazyMotion, useReducedMotion } from "motion/react";
+import * as m from "motion/react-m";
 import { useMemo, useState, type KeyboardEvent } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-import { getCategoryDisplayColor, getCategoryRoleLabel } from "../lib/category";
+import { getCategoryDisplayColor } from "../lib/category";
 import type { CategoryFormMode } from "../types/category-types";
-import type { TransactionCategory } from "../types/model";
+import type { CategoryRole, TransactionCategory } from "../types/model";
 import { CategoryBadge } from "./category-badge";
 
 interface CategoryListProps {
@@ -82,18 +83,10 @@ function CategoryRowContent({
   childCount?: number;
 }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-1">
-      <div className="flex min-w-0 items-center gap-2">
-        <CategoryBadge color={getCategoryDisplayColor(category)}>{category.name}</CategoryBadge>
-        <span className="shrink-0 border px-1.5 py-0.5 text-[10px] text-muted-foreground">
-          {getCategoryRoleLabel(category.role)}
-        </span>
-        {childCount !== undefined && childCount > 0 ? (
-          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">+{childCount}</span>
-        ) : null}
-      </div>
-      {category.description ? (
-        <span className="truncate text-xs text-muted-foreground">{category.description}</span>
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      <CategoryBadge color={getCategoryDisplayColor(category)}>{category.name}</CategoryBadge>
+      {childCount !== undefined && childCount > 0 ? (
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">+{childCount}</span>
       ) : null}
     </div>
   );
@@ -181,11 +174,138 @@ function CategoryChildRow({
   );
 }
 
-function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryListProps) {
-  const rootCategories = useMemo(
-    () => categories.filter((category) => !category.parentId),
-    [categories],
+function CategoryChildren({
+  category,
+  childCategories,
+  isOpen,
+  onEdit,
+  onDelete,
+}: {
+  category: TransactionCategory;
+  childCategories: Array<TransactionCategory>;
+  isOpen: boolean;
+  onEdit: (mode: CategoryFormMode) => void;
+  onDelete: (category: TransactionCategory) => void;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <AnimatePresence initial={false} mode="sync">
+      {isOpen ? (
+        <m.ul
+          key={category.id}
+          aria-label={`Subcategories of ${category.name}`}
+          className="divide-y overflow-hidden border-t"
+          initial={shouldReduceMotion ? false : { height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={
+            shouldReduceMotion
+              ? { duration: 0 }
+              : {
+                  height: { duration: 0.2, ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: 0.15, ease: "easeOut" },
+                }
+          }
+        >
+          {childCategories.map((child) => (
+            <li key={child.id}>
+              <CategoryChildRow category={child} onEdit={onEdit} onDelete={onDelete} />
+            </li>
+          ))}
+        </m.ul>
+      ) : null}
+    </AnimatePresence>
   );
+}
+
+function CategoryListSection({
+  role,
+  categories,
+  childrenByParent,
+  expandedIds,
+  onSetParentOpen,
+  onAddChild,
+  onEdit,
+  onDelete,
+}: {
+  role: CategoryRole;
+  categories: Array<TransactionCategory>;
+  childrenByParent: ReadonlyMap<string, Array<TransactionCategory>>;
+  expandedIds: ReadonlySet<string>;
+  onSetParentOpen: (parentId: string, open: boolean) => void;
+  onAddChild: (parentId: string) => void;
+  onEdit: (mode: CategoryFormMode) => void;
+  onDelete: (category: TransactionCategory) => void;
+}) {
+  const rootCategories = categories.filter(
+    (category) => !category.parentId && category.role === role,
+  );
+
+  if (rootCategories.length === 0) {
+    return null;
+  }
+
+  const label = role === "income" ? "Income" : "Spending";
+  const headingId = `category-list-${role}`;
+
+  return (
+    <section aria-labelledby={headingId} className="flex flex-col gap-2">
+      <h2 id={headingId} className="text-sm font-medium">
+        {label}
+      </h2>
+      <div className="overflow-hidden rounded-lg border">
+        <ul className="divide-y">
+          {rootCategories.map((category) => {
+            const children = childrenByParent.get(category.id) ?? [];
+            const hasChildren = children.length > 0;
+
+            if (!hasChildren) {
+              return (
+                <li key={category.id}>
+                  <div className="group/row flex items-center gap-2 px-3 py-2.5 hover:bg-muted/50">
+                    <CategoryRowContent category={category} />
+                    <CategoryRowActions
+                      category={category}
+                      onAddChild={onAddChild}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                    />
+                  </div>
+                </li>
+              );
+            }
+
+            const isOpen = expandedIds.has(category.id);
+
+            return (
+              <li key={category.id}>
+                <CategoryParentRow
+                  category={category}
+                  childCount={children.length}
+                  isOpen={isOpen}
+                  onToggle={() => onSetParentOpen(category.id, !isOpen)}
+                  onAddChild={onAddChild}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+                <CategoryChildren
+                  category={category}
+                  childCategories={children}
+                  isOpen={isOpen}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryListProps) {
   const childrenByParent = useMemo(() => {
     const map = new Map<string, Array<TransactionCategory>>();
     for (const category of categories) {
@@ -198,27 +318,7 @@ function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryList
     return map;
   }, [categories]);
 
-  const expandableParentIds = useMemo(
-    () =>
-      rootCategories
-        .filter((category) => (childrenByParent.get(category.id)?.length ?? 0) > 0)
-        .map((category) => category.id),
-    [childrenByParent, rootCategories],
-  );
-
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
-
-  const allExpanded =
-    expandableParentIds.length > 0 && expandableParentIds.every((id) => expandedIds.has(id));
-  const allCollapsed = expandableParentIds.every((id) => !expandedIds.has(id));
-
-  const expandAll = () => {
-    setExpandedIds(new Set(expandableParentIds));
-  };
-
-  const collapseAll = () => {
-    setExpandedIds(new Set());
-  };
 
   const setParentOpen = (parentId: string, open: boolean) => {
     setExpandedIds((current) => {
@@ -233,83 +333,36 @@ function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryList
   };
 
   return (
-    <div className="border">
-      <div className="flex items-center justify-between gap-3 border-b bg-muted/40 px-3 py-2">
-        <span className="text-xs font-medium">Categories</span>
-        {expandableParentIds.length > 0 ? (
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="xs" disabled={allExpanded} onClick={expandAll}>
-              Expand all
-            </Button>
-            <Button variant="ghost" size="xs" disabled={allCollapsed} onClick={collapseAll}>
-              Collapse all
-            </Button>
-          </div>
-        ) : null}
+    <LazyMotion features={domAnimation}>
+      <div className="flex flex-col gap-6">
+        <CategoryListSection
+          role="spending"
+          categories={categories}
+          childrenByParent={childrenByParent}
+          expandedIds={expandedIds}
+          onSetParentOpen={setParentOpen}
+          onAddChild={onAddChild}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+        <CategoryListSection
+          role="income"
+          categories={categories}
+          childrenByParent={childrenByParent}
+          expandedIds={expandedIds}
+          onSetParentOpen={setParentOpen}
+          onAddChild={onAddChild}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       </div>
-      <ul className="divide-y">
-        {rootCategories.map((category) => {
-          const children = childrenByParent.get(category.id) ?? [];
-          const hasChildren = children.length > 0;
-
-          if (!hasChildren) {
-            return (
-              <li key={category.id}>
-                <div className="group/row flex items-center gap-2 px-3 py-2.5 hover:bg-muted/50">
-                  <CategoryRowContent category={category} />
-                  <CategoryRowActions
-                    category={category}
-                    onAddChild={onAddChild}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                  />
-                </div>
-              </li>
-            );
-          }
-
-          const isOpen = expandedIds.has(category.id);
-
-          return (
-            <li key={category.id}>
-              <Collapsible open={isOpen} onOpenChange={(open) => setParentOpen(category.id, open)}>
-                <CategoryParentRow
-                  category={category}
-                  childCount={children.length}
-                  isOpen={isOpen}
-                  onToggle={() => setParentOpen(category.id, !isOpen)}
-                  onAddChild={onAddChild}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                />
-                <CollapsibleContent>
-                  <ul className="divide-y border-t">
-                    {children.map((child) => (
-                      <li key={child.id}>
-                        <CategoryChildRow category={child} onEdit={onEdit} onDelete={onDelete} />
-                      </li>
-                    ))}
-                  </ul>
-                </CollapsibleContent>
-              </Collapsible>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+    </LazyMotion>
   );
 }
 
 function CategoryListSkeleton() {
   return (
-    <div className="border">
-      <div className="flex items-center justify-between gap-3 border-b bg-muted/40 px-3 py-2">
-        <Skeleton className="h-4 w-20" />
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-6 w-16" />
-          <Skeleton className="h-6 w-20" />
-        </div>
-      </div>
+    <div className="overflow-hidden rounded-lg border">
       <ul className="divide-y">
         {[0, 1, 2, 3].map((row) => (
           <li key={row} className="flex items-center gap-2 px-3 py-2.5">

@@ -3,7 +3,7 @@ import { Result } from "@praha/byethrow";
 import { CommandError } from "@/commands/errors";
 import type { WebRequestSpec } from "@/commands/web-request-spec";
 
-import type { CategoryImportPayload } from "../lib/category-import";
+import type { CategoryBackendImportPayload } from "../lib/category-import";
 import type { CategoryChildrenDeleteStrategy, CategoryRole } from "../types/model";
 
 export interface GetCategoriesArgs {
@@ -44,7 +44,7 @@ export interface PreviewDeleteCategoriesArgs {
 }
 
 export interface ImportCategoriesArgs {
-  categories: Array<CategoryImportPayload>;
+  categories: Array<CategoryBackendImportPayload>;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -88,7 +88,11 @@ export const buildGetCategoryRequest = (
 };
 
 const validCategoryPayload = (value: unknown): value is CategoryPayload =>
-  isRecord(value) && isNonEmptyString(value.name);
+  isRecord(value) &&
+  isNonEmptyString(value.name) &&
+  (value.color === undefined ||
+    value.color === null ||
+    (typeof value.color === "string" && /^#[0-9a-f]{6}$/i.test(value.color)));
 
 export const buildCreateCategoryRequest = (
   args: CreateCategoryArgs,

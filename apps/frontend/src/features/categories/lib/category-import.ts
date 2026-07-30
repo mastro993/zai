@@ -19,6 +19,16 @@ export type CategoryImportPayload = {
   color?: string | null;
 };
 
+export type CategoryBackendImportPayload = CategoryImportPayload;
+
+export const toCategoryBackendImportPayload = ({
+  color,
+  ...category
+}: CategoryImportPayload): CategoryBackendImportPayload => ({
+  ...category,
+  color: color ?? null,
+});
+
 export type CategoryImportPreviewRow = {
   rowNumber: number;
   parentName: string;

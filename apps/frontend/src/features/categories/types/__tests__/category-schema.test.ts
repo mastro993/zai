@@ -30,12 +30,12 @@ describe("categorySchema wire decode", () => {
         parentId: null,
         name: "Food",
         description: null,
-        color: "#F6CACA",
+        color: "#C55B26",
         role: "spending",
       },
     });
 
     expect(parsed.color).toBeNull();
-    expect(parsed.parent?.color).toBe("#F6CACA");
+    expect(parsed.parent?.color).toBe("#C55B26");
   });
 });

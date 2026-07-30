@@ -1,31 +1,22 @@
 import { z } from "zod";
 
-const CATEGORY_COLOR_PAIRS = [
-  ["#951818", "#F6CACA"],
-  ["#884416", "#F6DCCA"],
-  ["#6C560F", "#F8EDC9"],
-  ["#147B1E", "#CAF6CF"],
-  ["#156D7F", "#CAEFF6"],
-  ["#184E95", "#CADDF6"],
-  ["#291895", "#D0CAF6"],
-  ["#701895", "#E9CAF6"],
-  ["#95185F", "#F6CAE3"],
-  ["#3D3D3D", "#E6E6E6"],
+export const CATEGORY_COLORS = [
+  "#C32828",
+  "#C39B28",
+  "#75C328",
+  "#28C34E",
+  "#28C3C3",
+  "#284EC3",
+  "#7528C3",
+  "#C3289B",
+  "#737373",
 ] as const;
 
-export const CATEGORY_DARK_COLORS = CATEGORY_COLOR_PAIRS.map(([darkColor]) => darkColor);
-
-export const CATEGORY_LIGHT_COLORS = CATEGORY_COLOR_PAIRS.map(([, lightColor]) => lightColor);
-
-export const CATEGORY_COLORS = [...CATEGORY_DARK_COLORS, ...CATEGORY_LIGHT_COLORS];
-
-export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLORS[0];
+export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLORS[8];
 export const CATEGORY_ROLES = ["spending", "income"] as const;
 
 const nullableStringSchema = z.string().nullable().optional();
 
-// Wire decode: tolerate legacy named colors (e.g. "orange") so one bad row
-// cannot take down get_transaction_categories.
 const categoryColorWireSchema = z.union([z.string(), z.null()]).transform((value) => {
   if (value == null || value === "") {
     return null;
@@ -47,7 +38,8 @@ export const categoryFormSchema = z
     description: z.string().trim().optional(),
     color: z
       .string()
-      .regex(/^#?[0-9a-f]{6}$/i)
+      .regex(/^#[0-9a-f]{6}$/i)
+      .nullable()
       .optional(),
     role: categoryRoleSchema.optional(),
   })
@@ -97,7 +89,7 @@ export const categoryDeletionPreviewSchema = z.object({
 });
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
-export type CategoryColor = (typeof CATEGORY_COLORS)[number];
+export type CategoryColor = string | null;
 export type CategoryRole = z.infer<typeof categoryRoleSchema>;
 export type TransactionCategory = z.infer<typeof categorySchema>;
 export type CategoryChildrenDeleteStrategy = "block" | "promote" | "delete";

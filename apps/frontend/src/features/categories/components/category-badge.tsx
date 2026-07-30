@@ -11,16 +11,20 @@ function CategoryBadge({
   truncate = true,
   children,
 }: {
-  color: string;
+  color: string | null;
   className?: string;
   truncate?: boolean;
   children: ReactNode;
 }) {
-  const { background, foreground, border } = getCategoryBadgeColors(color);
+  const { background, foreground } = getCategoryBadgeColors(color);
   return (
     <Badge
-      className={cn("max-w-full", !truncate && "h-auto whitespace-normal", className)}
-      style={{ backgroundColor: background, color: foreground, borderColor: border }}
+      className={cn(
+        "max-w-full border-0 font-semibold",
+        !truncate && "h-auto whitespace-normal",
+        className,
+      )}
+      style={{ backgroundColor: background, color: foreground }}
     >
       <span className={truncate ? "truncate" : "text-left wrap-break-word"}>{children}</span>
     </Badge>

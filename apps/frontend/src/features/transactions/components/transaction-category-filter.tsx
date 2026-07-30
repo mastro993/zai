@@ -10,11 +10,12 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 import { getCategoryDisplayName } from "@/features/categories/lib/category";
+import { getCategoryBadgeColors } from "@/features/categories/lib/category-color";
 import {
   DEFAULT_CATEGORY_FILTER_SELECTION,
   buildChildrenByParent,
   formatCategoryFilterLabel,
-  getCategoryDotColor,
+  getCategoryDotHue,
   getRootCategories,
   isActiveCategoryFilter,
   isChildIncludedByRollup,
@@ -26,7 +27,7 @@ import {
   toggleUncategorized,
   type CategoryFilterSelection,
 } from "../lib/transaction-category-filter";
-import type { TransactionCategory } from "@/features/categories/types/model";
+import type { CategoryColor, TransactionCategory } from "@/features/categories/types/model";
 
 type TransactionCategoryFilterProps = {
   categories: Array<TransactionCategory>;
@@ -35,9 +36,13 @@ type TransactionCategoryFilterProps = {
   onSelectionChange: (selection: CategoryFilterSelection) => void;
 };
 
-function CategoryDot({ color }: { color: string }) {
+function CategoryDot({ color }: { color: CategoryColor }) {
   return (
-    <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+    <span
+      aria-hidden
+      className="size-2 shrink-0 rounded-full"
+      style={{ backgroundColor: getCategoryBadgeColors(color).foreground }}
+    />
   );
 }
 
@@ -175,7 +180,7 @@ export function TransactionCategoryFilter({
                               );
                             }}
                           >
-                            <CategoryDot color={getCategoryDotColor(root)} />
+                            <CategoryDot color={getCategoryDotHue(root)} />
                             {root.name}
                           </Button>
                         ) : null}
@@ -196,7 +201,7 @@ export function TransactionCategoryFilter({
                               );
                             }}
                           >
-                            <CategoryDot color={getCategoryDotColor(child)} />
+                            <CategoryDot color={getCategoryDotHue(child)} />
                             {getCategoryDisplayName(child, categoryById)}
                           </Button>
                         ))}

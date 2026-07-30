@@ -16,7 +16,7 @@ describe("category export", () => {
       parentId: null,
       name: 'Food, "Home"',
       description: "Monthly\nneeds",
-      color: "#C92A2A",
+      color: "#C55B26",
       role: "spending",
       parent: null,
     };
@@ -25,7 +25,7 @@ describe("category export", () => {
       parentId: "root",
       name: "Groceries",
       description: null,
-      color: "#B95F00",
+      color: "#C5C526",
       role: "spending",
       parent: root,
     };
@@ -35,7 +35,7 @@ describe("category export", () => {
     expect(csv).toBe(
       [
         "name,parent_name,color,description",
-        '"Food, ""Home""",,#C92A2A,"Monthly\nneeds"',
+        '"Food, ""Home""",,#C55B26,"Monthly\nneeds"',
         'Groceries,"Food, ""Home""",,',
       ].join("\n"),
     );
@@ -47,13 +47,13 @@ describe("category export", () => {
       parentId: null,
       name: "=1+1",
       description: "@SUM(A1)",
-      color: "#C92A2A",
+      color: "#C55B26",
       role: "spending",
       parent: null,
     };
 
     expect(toCategoryExportCsv([root])).toBe(
-      ["name,parent_name,color,description", '"\t=1+1",,#C92A2A,"\t@SUM(A1)"'].join("\n"),
+      ["name,parent_name,color,description", '"\t=1+1",,#C55B26,"\t@SUM(A1)"'].join("\n"),
     );
   });
 });

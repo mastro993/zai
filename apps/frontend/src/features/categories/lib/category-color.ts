@@ -1,93 +1,60 @@
-import Color from "color";
+import type { CategoryColor } from "../types/model";
 
-// Minimum contrast for badge text (WCAG 2.1 AA, normal text).
-const AA_CONTRAST = 4.5;
-const LIGHTNESS_STEPS = 40;
-const LIGHT_FOREGROUND_MIN_LIGHTNESS = 88;
-
-const HEX = /^#?[0-9a-f]{6}$/i;
-
-type ColorInstance = ReturnType<typeof Color>;
-
-const parse = (value: string): ColorInstance | null =>
-  HEX.test(value.trim()) ? Color(value.trim()) : null;
-
-const foregroundCache = new Map<string, string>();
-
-const computeForeground = (background: string): string => {
-  const base = parse(background);
-  if (!base) {
-    return "#000000";
-  }
-
-  const goLighter = base.contrast(Color("white")) >= base.contrast(Color("black"));
-  const { h, s, l } = base.hsl().object();
-  const target = goLighter ? 100 : 0;
-
-  for (let step = 1; step <= LIGHTNESS_STEPS; step += 1) {
-    const lightness = l + ((target - l) * step) / LIGHTNESS_STEPS;
-    const candidate = Color({ h, s, l: lightness }).hex();
-
-    if (base.contrast(Color(candidate)) >= AA_CONTRAST) {
-      const foregroundLightness = goLighter
-        ? Math.max(lightness, LIGHT_FOREGROUND_MIN_LIGHTNESS)
-        : lightness;
-
-      return Color({ h, s, l: foregroundLightness }).hex();
-    }
-  }
-
-  return goLighter ? "#FFFFFF" : "#000000";
-};
-
-export const getCategoryForeground = (background: string): string => {
-  const cached = foregroundCache.get(background);
-  if (cached) {
-    return cached;
-  }
-
-  const foreground = computeForeground(background);
-  foregroundCache.set(background, foreground);
-
-  return foreground;
-};
-
-export const getContrastRatio = (foreground: string, background: string): number => {
-  const fg = parse(foreground);
-  const bg = parse(background);
-
-  return fg && bg ? fg.contrast(bg) : 0;
-};
+const CATEGORY_BACKGROUND_ALPHA = "25%";
+const CATEGORY_BACKGROUND_LIGHTNESS = 0.684;
+const HEX_COLOR = /^#([0-9a-f]{6})$/i;
 
 export interface CategoryBadgeColors {
   background: string;
   foreground: string;
-  border: string;
 }
 
-const badgeCache = new Map<string, CategoryBadgeColors>();
+const badgeCache = new Map<CategoryColor, CategoryBadgeColors>();
 
-const darkerBorder = (background: string): string => {
-  const color = parse(background);
-  return color ? color.darken(0.2).hex() : background;
-};
-
-const computeBadgeColors = (color: string): CategoryBadgeColors => {
-  const base = parse(color);
-  if (!base) {
-    return { background: color, foreground: "#000000", border: darkerBorder(color) };
+const extractHue = (color: CategoryColor): number | null => {
+  const match = color?.match(HEX_COLOR);
+  if (!match) {
+    return null;
   }
 
-  const background = base.hex();
+  const channels = [0, 2, 4].map((offset) =>
+    Number.parseInt(match[1].slice(offset, offset + 2), 16),
+  );
+  const [red, green, blue] = channels.map((channel) => channel / 255);
+  const maximum = Math.max(red, green, blue);
+  const minimum = Math.min(red, green, blue);
+  const chroma = maximum - minimum;
+
+  if (chroma === 0) {
+    return null;
+  }
+
+  const segment =
+    maximum === red
+      ? ((green - blue) / chroma) % 6
+      : maximum === green
+        ? (blue - red) / chroma + 2
+        : (red - green) / chroma + 4;
+
+  return Math.round((segment * 60 + 360) % 360);
+};
+
+const computeBadgeColors = (color: CategoryColor): CategoryBadgeColors => {
+  const hue = extractHue(color);
+  if (hue === null) {
+    return {
+      background: `oklch(${CATEGORY_BACKGROUND_LIGHTNESS} 0 0 / ${CATEGORY_BACKGROUND_ALPHA})`,
+      foreground: "var(--foreground)",
+    };
+  }
 
   return {
-    background,
-    foreground: computeForeground(color),
-    border: darkerBorder(background),
+    background: `oklch(${CATEGORY_BACKGROUND_LIGHTNESS} 0.239 ${hue} / ${CATEGORY_BACKGROUND_ALPHA})`,
+    foreground: `oklch(var(--category-badge-foreground-lightness) var(--category-badge-foreground-chroma) ${hue})`,
   };
 };
 
-export const getCategoryBadgeColors = (color: string): CategoryBadgeColors => {
+export const getCategoryBadgeColors = (color: CategoryColor): CategoryBadgeColors => {
   const cached = badgeCache.get(color);
   if (cached) {
     return cached;

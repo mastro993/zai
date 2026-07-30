@@ -1,98 +1,47 @@
 import { describe, expect, it } from "vitest";
-import Color from "color";
 
-import { CATEGORY_COLORS, CATEGORY_DARK_COLORS, CATEGORY_LIGHT_COLORS } from "../../types/model";
-import { getCategoryBadgeColors, getCategoryForeground, getContrastRatio } from "../category-color";
-
-const hueDistance = (first: string, second: string): number => {
-  const firstHue = Color(first).hsl().object().h;
-  const secondHue = Color(second).hsl().object().h;
-  const distance = Math.abs(firstHue - secondHue);
-
-  return Math.min(distance, 360 - distance);
-};
-
-describe("category badge foreground", () => {
-  it("clears WCAG AA (4.5:1) for every palette color", () => {
-    for (const background of CATEGORY_COLORS) {
-      const foreground = getCategoryForeground(background);
-      expect(getContrastRatio(foreground, background)).toBeGreaterThanOrEqual(4.5);
-    }
-  });
-
-  it("gives light palette colors a dark foreground", () => {
-    for (const background of CATEGORY_LIGHT_COLORS) {
-      const foreground = getCategoryForeground(background);
-      expect(getContrastRatio(foreground, "#FFFFFF")).toBeGreaterThan(
-        getContrastRatio(foreground, "#000000"),
-      );
-    }
-  });
-
-  it("gives deep saturated colors a light foreground", () => {
-    for (const background of CATEGORY_DARK_COLORS) {
-      const foreground = getCategoryForeground(background);
-      expect(getContrastRatio(foreground, "#000000")).toBeGreaterThan(
-        getContrastRatio(foreground, "#FFFFFF"),
-      );
-    }
-  });
-
-  it("uses brighter foregrounds for dark palette colors", () => {
-    for (const background of CATEGORY_DARK_COLORS) {
-      const foreground = getCategoryForeground(background);
-      expect(Color(foreground).hsl().object().l).toBeGreaterThanOrEqual(86);
-    }
-  });
-
-  it("uses same-hue foregrounds for every palette color", () => {
-    for (const background of CATEGORY_COLORS) {
-      const foreground = getCategoryForeground(background);
-
-      expect(foreground).not.toBe("#FFFFFF");
-      expect(foreground).not.toBe("#000000");
-      expect(hueDistance(foreground, background)).toBeLessThanOrEqual(3);
-    }
-  });
-
-  it("falls back to a readable foreground for unknown colors", () => {
-    const foreground = getCategoryForeground("not-a-color");
-    expect(getContrastRatio(foreground, "not-a-color")).toBe(0);
-    expect(foreground).toMatch(/^#[0-9A-F]{6}$/);
-  });
-});
+import { CATEGORY_COLORS } from "../../types/model";
+import { getCategoryBadgeColors } from "../category-color";
 
 describe("category badge colors", () => {
-  it("clears WCAG AA (4.5:1) for dark and light palette colors", () => {
-    for (const color of CATEGORY_COLORS) {
-      const { background, foreground } = getCategoryBadgeColors(color);
-      expect(getContrastRatio(foreground, background)).toBeGreaterThanOrEqual(4.5);
-    }
+  it("defines eight 45-degree chromatic choices followed by neutral", () => {
+    expect(CATEGORY_COLORS).toEqual([
+      "#C32828",
+      "#C39B28",
+      "#75C328",
+      "#28C34E",
+      "#28C3C3",
+      "#284EC3",
+      "#7528C3",
+      "#C3289B",
+      "#737373",
+    ]);
+    expect(new Set(CATEGORY_COLORS).size).toBe(CATEGORY_COLORS.length);
+    expect(CATEGORY_COLORS.map((color) => getCategoryBadgeColors(color).background)).toEqual([
+      "oklch(0.684 0.239 0 / 25%)",
+      "oklch(0.684 0.239 45 / 25%)",
+      "oklch(0.684 0.239 90 / 25%)",
+      "oklch(0.684 0.239 135 / 25%)",
+      "oklch(0.684 0.239 180 / 25%)",
+      "oklch(0.684 0.239 225 / 25%)",
+      "oklch(0.684 0.239 270 / 25%)",
+      "oklch(0.684 0.239 315 / 25%)",
+      "oklch(0.684 0 0 / 25%)",
+    ]);
   });
 
-  it("keeps the selected color as the badge background", () => {
-    for (const color of CATEGORY_COLORS) {
-      const { background } = getCategoryBadgeColors(color);
-      expect(background).toBe(color);
-    }
+  it("extracts the hue from a stored HEX color", () => {
+    expect(getCategoryBadgeColors("#ff0000")).toEqual({
+      background: "oklch(0.684 0.239 0 / 25%)",
+      foreground:
+        "oklch(var(--category-badge-foreground-lightness) var(--category-badge-foreground-chroma) 0)",
+    });
   });
 
-  it("keeps light palette colors on a dark foreground", () => {
-    for (const color of CATEGORY_LIGHT_COLORS) {
-      const { background, foreground } = getCategoryBadgeColors(color);
-      expect(background).toBe(color);
-      expect(getContrastRatio(foreground, "#FFFFFF")).toBeGreaterThan(
-        getContrastRatio(foreground, "#000000"),
-      );
-    }
-  });
-
-  it("uses a darker border than the badge background", () => {
-    for (const color of CATEGORY_COLORS) {
-      const { background, border } = getCategoryBadgeColors(color);
-      expect(getContrastRatio(border, "#000000")).toBeLessThan(
-        getContrastRatio(background, "#000000"),
-      );
-    }
+  it("uses neutral foreground tokens", () => {
+    expect(getCategoryBadgeColors(null)).toEqual({
+      background: "oklch(0.684 0 0 / 25%)",
+      foreground: "var(--foreground)",
+    });
   });
 });

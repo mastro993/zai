@@ -2,7 +2,7 @@ import { Result } from "@praha/byethrow";
 
 import { CommandError } from "@/commands/errors";
 import type { WebRequestSpec } from "@/commands/web-request-spec";
-import type { CategoryImportPayload } from "@/features/categories/lib/category-import";
+import type { CategoryBackendImportPayload } from "@/features/categories/lib/category-import";
 
 export interface TransactionFilters {
   query?: string;
@@ -73,7 +73,7 @@ export interface ImportTransactionsArgs {
 }
 
 export interface ImportTransactionBatchArgs {
-  categories: Array<CategoryImportPayload>;
+  categories: Array<CategoryBackendImportPayload>;
   transactions: Array<TransactionPayload & { id?: string }>;
 }
 

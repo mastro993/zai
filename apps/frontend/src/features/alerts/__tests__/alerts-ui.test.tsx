@@ -14,6 +14,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 import { AlertsLedgerFilters } from "../components/alerts-ledger-filters";
 import { AlertsLedgerSheet } from "../components/alerts-ledger-sheet";
+import { AlertsBell } from "../components/alerts-bell";
 import { AlertRow } from "../components/alert-row";
 import { AlertsControllerProvider, useAlertsController } from "../hooks/use-alerts-controller";
 import { alertsBellLabel, domainAlertSeverityLabel, formatAlertCreatedAt } from "../lib/format";
@@ -173,6 +174,24 @@ describe("alerts bell label", () => {
   it("includes exact unread count in accessible name", () => {
     expect(alertsBellLabel(0)).toBe("Alerts, 0 unread");
     expect(alertsBellLabel(3)).toBe("Alerts, 3 unread");
+  });
+
+  it("renders the bell as an outlined icon button", () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn(() => ({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+
+    renderController(<AlertsBell />);
+
+    const bell = screen.getByRole("button", { name: "Alerts, 0 unread" });
+    expect(bell.classList.contains("border-border")).toBe(true);
+    expect(bell.classList.contains("bg-background")).toBe(true);
+    expect(bell.textContent).toBe("");
   });
 });
 

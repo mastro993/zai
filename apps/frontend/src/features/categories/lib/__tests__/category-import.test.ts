@@ -37,7 +37,7 @@ describe("category import", () => {
       parentId: null,
       name: 'Food, "Home"',
       description: "Monthly\nneeds",
-      color: "#C92A2A",
+      color: "#C55B26",
       role: "spending",
       parent: null,
     };
@@ -59,7 +59,7 @@ describe("category import", () => {
         parentId: null,
         name: 'Food, "Home"',
         description: "Monthly\nneeds",
-        color: "#C92A2A",
+        color: "#C55B26",
       },
       {
         id: "id-2",
@@ -77,7 +77,7 @@ describe("category import", () => {
       parentId: null,
       name: "=1+1",
       description: "@SUM(A1)",
-      color: "#C92A2A",
+      color: "#C55B26",
       role: "spending",
       parent: null,
     };
@@ -122,15 +122,15 @@ describe("category import", () => {
       parentId: null,
       name: "Food",
       description: "Existing wins",
-      color: "#C92A2A",
+      color: "#C55B26",
       role: "spending",
       parent: null,
     };
     const content = [
       "name,parent_name,color",
-      "Food,,#FFFFFF",
+      "Food,,#5BC526",
       "Broken,,red",
-      "Groceries,Food,#123456",
+      "Groceries,Food,#265BC5",
       "Restaurants,Food,",
     ].join("\n");
 
@@ -159,5 +159,11 @@ describe("category import", () => {
         color: null,
       },
     ]);
+  });
+
+  it("accepts lowercase HEX and canonicalizes it", () => {
+    const preview = buildPreview("name,color\nLower,#c55b26\nNeutral,#737373");
+
+    expect(preview.categories.map((category) => category.color)).toEqual(["#C55B26", "#737373"]);
   });
 });

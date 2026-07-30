@@ -204,5 +204,5 @@ export const matchesCategorySearch = (
   return getCategoryDisplayName(category, categoryById).toLowerCase().includes(normalizedQuery);
 };
 
-export const getCategoryDotColor = (category: TransactionCategory) =>
+export const getCategoryDotHue = (category: TransactionCategory) =>
   getCategoryDisplayColor(category);

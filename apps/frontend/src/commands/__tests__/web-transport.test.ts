@@ -93,7 +93,7 @@ describe("web command transport", () => {
 
     const transport = createWebCommandTransport();
     await transport.invoke(CATEGORY_COMMANDS.create_transaction_category, {
-      newCategory: { name: "Food", parentId: null, description: null, color: "#ff0000" },
+      newCategory: { name: "Food", parentId: null, description: null, color: "#C55B26" },
     });
 
     expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:3000/api/categories", {
@@ -103,7 +103,7 @@ describe("web command transport", () => {
         name: "Food",
         parentId: null,
         description: null,
-        color: "#ff0000",
+        color: "#C55B26",
       }),
     });
   });
@@ -205,7 +205,7 @@ describe("web command transport", () => {
     );
 
     const result = await invokeDecodedCommand(CATEGORY_COMMANDS.create_transaction_category, {
-      newCategory: { name: "Food", parentId: null, description: null, color: "#ff0000" },
+      newCategory: { name: "Food", parentId: null, description: null, color: "#C55B26" },
     });
 
     expect(Result.isFailure(result)).toBe(true);

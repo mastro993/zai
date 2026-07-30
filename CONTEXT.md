@@ -22,9 +22,19 @@ root categories.
 A category nested under a root category. Child category names are unique among
 children of the same root category.
 
+**Category color**:
+A user-selected presentation value assigned to a root category. The interface
+and user-authored imports call this value a color. It is stored and transported
+as a validated `#RRGGBB` HEX color. A child category inherits its root
+category's color.
+_Avoid_: Category hue in user-facing copy, named color
+
 **Effective category color**:
-The color shown for a category. A root category uses its own color; a child
-category uses its parent category's color.
+The color used to present a category. A root category uses its own stored HEX
+color; a child category uses its root category's color. The frontend extracts
+the HEX color's hue and derives theme-aware badge colors from it; an achromatic
+HEX color produces the neutral badge treatment.
+_Avoid_: Effective category hue in user-facing copy
 
 **Category path**:
 The category's identity in the category hierarchy. A root category's path is its
@@ -45,7 +55,7 @@ changes may rewrite closed results.
 
 **Budget-impacting category change**:
 A category reparent, deletion, or future merge that can change budget matching
-or history and therefore requires user warning. Renaming and recoloring do not;
+or history and therefore requires user warning. Renaming and color changes do not;
 deletion is blocked while the category is directly selected by a current budget
 configuration, but indirect and historical coverage does not block it.
 

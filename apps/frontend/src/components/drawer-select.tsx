@@ -138,7 +138,7 @@ function DrawerSelect<T extends string>({
             role="listbox"
             aria-label={drawerTitle}
             aria-activedescendant={value == null ? undefined : `${id}-option-${value}`}
-            className="border"
+            className="flex flex-col gap-2"
           >
             {options.map((option) => {
               const selectedOption = option.value === value;
@@ -151,17 +151,17 @@ function DrawerSelect<T extends string>({
                   role="option"
                   aria-selected={selectedOption}
                   className={cn(
-                    "flex w-full items-start gap-3 border-b px-3 py-3 text-left last:border-b-0",
-                    "focus-visible:outline-none",
+                    "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left",
+                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
                     selectedOption
-                      ? "bg-primary/5 hover:bg-primary/5 focus-visible:bg-primary/5"
-                      : "hover:bg-muted/40 focus-visible:bg-muted/40",
+                      ? "border-primary/30 bg-primary/5 hover:bg-primary/5 focus-visible:bg-primary/5"
+                      : "border-border hover:bg-muted/40 focus-visible:bg-muted/40",
                   )}
                   onClick={() => selectOption(option.value)}
                 >
                   <span
                     className={cn(
-                      "mt-0.5 flex size-7 shrink-0 items-center justify-center border",
+                      "flex size-7 shrink-0 items-center justify-center rounded-md border",
                       selectedOption
                         ? "border-primary/30 bg-primary/10 text-primary"
                         : "border-border bg-muted/40 text-muted-foreground",
@@ -170,24 +170,19 @@ function DrawerSelect<T extends string>({
                   >
                     <HugeiconsIcon icon={option.icon} className="size-3.5" strokeWidth={2} />
                   </span>
-                  <span className="min-w-0 flex-1 space-y-1">
-                    <span
-                      className={cn(
-                        "block text-xs font-medium",
-                        selectedOption ? "text-primary" : "text-foreground",
-                      )}
-                    >
+                  <span className="min-w-0 flex-1 space-y-0.5">
+                    <span className="block text-sm font-medium text-foreground">
                       {option.label}
                     </span>
                     {option.description ? (
-                      <span className="block text-xs text-pretty text-muted-foreground">
+                      <span className="block text-xs leading-4 text-pretty text-muted-foreground">
                         {option.description}
                       </span>
                     ) : null}
                   </span>
                   <span
                     className={cn(
-                      "mt-0.5 flex size-4 shrink-0 items-center justify-center",
+                      "flex size-4 shrink-0 items-center justify-center",
                       selectedOption ? "text-primary" : "text-transparent",
                     )}
                     aria-hidden="true"
