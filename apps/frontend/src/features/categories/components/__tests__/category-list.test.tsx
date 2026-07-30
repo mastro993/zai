@@ -30,20 +30,37 @@ const groceries = {
   parent: food,
 } as TransactionCategory;
 
+const salary = {
+  id: "salary",
+  parentId: null,
+  name: "Salary",
+  description: null,
+  color: "#28C34E",
+  role: "income",
+  parent: null,
+} as TransactionCategory;
+
 describe("CategoryList", () => {
   afterEach(() => cleanup());
 
-  it("renders expandable child rows inside an animated panel", () => {
+  it("splits categories by role and keeps child rows expandable", () => {
     render(
       <CategoryList
-        categories={[food, groceries]}
+        categories={[food, groceries, salary]}
         onAddChild={vi.fn()}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Expand Food" }));
+    const foodRow = screen.getByRole("button", { name: "Expand Food" });
+    const salaryRow = screen.getByRole("button", { name: "Edit Salary" });
+
+    expect(screen.getByRole("region", { name: "Spending" }).contains(foodRow)).toBe(true);
+    expect(screen.getByRole("region", { name: "Income" }).contains(salaryRow)).toBe(true);
+    expect(foodRow.textContent).not.toContain("Spending");
+
+    fireEvent.click(foodRow);
 
     expect(
       screen

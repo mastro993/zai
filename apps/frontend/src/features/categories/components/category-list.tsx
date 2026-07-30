@@ -13,9 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-import { getCategoryDisplayColor, getCategoryRoleLabel } from "../lib/category";
+import { getCategoryDisplayColor } from "../lib/category";
 import type { CategoryFormMode } from "../types/category-types";
-import type { TransactionCategory } from "../types/model";
+import type { CategoryRole, TransactionCategory } from "../types/model";
 import { CategoryBadge } from "./category-badge";
 
 interface CategoryListProps {
@@ -85,9 +85,6 @@ function CategoryRowContent({
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
       <CategoryBadge color={getCategoryDisplayColor(category)}>{category.name}</CategoryBadge>
-      <span className="shrink-0 border px-1.5 py-0.5 text-[10px] text-muted-foreground">
-        {getCategoryRoleLabel(category.role)}
-      </span>
       {childCount !== undefined && childCount > 0 ? (
         <span className="shrink-0 text-xs tabular-nums text-muted-foreground">+{childCount}</span>
       ) : null}
@@ -222,39 +219,41 @@ function CategoryChildren({
   );
 }
 
-function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryListProps) {
-  const rootCategories = useMemo(
-    () => categories.filter((category) => !category.parentId),
-    [categories],
+function CategoryListSection({
+  role,
+  categories,
+  childrenByParent,
+  expandedIds,
+  onSetParentOpen,
+  onAddChild,
+  onEdit,
+  onDelete,
+}: {
+  role: CategoryRole;
+  categories: Array<TransactionCategory>;
+  childrenByParent: ReadonlyMap<string, Array<TransactionCategory>>;
+  expandedIds: ReadonlySet<string>;
+  onSetParentOpen: (parentId: string, open: boolean) => void;
+  onAddChild: (parentId: string) => void;
+  onEdit: (mode: CategoryFormMode) => void;
+  onDelete: (category: TransactionCategory) => void;
+}) {
+  const rootCategories = categories.filter(
+    (category) => !category.parentId && category.role === role,
   );
-  const childrenByParent = useMemo(() => {
-    const map = new Map<string, Array<TransactionCategory>>();
-    for (const category of categories) {
-      if (category.parentId) {
-        const siblings = map.get(category.parentId) ?? [];
-        siblings.push(category);
-        map.set(category.parentId, siblings);
-      }
-    }
-    return map;
-  }, [categories]);
 
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
+  if (rootCategories.length === 0) {
+    return null;
+  }
 
-  const setParentOpen = (parentId: string, open: boolean) => {
-    setExpandedIds((current) => {
-      const next = new Set(current);
-      if (open) {
-        next.add(parentId);
-      } else {
-        next.delete(parentId);
-      }
-      return next;
-    });
-  };
+  const label = role === "income" ? "Income" : "Spending";
+  const headingId = `category-list-${role}`;
 
   return (
-    <LazyMotion features={domAnimation}>
+    <section aria-labelledby={headingId} className="flex flex-col gap-2">
+      <h2 id={headingId} className="text-sm font-medium">
+        {label}
+      </h2>
       <div className="overflow-hidden rounded-lg border">
         <ul className="divide-y">
           {rootCategories.map((category) => {
@@ -285,7 +284,7 @@ function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryList
                   category={category}
                   childCount={children.length}
                   isOpen={isOpen}
-                  onToggle={() => setParentOpen(category.id, !isOpen)}
+                  onToggle={() => onSetParentOpen(category.id, !isOpen)}
                   onAddChild={onAddChild}
                   onEdit={onEdit}
                   onDelete={onDelete}
@@ -301,6 +300,61 @@ function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryList
             );
           })}
         </ul>
+      </div>
+    </section>
+  );
+}
+
+function CategoryList({ categories, onAddChild, onEdit, onDelete }: CategoryListProps) {
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, Array<TransactionCategory>>();
+    for (const category of categories) {
+      if (category.parentId) {
+        const siblings = map.get(category.parentId) ?? [];
+        siblings.push(category);
+        map.set(category.parentId, siblings);
+      }
+    }
+    return map;
+  }, [categories]);
+
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
+
+  const setParentOpen = (parentId: string, open: boolean) => {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (open) {
+        next.add(parentId);
+      } else {
+        next.delete(parentId);
+      }
+      return next;
+    });
+  };
+
+  return (
+    <LazyMotion features={domAnimation}>
+      <div className="flex flex-col gap-6">
+        <CategoryListSection
+          role="spending"
+          categories={categories}
+          childrenByParent={childrenByParent}
+          expandedIds={expandedIds}
+          onSetParentOpen={setParentOpen}
+          onAddChild={onAddChild}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+        <CategoryListSection
+          role="income"
+          categories={categories}
+          childrenByParent={childrenByParent}
+          expandedIds={expandedIds}
+          onSetParentOpen={setParentOpen}
+          onAddChild={onAddChild}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       </div>
     </LazyMotion>
   );
