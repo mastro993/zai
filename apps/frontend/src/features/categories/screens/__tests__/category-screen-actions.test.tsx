@@ -6,7 +6,12 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/screen-base", () => ({
-  ScreenBase: ({ actions }: { actions?: ReactNode }) => <div>{actions}</div>,
+  ScreenBase: ({ actions, children }: { actions?: ReactNode; children?: ReactNode }) => (
+    <div>
+      {actions}
+      {children}
+    </div>
+  ),
 }));
 
 vi.mock("@hugeicons/core-free-icons", async (importOriginal) => ({
@@ -66,11 +71,35 @@ describe("CategoryScreen actions", () => {
     await waitFor(() => expect(screen.getByText("Export categories")).not.toBeNull());
   });
 
-  it("renders the new category action at the small header size", () => {
+  it("renders the empty state with one primary create action and import fallback", () => {
     render(<CategoryScreen initialCategories={[]} />);
+
+    expect(screen.getByRole("region", { name: "Set up your categories" })).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Set up your categories" })).not.toBeNull();
+    expect(screen.getAllByRole("button", { name: "New category" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Import categories" })).toHaveLength(2);
+  });
+
+  it("keeps the header new category action when categories exist", () => {
+    render(
+      <CategoryScreen
+        initialCategories={[
+          {
+            id: "food",
+            parentId: null,
+            name: "Food",
+            description: null,
+            color: "#C55B26",
+            role: "spending",
+            parent: null,
+          },
+        ]}
+      />,
+    );
 
     const newCategoryAction = screen.getByRole("button", { name: "New category" });
 
     expect(newCategoryAction.classList.contains("h-7")).toBe(true);
+    expect(screen.queryByRole("region", { name: "Set up your categories" })).toBeNull();
   });
 });
