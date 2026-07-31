@@ -74,7 +74,10 @@ describe("CategoryScreen actions", () => {
   it("renders the empty state with one primary create action and import fallback", () => {
     render(<CategoryScreen initialCategories={[]} />);
 
-    expect(screen.getByRole("region", { name: "Set up your categories" })).not.toBeNull();
+    const emptyState = screen.getByRole("region", { name: "Set up your categories" });
+
+    expect(emptyState).not.toBeNull();
+    expect(emptyState.classList.contains("rounded-lg")).toBe(true);
     expect(screen.getByRole("heading", { name: "Set up your categories" })).not.toBeNull();
     expect(screen.getAllByRole("button", { name: "New category" })).toHaveLength(1);
     expect(screen.getAllByRole("button", { name: "Import categories" })).toHaveLength(2);

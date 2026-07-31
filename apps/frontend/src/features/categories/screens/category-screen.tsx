@@ -321,7 +321,7 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
       ) : categories.length === 0 ? (
         <section
           aria-labelledby="category-empty-state-title"
-          className="flex min-h-72 flex-col items-center justify-center gap-4 border border-dashed px-6 py-10 text-center sm:px-8"
+          className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-lg border border-dashed px-6 py-10 text-center sm:px-8"
         >
           <div className="flex max-w-md flex-col items-center gap-1.5">
             <h2 id="category-empty-state-title" className="text-base font-medium">

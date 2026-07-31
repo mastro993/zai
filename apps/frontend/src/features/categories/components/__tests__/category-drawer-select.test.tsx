@@ -103,6 +103,28 @@ describe("CategoryDrawerSelect", () => {
     expect(onChange).toHaveBeenCalledWith("groceries");
   });
 
+  it("uses a rounded content-sized category list", () => {
+    render(
+      <CategoryDrawerSelect
+        id="cat"
+        mode="single"
+        categories={[food]}
+        value={null}
+        onChange={vi.fn()}
+        placeholder="Uncategorized"
+        ariaLabel="Choose category"
+        drawerTitle="Select category"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose category" }));
+
+    const list = screen.getByRole("listbox", { name: "Select category" });
+
+    expect(list.classList.contains("rounded-lg")).toBe(true);
+    expect(list.classList.contains("flex-1")).toBe(false);
+  });
+
   it("clears single selection when clearable", () => {
     const onChange = vi.fn();
 
