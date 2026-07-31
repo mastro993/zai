@@ -129,10 +129,14 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
     setIsExporting(false);
   };
 
-  const completeCategoryImport = async (createdCount: number, skippedRows: number) => {
+  const completeCategoryImport = async (
+    createdCount: number,
+    skippedRows: number,
+    warningRows: number,
+  ) => {
     if (await loadCategories()) {
       toast.success("Categories imported", {
-        description: `${createdCount} created, ${skippedRows} skipped`,
+        description: `${createdCount} created, ${warningRows} warnings, ${skippedRows} skipped`,
       });
     }
   };
@@ -227,6 +231,7 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
       <HugeiconsIcon icon={DownloadIcon} strokeWidth={2} />
     </Button>
   );
+  const hasCategories = categories.length > 0;
 
   return (
     <ScreenBase
@@ -244,9 +249,11 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
               </Tooltip>
             </ButtonGroup>
           </TooltipProvider>
-          <Button size="sm" onClick={() => openFormDrawer({ type: "create-root" })}>
-            New category
-          </Button>
+          {hasCategories ? (
+            <Button size="sm" onClick={() => openFormDrawer({ type: "create-root" })}>
+              New category
+            </Button>
+          ) : null}
         </>
       }
     >
@@ -315,16 +322,27 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
 
       {isLoading ? (
         <CategoryListSkeleton />
-      ) : rootCategories.length === 0 ? (
-        <div className="flex flex-col items-start gap-3 border p-6">
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium">No categories yet</p>
+      ) : categories.length === 0 ? (
+        <section
+          aria-labelledby="category-empty-state-title"
+          className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-lg border border-dashed px-6 py-10 text-center sm:px-8"
+        >
+          <div className="flex max-w-md flex-col items-center gap-1.5">
+            <h2 id="category-empty-state-title" className="text-base font-medium">
+              Set up your categories
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Create a root category to start organizing transactions.
+              Create your first spending or income category to organize transactions.
             </p>
           </div>
-          <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
-        </div>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
+            <Button type="button" variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+              <HugeiconsIcon icon={UploadIcon} strokeWidth={2} />
+              Import categories
+            </Button>
+          </div>
+        </section>
       ) : (
         <CategoryList
           categories={categories}

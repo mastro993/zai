@@ -5,7 +5,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Drawer } from "@/components/ui/drawer";
 
+import type { TransactionCategory } from "../../types/model";
 import { CategoryFormDrawer } from "../category-form-drawer";
+
+const food = {
+  id: "food",
+  parentId: null,
+  name: "Food",
+  role: "spending",
+} as TransactionCategory;
 
 describe("CategoryFormDrawer", () => {
   afterEach(() => cleanup());
@@ -23,6 +31,7 @@ describe("CategoryFormDrawer", () => {
     );
 
     expect(screen.queryByText("List preview")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Parent category" })).toBeNull();
   });
 
   it("submits the selected root color", async () => {
@@ -46,5 +55,22 @@ describe("CategoryFormDrawer", () => {
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ color: "#C32828" })),
     );
+  });
+
+  it("rounds the read-only role field for child categories", () => {
+    render(
+      <Drawer open swipeDirection="right">
+        <CategoryFormDrawer
+          open
+          mode={{ type: "create-child", parentId: food.id }}
+          categories={[food]}
+          onSubmit={vi.fn()}
+        />
+      </Drawer>,
+    );
+
+    const roleValue = screen.getByText("Spending");
+
+    expect(roleValue.classList.contains("rounded-lg")).toBe(true);
   });
 });

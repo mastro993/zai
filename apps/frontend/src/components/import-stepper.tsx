@@ -19,7 +19,10 @@ export function ImportStepper({
   onStepSelect: (step: ImportStep) => void;
 }) {
   return (
-    <ol className="flex items-center gap-2" aria-label="Import progress">
+    <ol
+      className="flex items-center gap-2 rounded-lg border border-border/80 bg-muted/20 p-2.5"
+      aria-label="Import progress"
+    >
       {STEPS.map((step, index) => {
         const status = index < current ? "done" : index === current ? "current" : "upcoming";
         const canSelect = index < current;
@@ -38,7 +41,7 @@ export function ImportStepper({
             >
               <span
                 className={cn(
-                  "flex size-6 shrink-0 items-center justify-center border text-xs font-medium tabular-nums transition-colors",
+                  "flex size-7 shrink-0 items-center justify-center rounded-md border text-xs font-medium tabular-nums transition-colors",
                   status === "current" && "border-primary bg-primary text-primary-foreground",
                   status === "done" && "border-primary/30 bg-primary/10 text-primary",
                   status === "upcoming" && "border-border text-muted-foreground",

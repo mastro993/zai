@@ -141,7 +141,7 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
         <div
           role={props.mode === "single" ? "listbox" : "group"}
           aria-label={drawerTitle}
-          className="min-h-0 flex-1 overflow-y-auto border"
+          className="overflow-y-auto rounded-lg border"
         >
           {categories.length === 0 ? (
             <FieldDescription className="px-3 py-8 text-center">

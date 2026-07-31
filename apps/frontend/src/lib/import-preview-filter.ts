@@ -9,6 +9,9 @@ export const IMPORT_PREVIEW_ROW_FILTER_OPTIONS: Array<{
   { value: "all", label: "All rows" },
 ];
 
+export const isImportablePreviewStatus = (status: string) =>
+  status === "import" || status === "warning";
+
 export const filterImportPreviewRows = <TRow extends { status: string }>(
   rows: Array<TRow>,
   filter: ImportPreviewRowFilter,
@@ -18,10 +21,10 @@ export const filterImportPreviewRows = <TRow extends { status: string }>(
   }
 
   if (filter === "skipped") {
-    return rows.filter((row) => row.status !== "import");
+    return rows.filter((row) => !isImportablePreviewStatus(row.status));
   }
 
-  return rows.filter((row) => row.status === "import");
+  return rows.filter((row) => isImportablePreviewStatus(row.status));
 };
 
 export const getImportPreviewEmptyMessage = (filter: ImportPreviewRowFilter) => {

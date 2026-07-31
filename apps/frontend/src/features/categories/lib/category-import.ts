@@ -1,8 +1,9 @@
 import { parseCsv } from "@/lib/csv";
+import { isImportablePreviewStatus } from "@/lib/import-preview-filter";
 import type { TransactionCategory } from "../types/model";
 
 export type CategoryImportLinkMode = "columns" | "single-column";
-export type CategoryImportPreviewStatus = "import" | "duplicate" | "invalid" | "empty";
+export type CategoryImportPreviewStatus = "import" | "warning" | "duplicate" | "invalid" | "empty";
 
 export type CategoryImportColumnMapping = {
   name: number | null;
@@ -46,6 +47,7 @@ export type CategoryImportPreview = {
   summary: {
     totalRows: number;
     importableRows: number;
+    warningRows: number;
     duplicateRows: number;
     invalidRows: number;
     emptyRows: number;
@@ -252,26 +254,27 @@ export const buildCategoryImportPreview = (
       continue;
     }
 
-    if (!parsed.isChild && color && !HEX_COLOR_REGEX.test(color)) {
-      previewRows.push(buildInvalidPreviewRow(rowNumber, row, mapping, "Color must be #RRGGBB"));
-      continue;
-    }
+    const hasUnrecognizedColor = !parsed.isChild && color !== "" && !HEX_COLOR_REGEX.test(color);
+    const normalizedColor =
+      !parsed.isChild && color && !hasUnrecognizedColor ? color.toUpperCase() : "";
 
     const previewRow: CategoryImportPreviewRow = {
       rowNumber,
       parentName: parsed.parentName,
       name: parsed.name,
-      color: parsed.isChild ? "" : color.toUpperCase(),
+      color: parsed.isChild ? "" : color,
       description,
-      status: "import",
-      message: "Ready to import",
+      status: hasUnrecognizedColor ? "warning" : "import",
+      message: hasUnrecognizedColor
+        ? "Color ignored; category imports without color."
+        : "Ready to import",
     };
 
     candidates.push({
       previewIndex: previewRows.length,
       parentName: parsed.parentName,
       name: parsed.name,
-      color: previewRow.color,
+      color: normalizedColor,
       description,
       isChild: parsed.isChild,
     });
@@ -367,7 +370,8 @@ export const buildCategoryImportPreview = (
     categories,
     summary: {
       totalRows: previewRows.length,
-      importableRows: countRowsByStatus(previewRows, "import"),
+      importableRows: previewRows.filter((row) => isImportablePreviewStatus(row.status)).length,
+      warningRows: countRowsByStatus(previewRows, "warning"),
       duplicateRows: countRowsByStatus(previewRows, "duplicate"),
       invalidRows: countRowsByStatus(previewRows, "invalid"),
       emptyRows: countRowsByStatus(previewRows, "empty"),

@@ -17,26 +17,29 @@ const extractHue = (color: CategoryColor): number | null => {
     return null;
   }
 
-  const channels = [0, 2, 4].map((offset) =>
-    Number.parseInt(match[1].slice(offset, offset + 2), 16),
-  );
-  const [red, green, blue] = channels.map((channel) => channel / 255);
+  const [red, green, blue] = [0, 2, 4]
+    .map((offset) => Number.parseInt(match[1].slice(offset, offset + 2), 16) / 255)
+    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
   const maximum = Math.max(red, green, blue);
   const minimum = Math.min(red, green, blue);
-  const chroma = maximum - minimum;
 
-  if (chroma === 0) {
+  if (maximum === minimum) {
     return null;
   }
 
-  const segment =
-    maximum === red
-      ? ((green - blue) / chroma) % 6
-      : maximum === green
-        ? (blue - red) / chroma + 2
-        : (red - green) / chroma + 4;
+  const l = 0.4122214708 * red + 0.5363325363 * green + 0.0514459929 * blue;
+  const m = 0.2119034982 * red + 0.6806995451 * green + 0.1073969566 * blue;
+  const s = 0.0883024619 * red + 0.2817188376 * green + 0.6299787005 * blue;
+  const lightnessComponent = Math.cbrt(l);
+  const greenComponent = Math.cbrt(m);
+  const blueComponent = Math.cbrt(s);
+  const a =
+    1.9779984951 * lightnessComponent - 2.428592205 * greenComponent + 0.4505937099 * blueComponent;
+  const b =
+    0.0259040371 * lightnessComponent + 0.7827717662 * greenComponent - 0.808675766 * blueComponent;
 
-  return Math.round((segment * 60 + 360) % 360);
+  // OKLCH hue is based on OKLab a/b, not the RGB/HSV hue wheel.
+  return Math.round((Math.atan2(b, a) * (180 / Math.PI) + 360) % 360);
 };
 
 const computeBadgeColors = (color: CategoryColor): CategoryBadgeColors => {

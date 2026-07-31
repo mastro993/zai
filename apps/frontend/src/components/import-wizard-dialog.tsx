@@ -55,14 +55,12 @@ function ImportWizardDialog({
 }: ImportWizardDialogProps) {
   return (
     <Dialog open={open} onOpenChange={isBusy ? undefined : onOpenChange}>
-      <DialogContent className="grid max-h-[calc(100vh-2rem)] grid-rows-[auto_auto_minmax(0,1fr)_auto] sm:max-w-3xl md:max-w-4xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <HugeiconsIcon
-              icon={FileImportIcon}
-              className="size-4 text-muted-foreground"
-              strokeWidth={1.8}
-            />
+      <DialogContent className="grid max-h-[calc(100vh-2rem)] grid-rows-[auto_auto_minmax(0,1fr)_auto] overflow-hidden sm:max-w-3xl md:max-w-4xl">
+        <DialogHeader className="gap-1.5 border-b pb-4">
+          <DialogTitle className="flex items-center gap-2.5">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <HugeiconsIcon icon={FileImportIcon} className="size-4" strokeWidth={1.8} />
+            </span>
             {title}
           </DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -77,7 +75,9 @@ function ImportWizardDialog({
         </div>
 
         <DialogFooter className="items-center gap-3 sm:justify-between">
-          <p className="text-xs text-muted-foreground">{footerHint}</p>
+          <p className="max-w-[18rem] text-xs leading-relaxed text-muted-foreground">
+            {footerHint}
+          </p>
           <div className="flex items-center gap-2">
             {step > 0 ? (
               <Button type="button" variant="ghost" onClick={onBack} disabled={isImporting}>

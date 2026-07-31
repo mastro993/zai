@@ -148,7 +148,7 @@ function CategoryFormDrawer({
           {isCreateChild && lockedParent ? (
             <Field>
               <FieldLabel>Parent category</FieldLabel>
-              <div className="flex h-8 items-center border border-input px-2.5">
+              <div className="flex h-8 items-center rounded-lg border border-input px-2.5">
                 <CategoryBadge color={getCategoryDisplayColor(lockedParent)}>
                   {lockedParent.name}
                 </CategoryBadge>
@@ -156,7 +156,7 @@ function CategoryFormDrawer({
               <FieldDescription>Subcategories stay under this parent.</FieldDescription>
               <input type="hidden" {...form.register("parentId")} />
             </Field>
-          ) : canChooseParent ? (
+          ) : canChooseParent && rootOptions.length > 0 ? (
             <Field>
               <FieldLabel htmlFor="category-parent-trigger">Parent category</FieldLabel>
               <Controller
@@ -218,7 +218,7 @@ function CategoryFormDrawer({
           {isChildCategory ? (
             <Field>
               <FieldLabel>Role</FieldLabel>
-              <div className="flex h-8 items-center border border-input px-2.5 text-xs">
+              <div className="flex h-8 items-center rounded-lg border border-input px-2.5 text-xs">
                 {getCategoryRoleLabel(
                   parentCategory?.role ?? (mode.type === "edit" ? mode.category.role : "spending"),
                 )}

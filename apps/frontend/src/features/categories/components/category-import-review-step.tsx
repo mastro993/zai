@@ -1,4 +1,5 @@
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 import {
@@ -11,6 +12,7 @@ import type { CategoryImportPreview, CategoryImportPreviewStatus } from "../lib/
 
 const STATUS_META: Record<CategoryImportPreviewStatus, { label: string; dot: string }> = {
   import: { label: "Ready", dot: "bg-primary" },
+  warning: { label: "Warning", dot: "bg-amber-600 dark:bg-amber-500" },
   duplicate: { label: "Duplicate", dot: "bg-muted-foreground/50" },
   invalid: { label: "Invalid", dot: "bg-destructive" },
   empty: { label: "Empty", dot: "bg-border" },
@@ -19,6 +21,7 @@ const STATUS_META: Record<CategoryImportPreviewStatus, { label: string; dot: str
 function StatStrip({ summary }: { summary: CategoryImportPreview["summary"] }) {
   const cells = [
     { label: "Ready", value: summary.importableRows, tone: "text-primary" },
+    { label: "Warnings", value: summary.warningRows, tone: "text-amber-600 dark:text-amber-500" },
     { label: "To create", value: summary.categoriesToCreate, tone: "text-foreground" },
     { label: "Auto parents", value: summary.autoCreatedParents, tone: "text-foreground" },
     {
@@ -29,7 +32,7 @@ function StatStrip({ summary }: { summary: CategoryImportPreview["summary"] }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-5">
       {cells.map((cell) => (
         <div key={cell.label} className="flex flex-col gap-1.5 bg-background p-3">
           <span className="text-[0.6875rem] text-muted-foreground">{cell.label}</span>
@@ -50,29 +53,27 @@ function PreviewFilter({
   onChange: (value: ImportPreviewRowFilter) => void;
 }) {
   return (
-    <div className="inline-flex border border-border" role="group" aria-label="Filter preview rows">
-      {IMPORT_PREVIEW_ROW_FILTER_OPTIONS.map((option, index) => {
-        const active = option.value === value;
-
-        return (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(option.value)}
-            className={cn(
-              "h-7 px-2.5 text-xs font-medium whitespace-nowrap outline-none transition-colors focus-visible:z-10 focus-visible:ring-1 focus-visible:ring-ring",
-              index > 0 && "border-l border-border",
-              active
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
-          >
-            {option.label}
-          </button>
+    <Tabs
+      value={value}
+      onValueChange={(nextValue) => {
+        const nextOption = IMPORT_PREVIEW_ROW_FILTER_OPTIONS.find(
+          (option) => option.value === nextValue,
         );
-      })}
-    </div>
+
+        if (nextOption) {
+          onChange(nextOption.value);
+        }
+      }}
+      className="w-fit"
+    >
+      <TabsList aria-label="Filter preview rows">
+        {IMPORT_PREVIEW_ROW_FILTER_OPTIONS.map((option) => (
+          <TabsTrigger key={option.value} value={option.value} className="h-7 px-2.5 text-xs">
+            {option.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 
@@ -99,11 +100,11 @@ export function CategoryImportReviewStep({
       </div>
 
       {rows.length === 0 ? (
-        <p className="border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+        <p className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
           {getImportPreviewEmptyMessage(previewFilter)}
         </p>
       ) : (
-        <div className="max-h-[19rem] overflow-auto border border-border">
+        <div className="max-h-[19rem] overflow-auto rounded-lg border border-border">
           <table className="w-full caption-bottom text-xs">
             <TableHeader className="sticky top-0 z-10 bg-muted">
               <TableRow className="hover:bg-muted">
@@ -122,7 +123,10 @@ export function CategoryImportReviewStep({
                 return (
                   <TableRow
                     key={row.rowNumber}
-                    className={cn(row.status === "invalid" && "bg-destructive/5")}
+                    className={cn(
+                      row.status === "invalid" && "bg-destructive/5",
+                      row.status === "warning" && "bg-amber-500/5",
+                    )}
                   >
                     <TableCell className="text-muted-foreground tabular-nums">
                       {row.rowNumber}

@@ -5,13 +5,17 @@ import { filterImportPreviewRows, getImportPreviewEmptyMessage } from "../import
 describe("import preview filter", () => {
   const rows = [
     { status: "import", id: 1 },
+    { status: "warning", id: 5 },
     { status: "invalid", id: 2 },
     { status: "duplicate", id: 3 },
     { status: "empty", id: 4 },
   ];
 
   it("filters importable rows only", () => {
-    expect(filterImportPreviewRows(rows, "importable")).toEqual([{ status: "import", id: 1 }]);
+    expect(filterImportPreviewRows(rows, "importable")).toEqual([
+      { status: "import", id: 1 },
+      { status: "warning", id: 5 },
+    ]);
   });
 
   it("filters skipped rows only", () => {
