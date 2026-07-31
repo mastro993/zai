@@ -18,23 +18,29 @@ describe("category badge colors", () => {
     ]);
     expect(new Set(CATEGORY_COLORS).size).toBe(CATEGORY_COLORS.length);
     expect(CATEGORY_COLORS.map((color) => getCategoryBadgeColors(color).background)).toEqual([
-      "oklch(0.684 0.239 0 / 25%)",
-      "oklch(0.684 0.239 45 / 25%)",
-      "oklch(0.684 0.239 90 / 25%)",
-      "oklch(0.684 0.239 135 / 25%)",
-      "oklch(0.684 0.239 180 / 25%)",
-      "oklch(0.684 0.239 225 / 25%)",
-      "oklch(0.684 0.239 270 / 25%)",
-      "oklch(0.684 0.239 315 / 25%)",
+      "oklch(0.684 0.239 27 / 25%)",
+      "oklch(0.684 0.239 88 / 25%)",
+      "oklch(0.684 0.239 133 / 25%)",
+      "oklch(0.684 0.239 147 / 25%)",
+      "oklch(0.684 0.239 195 / 25%)",
+      "oklch(0.684 0.239 266 / 25%)",
+      "oklch(0.684 0.239 300 / 25%)",
+      "oklch(0.684 0.239 341 / 25%)",
       "oklch(0.684 0 0 / 25%)",
     ]);
   });
 
   it("extracts the hue from a stored HEX color", () => {
-    expect(getCategoryBadgeColors("#ff0000")).toEqual({
-      background: "oklch(0.684 0.239 0 / 25%)",
+    expect(getCategoryBadgeColors("#C32828")).toEqual({
+      background: "oklch(0.684 0.239 27 / 25%)",
       foreground:
-        "oklch(var(--category-badge-foreground-lightness) var(--category-badge-foreground-chroma) 0)",
+        "oklch(var(--category-badge-foreground-lightness) var(--category-badge-foreground-chroma) 27)",
+    });
+
+    expect(getCategoryBadgeColors("#ff0000")).toEqual({
+      background: "oklch(0.684 0.239 29 / 25%)",
+      foreground:
+        "oklch(var(--category-badge-foreground-lightness) var(--category-badge-foreground-chroma) 29)",
     });
   });
 
