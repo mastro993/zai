@@ -129,10 +129,14 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
     setIsExporting(false);
   };
 
-  const completeCategoryImport = async (createdCount: number, skippedRows: number) => {
+  const completeCategoryImport = async (
+    createdCount: number,
+    skippedRows: number,
+    warningRows: number,
+  ) => {
     if (await loadCategories()) {
       toast.success("Categories imported", {
-        description: `${createdCount} created, ${skippedRows} skipped`,
+        description: `${createdCount} created, ${warningRows} warnings, ${skippedRows} skipped`,
       });
     }
   };

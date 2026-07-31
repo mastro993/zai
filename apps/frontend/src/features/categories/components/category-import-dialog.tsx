@@ -25,7 +25,7 @@ interface CategoryImportDialogProps {
   open: boolean;
   categories: Array<TransactionCategory>;
   onOpenChange: (open: boolean) => void;
-  onImported: (createdCount: number, skippedRows: number) => Promise<void>;
+  onImported: (createdCount: number, skippedRows: number, warningRows: number) => Promise<void>;
 }
 
 const EMPTY_MAPPING: CategoryImportColumnMapping = {
@@ -166,6 +166,7 @@ function CategoryImportDialog({
     await onImported(
       result.value.length,
       preview.summary.duplicateRows + preview.summary.invalidRows + preview.summary.emptyRows,
+      preview.summary.warningRows,
     );
   };
 
@@ -173,6 +174,7 @@ function CategoryImportDialog({
   const skippedRows = preview
     ? preview.summary.duplicateRows + preview.summary.invalidRows + preview.summary.emptyRows
     : 0;
+  const warningRows = preview?.summary.warningRows ?? 0;
 
   const footerHint =
     step === 0
@@ -183,7 +185,7 @@ function CategoryImportDialog({
         ? mappingReady
           ? "Columns mapped — ready to preview"
           : "Map a category name column to continue"
-        : `${importableRows.toLocaleString()} ready · ${skippedRows.toLocaleString()} skipped`;
+        : `${importableRows.toLocaleString()} ready · ${warningRows.toLocaleString()} warnings · ${skippedRows.toLocaleString()} skipped`;
 
   return (
     <ImportWizardDialog

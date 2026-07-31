@@ -116,7 +116,7 @@ describe("category import", () => {
     });
   });
 
-  it("skips invalid rows and duplicate category paths from the import payload", () => {
+  it("imports unknown colors with warnings and skips duplicate category paths", () => {
     const existingRoot: TransactionCategory = {
       id: "existing-food",
       parentId: null,
@@ -140,19 +140,27 @@ describe("category import", () => {
 
     expect(preview.summary).toMatchObject({
       duplicateRows: 1,
-      invalidRows: 1,
-      categoriesToCreate: 2,
+      warningRows: 1,
+      invalidRows: 0,
+      categoriesToCreate: 3,
     });
     expect(preview.categories).toEqual([
       {
         id: "id-1",
+        parentId: null,
+        name: "Broken",
+        description: null,
+        color: null,
+      },
+      {
+        id: "id-2",
         parentId: "existing-food",
         name: "Groceries",
         description: null,
         color: null,
       },
       {
-        id: "id-2",
+        id: "id-3",
         parentId: "existing-food",
         name: "Restaurants",
         description: null,
@@ -165,5 +173,57 @@ describe("category import", () => {
     const preview = buildPreview("name,color\nLower,#c55b26\nNeutral,#737373");
 
     expect(preview.categories.map((category) => category.color)).toEqual(["#C55B26", "#737373"]);
+  });
+
+  it("imports unknown root colors without color and marks the row with a warning", () => {
+    const preview = buildPreview("name,color\nBroken,red");
+
+    expect(preview.rows[0]).toMatchObject({
+      color: "red",
+      status: "warning",
+      message: "Color ignored; category imports without color.",
+    });
+    expect(preview.summary).toMatchObject({
+      importableRows: 1,
+      warningRows: 1,
+      invalidRows: 0,
+    });
+    expect(preview.categories).toEqual([
+      {
+        id: "id-1",
+        parentId: null,
+        name: "Broken",
+        description: null,
+        color: null,
+      },
+    ]);
+  });
+
+  it("lets duplicate paths win over unknown color warnings", () => {
+    const existingRoot: TransactionCategory = {
+      id: "existing-food",
+      parentId: null,
+      name: "Food",
+      description: null,
+      color: "#C55B26",
+      role: "spending",
+      parent: null,
+    };
+
+    const preview = buildPreview("name,color\nFood,red", {
+      existingCategories: [existingRoot],
+    });
+
+    expect(preview.rows[0]).toMatchObject({ status: "duplicate" });
+    expect(preview.summary).toMatchObject({ duplicateRows: 1, warningRows: 0 });
+    expect(preview.categories).toEqual([]);
+  });
+
+  it("ignores child colors without warning", () => {
+    const preview = buildPreview("name,parent_name,color\nGroceries,Food,red");
+
+    expect(preview.rows[0]).toMatchObject({ status: "import", color: "" });
+    expect(preview.summary.warningRows).toBe(0);
+    expect(preview.categories[1]).toMatchObject({ name: "Groceries", color: null });
   });
 });

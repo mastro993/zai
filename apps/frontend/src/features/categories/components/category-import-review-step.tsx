@@ -12,6 +12,7 @@ import type { CategoryImportPreview, CategoryImportPreviewStatus } from "../lib/
 
 const STATUS_META: Record<CategoryImportPreviewStatus, { label: string; dot: string }> = {
   import: { label: "Ready", dot: "bg-primary" },
+  warning: { label: "Warning", dot: "bg-amber-600 dark:bg-amber-500" },
   duplicate: { label: "Duplicate", dot: "bg-muted-foreground/50" },
   invalid: { label: "Invalid", dot: "bg-destructive" },
   empty: { label: "Empty", dot: "bg-border" },
@@ -20,6 +21,7 @@ const STATUS_META: Record<CategoryImportPreviewStatus, { label: string; dot: str
 function StatStrip({ summary }: { summary: CategoryImportPreview["summary"] }) {
   const cells = [
     { label: "Ready", value: summary.importableRows, tone: "text-primary" },
+    { label: "Warnings", value: summary.warningRows, tone: "text-amber-600 dark:text-amber-500" },
     { label: "To create", value: summary.categoriesToCreate, tone: "text-foreground" },
     { label: "Auto parents", value: summary.autoCreatedParents, tone: "text-foreground" },
     {
@@ -30,7 +32,7 @@ function StatStrip({ summary }: { summary: CategoryImportPreview["summary"] }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-5">
       {cells.map((cell) => (
         <div key={cell.label} className="flex flex-col gap-1.5 bg-background p-3">
           <span className="text-[0.6875rem] text-muted-foreground">{cell.label}</span>
@@ -121,7 +123,10 @@ export function CategoryImportReviewStep({
                 return (
                   <TableRow
                     key={row.rowNumber}
-                    className={cn(row.status === "invalid" && "bg-destructive/5")}
+                    className={cn(
+                      row.status === "invalid" && "bg-destructive/5",
+                      row.status === "warning" && "bg-amber-500/5",
+                    )}
                   >
                     <TableCell className="text-muted-foreground tabular-nums">
                       {row.rowNumber}
