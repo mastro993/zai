@@ -25,12 +25,12 @@ export function TransactionImportSourceStep({
         disabled={isPickingFile}
         onClick={onSelectFile}
         className={cn(
-          "flex w-full flex-col items-center justify-center gap-3 border border-dashed border-border px-6 py-14 text-center outline-none transition-colors",
+          "flex min-h-64 w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-6 py-14 text-center outline-none transition-colors",
           "hover:border-primary/50 hover:bg-muted/40 focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-ring",
           "disabled:pointer-events-none disabled:opacity-70",
         )}
       >
-        <span className="flex size-11 items-center justify-center border border-border bg-muted/50 text-muted-foreground">
+        <span className="flex size-12 items-center justify-center rounded-lg border border-primary/20 bg-primary/5 text-primary">
           <HugeiconsIcon
             icon={isPickingFile ? Loading03Icon : Csv01Icon}
             className={cn("size-5", isPickingFile && "animate-spin")}
@@ -50,8 +50,8 @@ export function TransactionImportSourceStep({
   }
 
   return (
-    <div className="flex items-center gap-3 border border-border p-3">
-      <span className="flex size-10 shrink-0 items-center justify-center border border-border bg-muted/50 text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground">
         <HugeiconsIcon icon={File01Icon} className="size-5" strokeWidth={1.8} />
       </span>
       <div className="flex min-w-0 flex-col gap-0.5">

@@ -30,10 +30,12 @@ const LINK_MODE_OPTIONS: Array<{ value: CategoryImportLinkMode; label: string }>
 
 function SectionHeader({ icon, title }: { icon: typeof TableIcon; title: string }) {
   return (
-    <div className="flex items-center gap-2 text-xs font-medium text-foreground">
-      <HugeiconsIcon icon={icon} className="size-4 text-muted-foreground" strokeWidth={1.8} />
+    <h3 className="flex items-center gap-2 border-b border-border/70 pb-2 text-xs font-medium text-foreground">
+      <span className="flex size-7 items-center justify-center rounded-md bg-muted/70 text-primary">
+        <HugeiconsIcon icon={icon} className="size-4" strokeWidth={1.8} />
+      </span>
       {title}
-    </div>
+    </h3>
   );
 }
 
@@ -224,10 +226,10 @@ export function CategoryImportMappingStep({
           />
         </FieldGroup>
         {mappingReady ? null : (
-          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <p className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground">
             <HugeiconsIcon
               icon={InformationCircleIcon}
-              className="size-4 shrink-0"
+              className="size-4 shrink-0 text-primary"
               strokeWidth={1.8}
             />
             Map a category name column to review your import.
