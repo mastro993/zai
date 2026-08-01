@@ -152,6 +152,11 @@ describe("CategoryDrawerSelect", () => {
     const action = screen.getByRole("link", { name: "Manage categories" });
     expect(action.tagName).toBe("A");
     expect(action.getAttribute("href")).toMatch(/\/cash-flow\/categories\/?$/);
+
+    const emptyState = screen.getByText("No categories yet.").closest('[data-slot="empty"]');
+    expect(emptyState).not.toBeNull();
+    expect(emptyState?.classList.contains("border")).toBe(true);
+    expect(emptyState?.classList.contains("border-dashed")).toBe(true);
   });
 
   it("clears single selection when clearable", () => {

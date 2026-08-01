@@ -13,7 +13,8 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Empty, EmptyContent, EmptyDescription } from "@/components/ui/empty";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { cn } from "@/lib/utils";
 
@@ -144,26 +145,31 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
         <div
           role={props.mode === "single" ? "listbox" : "group"}
           aria-label={drawerTitle}
-          className="overflow-y-auto rounded-lg border"
+          className={cn(
+            "overflow-y-auto rounded-lg",
+            categories.length > 0 && groups.length > 0 ? "border" : undefined,
+          )}
         >
           {categories.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 px-3 py-8 text-center">
-              <FieldDescription className="text-center">{emptyListMessage}</FieldDescription>
+            <Empty className="gap-2 rounded-lg border px-3 py-8">
+              <EmptyDescription>{emptyListMessage}</EmptyDescription>
               {emptyListActionLabel ? (
-                <Button
-                  variant="link"
-                  className="h-auto p-0 text-sm"
-                  nativeButton={false}
-                  render={<Link to="/cash-flow/categories" />}
-                >
-                  {emptyListActionLabel}
-                </Button>
+                <EmptyContent className="max-w-none gap-2">
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 text-sm"
+                    nativeButton={false}
+                    render={<Link to="/cash-flow/categories" />}
+                  >
+                    {emptyListActionLabel}
+                  </Button>
+                </EmptyContent>
               ) : null}
-            </div>
+            </Empty>
           ) : groups.length === 0 ? (
-            <FieldDescription className="px-3 py-8 text-center">
-              No categories match “{query.trim()}”.
-            </FieldDescription>
+            <Empty className="gap-2 rounded-lg border px-3 py-8">
+              <EmptyDescription>No categories match “{query.trim()}”.</EmptyDescription>
+            </Empty>
           ) : (
             groups.map(({ root, children, visibleChildren }) => {
               if (!root) {

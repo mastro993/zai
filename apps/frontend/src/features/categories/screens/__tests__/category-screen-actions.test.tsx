@@ -75,12 +75,15 @@ describe("CategoryScreen actions", () => {
     render(<CategoryScreen initialCategories={[]} />);
 
     const emptyState = screen.getByRole("region", { name: "Set up your categories" });
+    const emptyContent = emptyState.querySelector('[data-slot="empty-content"]');
 
     expect(emptyState).not.toBeNull();
     expect(emptyState.classList.contains("rounded-lg")).toBe(true);
+    expect(emptyContent?.classList.contains("justify-center")).toBe(true);
     expect(screen.getByRole("heading", { name: "Set up your categories" })).not.toBeNull();
     expect(screen.getAllByRole("button", { name: "New category" })).toHaveLength(1);
-    expect(screen.getAllByRole("button", { name: "Import categories" })).toHaveLength(2);
+    expect(screen.queryByRole("group", { name: "Category file actions" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Import categories" })).toHaveLength(1);
   });
 
   it("keeps the header new category action when categories exist", () => {

@@ -6,6 +6,13 @@ import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Drawer } from "@/components/ui/drawer";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -74,21 +81,25 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
     <ScreenBase
       actions={
         <>
-          <TooltipProvider>
-            <ButtonGroup aria-label="Transaction file actions">
-              <Tooltip>
-                <TooltipTrigger render={importTransactionsButton} />
-                <TooltipContent>Import transactions</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger render={exportTransactionsButton} />
-                <TooltipContent>{exportTransactionsLabel}</TooltipContent>
-              </Tooltip>
-            </ButtonGroup>
-          </TooltipProvider>
-          <Button size="sm" onClick={() => actions.openFormDrawer({ type: "create" })}>
-            New transaction
-          </Button>
+          {showFilters ? (
+            <TooltipProvider>
+              <ButtonGroup aria-label="Transaction file actions">
+                <Tooltip>
+                  <TooltipTrigger render={importTransactionsButton} />
+                  <TooltipContent>Import transactions</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger render={exportTransactionsButton} />
+                  <TooltipContent>{exportTransactionsLabel}</TooltipContent>
+                </Tooltip>
+              </ButtonGroup>
+            </TooltipProvider>
+          ) : null}
+          {showFilters ? (
+            <Button size="sm" onClick={() => actions.openFormDrawer({ type: "create" })}>
+              New transaction
+            </Button>
+          ) : null}
         </>
       }
     >
@@ -149,9 +160,38 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
             </Button>
           </div>
         ) : (
-          <p className="border border-dashed p-6 text-sm text-muted-foreground">
-            No transactions yet. Add income or an expense to start tracking cash flow.
-          </p>
+          <Empty
+            role="region"
+            aria-labelledby="transaction-empty-state-title"
+            className="min-h-72 rounded-lg border px-6 py-10 sm:px-8"
+          >
+            <EmptyHeader className="max-w-md gap-1.5">
+              <EmptyTitle
+                id="transaction-empty-state-title"
+                role="heading"
+                aria-level={2}
+                className="text-base"
+              >
+                No transactions yet
+              </EmptyTitle>
+              <EmptyDescription>
+                Add income or an expense to start tracking cash flow.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent className="max-w-none flex-row flex-wrap justify-center">
+              <Button onClick={() => actions.openFormDrawer({ type: "create" })}>
+                New transaction
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => actions.setIsImportDialogOpen(true)}
+              >
+                <HugeiconsIcon icon={UploadIcon} strokeWidth={2} data-icon="inline-start" />
+                Import transactions
+              </Button>
+            </EmptyContent>
+          </Empty>
         )
       ) : null}
 

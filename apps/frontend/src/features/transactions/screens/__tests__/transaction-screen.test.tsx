@@ -56,6 +56,7 @@ const transactionState = vi.hoisted(() => ({
   releaseCurrent: undefined as undefined | (() => void),
   holdStale: false,
   holdCurrent: false,
+  returnInitialEmpty: false,
   returnEmptyOnPage2: false,
   returnEmptyForQuery: false,
 }));
@@ -172,6 +173,17 @@ vi.mock("../../commands/transactions", async () => {
             page: 2,
             perPage: 50,
             totalPages: 2,
+          }),
+        );
+      }
+
+      if (!query && transactionState.returnInitialEmpty) {
+        return Promise.resolve(
+          ResultModule.succeed({
+            data: [],
+            page: 1,
+            perPage: 50,
+            totalPages: 1,
           }),
         );
       }
@@ -296,6 +308,7 @@ describe("transaction screen request guard", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     transactionState.holdStale = false;
     transactionState.holdCurrent = false;
+    transactionState.returnInitialEmpty = false;
     transactionState.returnEmptyOnPage2 = false;
     transactionState.returnEmptyForQuery = false;
     transactionState.releaseStale = undefined;
@@ -470,7 +483,7 @@ describe("transaction screen request guard", () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Amount")));
   });
 
-  it("disables export when there are no transactions to export", () => {
+  it("hides file actions when there are no transactions", () => {
     render(
       <TransactionScreen
         initialData={{
@@ -480,20 +493,34 @@ describe("transaction screen request guard", () => {
       />,
     );
 
-    expect(screen.getByRole("group", { name: "Transaction file actions" })).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Import transactions" }).classList.contains("size-7"),
-    ).toBe(true);
-    expect(
-      screen.getByRole("button", { name: "Export transactions" }).classList.contains("size-7"),
-    ).toBe(true);
-    expect(screen.getByRole("button", { name: "New transaction" }).classList.contains("h-7")).toBe(
-      true,
-    );
+    expect(screen.queryByRole("group", { name: "Transaction file actions" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Import transactions" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "New transaction" })).toHaveLength(1);
     expect(screen.queryByPlaceholderText("Search description or notes...")).toBeNull();
+  });
+
+  it("renders the no-transactions onboarding state with create and import actions", () => {
+    render(
+      <TransactionScreen
+        initialData={{
+          transactions: { data: [], page: 1, perPage: 50, totalPages: 1 },
+          categories: [],
+        }}
+      />,
+    );
+
+    const emptyState = screen.getByRole("region", { name: "No transactions yet" });
+    const emptyContent = emptyState.querySelector('[data-slot="empty-content"]');
+
+    expect(emptyState.classList.contains("border")).toBe(true);
+    expect(emptyState.classList.contains("border-dashed")).toBe(true);
+    expect(emptyContent?.classList.contains("justify-center")).toBe(true);
+    expect(screen.getByRole("heading", { name: "No transactions yet" })).not.toBeNull();
     expect(
-      (screen.getByRole("button", { name: "Export transactions" }) as HTMLButtonElement).disabled,
-    ).toBe(true);
+      screen.getByText("Add income or an expense to start tracking cash flow."),
+    ).not.toBeNull();
+    expect(screen.getAllByRole("button", { name: "New transaction" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Import transactions" })).toHaveLength(1);
   });
 
   it("keeps filters visible when an active filter returns no transactions", async () => {

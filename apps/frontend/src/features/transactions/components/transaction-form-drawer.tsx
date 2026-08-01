@@ -307,7 +307,7 @@ function TransactionFormDrawer({
                   drawerTitle="Select category"
                   drawerDescription="Optional. Pick a category for this transaction."
                   backAriaLabel="Back to transaction"
-                  emptyListMessage="No categories yet. Create some under Cash flow → Categories."
+                  emptyListMessage="No categories yet."
                   emptyListActionLabel="Manage categories"
                 />
               )}
