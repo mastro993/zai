@@ -108,6 +108,12 @@
   --shadow-2xl: 0 25px 50px -12px oklch(0.55 0.012 162.2 / 0.15);
 }
 
+@supports not (corner-shape: squircle) {
+  :root {
+    --radius: 0.5rem;
+  }
+}
+
 .dark {
   --background: oklch(0.15 0.008 162.2);
   --foreground: oklch(0.98 0 0);
