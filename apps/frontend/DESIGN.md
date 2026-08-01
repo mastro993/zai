@@ -135,8 +135,8 @@ language is a low-chroma green axis on white or green-black canvases, softened
 by squircle corners on controls while work surfaces remain visibly ordered.
 
 The source defines Geist for operational text and Mona Sans for larger heading
-roles, with an Inter variable font import as the shipped fallback asset. The
-interface favors compact controls, semantic borders, and restrained state
+roles, with both variable fonts shipped locally through `@fontsource-variable`.
+The interface favors compact controls, semantic borders, and restrained state
 changes over decorative presentation. Light and dark themes keep the same hue
 logic while changing surface contrast for the working environment.
 
@@ -206,9 +206,9 @@ depth, but it does not become a separate color identity.
 
 **Character:** The pairing is restrained and contemporary. Mona Sans gives rare
 large statements a composed shape; Geist keeps dense forms, navigation, tables,
-and descriptions legible. The CSS imports Inter as a shipped variable font,
-so environments without the named Geist or Mona Sans faces resolve through the
-generic sans-serif fallback.
+and descriptions legible. The CSS imports both variable fonts locally, with
+`ui-sans-serif`, `system-ui`, and `sans-serif` fallbacks for font loading and
+unsupported environments.
 
 ### Hierarchy
 

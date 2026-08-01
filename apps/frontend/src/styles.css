@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/inter";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/mona-sans";
 
 * {
   corner-shape: squircle;
@@ -90,8 +91,8 @@
   --sidebar-accent-foreground: oklch(0.25 0.023 162.2);
   --sidebar-border: oklch(0.925 0.004 162.2);
   --sidebar-ring: oklch(0.925 0.004 162.2);
-  --font-sans: "Geist", sans-serif;
-  --font-heading: "Mona Sans", sans-serif;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Mona Sans Variable", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --radius: 0.75rem;
   --category-badge-foreground-lightness: 0.58;
   --category-badge-foreground-chroma: 0.1;
@@ -175,6 +176,18 @@
   }
   html {
     @apply font-sans;
+    font-kerning: normal;
+    font-optical-sizing: auto;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
   }
   [data-slot="checkbox"][data-indeterminate="true"] {
     @apply border-primary bg-primary text-primary-foreground;
