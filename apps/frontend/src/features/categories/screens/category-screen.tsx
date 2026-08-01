@@ -1,4 +1,4 @@
-import { DownloadIcon, UploadIcon } from "@hugeicons/core-free-icons";
+import { DownloadIcon, Tag01Icon, UploadIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
 import { useMemo, useState } from "react";
@@ -14,6 +14,7 @@ import {
   EmptyContent,
   EmptyDescription,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -338,6 +339,9 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
           className="min-h-72 rounded-lg border px-6 py-10 sm:px-8"
         >
           <EmptyHeader className="max-w-md gap-1.5">
+            <EmptyMedia variant="icon">
+              <HugeiconsIcon icon={Tag01Icon} strokeWidth={2} aria-hidden="true" />
+            </EmptyMedia>
             <EmptyTitle
               id="category-empty-state-title"
               role="heading"

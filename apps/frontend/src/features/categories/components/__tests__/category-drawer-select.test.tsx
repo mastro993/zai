@@ -157,6 +157,7 @@ describe("CategoryDrawerSelect", () => {
     expect(emptyState).not.toBeNull();
     expect(emptyState?.classList.contains("border")).toBe(true);
     expect(emptyState?.classList.contains("border-dashed")).toBe(true);
+    expect(emptyState?.querySelector('[data-slot="empty-icon"]')).not.toBeNull();
   });
 
   it("clears single selection when clearable", () => {

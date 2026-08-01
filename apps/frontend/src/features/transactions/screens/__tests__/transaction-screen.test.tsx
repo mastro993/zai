@@ -514,6 +514,7 @@ describe("transaction screen request guard", () => {
 
     expect(emptyState.classList.contains("border")).toBe(true);
     expect(emptyState.classList.contains("border-dashed")).toBe(true);
+    expect(emptyState.querySelector('[data-slot="empty-icon"]')).not.toBeNull();
     expect(emptyContent?.classList.contains("justify-center")).toBe(true);
     expect(screen.getByRole("heading", { name: "No transactions yet" })).not.toBeNull();
     expect(

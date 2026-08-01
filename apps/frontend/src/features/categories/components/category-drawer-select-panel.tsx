@@ -1,4 +1,4 @@
-import { ArrowLeft01Icon, Search01Icon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, Search01Icon, Tag01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Link } from "@tanstack/react-router";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
@@ -13,7 +13,13 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Empty, EmptyContent, EmptyDescription } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+} from "@/components/ui/empty";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { cn } from "@/lib/utils";
@@ -152,7 +158,12 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
         >
           {categories.length === 0 ? (
             <Empty className="gap-2 rounded-lg border px-3 py-8">
-              <EmptyDescription>{emptyListMessage}</EmptyDescription>
+              <EmptyHeader className="gap-2">
+                <EmptyMedia variant="icon">
+                  <HugeiconsIcon icon={Tag01Icon} strokeWidth={2} aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyDescription>{emptyListMessage}</EmptyDescription>
+              </EmptyHeader>
               {emptyListActionLabel ? (
                 <EmptyContent className="max-w-none gap-2">
                   <Button
@@ -168,7 +179,12 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
             </Empty>
           ) : groups.length === 0 ? (
             <Empty className="gap-2 rounded-lg border px-3 py-8">
-              <EmptyDescription>No categories match “{query.trim()}”.</EmptyDescription>
+              <EmptyHeader className="gap-2">
+                <EmptyMedia variant="icon">
+                  <HugeiconsIcon icon={Search01Icon} strokeWidth={2} aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyDescription>No categories match “{query.trim()}”.</EmptyDescription>
+              </EmptyHeader>
             </Empty>
           ) : (
             groups.map(({ root, children, visibleChildren }) => {

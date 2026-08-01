@@ -1,4 +1,4 @@
-import { DownloadIcon, UploadIcon } from "@hugeicons/core-free-icons";
+import { DownloadIcon, TransactionHistoryIcon, UploadIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { toast } from "@/components/toaster/toast";
 
@@ -11,6 +11,7 @@ import {
   EmptyContent,
   EmptyDescription,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
@@ -166,6 +167,9 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
             className="min-h-72 rounded-lg border px-6 py-10 sm:px-8"
           >
             <EmptyHeader className="max-w-md gap-1.5">
+              <EmptyMedia variant="icon">
+                <HugeiconsIcon icon={TransactionHistoryIcon} strokeWidth={2} aria-hidden="true" />
+              </EmptyMedia>
               <EmptyTitle
                 id="transaction-empty-state-title"
                 role="heading"

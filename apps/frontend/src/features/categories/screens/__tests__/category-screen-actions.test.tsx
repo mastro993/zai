@@ -79,6 +79,7 @@ describe("CategoryScreen actions", () => {
 
     expect(emptyState).not.toBeNull();
     expect(emptyState.classList.contains("rounded-lg")).toBe(true);
+    expect(emptyState.querySelector('[data-slot="empty-icon"]')).not.toBeNull();
     expect(emptyContent?.classList.contains("justify-center")).toBe(true);
     expect(screen.getByRole("heading", { name: "Set up your categories" })).not.toBeNull();
     expect(screen.getAllByRole("button", { name: "New category" })).toHaveLength(1);
