@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, parseISO } from "date-fns";
 import { Controller, useForm } from "react-hook-form";
+import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -114,6 +115,7 @@ function TransactionFormDrawer({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: getFormDefaults(mode),
   });
+  const amountInputRef = useRef<HTMLInputElement>(null);
   const { title, description } = getFormCopy(mode);
   const isCreate = mode.type === "create";
   const hasCategories = categories.length > 0;
@@ -124,7 +126,10 @@ function TransactionFormDrawer({
   const visibleSource = recurringProvenance?.source;
 
   return (
-    <DrawerContent className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem]">
+    <DrawerContent
+      className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem]"
+      initialFocus={isCreate ? amountInputRef : undefined}
+    >
       <DrawerHeader>
         <DrawerTitle>{title}</DrawerTitle>
         <DrawerDescription>{description}</DrawerDescription>
@@ -190,7 +195,6 @@ function TransactionFormDrawer({
                     id="transaction-amount"
                     type="text"
                     inputMode="decimal"
-                    autoFocus={isCreate}
                     placeholder="0.00"
                     aria-describedby={errors.amount ? amountErrorId : undefined}
                     aria-invalid={Boolean(errors.amount)}
@@ -204,7 +208,10 @@ function TransactionFormDrawer({
                       }
                     }}
                     name={field.name}
-                    ref={field.ref}
+                    ref={(element) => {
+                      field.ref(element);
+                      amountInputRef.current = element;
+                    }}
                     onChange={(event) => {
                       const nextValue = event.target.value;
 
@@ -301,6 +308,7 @@ function TransactionFormDrawer({
                   drawerDescription="Optional. Pick a category for this transaction."
                   backAriaLabel="Back to transaction"
                   emptyListMessage="No categories yet. Create some under Cash flow → Categories."
+                  emptyListActionLabel="Manage categories"
                 />
               )}
             />

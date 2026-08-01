@@ -57,6 +57,7 @@ const transactionState = vi.hoisted(() => ({
   holdStale: false,
   holdCurrent: false,
   returnEmptyOnPage2: false,
+  returnEmptyForQuery: false,
 }));
 
 vi.mock("../../commands/transactions", async () => {
@@ -151,6 +152,17 @@ vi.mock("../../commands/transactions", async () => {
               resolve(ResultModule.fail(new ErrorClass("stale request failed")));
           });
         }
+      }
+
+      if (query === "no-matches" && transactionState.returnEmptyForQuery) {
+        return Promise.resolve(
+          ResultModule.succeed({
+            data: [],
+            page: 1,
+            perPage: 50,
+            totalPages: 1,
+          }),
+        );
       }
 
       if (query === "empty-page" && page === 2) {
@@ -285,6 +297,7 @@ describe("transaction screen request guard", () => {
     transactionState.holdStale = false;
     transactionState.holdCurrent = false;
     transactionState.returnEmptyOnPage2 = false;
+    transactionState.returnEmptyForQuery = false;
     transactionState.releaseStale = undefined;
     transactionState.releaseCurrent = undefined;
     Object.defineProperty(window, "matchMedia", {
@@ -449,6 +462,14 @@ describe("transaction screen request guard", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Transaction created"));
   });
 
+  it("focuses the amount field when opening a new transaction", async () => {
+    renderScreen();
+
+    fireEvent.click(screen.getByRole("button", { name: "New transaction" }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Amount")));
+  });
+
   it("disables export when there are no transactions to export", () => {
     render(
       <TransactionScreen
@@ -459,8 +480,31 @@ describe("transaction screen request guard", () => {
       />,
     );
 
+    expect(screen.getByRole("group", { name: "Transaction file actions" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Import transactions" }).classList.contains("size-7"),
+    ).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "Export transactions" }).classList.contains("size-7"),
+    ).toBe(true);
+    expect(screen.getByRole("button", { name: "New transaction" }).classList.contains("h-7")).toBe(
+      true,
+    );
+    expect(screen.queryByPlaceholderText("Search description or notes...")).toBeNull();
     expect(
       (screen.getByRole("button", { name: "Export transactions" }) as HTMLButtonElement).disabled,
     ).toBe(true);
+  });
+
+  it("keeps filters visible when an active filter returns no transactions", async () => {
+    transactionState.returnEmptyForQuery = true;
+
+    renderScreen();
+    typeSearchQuery("no-matches");
+
+    await waitFor(() =>
+      expect(screen.getByText("No transactions match your filters.")).toBeTruthy(),
+    );
+    expect(screen.getByPlaceholderText("Search description or notes...")).toBeTruthy();
   });
 });

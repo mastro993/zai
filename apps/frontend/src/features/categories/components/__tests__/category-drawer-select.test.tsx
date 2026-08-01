@@ -6,6 +6,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TransactionCategory } from "../../types/model";
 import { CategoryDrawerSelect } from "../category-drawer-select";
 
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, ...props }: { children: React.ReactNode; to?: string }) => (
+    <a href={props.to}>{children}</a>
+  ),
+}));
+
 vi.mock("@hugeicons/react", () => ({
   HugeiconsIcon: () => <span data-testid="icon" />,
 }));
@@ -123,6 +129,29 @@ describe("CategoryDrawerSelect", () => {
 
     expect(list.classList.contains("rounded-lg")).toBe(true);
     expect(list.classList.contains("flex-1")).toBe(false);
+  });
+
+  it("renders the optional empty-state action as a categories link", () => {
+    render(
+      <CategoryDrawerSelect
+        id="cat"
+        mode="single"
+        categories={[]}
+        value={null}
+        onChange={vi.fn()}
+        placeholder="Uncategorized"
+        ariaLabel="Choose category"
+        drawerTitle="Select category"
+        emptyListMessage="No categories yet."
+        emptyListActionLabel="Manage categories"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose category" }));
+
+    const action = screen.getByRole("link", { name: "Manage categories" });
+    expect(action.tagName).toBe("A");
+    expect(action.getAttribute("href")).toMatch(/\/cash-flow\/categories\/?$/);
   });
 
   it("clears single selection when clearable", () => {

@@ -1,9 +1,13 @@
+import { DownloadIcon, UploadIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { toast } from "@/components/toaster/toast";
 
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { TransactionBulkDeleteDialog } from "../components/transaction-bulk-delete-dialog";
 import { TransactionCategoryFilter } from "../components/transaction-category-filter";
@@ -29,68 +33,98 @@ interface TransactionScreenProps {
 export function TransactionScreen({ initialData }: TransactionScreenProps) {
   const controller = useTransactionListController(initialData);
   const actions = useTransactionActions(controller);
+  const showFilters = controller.transactions.length > 0 || controller.hasActiveFilters;
+  const importTransactionsButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon-sm"
+      aria-label="Import transactions"
+      onClick={() => actions.setIsImportDialogOpen(true)}
+    >
+      <HugeiconsIcon icon={UploadIcon} strokeWidth={2} />
+    </Button>
+  );
+  const exportTransactionsLabel = actions.isExporting
+    ? actions.selectedCount > 0
+      ? "Exporting selected transactions"
+      : "Exporting transactions"
+    : actions.selectedCount > 0
+      ? "Export selected transactions"
+      : "Export transactions";
+  const exportTransactionsButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon-sm"
+      aria-label={exportTransactionsLabel}
+      aria-busy={actions.isExporting}
+      disabled={
+        controller.isLoading ||
+        actions.isExporting ||
+        (actions.selectedCount === 0 && controller.transactions.length === 0)
+      }
+      onClick={actions.exportTransactionCsv}
+    >
+      <HugeiconsIcon icon={DownloadIcon} strokeWidth={2} />
+    </Button>
+  );
 
   return (
     <ScreenBase
       actions={
         <>
-          <Button variant="outline" onClick={() => actions.setIsImportDialogOpen(true)}>
-            Import transactions
-          </Button>
-          <Button
-            variant="outline"
-            disabled={
-              controller.isLoading ||
-              actions.isExporting ||
-              (actions.selectedCount === 0 && controller.transactions.length === 0)
-            }
-            onClick={actions.exportTransactionCsv}
-          >
-            {actions.isExporting
-              ? actions.selectedCount > 0
-                ? "Exporting selected..."
-                : "Exporting..."
-              : actions.selectedCount > 0
-                ? "Export selected transactions"
-                : "Export transactions"}
-          </Button>
-          <Button onClick={() => actions.openFormDrawer({ type: "create" })}>
+          <TooltipProvider>
+            <ButtonGroup aria-label="Transaction file actions">
+              <Tooltip>
+                <TooltipTrigger render={importTransactionsButton} />
+                <TooltipContent>Import transactions</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger render={exportTransactionsButton} />
+                <TooltipContent>{exportTransactionsLabel}</TooltipContent>
+              </Tooltip>
+            </ButtonGroup>
+          </TooltipProvider>
+          <Button size="sm" onClick={() => actions.openFormDrawer({ type: "create" })}>
             New transaction
           </Button>
         </>
       }
     >
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <TransactionSelectionBar
-          selectedCount={actions.selectedCount}
-          isDeleting={actions.isBulkDeleting}
-          onDelete={() => actions.setIsBulkDeleteDialogOpen(true)}
-          onClearSelection={actions.clearSelection}
-        />
-        <Input
-          type="search"
-          placeholder="Search description or notes..."
-          value={controller.query}
-          className="w-72"
-          onChange={(event) => {
-            controller.setQuery(event.target.value);
-          }}
-        />
-        <TransactionDateFilter
-          selection={controller.dateSelection}
-          onSelectionChange={controller.changeDateSelection}
-        />
-        <TransactionTypeFilter
-          selection={controller.typeSelection}
-          onSelectionChange={controller.changeTypeSelection}
-        />
-        <TransactionCategoryFilter
-          categories={controller.categories}
-          selection={controller.categorySelection}
-          isLoading={controller.isLoading && controller.categories.length === 0}
-          onSelectionChange={controller.changeCategorySelection}
-        />
-      </div>
+      {showFilters ? (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <TransactionSelectionBar
+            selectedCount={actions.selectedCount}
+            isDeleting={actions.isBulkDeleting}
+            onDelete={() => actions.setIsBulkDeleteDialogOpen(true)}
+            onClearSelection={actions.clearSelection}
+          />
+          <Input
+            type="search"
+            placeholder="Search description or notes..."
+            value={controller.query}
+            className="w-72"
+            onChange={(event) => {
+              controller.setQuery(event.target.value);
+            }}
+          />
+          <TransactionDateFilter
+            selection={controller.dateSelection}
+            onSelectionChange={controller.changeDateSelection}
+          />
+          <TransactionTypeFilter
+            selection={controller.typeSelection}
+            onSelectionChange={controller.changeTypeSelection}
+          />
+          <TransactionCategoryFilter
+            categories={controller.categories}
+            selection={controller.categorySelection}
+            isLoading={controller.isLoading && controller.categories.length === 0}
+            onSelectionChange={controller.changeCategorySelection}
+          />
+        </div>
+      ) : null}
 
       {controller.errorMessage ? (
         <div className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">

@@ -1,5 +1,6 @@
 import { ArrowLeft01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { Link } from "@tanstack/react-router";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ interface CategoryDrawerSelectPanelBase {
   drawerDescription?: string;
   backAriaLabel: string;
   emptyListMessage: string;
+  emptyListActionLabel?: string;
   searchInputId: string;
 }
 
@@ -71,6 +73,7 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
     drawerDescription,
     backAriaLabel,
     emptyListMessage,
+    emptyListActionLabel,
     searchInputId,
   } = props;
   const [query, setQuery] = useState("");
@@ -144,9 +147,19 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
           className="overflow-y-auto rounded-lg border"
         >
           {categories.length === 0 ? (
-            <FieldDescription className="px-3 py-8 text-center">
-              {emptyListMessage}
-            </FieldDescription>
+            <div className="flex flex-col items-center gap-2 px-3 py-8 text-center">
+              <FieldDescription className="text-center">{emptyListMessage}</FieldDescription>
+              {emptyListActionLabel ? (
+                <Button
+                  variant="link"
+                  className="h-auto p-0 text-sm"
+                  nativeButton={false}
+                  render={<Link to="/cash-flow/categories" />}
+                >
+                  {emptyListActionLabel}
+                </Button>
+              ) : null}
+            </div>
           ) : groups.length === 0 ? (
             <FieldDescription className="px-3 py-8 text-center">
               No categories match “{query.trim()}”.
