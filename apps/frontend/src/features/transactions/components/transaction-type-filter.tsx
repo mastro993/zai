@@ -8,6 +8,7 @@ import {
 } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,19 +54,19 @@ export function TransactionTypeFilter({
   };
 
   return (
-    <div className="flex items-center">
+    <ButtonGroup aria-label="Type filter">
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           render={
             <Button
               type="button"
-              variant="outline"
+              variant={active ? "secondary" : "outline"}
               aria-label="Filter by type"
               className={cn("justify-start gap-2 font-normal", !active && "text-muted-foreground")}
             />
           }
         >
-          <HugeiconsIcon icon={ArrowDataTransferHorizontalIcon} strokeWidth={2} />
+          <HugeiconsIcon icon={TYPE_FILTER_ICONS[getMenuValue(selection)]} strokeWidth={2} />
           {formatTypeFilterLabel(selection)}
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-36" align="end">
@@ -93,18 +94,17 @@ export function TransactionTypeFilter({
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-
       {active ? (
         <Button
           type="button"
-          variant="ghost"
-          size="icon-sm"
+          variant="secondary"
+          size="icon"
           aria-label="Clear type filter"
           onClick={() => onSelectionChange(DEFAULT_TYPE_FILTER_SELECTION)}
         >
           <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
         </Button>
       ) : null}
-    </div>
+    </ButtonGroup>
   );
 }
