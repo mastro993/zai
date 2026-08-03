@@ -1,9 +1,20 @@
 import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowDataTransferHorizontalIcon, Cancel01Icon } from "@hugeicons/core-free-icons";
+import {
+  ArrowDataTransferHorizontalIcon,
+  ArrowDown01Icon,
+  ArrowUp01Icon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 import {
@@ -13,12 +24,21 @@ import {
   isActiveTypeFilter,
   type TypeFilterSelection,
 } from "../lib/transaction-type-filter";
-import { TransactionTypeBadge } from "./transaction-type-badge";
 
 type TransactionTypeFilterProps = {
   selection: TypeFilterSelection;
   onSelectionChange: (selection: TypeFilterSelection) => void;
 };
+
+const TYPE_FILTER_ICONS = {
+  all: ArrowDataTransferHorizontalIcon,
+  income: ArrowUp01Icon,
+  expense: ArrowDown01Icon,
+} as const;
+
+type TypeFilterMenuValue = "all" | Exclude<TypeFilterSelection, null>;
+
+const getMenuValue = (selection: TypeFilterSelection): TypeFilterMenuValue => selection ?? "all";
 
 export function TransactionTypeFilter({
   selection,
@@ -34,8 +54,8 @@ export function TransactionTypeFilter({
 
   return (
     <div className="flex items-center">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger
           render={
             <Button
               type="button"
@@ -47,24 +67,32 @@ export function TransactionTypeFilter({
         >
           <HugeiconsIcon icon={ArrowDataTransferHorizontalIcon} strokeWidth={2} />
           {formatTypeFilterLabel(selection)}
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-2" align="end">
-          <div className="flex flex-col gap-0.5">
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-36" align="end">
+          <DropdownMenuRadioGroup
+            value={getMenuValue(selection)}
+            onValueChange={(value) => {
+              const option = TYPE_FILTER_OPTIONS.find(
+                (candidate) => getMenuValue(candidate.value) === value,
+              );
+
+              if (option) {
+                selectOption(option.value);
+              }
+            }}
+          >
             {TYPE_FILTER_OPTIONS.map((option) => (
-              <Button
-                key={option.label}
-                type="button"
-                variant={selection === option.value ? "secondary" : "ghost"}
-                size="sm"
-                className="justify-start"
-                onClick={() => selectOption(option.value)}
-              >
-                {option.value ? <TransactionTypeBadge type={option.value} /> : option.label}
-              </Button>
+              <DropdownMenuRadioItem key={option.label} value={getMenuValue(option.value)}>
+                <HugeiconsIcon
+                  icon={TYPE_FILTER_ICONS[getMenuValue(option.value)]}
+                  strokeWidth={2}
+                />
+                {option.label}
+              </DropdownMenuRadioItem>
             ))}
-          </div>
-        </PopoverContent>
-      </Popover>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {active ? (
         <Button
