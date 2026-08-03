@@ -90,6 +90,10 @@ components:
     rounded: "{rounded.lg}"
     padding: "0.25rem 0.625rem"
     height: "2rem"
+  filter-group:
+    typography: "{typography.body}"
+    rounded: "{rounded.lg}"
+    height: "2rem"
   badge-default:
     backgroundColor: "{colors.ledger-green}"
     textColor: "{colors.ledger-white}"
@@ -134,11 +138,12 @@ review sessions, structured enough that data never feels loose. The visual
 language is a low-chroma green axis on white or green-black canvases, softened
 by squircle corners on controls while work surfaces remain visibly ordered.
 
-The source defines Geist for operational text and Mona Sans for larger heading
-roles, with both variable fonts shipped locally through `@fontsource-variable`.
-The interface favors compact controls, semantic borders, and restrained state
-changes over decorative presentation. Light and dark themes keep the same hue
-logic while changing surface contrast for the working environment.
+The source defines Geist Variable for operational text and Mona Sans Variable
+for larger heading roles, with both fonts shipped locally through
+`@fontsource-variable`. The interface favors compact controls, semantic
+borders, and restrained state changes over decorative presentation. Light and
+dark themes keep the same hue logic while changing surface contrast for the
+working environment.
 
 **Key Characteristics:**
 
@@ -200,15 +205,15 @@ depth, but it does not become a separate color identity.
 
 ## Typography
 
-**Display Font:** Mona Sans (sans-serif fallback)
-**Body Font:** Geist (sans-serif fallback)
-**Label Font:** Geist (same family, compact weight and size)
+**Display Font:** Mona Sans Variable (with Geist Variable and system fallbacks)
+**Body Font:** Geist Variable (with ui-sans-serif and system fallbacks)
+**Label Font:** Geist Variable (same family, compact weight and size)
 
-**Character:** The pairing is restrained and contemporary. Mona Sans gives rare
-large statements a composed shape; Geist keeps dense forms, navigation, tables,
-and descriptions legible. The CSS imports both variable fonts locally, with
-`ui-sans-serif`, `system-ui`, and `sans-serif` fallbacks for font loading and
-unsupported environments.
+**Character:** The pairing is restrained and contemporary. Mona Sans Variable
+gives rare large statements a composed shape; Geist Variable keeps dense forms,
+navigation, tables, and descriptions legible. The CSS imports both variable
+fonts locally, with `ui-sans-serif`, `system-ui`, and `sans-serif` fallbacks for
+font loading and unsupported environments.
 
 ### Hierarchy
 
@@ -326,6 +331,15 @@ needs to be read quickly.
 - **Focus:** Ledger Green ring with a 3px 50%-alpha treatment and border shift.
 - **Error / Disabled:** Audit Red border and ring for invalid fields; disabled
   fields retain their labels while lowering opacity and using a muted fill.
+
+### Filter Groups
+
+- **Structure:** Join a filter trigger and its active-state clear action with
+  the shared `ButtonGroup` primitive; keep the query input separate.
+- **State:** Inactive filters use an outlined, muted trigger. Active filters
+  use the secondary surface, and the icon-only clear action uses that same
+  surface so it reads as part of the control. Clear buttons retain explicit
+  accessible names.
 
 ### Navigation
 

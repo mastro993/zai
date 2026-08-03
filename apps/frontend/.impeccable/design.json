@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-07-31T06:42:06Z",
+  "generatedAt": "2026-08-03T19:45:17Z",
   "title": "Design System: Zai",
   "extensions": {
     "colorMeta": {
@@ -138,6 +138,14 @@
       "css": ".ds-input { display: block; width: 100%; height: 2rem; padding: 0.25rem 0.625rem; border: 1px solid var(--input, oklch(0.925 0.004 162.2)); border-radius: var(--radius, 0.75rem); corner-shape: squircle; background: transparent; color: var(--foreground, oklch(0.25 0.023 162.2)); font: 400 0.875rem/1.5 var(--font-sans, sans-serif); transition: border-color 150ms ease-out, box-shadow 150ms ease-out; } .ds-input::placeholder { color: var(--muted-foreground, oklch(0.52 0.016 162.2)); } .ds-input:focus-visible { outline: none; border-color: var(--ring, oklch(0.476 0.078 162.2)); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, oklch(0.476 0.078 162.2)) 50%, transparent); }"
     },
     {
+      "name": "Transaction Filter Group",
+      "kind": "custom",
+      "refersTo": "filter-group",
+      "description": "A joined filter trigger and active-state clear action that keeps the query field separate.",
+      "html": "<div class=\"ds-filter-group\" role=\"group\" aria-label=\"Type filter\"><button class=\"ds-filter-trigger\" type=\"button\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 4v16M5 12h14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg><span>Expense</span></button><button class=\"ds-filter-clear\" type=\"button\" aria-label=\"Clear type filter\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg></button></div>",
+      "css": ".ds-filter-group { display: inline-flex; height: 2rem; align-items: stretch; } .ds-filter-trigger, .ds-filter-clear { border: 1px solid transparent; background: var(--secondary, oklch(0.955 0.008 162.2)); color: var(--secondary-foreground, oklch(0.25 0.039 162.2)); font: 400 0.875rem/1.5 var(--font-sans, sans-serif); transition: background-color 150ms ease-out, box-shadow 150ms ease-out, transform 100ms ease-out; } .ds-filter-trigger { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0 0.625rem; border-radius: var(--radius, 0.75rem); corner-shape: squircle; } .ds-filter-clear { display: inline-flex; width: 2rem; align-items: center; justify-content: center; border-radius: var(--radius, 0.75rem); corner-shape: squircle; } .ds-filter-trigger + .ds-filter-clear { margin-left: -1px; border-left-color: color-mix(in oklch, var(--secondary-foreground, oklch(0.25 0.039 162.2)) 12%, transparent); border-top-left-radius: 0; border-bottom-left-radius: 0; } .ds-filter-trigger:hover, .ds-filter-clear:hover { background: color-mix(in oklch, var(--secondary, oklch(0.955 0.008 162.2)), var(--foreground, oklch(0.25 0.023 162.2)) 5%); } .ds-filter-trigger:focus-visible, .ds-filter-clear:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, oklch(0.476 0.078 162.2)) 50%, transparent); position: relative; z-index: 1; } .ds-filter-trigger:active, .ds-filter-clear:active { transform: translateY(1px); } .ds-filter-trigger svg, .ds-filter-clear svg { width: 1rem; height: 1rem; flex: none; }"
+    },
+    {
       "name": "Status Badge",
       "kind": "chip",
       "refersTo": "badge-default",
@@ -172,7 +180,7 @@
   ],
   "narrative": {
     "northStar": "The Quiet Ledger",
-    "overview": "Zai treats financial work as a careful desktop utility: quiet enough for long review sessions, structured enough that data never feels loose. The visual language is a low-chroma green axis on white or green-black canvases, softened by squircle corners on controls while work surfaces remain visibly ordered.\n\nThe source defines Geist for operational text and Mona Sans for larger heading roles, with an Inter variable font import as the shipped fallback asset. The interface favors compact controls, semantic borders, and restrained state changes over decorative presentation. Light and dark themes keep the same hue logic while changing surface contrast for the working environment.",
+    "overview": "Zai treats financial work as a careful desktop utility: quiet enough for long review sessions, structured enough that data never feels loose. The visual language is a low-chroma green axis on white or green-black canvases, softened by squircle corners on controls while work surfaces remain visibly ordered.\n\nThe source defines Geist Variable for operational text and Mona Sans Variable for larger heading roles, with both fonts shipped locally through `@fontsource-variable`. The interface favors compact controls, semantic borders, and restrained state changes over decorative presentation. Light and dark themes keep the same hue logic while changing surface contrast for the working environment.",
     "keyCharacteristics": ["Low-chroma ledger green for primary actions, focus, charts, and selection", "Geist operational type with Mona Sans reserved for display and headline roles", "32px controls, 12px base squircles, and 20px categorical pills", "Full-height shell with a 16rem sidebar, 3rem collapsed rail, and 48px route bar", "Flat bordered work surfaces; shadows belong to temporary layers", "Accessible state feedback, inline SVG iconography, and reduced-motion fallbacks"],
     "rules": [
       { "name": "The One Hue Axis Rule", "body": "Product chrome and charts stay on the 162.2° ledger hue axis; category colors may break it because they carry user-owned semantic data.", "section": "colors" },
