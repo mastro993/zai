@@ -533,6 +533,16 @@ describe("transaction screen request guard", () => {
     await waitFor(() =>
       expect(screen.getByText("No transactions match your filters.")).toBeTruthy(),
     );
+    const emptyState = screen.getByRole("region", { name: "No transactions match your filters" });
+    const emptyContent = emptyState.querySelector('[data-slot="empty-content"]');
+    const clearFiltersButton = emptyState.querySelector("button");
+
+    expect(emptyState.getAttribute("data-slot")).toBe("empty");
+    expect(emptyState.classList.contains("border")).toBe(true);
+    expect(emptyState.classList.contains("border-dashed")).toBe(true);
+    expect(emptyState.querySelector('[data-slot="empty-header"]')).not.toBeNull();
+    expect(emptyContent).not.toBeNull();
+    expect(clearFiltersButton?.classList.contains("border-border")).toBe(true);
     expect(screen.getByPlaceholderText("Search description or notes...")).toBeTruthy();
   });
 });

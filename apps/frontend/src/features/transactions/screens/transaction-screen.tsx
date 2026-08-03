@@ -154,12 +154,20 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
 
       {!controller.isLoading && controller.transactions.length === 0 ? (
         controller.hasActiveFilters ? (
-          <div className="flex flex-col items-start gap-3 border border-dashed p-6">
-            <p className="text-sm text-muted-foreground">No transactions match your filters.</p>
-            <Button variant="outline" size="sm" onClick={controller.clearFilters}>
-              Clear filters
-            </Button>
-          </div>
+          <Empty
+            role="region"
+            aria-label="No transactions match your filters"
+            className="flex-none gap-3 rounded-lg border p-6"
+          >
+            <EmptyHeader className="max-w-none gap-1.5">
+              <EmptyDescription>No transactions match your filters.</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent className="max-w-none">
+              <Button variant="outline" size="sm" onClick={controller.clearFilters}>
+                Clear filters
+              </Button>
+            </EmptyContent>
+          </Empty>
         ) : (
           <Empty
             role="region"
