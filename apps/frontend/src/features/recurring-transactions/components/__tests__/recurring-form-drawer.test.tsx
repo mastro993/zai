@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Result } from "@praha/byethrow";
 import { useRef, useState } from "react";
@@ -49,6 +49,69 @@ function Harness({
 }
 
 describe("RecurringFormDrawer", () => {
+  it("uses the transaction entry controls for recurring template fields", () => {
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    expect(screen.getByText("Record a recurring income or expense")).toBeDefined();
+
+    const typeGroup = screen.getByRole("group", { name: "Transaction type" });
+    const expense = within(typeGroup).getByRole("button", { name: "expense" });
+    const income = within(typeGroup).getByRole("button", { name: "income" });
+
+    expect(expense.querySelector("svg[data-icon='inline-start']")).not.toBeNull();
+    expect(income.querySelector("svg[data-icon='inline-start']")).not.toBeNull();
+    expect(expense.querySelector("svg")?.classList.contains("text-destructive")).toBe(true);
+    expect(income.querySelector("svg")?.classList.contains("text-primary")).toBe(true);
+
+    const amount = screen.getByLabelText("Amount");
+    expect(amount.getAttribute("placeholder")).toBe("0.00");
+    expect(screen.getByText("EUR")).toBeDefined();
+
+    expect(screen.getByRole("combobox", { name: "Choose category" })).toBeDefined();
+    expect(screen.getByLabelText("Description").getAttribute("placeholder")).toBe(
+      "Coffee, salary, rent...",
+    );
+
+    const notes = screen.getByLabelText("Notes");
+    expect(notes.tagName).toBe("TEXTAREA");
+    expect(notes.getAttribute("placeholder")).toBe("Optional details for your own reference");
+  });
+
+  it("places first occurrence after amount with separate date and time controls", () => {
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    const amountField = screen.getByLabelText("Amount").closest('[data-slot="field"]');
+    const firstOccurrenceField = screen
+      .getByText("First occurrence")
+      .closest('[data-slot="field"]');
+    const categoryField = screen.getByText("Category").closest('[data-slot="field"]');
+    const descriptionField = screen.getByText("Description").closest('[data-slot="field"]');
+
+    expect(amountField).not.toBeNull();
+    expect(firstOccurrenceField).not.toBeNull();
+    expect(categoryField).not.toBeNull();
+    expect(descriptionField).not.toBeNull();
+    expect(amountField?.nextElementSibling).toBe(firstOccurrenceField);
+    expect(categoryField?.nextElementSibling).toBe(descriptionField);
+    expect(firstOccurrenceField?.querySelector('input[type="datetime-local"]')).toBeNull();
+    expect(firstOccurrenceField?.querySelector("button")).not.toBeNull();
+    expect(firstOccurrenceField?.querySelector('input[type="time"]')).not.toBeNull();
+  });
+
   it("submits a valid create and returns focus to the trigger", async () => {
     const onSubmit = vi.fn(async (values: RecurringFormValues) => {
       expect(values.description).toBe("Gym");

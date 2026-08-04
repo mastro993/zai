@@ -152,6 +152,10 @@ describe("RecurringAdoptDrawer", () => {
     fireEvent.click(totalOccurrencesCombobox);
     expect(screen.getByText("Continue until you stop the recurring transaction.")).toBeDefined();
     expect(screen.getByText("Stop after a set number of occurrences.")).toBeDefined();
+    fireEvent.click(screen.getByRole("option", { name: /Finite/ }));
+    expect(screen.getByLabelText("Number of occurrences").getAttribute("type")).toBe("number");
+    fireEvent.click(screen.getByRole("combobox", { name: "Total occurrences" }));
+    fireEvent.click(screen.getByRole("option", { name: /Indefinite/ }));
 
     const intervalGroup = screen.getByRole("group", { name: "Interval schedule" });
     const intervalInput = screen.getByLabelText("Every");
@@ -177,8 +181,15 @@ describe("RecurringAdoptDrawer", () => {
     const drawerFooter = document.querySelector('[data-slot="drawer-footer"]');
     expect(drawerFooter).not.toBeNull();
     expect(drawerFooter?.classList.contains("p-0")).toBe(true);
+    const status = screen.getByRole("status");
+    const confirmButton = screen.getByRole("button", { name: "Confirm adoption" });
+    expect(drawerFooter?.contains(status)).toBe(true);
+    expect(status.compareDocumentPosition(confirmButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(screen.queryByText("Includes adopted transaction.")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Confirm adoption" }));
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalled();

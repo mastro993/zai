@@ -46,4 +46,18 @@ describe("TransactionFormDrawer", () => {
 
     expect(screen.queryByText("Date and time when the transaction occurred.")).toBeNull();
   });
+
+  it("labels the transaction date field as date and time", () => {
+    render(
+      <Drawer open swipeDirection="right">
+        <TransactionFormDrawer
+          mode={{ type: "create" }}
+          categories={[]}
+          onSubmit={vi.fn().mockResolvedValue(undefined)}
+        />
+      </Drawer>,
+    );
+
+    expect(screen.getByText("Date and time")).toBeDefined();
+  });
 });

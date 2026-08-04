@@ -243,7 +243,7 @@ function TransactionFormDrawer({
           </Field>
 
           <Field data-invalid={Boolean(errors.transactionDate)}>
-            <FieldLabel>Date</FieldLabel>
+            <FieldLabel>Date and time</FieldLabel>
             <Controller
               control={form.control}
               name="transactionDate"

@@ -1,9 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowDown01Icon, ArrowUp01Icon, Calendar03Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
+import { format, parseISO } from "date-fns";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   DrawerClose,
   DrawerContent,
@@ -27,10 +31,18 @@ import {
   InputGroupInput,
   InputGroupText,
 } from "@/components/ui/input-group";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { CommandError } from "@/commands/errors";
-import { CategoryDrawerSelect } from "@/features/categories/components/category-drawer-select";
 import type { TransactionCategory } from "@/features/categories/types/model";
+import { TransactionCategoryCombobox } from "@/features/transactions/components/transaction-category-combobox";
+import {
+  combineDateTime,
+  isPartialAmountInput,
+  normalizeAmountInput,
+  splitDateTime,
+} from "@/features/transactions/lib/transaction";
 
 import {
   createRecurringFormDefaults,
@@ -40,12 +52,26 @@ import {
 import type { RecurringFormMode } from "../types/recurring-form-mode";
 import {
   SCHEDULE_INTERVAL_UNITS,
+  TRANSACTION_TYPES,
   recurringFormSchema,
   type RecurringCreateOutcome,
   type RecurringFormInput,
   type RecurringFormValues,
   type RecurringMutationOutcome,
 } from "../types/recurring-transaction";
+
+const TRANSACTION_TYPE_CONTROLS = {
+  expense: { icon: ArrowDown01Icon, iconClassName: "text-destructive" },
+  income: { icon: ArrowUp01Icon, iconClassName: "text-primary" },
+} as const;
+
+const formatDateLabel = (dateValue: string) => {
+  if (!dateValue) {
+    return "Pick a date";
+  }
+
+  return format(parseISO(dateValue), "MMM d, yyyy");
+};
 
 interface RecurringFormDrawerProps {
   mode: RecurringFormMode;
@@ -86,6 +112,9 @@ export function RecurringFormDrawer({
   });
   const scheduleKind = useWatch({ control, name: "scheduleKind" });
   const totalMode = useWatch({ control, name: "totalMode" });
+  const amountErrorId = "recurring-amount-error";
+  const dateErrorId = "recurring-first-error";
+  const typeErrorId = "recurring-type-error";
 
   const submit = handleSubmit(async (values) => {
     const result = await onSubmit(values);
@@ -123,7 +152,7 @@ export function RecurringFormDrawer({
         <DrawerTitle>{copy.title}</DrawerTitle>
         <DrawerDescription>{copy.description}</DrawerDescription>
       </DrawerHeader>
-      <form className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4" onSubmit={submit}>
+      <form className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 pt-4 pb-4" onSubmit={submit}>
         <FieldSet>
           <FieldGroup>
             {configLocked ? (
@@ -134,66 +163,169 @@ export function RecurringFormDrawer({
               </FieldDescription>
             ) : null}
 
-            <Field>
+            <Field data-invalid={Boolean(errors.transactionType)}>
               <FieldLabel>Type</FieldLabel>
               <Controller
                 control={control}
                 name="transactionType"
                 render={({ field }) => (
                   <ToggleGroup
+                    aria-describedby={errors.transactionType ? typeErrorId : undefined}
+                    aria-invalid={Boolean(errors.transactionType)}
+                    aria-label="Transaction type"
+                    className="w-full"
+                    spacing={0}
                     variant="outline"
                     disabled={configLocked}
                     value={[field.value ?? "expense"]}
                     onValueChange={(value) => {
-                      if (value[0]) {
-                        field.onChange(value[0]);
+                      const nextValue = value.at(-1);
+
+                      if (nextValue === "expense" || nextValue === "income") {
+                        field.onChange(nextValue);
                       }
                     }}
                   >
-                    <ToggleGroupItem value="expense">Expense</ToggleGroupItem>
-                    <ToggleGroupItem value="income">Income</ToggleGroupItem>
+                    {TRANSACTION_TYPES.map((type) => (
+                      <ToggleGroupItem
+                        key={type}
+                        value={type}
+                        className="flex-1 gap-1.5 capitalize"
+                      >
+                        <HugeiconsIcon
+                          icon={TRANSACTION_TYPE_CONTROLS[type].icon}
+                          className={TRANSACTION_TYPE_CONTROLS[type].iconClassName}
+                          strokeWidth={2}
+                          data-icon="inline-start"
+                          aria-hidden="true"
+                        />
+                        {type}
+                      </ToggleGroupItem>
+                    ))}
                   </ToggleGroup>
                 )}
               />
+              <FieldError id={typeErrorId}>{errors.transactionType?.message}</FieldError>
             </Field>
 
             <Field data-invalid={Boolean(errors.amount)}>
               <FieldLabel htmlFor="recurring-amount">Amount</FieldLabel>
-              <InputGroup>
-                <InputGroupAddon>
-                  <InputGroupText>€</InputGroupText>
-                </InputGroupAddon>
-                <Controller
-                  control={control}
-                  name="amount"
-                  render={({ field }) => (
+              <Controller
+                control={control}
+                name="amount"
+                render={({ field }) => (
+                  <InputGroup>
                     <InputGroupInput
                       id="recurring-amount"
+                      type="text"
                       inputMode="decimal"
+                      placeholder="0.00"
                       readOnly={configLocked}
-                      value={field.value}
-                      onChange={field.onChange}
+                      aria-describedby={errors.amount ? amountErrorId : undefined}
                       aria-invalid={Boolean(errors.amount)}
+                      value={field.value ?? ""}
+                      onBlur={(event) => {
+                        field.onBlur();
+                        const normalized = normalizeAmountInput(event.target.value);
+
+                        if (normalized !== event.target.value) {
+                          field.onChange(normalized);
+                        }
+                      }}
+                      name={field.name}
+                      ref={field.ref}
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+
+                        if (isPartialAmountInput(nextValue)) {
+                          field.onChange(nextValue);
+                        }
+                      }}
                     />
-                  )}
-                />
-              </InputGroup>
-              <FieldError>{errors.amount?.message}</FieldError>
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupText>EUR</InputGroupText>
+                    </InputGroupAddon>
+                  </InputGroup>
+                )}
+              />
+              <FieldError id={amountErrorId}>{errors.amount?.message}</FieldError>
             </Field>
 
-            <Field data-invalid={Boolean(errors.description)}>
-              <FieldLabel htmlFor="recurring-description">Description</FieldLabel>
-              <Input
-                id="recurring-description"
-                readOnly={descriptionLocked}
-                aria-invalid={Boolean(errors.description)}
-                {...register("description")}
+            <Field data-invalid={Boolean(errors.firstScheduledLocal)}>
+              <FieldLabel htmlFor="recurring-first-date">
+                {isEdit ? "Next occurrence" : "First occurrence"}
+              </FieldLabel>
+              <Controller
+                control={control}
+                name="firstScheduledLocal"
+                render={({ field }) => {
+                  const { date, time } = splitDateTime(field.value);
+                  const selectedDate = date ? parseISO(date) : undefined;
+
+                  return (
+                    <div className="flex gap-2">
+                      <Popover>
+                        <PopoverTrigger
+                          render={
+                            <Button
+                              id="recurring-first-date"
+                              type="button"
+                              variant="outline"
+                              className="min-w-0 flex-1 justify-start font-normal"
+                              aria-describedby={
+                                errors.firstScheduledLocal ? dateErrorId : undefined
+                              }
+                              aria-invalid={Boolean(errors.firstScheduledLocal)}
+                              disabled={configLocked}
+                            />
+                          }
+                        >
+                          <HugeiconsIcon
+                            icon={Calendar03Icon}
+                            strokeWidth={2}
+                            data-icon="inline-start"
+                            aria-hidden="true"
+                          />
+                          {formatDateLabel(date)}
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={(nextDate) => {
+                              if (!nextDate) {
+                                return;
+                              }
+
+                              field.onChange(combineDateTime(format(nextDate, "yyyy-MM-dd"), time));
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <Input
+                        id="recurring-first-time"
+                        type="time"
+                        className="w-28 shrink-0 bg-background"
+                        aria-invalid={Boolean(errors.firstScheduledLocal)}
+                        value={time}
+                        readOnly={configLocked}
+                        onChange={(event) => {
+                          field.onChange(combineDateTime(date, event.target.value));
+                        }}
+                      />
+                    </div>
+                  );
+                }}
               />
-              <FieldError>{errors.description?.message}</FieldError>
+              <FieldError id={dateErrorId}>{errors.firstScheduledLocal?.message}</FieldError>
             </Field>
 
             <Field>
-              <FieldLabel>Category</FieldLabel>
+              <FieldLabel
+                htmlFor={configLocked ? "recurring-category-locked" : "recurring-category-trigger"}
+              >
+                Category
+              </FieldLabel>
               {configLocked ? (
                 <Input
                   id="recurring-category-locked"
@@ -213,26 +345,40 @@ export function RecurringFormDrawer({
                   control={control}
                   name="transactionCategoryId"
                   render={({ field }) => (
-                    <CategoryDrawerSelect
-                      id="recurring-category"
-                      mode="single"
+                    <TransactionCategoryCombobox
+                      id="recurring-category-trigger"
                       categories={categories}
-                      value={field.value ?? null}
                       onChange={(value) => field.onChange(value ?? undefined)}
-                      placeholder="Uncategorized"
-                      ariaLabel="Transaction category"
-                      drawerTitle="Choose category"
-                      clearable
+                      onBlur={field.onBlur}
                       parentOpen={open}
+                      value={field.value ?? null}
                     />
                   )}
                 />
               )}
             </Field>
 
+            <Field data-invalid={Boolean(errors.description)}>
+              <FieldLabel htmlFor="recurring-description">Description</FieldLabel>
+              <Input
+                id="recurring-description"
+                placeholder="Coffee, salary, rent..."
+                readOnly={descriptionLocked}
+                aria-invalid={Boolean(errors.description)}
+                {...register("description")}
+              />
+              <FieldError>{errors.description?.message}</FieldError>
+            </Field>
+
             <Field>
               <FieldLabel htmlFor="recurring-notes">Notes</FieldLabel>
-              <Input id="recurring-notes" readOnly={configLocked} {...register("notes")} />
+              <Textarea
+                id="recurring-notes"
+                placeholder="Optional details for your own reference"
+                className="min-h-16 resize-y"
+                readOnly={configLocked}
+                {...register("notes")}
+              />
             </Field>
 
             <Field>
@@ -308,20 +454,6 @@ export function RecurringFormDrawer({
                 <FieldError>{errors.monthlyDay?.message}</FieldError>
               </Field>
             )}
-
-            <Field data-invalid={Boolean(errors.firstScheduledLocal)}>
-              <FieldLabel htmlFor="recurring-first">
-                {isEdit ? "Next occurrence" : "First occurrence"}
-              </FieldLabel>
-              <Input
-                id="recurring-first"
-                type="datetime-local"
-                readOnly={configLocked}
-                aria-invalid={Boolean(errors.firstScheduledLocal)}
-                {...register("firstScheduledLocal")}
-              />
-              <FieldError>{errors.firstScheduledLocal?.message}</FieldError>
-            </Field>
 
             <Field>
               <FieldLabel>Total</FieldLabel>

@@ -28,14 +28,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
 import {
@@ -136,7 +129,6 @@ interface RecurringOptionComboboxProps {
   options: Array<RecurringOption>;
   value: string | undefined;
   onChange: (value: string) => void;
-  descriptionId?: string;
 }
 
 function RecurringOptionCombobox({
@@ -145,7 +137,6 @@ function RecurringOptionCombobox({
   options,
   value,
   onChange,
-  descriptionId,
 }: RecurringOptionComboboxProps) {
   const selected = options.find((option) => option.value === value);
 
@@ -169,7 +160,6 @@ function RecurringOptionCombobox({
             type="button"
             variant="outline"
             aria-label={ariaLabel}
-            aria-describedby={descriptionId}
             className="h-8 w-full min-w-0 justify-between gap-2 overflow-hidden px-2.5 font-normal"
           />
         }
@@ -462,22 +452,19 @@ export function RecurringAdoptDrawer({
                   <RecurringOptionCombobox
                     id="adopt-recurring-total-mode"
                     ariaLabel="Total occurrences"
-                    descriptionId="adopt-recurring-total-description"
                     options={TOTAL_MODE_OPTIONS}
                     value={field.value ?? "indefinite"}
                     onChange={field.onChange}
                   />
                 )}
               />
-              <FieldDescription id="adopt-recurring-total-description">
-                Includes adopted transaction.
-              </FieldDescription>
             </Field>
             {totalMode === "finite" ? (
               <Field data-invalid={Boolean(errors.totalOccurrences)}>
                 <FieldLabel htmlFor="adopt-recurring-total">Number of occurrences</FieldLabel>
                 <Input
                   id="adopt-recurring-total"
+                  type="number"
                   inputMode="numeric"
                   {...register("totalOccurrences")}
                 />
@@ -486,17 +473,17 @@ export function RecurringAdoptDrawer({
             ) : null}
           </FieldGroup>
         </FieldSet>
-        <p className="rounded-md border border-border px-3 py-2 text-sm" role="status">
-          First occurrence stays {formatLocalDateTime(transaction.transactionDate)}.
-          {laterDueCount === null
-            ? previewError
-              ? ` Preview unavailable: ${previewError}`
-              : " Calculating later due occurrences…"
-            : laterDueCount === 0
-              ? " No later due occurrences will be created on confirm."
-              : ` Confirming will catch up ${laterDueCount} later due occurrence${laterDueCount === 1 ? "" : "s"}.`}
-        </p>
         <DrawerFooter className="p-0">
+          <p className="rounded-md border border-border px-3 py-2 text-sm" role="status">
+            First occurrence stays {formatLocalDateTime(transaction.transactionDate)}.
+            {laterDueCount === null
+              ? previewError
+                ? ` Preview unavailable: ${previewError}`
+                : " Calculating later due occurrences…"
+              : laterDueCount === 0
+                ? " No later due occurrences will be created on confirm."
+                : ` Confirming will catch up ${laterDueCount} later due occurrence${laterDueCount === 1 ? "" : "s"}.`}
+          </p>
           <Button type="submit" disabled={isSubmitting || !open || laterDueCount === null}>
             {isSubmitting ? "Adopting..." : "Confirm adoption"}
           </Button>

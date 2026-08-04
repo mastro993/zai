@@ -73,8 +73,7 @@ export const getRecurringFormCopy = (mode: RecurringFormMode) => {
   }
   return {
     title: "New recurring transaction",
-    description:
-      "Fill the transaction template, then add schedule options for first occurrence and total.",
+    description: "Record a recurring income or expense",
     submitLabel: "Create recurring transaction",
     submittingLabel: "Creating...",
     successMessage: "Recurring transaction created",
