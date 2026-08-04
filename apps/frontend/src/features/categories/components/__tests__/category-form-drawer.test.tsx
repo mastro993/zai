@@ -73,4 +73,42 @@ describe("CategoryFormDrawer", () => {
 
     expect(roleValue.classList.contains("rounded-lg")).toBe(true);
   });
+
+  it("uses a rich combobox for the root category role", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <Drawer open swipeDirection="right">
+        <CategoryFormDrawer
+          open
+          mode={{ type: "create-root" }}
+          categories={[]}
+          onSubmit={onSubmit}
+        />
+      </Drawer>,
+    );
+
+    const trigger = screen.getByRole("combobox", { name: "Category role" });
+    expect(trigger).toHaveTextContent("Spending");
+
+    fireEvent.click(trigger);
+
+    const spending = screen.getByRole("option", { name: /Spending/ });
+    const income = screen.getByRole("option", { name: /Income/ });
+    expect(spending).toHaveTextContent("Tracks outflows and can include refunds.");
+    expect(income).toHaveTextContent("Identifies genuine income only.");
+    expect(spending.querySelector('[aria-hidden="true"]')).not.toBeNull();
+    expect(income.querySelector('[aria-hidden="true"]')).not.toBeNull();
+
+    fireEvent.click(income);
+    expect(trigger).toHaveTextContent("Income");
+    expect(screen.queryByRole("option", { name: /Income/ })).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Salary" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save category" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ role: "income" })),
+    );
+  });
 });
