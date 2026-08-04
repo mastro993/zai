@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Calendar03Icon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, ArrowUp01Icon, Calendar03Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { format, parseISO } from "date-fns";
 import { Controller, useForm } from "react-hook-form";
@@ -15,7 +15,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   InputGroup,
@@ -55,6 +55,11 @@ const getLocalDateTimeInputValue = () => {
   date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
   return date.toISOString().slice(0, 16);
 };
+
+const TRANSACTION_TYPE_CONTROLS = {
+  expense: { icon: ArrowDown01Icon, iconClassName: "text-destructive" },
+  income: { icon: ArrowUp01Icon, iconClassName: "text-primary" },
+} as const;
 
 const getFormDefaults = (mode: TransactionFormMode): TransactionFormInput => {
   if (mode.type === "create") {
@@ -120,7 +125,6 @@ function TransactionFormDrawer({
   const amountInputRef = useRef<HTMLInputElement>(null);
   const { title, description } = getFormCopy(mode);
   const isCreate = mode.type === "create";
-  const hasCategories = categories.length > 0;
   const { errors, isSubmitting } = form.formState;
   const amountErrorId = "transaction-amount-error";
   const dateErrorId = "transaction-date-error";
@@ -176,7 +180,14 @@ function TransactionFormDrawer({
                   }}
                 >
                   {TRANSACTION_TYPES.map((type) => (
-                    <ToggleGroupItem key={type} value={type} className="flex-1 capitalize">
+                    <ToggleGroupItem key={type} value={type} className="flex-1 gap-1.5 capitalize">
+                      <HugeiconsIcon
+                        icon={TRANSACTION_TYPE_CONTROLS[type].icon}
+                        className={TRANSACTION_TYPE_CONTROLS[type].iconClassName}
+                        strokeWidth={2}
+                        data-icon="inline-start"
+                        aria-hidden="true"
+                      />
                       {type}
                     </ToggleGroupItem>
                   ))}
@@ -290,7 +301,6 @@ function TransactionFormDrawer({
                 );
               }}
             />
-            <FieldDescription>Date and time when the transaction occurred.</FieldDescription>
             <FieldError id={dateErrorId}>{errors.transactionDate?.message}</FieldError>
           </Field>
 
@@ -310,11 +320,6 @@ function TransactionFormDrawer({
                 />
               )}
             />
-            <FieldDescription>
-              {hasCategories
-                ? "Optional. Leave empty for uncategorized."
-                : "Optional. Create categories under Cash flow → Categories to group transactions."}
-            </FieldDescription>
           </Field>
 
           <Field>

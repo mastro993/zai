@@ -201,7 +201,7 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
         <Empty
           role="region"
           aria-labelledby="budget-empty-state-title"
-          className="min-h-72 rounded-lg border px-6 py-10 sm:px-8"
+          className="flex-none min-h-72 rounded-lg border px-6 py-10 sm:px-8"
         >
           <EmptyHeader className="max-w-md gap-1.5">
             <EmptyMedia variant="icon">
