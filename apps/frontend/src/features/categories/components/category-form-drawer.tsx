@@ -24,7 +24,7 @@ import {
 } from "../types/model";
 import { CategoryBadge } from "./category-badge";
 import { CategoryColorPicker } from "./category-color-picker";
-import { CategoryDrawerSelect } from "./category-drawer-select";
+import { CategoryParentCombobox } from "./category-parent-combobox";
 import { CategoryRoleCombobox } from "./category-role-combobox";
 
 const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
@@ -161,19 +161,11 @@ function CategoryFormDrawer({
                 control={form.control}
                 name="parentId"
                 render={({ field }) => (
-                  <CategoryDrawerSelect
+                  <CategoryParentCombobox
                     id="category-parent-trigger"
-                    mode="single"
                     categories={rootOptions}
                     value={field.value ? field.value : null}
-                    clearable
                     parentOpen={open}
-                    placeholder="None"
-                    ariaLabel="Parent category"
-                    drawerTitle="Select parent"
-                    drawerDescription="Leave empty for a root category, or nest under an existing root."
-                    backAriaLabel="Back to category"
-                    emptyListMessage="No root categories yet."
                     onBlur={field.onBlur}
                     onChange={(nextParentId) => {
                       field.onChange(nextParentId ?? "");

@@ -15,6 +15,13 @@ const food = {
   role: "spending",
 } as TransactionCategory;
 
+const salary = {
+  id: "salary",
+  parentId: null,
+  name: "Salary",
+  role: "income",
+} as TransactionCategory;
+
 describe("CategoryFormDrawer", () => {
   afterEach(() => cleanup());
 
@@ -72,6 +79,40 @@ describe("CategoryFormDrawer", () => {
     const roleValue = screen.getByText("Spending");
 
     expect(roleValue.classList.contains("rounded-lg")).toBe(true);
+  });
+
+  it("uses a searchable combobox for the parent category", () => {
+    render(
+      <Drawer open swipeDirection="right">
+        <CategoryFormDrawer
+          open
+          mode={{ type: "create-root" }}
+          categories={[food, salary]}
+          onSubmit={vi.fn()}
+        />
+      </Drawer>,
+    );
+
+    const trigger = screen.getByRole("combobox", { name: "Parent category" });
+    expect(trigger.textContent).toContain("None");
+
+    fireEvent.click(trigger);
+
+    const search = screen.getByPlaceholderText("Search categories");
+    fireEvent.change(search, { target: { value: "food" } });
+
+    const foodOption = screen.getByRole("option", { name: "Food" });
+    expect(foodOption.querySelector('[data-slot="badge"]')).not.toBeNull();
+    expect(screen.queryByRole("option", { name: "Salary" })).toBeNull();
+
+    fireEvent.click(foodOption);
+    expect(trigger.textContent).toContain("Food");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByPlaceholderText("Search categories")).toBeNull();
+
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("option", { name: "None" }));
+    expect(screen.getByRole("combobox", { name: "Category role" })).not.toBeNull();
   });
 
   it("uses a rich combobox for the root category role", async () => {
