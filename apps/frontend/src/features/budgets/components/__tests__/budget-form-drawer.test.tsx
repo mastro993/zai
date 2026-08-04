@@ -176,15 +176,15 @@ describe("BudgetFormDrawer", () => {
     const onSubmit = createSubmitMock();
     renderBudgetForm({ categories, onSubmit });
 
-    fireEvent.click(screen.getByRole("button", { name: /Choose categories/ }));
+    fireEvent.click(screen.getByRole("combobox", { name: /Choose categories/ }));
     fireEvent.change(screen.getByLabelText("Search categories"), { target: { value: "rent" } });
 
-    expect(screen.getByRole("checkbox", { name: "Food" })).toBeTruthy();
-    expect(screen.getByRole("checkbox", { name: "Rent" })).toBeTruthy();
-    expect(screen.queryByRole("checkbox", { name: "Income" })).toBeNull();
+    expect(screen.getByRole("option", { name: "Food" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Food / Rent" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Income" })).toBeNull();
 
-    fireEvent.click(screen.getByRole("checkbox", { name: "Rent" }));
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("option", { name: "Food / Rent" }));
+    fireEvent.click(screen.getByRole("combobox", { name: /Choose categories/ }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Rent budget" } });
     fireEvent.change(screen.getByLabelText("Allowance"), { target: { value: "800" } });
     fireEvent.click(screen.getByRole("button", { name: "Create budget" }));
@@ -219,32 +219,28 @@ describe("BudgetFormDrawer", () => {
     const onSubmit = createSubmitMock();
     renderBudgetForm({ categories: [food, groceries, restaurants], onSubmit });
 
-    fireEvent.click(screen.getByRole("button", { name: /Choose categories/ }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Food" }));
-    fireEvent.click(screen.getByRole("button", { name: "Expand Food" }));
+    fireEvent.click(screen.getByRole("combobox", { name: /Choose categories/ }));
+    fireEvent.click(screen.getByRole("option", { name: "Food" }));
 
-    expect(screen.getByRole("checkbox", { name: "Groceries" }).getAttribute("aria-checked")).toBe(
-      "true",
-    );
-    expect(screen.getByRole("checkbox", { name: "Restaurants" }).getAttribute("aria-checked")).toBe(
-      "true",
-    );
+    expect(screen.getByRole("option", { name: "Food" }).getAttribute("aria-selected")).toBe("true");
+    expect(
+      screen.getByRole("option", { name: "Food / Groceries" }).getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(
+      screen.getByRole("option", { name: "Food / Restaurants" }).getAttribute("aria-selected"),
+    ).toBe("true");
 
-    fireEvent.click(screen.getByRole("checkbox", { name: "Groceries" }));
-    expect(screen.getByRole("checkbox", { name: "Food" }).getAttribute("aria-checked")).toBe(
-      "mixed",
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("option", { name: "Food / Groceries" }));
+    expect(screen.getByRole("option", { name: "Food, partially selected" })).toBeTruthy();
 
-    let trigger = screen.getByRole("button", { name: /Choose categories/ });
+    let trigger = screen.getByRole("combobox", { name: /Choose categories/ });
     expect(within(trigger).queryByText("Food")).toBeNull();
     expect(within(trigger).getByText("Food / Restaurants")).toBeTruthy();
 
+    fireEvent.click(screen.getByRole("option", { name: "Food / Groceries" }));
     fireEvent.click(trigger);
-    fireEvent.click(screen.getByRole("checkbox", { name: "Groceries" }));
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
 
-    trigger = screen.getByRole("button", { name: /Choose categories/ });
+    trigger = screen.getByRole("combobox", { name: /Choose categories/ });
     expect(within(trigger).getByText("Food")).toBeTruthy();
     expect(within(trigger).queryByText("Food / Groceries")).toBeNull();
     expect(within(trigger).queryByText("Food / Restaurants")).toBeNull();

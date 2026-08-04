@@ -44,7 +44,7 @@ import {
 } from "../types/budget";
 import type { TransactionCategory } from "@/features/categories/types/model";
 import { BudgetFormRulesFields } from "./budget-form-rules-fields";
-import { CategoryDrawerSelect } from "@/features/categories/components/category-drawer-select";
+import { BudgetCategoryCombobox } from "./budget-category-combobox";
 
 interface BudgetFormDrawerProps {
   open: boolean;
@@ -245,24 +245,14 @@ function BudgetFormDrawer({
                   render={({ field }) => {
                     const selectedIds = field.value ?? [];
                     return (
-                      <CategoryDrawerSelect
+                      <BudgetCategoryCombobox
                         id="budget-categories-trigger"
-                        mode="multiple"
                         categories={categories}
                         value={selectedIds}
+                        invalid={Boolean(errors.categoryIds)}
                         onChange={field.onChange}
                         onBlur={field.onBlur}
                         parentOpen={open}
-                        placeholder="All categories"
-                        ariaLabel={
-                          selectedIds.length === 0
-                            ? "Choose categories, all categories"
-                            : `Choose categories, ${selectedIds.length} selected`
-                        }
-                        drawerTitle="Select categories"
-                        drawerDescription="Only selected categories count toward this budget."
-                        backAriaLabel="Back to budget"
-                        emptyListMessage="No categories yet. This budget will include all transactions."
                       />
                     );
                   }}
