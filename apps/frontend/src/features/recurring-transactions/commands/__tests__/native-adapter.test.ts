@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Result } from "@praha/byethrow";
 
 import {
+  adoptRecurringTransaction,
   createRecurringTransaction,
   getRecurringProcessingStatus,
   getRecurringTransaction,
@@ -12,7 +13,11 @@ import {
   resumeRecurringTransaction,
   stopRecurringTransaction,
 } from "../recurring-transactions";
-import type { RecurringFormValues } from "../../types/recurring-transaction";
+import type {
+  AdoptRecurringFormValues,
+  RecurringFormValues,
+} from "../../types/recurring-transaction";
+import type { Transaction } from "@/features/transactions/types/model";
 
 const invokeMock = vi.hoisted(() => vi.fn());
 const isTauriMock = vi.hoisted(() => vi.fn());
@@ -131,6 +136,44 @@ describe("recurring Tauri command adapter", () => {
     expect(invokeMock).toHaveBeenNthCalledWith(7, "stop_recurring_transaction", {
       recurringTransactionId: "source-1",
       expectedRevision: 3,
+    });
+  });
+
+  it("builds adoption template from source transaction", async () => {
+    invokeMock.mockResolvedValue({});
+    const transaction: Transaction = {
+      id: "transaction-1",
+      description: " Rent ",
+      amount: 120000,
+      transactionDate: "2026-01-10T09:00:00",
+      transactionType: "income",
+      transactionCategoryId: "housing",
+      notes: " Paid by bank transfer ",
+    };
+    const values: AdoptRecurringFormValues = {
+      scheduleKind: "interval",
+      intervalEvery: "2",
+      intervalUnit: "month",
+      monthlyDay: "1",
+      totalMode: "finite",
+      totalOccurrences: "12",
+    };
+
+    await adoptRecurringTransaction(transaction, values);
+
+    expect(invokeMock).toHaveBeenCalledWith("adopt_recurring_transaction", {
+      request: {
+        transactionId: "transaction-1",
+        schedule: { type: "interval", every: 2, unit: "month" },
+        totalOccurrences: 12,
+        template: {
+          description: "Rent",
+          amount: 120000,
+          transactionType: "income",
+          transactionCategoryId: "housing",
+          notes: "Paid by bank transfer",
+        },
+      },
     });
   });
 });

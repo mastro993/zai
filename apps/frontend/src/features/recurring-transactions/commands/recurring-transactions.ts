@@ -1,5 +1,6 @@
 import { invokeDecodedCommand } from "@/commands/shared";
 import type { CommandResult } from "@/commands/shared";
+import type { Transaction } from "@/features/transactions/types/model";
 
 import type {
   RecurringBulkAction,
@@ -143,20 +144,20 @@ export const previewRecurringAdoption = (
 };
 
 export const adoptRecurringTransaction = (
-  transactionId: string,
+  transaction: Transaction,
   values: AdoptRecurringFormValues,
 ): CommandResult<RecurringAdoptOutcome> => {
   return invokeDecodedCommand(RECURRING_COMMANDS.adopt_recurring_transaction, {
     request: {
-      transactionId,
+      transactionId: transaction.id,
       schedule: buildScheduleRule(values),
       totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
       template: {
-        description: values.description,
-        amount: values.amount,
-        transactionType: values.transactionType,
-        transactionCategoryId: values.transactionCategoryId || null,
-        notes: values.notes || null,
+        description: transaction.description?.trim() || "Recurring transaction",
+        amount: transaction.amount,
+        transactionType: transaction.transactionType === "income" ? "income" : "expense",
+        transactionCategoryId: transaction.transactionCategoryId ?? null,
+        notes: transaction.notes?.trim() || null,
       },
     },
   });

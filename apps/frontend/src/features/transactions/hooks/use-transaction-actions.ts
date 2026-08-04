@@ -98,7 +98,7 @@ export function useTransactionActions(controller: TransactionActionsController) 
     if (!adoptTransaction) {
       return Result.fail(new CommandError("No transaction selected for adoption"));
     }
-    const result = await adoptRecurringTransaction(adoptTransaction.id, values);
+    const result = await adoptRecurringTransaction(adoptTransaction, values);
     if (Result.isSuccess(result)) {
       await controller.refreshList();
     }

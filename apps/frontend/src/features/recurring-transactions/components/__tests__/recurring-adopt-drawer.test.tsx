@@ -7,8 +7,10 @@ import { useRef, useState } from "react";
 
 import { Drawer } from "@/components/ui/drawer";
 import type { CommandError } from "@/commands/errors";
+import { formatCurrencyFromMinor } from "@/lib/currency";
 
 import { RecurringAdoptDrawer } from "../recurring-adopt-drawer";
+import { formatLocalDateTime } from "../../lib/recurring";
 import type {
   AdoptRecurringFormValues,
   RecurringAdoptOutcome,
@@ -129,11 +131,65 @@ describe("RecurringAdoptDrawer", () => {
       );
     });
 
-    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Monthly rent" } });
+    expect(screen.getByRole("heading", { name: "Transaction snapshot" })).toBeDefined();
+    expect(screen.getByText("Rent")).toBeDefined();
+    expect(screen.getByText(formatCurrencyFromMinor(120000, "EUR"))).toBeDefined();
+    expect(screen.getByText("Expense")).toBeDefined();
+    expect(screen.getByText("Original date")).toBeDefined();
+    expect(screen.getByText(formatLocalDateTime("2026-04-21T10:00:00"))).toBeDefined();
+    expect(screen.getByText("Uncategorized")).toBeDefined();
+    const scheduleCombobox = screen.getByRole("combobox", { name: "Schedule" });
+    const totalOccurrencesCombobox = screen.getByRole("combobox", {
+      name: "Total occurrences",
+    });
+    expect(scheduleCombobox.textContent).toContain("Interval");
+    expect(totalOccurrencesCombobox.textContent).toContain("Indefinite");
+
+    fireEvent.click(scheduleCombobox);
+    expect(screen.getByText("Repeat after a set interval.")).toBeDefined();
+    expect(screen.getByText("Repeat on the same day each month.")).toBeDefined();
+
+    fireEvent.click(totalOccurrencesCombobox);
+    expect(screen.getByText("Continue until you stop the recurring transaction.")).toBeDefined();
+    expect(screen.getByText("Stop after a set number of occurrences.")).toBeDefined();
+
+    const intervalGroup = screen.getByRole("group", { name: "Interval schedule" });
+    const intervalInput = screen.getByLabelText("Every");
+    const intervalSelect = screen.getByRole("combobox", { name: "Interval unit" });
+    expect(intervalGroup.contains(intervalInput)).toBe(true);
+    expect(intervalGroup.contains(intervalSelect)).toBe(true);
+    expect(intervalSelect.textContent).toContain("month");
+    expect((intervalInput as HTMLInputElement).value).toBe("1");
+
+    fireEvent.change(intervalInput, { target: { value: "2" } });
+    await waitFor(() => {
+      expect(intervalSelect.textContent).toContain("months");
+    });
+    fireEvent.change(intervalInput, { target: { value: "1" } });
+    await waitFor(() => {
+      expect(intervalSelect.textContent).toContain("month");
+    });
+    expect(screen.queryByRole("textbox", { name: "Description" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Future amount" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Expense" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Transaction category" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Notes" })).toBeNull();
+    const drawerFooter = document.querySelector('[data-slot="drawer-footer"]');
+    expect(drawerFooter).not.toBeNull();
+    expect(drawerFooter?.classList.contains("p-0")).toBe(true);
+
     fireEvent.click(screen.getByRole("button", { name: "Confirm adoption" }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalled();
+      expect(onSubmit).toHaveBeenCalledWith({
+        scheduleKind: "interval",
+        intervalEvery: "1",
+        intervalUnit: "month",
+        monthlyDay: "1",
+        totalMode: "indefinite",
+        totalOccurrences: "",
+      });
       expect(document.activeElement).toBe(screen.getByRole("button", { name: "Make recurring" }));
     });
   });

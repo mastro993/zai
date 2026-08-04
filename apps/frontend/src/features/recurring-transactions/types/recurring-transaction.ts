@@ -325,11 +325,6 @@ export const adoptRecurringFormSchema = withPrivilegedRejection({
   monthlyDay: z.string().trim().default("1"),
   totalMode: z.enum(["indefinite", "finite"]).default("indefinite"),
   totalOccurrences: z.string().trim().optional(),
-  description: z.string().trim().min(1, "Description is required"),
-  amount: amountInputSchema,
-  transactionType: z.enum(TRANSACTION_TYPES).default("expense"),
-  transactionCategoryId: z.string().optional(),
-  notes: z.string().trim().optional(),
 }).superRefine((value, ctx) => {
   if (value.scheduleKind === "interval") {
     const every = Number(value.intervalEvery);
