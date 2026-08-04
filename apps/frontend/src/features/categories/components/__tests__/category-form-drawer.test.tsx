@@ -97,11 +97,12 @@ describe("CategoryFormDrawer", () => {
     const income = screen.getByRole("option", { name: /Income/ });
     expect(spending).toHaveTextContent("Tracks outflows and can include refunds.");
     expect(income).toHaveTextContent("Identifies genuine income only.");
-    expect(spending.querySelector('[aria-hidden="true"]')).not.toBeNull();
-    expect(income.querySelector('[aria-hidden="true"]')).not.toBeNull();
+    expect(spending.querySelector('[data-slot="category-role-icon"]')).not.toBeNull();
+    expect(income.querySelector('[data-slot="category-role-icon"]')).not.toBeNull();
 
     fireEvent.click(income);
     expect(trigger).toHaveTextContent("Income");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("option", { name: /Income/ })).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Salary" } });
