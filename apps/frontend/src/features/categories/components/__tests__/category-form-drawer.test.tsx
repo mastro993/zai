@@ -128,11 +128,16 @@ describe("CategoryFormDrawer", () => {
     const keyboardPopup = screen.getByRole("dialog", { name: "Select category role" });
     expect(keyboardPopup.getAttribute("aria-label")).toBe("Select category role");
 
-    const keyboardList = screen.getByRole("listbox");
-    fireEvent.keyDown(keyboardList, { key: "ArrowDown" });
-    fireEvent.keyDown(keyboardList, { key: "ArrowDown" });
-    fireEvent.keyDown(keyboardList, { key: "Enter" });
+    const reopenedSpending = screen.getByRole("option", { name: /Spending/ });
+    const reopenedIncome = screen.getByRole("option", { name: /Income/ });
+    expect(screen.getAllByRole("option")).toHaveLength(2);
+    expect(reopenedSpending.classList.contains("border-primary/30")).toBe(false);
+    expect(reopenedIncome.classList.contains("border-primary/30")).toBe(true);
+    expect(reopenedIncome.classList.contains("bg-primary/5")).toBe(true);
+
+    fireEvent.click(reopenedIncome);
     expect(trigger.textContent).toContain("Income");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Salary" } });
     fireEvent.click(screen.getByRole("button", { name: "Save category" }));

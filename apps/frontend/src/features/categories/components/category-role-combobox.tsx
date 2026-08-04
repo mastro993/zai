@@ -44,6 +44,7 @@ function CategoryRoleCombobox({
       items={CATEGORY_ROLE_OPTIONS}
       value={selected ?? null}
       open={open}
+      filter={null}
       itemToStringLabel={(option) => option.label}
       itemToStringValue={(option) => option.value}
       onOpenChange={(nextOpen) => {
