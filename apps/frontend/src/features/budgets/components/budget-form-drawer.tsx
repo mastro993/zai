@@ -1,5 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Result } from "@praha/byethrow";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { DotIcon, EllipsisIcon, GripHorizontalIcon, GripIcon } from "@hugeicons/core-free-icons";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -20,8 +22,6 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
-  FieldSeparator,
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -60,6 +60,13 @@ const cadenceToggleLabel = {
   week: "Week",
   month: "Month",
   year: "Year",
+} as const;
+
+const cadenceToggleIcon = {
+  day: DotIcon,
+  week: EllipsisIcon,
+  month: GripHorizontalIcon,
+  year: GripIcon,
 } as const;
 
 const getDefaultValues = (budget?: Budget): BudgetFormInput => ({
@@ -162,7 +169,6 @@ function BudgetFormDrawer({
                   aria-describedby={errors.name ? nameErrorId : undefined}
                   {...form.register("name")}
                 />
-                <FieldDescription>Must be unique among your budgets.</FieldDescription>
                 <FieldError id={nameErrorId} errors={[errors.name]} />
               </Field>
               <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
@@ -261,9 +267,7 @@ function BudgetFormDrawer({
                     );
                   }}
                 />
-                <FieldDescription>
-                  Empty includes all transactions. Roots include their subcategories.
-                </FieldDescription>
+                <FieldDescription>Roots include their subcategories.</FieldDescription>
                 <FieldError errors={[errors.categoryIds]} />
               </Field>
               <Field>
@@ -294,6 +298,12 @@ function BudgetFormDrawer({
                     >
                       {BUDGET_CADENCES.map((value) => (
                         <ToggleGroupItem key={value} value={value} className="flex-1">
+                          <HugeiconsIcon
+                            icon={cadenceToggleIcon[value]}
+                            data-icon="inline-start"
+                            aria-hidden="true"
+                            strokeWidth={2}
+                          />
                           {cadenceToggleLabel[value]}
                         </ToggleGroupItem>
                       ))}
@@ -309,10 +319,7 @@ function BudgetFormDrawer({
             </FieldGroup>
           </FieldSet>
 
-          <FieldSeparator />
-
           <FieldSet>
-            <FieldLegend>Advanced rules</FieldLegend>
             <BudgetFormRulesFields control={form.control} formOpen={open} />
           </FieldSet>
         </FieldGroup>

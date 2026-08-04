@@ -86,33 +86,68 @@ describe("BudgetFormDrawer", () => {
     );
   });
 
-  it("opens measurement and rollover option drawers with explanations", () => {
+  it("opens measurement and rollover comboboxes with explanations", () => {
     renderBudgetForm();
 
-    fireEvent.click(screen.getByLabelText("Budget measurement"));
-    expect(screen.getByRole("heading", { name: "Measurement" })).toBeTruthy();
+    const measurementTrigger = screen.getByRole("combobox", { name: "Budget measurement" });
+    expect(
+      screen.getByText("Choose whether the budget tracks spending or net cash flow."),
+    ).toBeTruthy();
+    expect(measurementTrigger.getAttribute("aria-describedby")).toBe(
+      "budget-measurement-description",
+    );
+
+    fireEvent.click(measurementTrigger);
+    expect(screen.getByRole("dialog", { name: "Select budget measurement" })).toBeTruthy();
     expect(screen.getByRole("option", { name: /Spending/ })).toBeTruthy();
     expect(screen.getByRole("option", { name: /Net cash flow/ })).toBeTruthy();
     expect(screen.getByText(budgetMeasurementDescription.spending)).toBeTruthy();
     expect(screen.getByText(budgetMeasurementDescription.netCashFlow)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Back to budget" }));
-    fireEvent.click(screen.getByLabelText("Budget rollover"));
-    expect(screen.getByRole("heading", { name: "Rollover" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("option", { name: /Spending/ }));
+    const rolloverTrigger = screen.getByRole("combobox", { name: "Budget rollover" });
+    expect(
+      screen.getByText("Choose how leftover allowance or overspend carries into future periods."),
+    ).toBeTruthy();
+    expect(rolloverTrigger.getAttribute("aria-describedby")).toBe("budget-rollover-description");
+
+    fireEvent.click(rolloverTrigger);
+    expect(screen.getByRole("dialog", { name: "Select budget rollover" })).toBeTruthy();
     expect(screen.getByRole("option", { name: /No rollover/ })).toBeTruthy();
     expect(screen.getByRole("option", { name: /Previous period only/ })).toBeTruthy();
     expect(screen.getByRole("option", { name: /Cumulative/ })).toBeTruthy();
     expect(screen.getByText(budgetRolloverDescription.off)).toBeTruthy();
     expect(screen.getByText(budgetRolloverDescription.cumulative)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("option", { name: /Cumulative/ }));
+    expect(rolloverTrigger.textContent).toContain("Cumulative");
   });
 
-  it("updates measurement from the option drawer", () => {
+  it("updates measurement from the combobox", () => {
     renderBudgetForm();
 
-    fireEvent.click(screen.getByLabelText("Budget measurement"));
+    const trigger = screen.getByRole("combobox", { name: "Budget measurement" });
+    fireEvent.click(trigger);
     fireEvent.click(screen.getByRole("option", { name: /Net cash flow/ }));
 
-    expect(screen.getByLabelText("Budget measurement").textContent).toContain("Net cash flow");
+    expect(trigger.textContent).toContain("Net cash flow");
+  });
+
+  it("keeps the budget form copy focused and identifies cadence items with icons", () => {
+    renderBudgetForm();
+
+    expect(screen.queryByText("Must be unique among your budgets.")).toBeNull();
+    expect(screen.getByText("Roots include their subcategories.")).toBeTruthy();
+    expect(
+      screen.queryByText("Empty includes all transactions. Roots include their subcategories."),
+    ).toBeNull();
+
+    const cadence = screen.getByLabelText("Budget cadence");
+    expect(
+      within(cadence)
+        .getAllByRole("button")
+        .every((button) => button.querySelector("svg[data-icon='inline-start']")),
+    ).toBe(true);
   });
 
   it("filters and canonicalizes category selections", async () => {
