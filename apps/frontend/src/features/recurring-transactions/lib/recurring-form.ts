@@ -1,5 +1,6 @@
 import { defaultFirstScheduledLocal } from "./recurring";
 import type { RecurringFormMode } from "../types/recurring-form-mode";
+import { SCHEDULE_INTERVAL_UNITS } from "../types/recurring-transaction";
 import type {
   RecurringFormInput,
   RecurringTransactionDocument,
@@ -10,6 +11,27 @@ export const toLocalInputValue = (value: string | null | undefined): string => {
     return defaultFirstScheduledLocal();
   }
   return value.length >= 16 ? value.slice(0, 16) : value;
+};
+
+export const getScheduleIntervalUnitItems = (every: string | undefined) =>
+  SCHEDULE_INTERVAL_UNITS.map((unit) => ({
+    value: unit,
+    label: Number(every) === 1 ? unit : `${unit}s`,
+  }));
+
+export const formatRecurringOrdinal = (value: number) => {
+  const lastTwoDigits = value % 100;
+  const suffix =
+    lastTwoDigits >= 11 && lastTwoDigits <= 13
+      ? "th"
+      : value % 10 === 1
+        ? "st"
+        : value % 10 === 2
+          ? "nd"
+          : value % 10 === 3
+            ? "rd"
+            : "th";
+  return `${value}${suffix}`;
 };
 
 export const createRecurringFormDefaults = (): RecurringFormInput => ({
