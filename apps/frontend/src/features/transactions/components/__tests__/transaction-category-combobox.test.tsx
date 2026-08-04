@@ -74,6 +74,27 @@ describe("TransactionCategoryCombobox", () => {
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
   });
 
+  it("places child categories directly after their parents", () => {
+    render(
+      <TransactionCategoryCombobox
+        id="transaction-category-trigger"
+        categories={[food, salary, groceries]}
+        value={null}
+        parentOpen
+        onChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Choose category" }));
+
+    expect(screen.getAllByRole("option").map((option) => option.textContent?.trim())).toEqual([
+      "Uncategorized",
+      "Food",
+      "Food / Groceries",
+      "Salary",
+    ]);
+  });
+
   it("clears the category through the uncategorized option", () => {
     const onChange = vi.fn();
 

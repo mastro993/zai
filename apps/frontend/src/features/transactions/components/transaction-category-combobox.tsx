@@ -50,6 +50,53 @@ const UNCATEGORIZED_OPTION: UncategorizedOption = {
   label: "Uncategorized",
 };
 
+function orderCategoriesByHierarchy(categories: Array<TransactionCategory>) {
+  const categoryIds = new Set(categories.map((category) => category.id));
+  const childrenByParent = new Map<string, Array<TransactionCategory>>();
+  const rootCategories: Array<TransactionCategory> = [];
+  const orphanedCategories: Array<TransactionCategory> = [];
+
+  for (const category of categories) {
+    if (!category.parentId) {
+      rootCategories.push(category);
+      continue;
+    }
+
+    if (!categoryIds.has(category.parentId)) {
+      orphanedCategories.push(category);
+      continue;
+    }
+
+    const children = childrenByParent.get(category.parentId) ?? [];
+    children.push(category);
+    childrenByParent.set(category.parentId, children);
+  }
+
+  const orderedCategories: Array<TransactionCategory> = [];
+  const visited = new Set<string>();
+  const appendCategory = (category: TransactionCategory) => {
+    if (visited.has(category.id)) return;
+
+    visited.add(category.id);
+    orderedCategories.push(category);
+    for (const child of childrenByParent.get(category.id) ?? []) {
+      appendCategory(child);
+    }
+  };
+
+  for (const category of rootCategories) {
+    appendCategory(category);
+  }
+  for (const category of orphanedCategories) {
+    appendCategory(category);
+  }
+  for (const category of categories) {
+    appendCategory(category);
+  }
+
+  return orderedCategories;
+}
+
 function TransactionCategoryCombobox({
   id,
   categories,
@@ -66,7 +113,7 @@ function TransactionCategoryCombobox({
   const items = useMemo<Array<TransactionCategoryOption>>(
     () => [
       UNCATEGORIZED_OPTION,
-      ...categories.map((category) => ({
+      ...orderCategoriesByHierarchy(categories).map((category) => ({
         kind: "category" as const,
         value: category.id,
         label: getCategoryDisplayName(category, categoriesById),
