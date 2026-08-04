@@ -1,4 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Calendar03Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { format, parseISO } from "date-fns";
 import { Controller, useForm } from "react-hook-form";
 import { useRef } from "react";
@@ -26,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Link } from "@tanstack/react-router";
 
+import { TransactionCategoryCombobox } from "./transaction-category-combobox";
 import type { TransactionRecurringProvenance } from "@/features/recurring-transactions/types/recurring-transaction";
 
 import {
@@ -37,7 +40,6 @@ import {
   toDateTimeInputValue,
 } from "../lib/transaction";
 import type { TransactionCategory } from "@/features/categories/types/model";
-import { CategoryDrawerSelect } from "@/features/categories/components/category-drawer-select";
 
 import {
   TRANSACTION_TYPES,
@@ -86,7 +88,7 @@ const getFormCopy = (mode: TransactionFormMode) => {
 
   return {
     title: "New transaction",
-    description: "Record income or an expense. Category is optional.",
+    description: "Record income or an expense",
   };
 };
 
@@ -226,7 +228,6 @@ function TransactionFormDrawer({
                 </InputGroup>
               )}
             />
-            <FieldDescription>Zero or greater. Enter the value in euros.</FieldDescription>
             <FieldError id={amountErrorId}>{errors.amount?.message}</FieldError>
           </Field>
 
@@ -253,6 +254,12 @@ function TransactionFormDrawer({
                           />
                         }
                       >
+                        <HugeiconsIcon
+                          icon={Calendar03Icon}
+                          strokeWidth={2}
+                          data-icon="inline-start"
+                          aria-hidden="true"
+                        />
                         {formatDateLabel(date)}
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -293,22 +300,13 @@ function TransactionFormDrawer({
               control={form.control}
               name="transactionCategoryId"
               render={({ field }) => (
-                <CategoryDrawerSelect
+                <TransactionCategoryCombobox
                   id="transaction-category-trigger"
-                  mode="single"
                   categories={categories}
                   value={field.value ? field.value : null}
                   onChange={(next) => field.onChange(next ?? "")}
                   onBlur={field.onBlur}
                   parentOpen={open}
-                  clearable
-                  placeholder="Uncategorized"
-                  ariaLabel="Choose category"
-                  drawerTitle="Select category"
-                  drawerDescription="Optional. Pick a category for this transaction."
-                  backAriaLabel="Back to transaction"
-                  emptyListMessage="No categories yet."
-                  emptyListActionLabel="Manage categories"
                 />
               )}
             />
@@ -326,7 +324,6 @@ function TransactionFormDrawer({
               placeholder="Coffee, salary, rent..."
               {...form.register("description")}
             />
-            <FieldDescription>Short label shown in the transaction list.</FieldDescription>
           </Field>
 
           <Field>
