@@ -7,6 +7,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
 import { Calendar } from "@/components/ui/calendar";
 import {
   DrawerClose,
@@ -32,6 +33,14 @@ import {
   InputGroupText,
 } from "@/components/ui/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { CommandError } from "@/commands/errors";
@@ -46,12 +55,13 @@ import {
 
 import {
   createRecurringFormDefaults,
+  formatRecurringOrdinal,
   getRecurringFormCopy,
   getRecurringFormDefaults,
+  getScheduleIntervalUnitItems,
 } from "../lib/recurring-form";
 import type { RecurringFormMode } from "../types/recurring-form-mode";
 import {
-  SCHEDULE_INTERVAL_UNITS,
   TRANSACTION_TYPES,
   recurringFormSchema,
   type RecurringCreateOutcome,
@@ -64,6 +74,16 @@ const TRANSACTION_TYPE_CONTROLS = {
   expense: { icon: ArrowDown01Icon, iconClassName: "text-destructive" },
   income: { icon: ArrowUp01Icon, iconClassName: "text-primary" },
 } as const;
+
+const SCHEDULE_KIND_OPTIONS = [
+  { value: "interval", label: "Every" },
+  { value: "monthlyDay", label: "On" },
+] as const;
+
+const MONTHLY_DAY_OPTIONS = Array.from({ length: 31 }, (_, index) => {
+  const value = index + 1;
+  return { value: String(value), label: formatRecurringOrdinal(value) };
+});
 
 const formatDateLabel = (dateValue: string) => {
   if (!dateValue) {
@@ -111,10 +131,13 @@ export function RecurringFormDrawer({
     defaultValues: getRecurringFormDefaults(mode),
   });
   const scheduleKind = useWatch({ control, name: "scheduleKind" });
+  const intervalEvery = useWatch({ control, name: "intervalEvery" });
   const totalMode = useWatch({ control, name: "totalMode" });
   const amountErrorId = "recurring-amount-error";
   const dateErrorId = "recurring-first-error";
+  const scheduleErrorId = "recurring-schedule-error";
   const typeErrorId = "recurring-type-error";
+  const intervalUnitItems = getScheduleIntervalUnitItems(intervalEvery);
 
   const submit = handleSubmit(async (values) => {
     const result = await onSubmit(values);
@@ -251,6 +274,67 @@ export function RecurringFormDrawer({
               <FieldError id={amountErrorId}>{errors.amount?.message}</FieldError>
             </Field>
 
+            <Field>
+              <FieldLabel
+                htmlFor={configLocked ? "recurring-category-locked" : "recurring-category-trigger"}
+              >
+                Category
+              </FieldLabel>
+              {configLocked ? (
+                <Input
+                  id="recurring-category-locked"
+                  readOnly
+                  value={
+                    categories.find(
+                      (category) =>
+                        category.id ===
+                        (mode.type === "edit"
+                          ? mode.document.template.transactionCategoryId
+                          : undefined),
+                    )?.name ?? "Uncategorized"
+                  }
+                />
+              ) : (
+                <Controller
+                  control={control}
+                  name="transactionCategoryId"
+                  render={({ field }) => (
+                    <TransactionCategoryCombobox
+                      id="recurring-category-trigger"
+                      categories={categories}
+                      onChange={(value) => field.onChange(value ?? undefined)}
+                      onBlur={field.onBlur}
+                      parentOpen={open}
+                      value={field.value ?? null}
+                    />
+                  )}
+                />
+              )}
+            </Field>
+
+            <Field data-invalid={Boolean(errors.description)}>
+              <FieldLabel htmlFor="recurring-description">Description</FieldLabel>
+              <Input
+                id="recurring-description"
+                placeholder="Coffee, salary, rent..."
+                readOnly={descriptionLocked}
+                aria-invalid={Boolean(errors.description)}
+                {...register("description")}
+              />
+              <FieldError>{errors.description?.message}</FieldError>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="recurring-notes">Notes</FieldLabel>
+              <Textarea
+                id="recurring-notes"
+                placeholder="Optional details for your own reference"
+                className="min-h-16 resize-y"
+                readOnly={configLocked}
+                {...register("notes")}
+              />
+            </Field>
+
             <Field data-invalid={Boolean(errors.firstScheduledLocal)}>
               <FieldLabel htmlFor="recurring-first-date">
                 {isEdit ? "Next occurrence" : "First occurrence"}
@@ -320,140 +404,123 @@ export function RecurringFormDrawer({
               <FieldError id={dateErrorId}>{errors.firstScheduledLocal?.message}</FieldError>
             </Field>
 
-            <Field>
-              <FieldLabel
-                htmlFor={configLocked ? "recurring-category-locked" : "recurring-category-trigger"}
+            <Field data-invalid={Boolean(errors.intervalEvery || errors.monthlyDay)}>
+              <FieldLabel>Schedule</FieldLabel>
+              <ButtonGroup
+                aria-describedby={
+                  errors.intervalEvery || errors.monthlyDay ? scheduleErrorId : undefined
+                }
+                aria-label="Schedule"
+                className="w-full"
               >
-                Category
-              </FieldLabel>
-              {configLocked ? (
-                <Input
-                  id="recurring-category-locked"
-                  readOnly
-                  value={
-                    categories.find(
-                      (category) =>
-                        category.id ===
-                        (mode.type === "edit"
-                          ? mode.document.template.transactionCategoryId
-                          : undefined),
-                    )?.name ?? "Uncategorized"
-                  }
-                />
-              ) : (
                 <Controller
                   control={control}
-                  name="transactionCategoryId"
+                  name="scheduleKind"
                   render={({ field }) => (
-                    <TransactionCategoryCombobox
-                      id="recurring-category-trigger"
-                      categories={categories}
-                      onChange={(value) => field.onChange(value ?? undefined)}
-                      onBlur={field.onBlur}
-                      parentOpen={open}
-                      value={field.value ?? null}
-                    />
+                    <Select
+                      items={SCHEDULE_KIND_OPTIONS}
+                      value={field.value}
+                      onValueChange={(value) => {
+                        if (value === "interval" || value === "monthlyDay") {
+                          field.onChange(value);
+                        }
+                      }}
+                    >
+                      <SelectTrigger aria-label="Schedule mode" disabled={configLocked}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent alignItemWithTrigger={false}>
+                        <SelectGroup>
+                          {SCHEDULE_KIND_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   )}
                 />
-              )}
-            </Field>
-
-            <Field data-invalid={Boolean(errors.description)}>
-              <FieldLabel htmlFor="recurring-description">Description</FieldLabel>
-              <Input
-                id="recurring-description"
-                placeholder="Coffee, salary, rent..."
-                readOnly={descriptionLocked}
-                aria-invalid={Boolean(errors.description)}
-                {...register("description")}
-              />
-              <FieldError>{errors.description?.message}</FieldError>
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="recurring-notes">Notes</FieldLabel>
-              <Textarea
-                id="recurring-notes"
-                placeholder="Optional details for your own reference"
-                className="min-h-16 resize-y"
-                readOnly={configLocked}
-                {...register("notes")}
-              />
-            </Field>
-
-            <Field>
-              <FieldLabel>Schedule</FieldLabel>
-              <Controller
-                control={control}
-                name="scheduleKind"
-                render={({ field }) => (
-                  <ToggleGroup
-                    variant="outline"
-                    disabled={configLocked}
-                    value={[field.value]}
-                    onValueChange={(value) => {
-                      if (value[0]) {
-                        field.onChange(value[0]);
-                      }
-                    }}
-                  >
-                    <ToggleGroupItem value="interval">Interval</ToggleGroupItem>
-                    <ToggleGroupItem value="monthlyDay">Monthly day</ToggleGroupItem>
-                  </ToggleGroup>
+                {scheduleKind === "interval" ? (
+                  <>
+                    <Input
+                      aria-label="Interval value"
+                      aria-invalid={Boolean(errors.intervalEvery)}
+                      inputMode="numeric"
+                      readOnly={configLocked}
+                      {...register("intervalEvery")}
+                    />
+                    <Controller
+                      control={control}
+                      name="intervalUnit"
+                      render={({ field }) => (
+                        <Select
+                          items={intervalUnitItems}
+                          value={field.value ?? "month"}
+                          onValueChange={(value) => {
+                            if (value) {
+                              field.onChange(value);
+                            }
+                          }}
+                        >
+                          <SelectTrigger aria-label="Interval unit" disabled={configLocked}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent alignItemWithTrigger={false}>
+                            <SelectGroup>
+                              {intervalUnitItems.map((item) => (
+                                <SelectItem key={item.value} value={item.value}>
+                                  {item.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Controller
+                      control={control}
+                      name="monthlyDay"
+                      render={({ field }) => (
+                        <Select
+                          items={MONTHLY_DAY_OPTIONS}
+                          value={field.value ?? "1"}
+                          onValueChange={(value) => {
+                            if (value) {
+                              field.onChange(value);
+                            }
+                          }}
+                        >
+                          <SelectTrigger aria-label="Monthly day" disabled={configLocked}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent alignItemWithTrigger={false}>
+                            <SelectGroup>
+                              {MONTHLY_DAY_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    <ButtonGroupText className="shrink-0 px-2.5 font-normal text-muted-foreground">
+                      of the month
+                    </ButtonGroupText>
+                  </>
                 )}
-              />
+              </ButtonGroup>
+              <FieldError id={scheduleErrorId}>
+                {scheduleKind === "interval"
+                  ? errors.intervalEvery?.message
+                  : errors.monthlyDay?.message}
+              </FieldError>
             </Field>
-
-            {scheduleKind === "interval" ? (
-              <div className="grid grid-cols-2 gap-3">
-                <Field data-invalid={Boolean(errors.intervalEvery)}>
-                  <FieldLabel htmlFor="recurring-every">Every</FieldLabel>
-                  <Input
-                    id="recurring-every"
-                    inputMode="numeric"
-                    readOnly={configLocked}
-                    {...register("intervalEvery")}
-                  />
-                  <FieldError>{errors.intervalEvery?.message}</FieldError>
-                </Field>
-                <Field>
-                  <FieldLabel>Unit</FieldLabel>
-                  <Controller
-                    control={control}
-                    name="intervalUnit"
-                    render={({ field }) => (
-                      <ToggleGroup
-                        variant="outline"
-                        disabled={configLocked}
-                        value={[field.value ?? "month"]}
-                        onValueChange={(value) => {
-                          if (value[0]) {
-                            field.onChange(value[0]);
-                          }
-                        }}
-                      >
-                        {SCHEDULE_INTERVAL_UNITS.map((unit) => (
-                          <ToggleGroupItem key={unit} value={unit}>
-                            {unit}
-                          </ToggleGroupItem>
-                        ))}
-                      </ToggleGroup>
-                    )}
-                  />
-                </Field>
-              </div>
-            ) : (
-              <Field data-invalid={Boolean(errors.monthlyDay)}>
-                <FieldLabel htmlFor="recurring-monthly-day">Day of month</FieldLabel>
-                <Input
-                  id="recurring-monthly-day"
-                  inputMode="numeric"
-                  readOnly={configLocked}
-                  {...register("monthlyDay")}
-                />
-                <FieldError>{errors.monthlyDay?.message}</FieldError>
-              </Field>
-            )}
 
             <Field>
               <FieldLabel>Total</FieldLabel>

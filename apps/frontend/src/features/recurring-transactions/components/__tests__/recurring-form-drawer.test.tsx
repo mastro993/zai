@@ -6,7 +6,7 @@ import { Result } from "@praha/byethrow";
 import { useRef, useState } from "react";
 
 import { Drawer } from "@/components/ui/drawer";
-import type { CommandError } from "@/commands/errors";
+import { CommandError } from "@/commands/errors";
 
 import { RecurringFormDrawer } from "../recurring-form-drawer";
 import type {
@@ -48,6 +48,13 @@ function Harness({
   );
 }
 
+function chooseOption(triggerName: string, optionName: string) {
+  fireEvent.click(screen.getByRole("combobox", { name: triggerName }));
+  const option = screen.getByRole("option", { name: optionName });
+  fireEvent.pointerDown(option, { pointerType: "mouse" });
+  fireEvent.click(option);
+}
+
 describe("RecurringFormDrawer", () => {
   it("uses the transaction entry controls for recurring template fields", () => {
     const onSubmit =
@@ -84,7 +91,7 @@ describe("RecurringFormDrawer", () => {
     expect(notes.getAttribute("placeholder")).toBe("Optional details for your own reference");
   });
 
-  it("places first occurrence after amount with separate date and time controls", () => {
+  it("renders one occurrence input with an indefinite placeholder", () => {
     const onSubmit =
       vi.fn<
         (
@@ -94,19 +101,118 @@ describe("RecurringFormDrawer", () => {
 
     render(<Harness onSubmit={onSubmit} />);
 
-    const amountField = screen.getByLabelText("Amount").closest('[data-slot="field"]');
+    const occurrences = screen.getByLabelText("Occurrencies");
+    expect(occurrences).toHaveProperty("type", "number");
+    expect(occurrences).toHaveProperty("value", "");
+    expect(occurrences.getAttribute("placeholder")).toBe("indefinite");
+    expect(screen.queryByText("Total")).toBeNull();
+    expect(screen.queryByText("Indefinite")).toBeNull();
+    expect(screen.queryByText("Finite")).toBeNull();
+  });
+
+  it("renders the default schedule as one joined Every input group", () => {
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    const scheduleGroup = screen.getByRole("group", { name: "Schedule" });
+    expect(scheduleGroup).toBeDefined();
+    expect(
+      within(scheduleGroup).getByRole("combobox", { name: "Schedule mode" }).textContent,
+    ).toContain("Every");
+    expect(within(scheduleGroup).getByRole("textbox", { name: "Interval value" })).toHaveProperty(
+      "value",
+      "1",
+    );
+    expect(
+      within(scheduleGroup).getByRole("combobox", { name: "Interval unit" }).textContent,
+    ).toContain("month");
+    expect(screen.queryByText("of the month")).toBeNull();
+  });
+
+  it("preserves interval and monthly day values while switching schedule modes", () => {
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Interval value" }), {
+      target: { value: "2" },
+    });
+    expect(screen.getByRole("combobox", { name: "Interval unit" }).textContent).toContain("months");
+    chooseOption("Interval unit", "weeks");
+    expect(screen.getByRole("combobox", { name: "Interval unit" }).textContent).toContain("weeks");
+
+    chooseOption("Schedule mode", "On");
+
+    expect(screen.getByText("of the month")).toBeDefined();
+    expect(screen.getByRole("combobox", { name: "Monthly day" }).textContent).toContain("1st");
+    chooseOption("Monthly day", "31st");
+
+    chooseOption("Schedule mode", "Every");
+
+    expect(screen.getByRole("textbox", { name: "Interval value" })).toHaveProperty("value", "2");
+    expect(screen.getByRole("combobox", { name: "Interval unit" }).textContent).toContain("weeks");
+
+    chooseOption("Schedule mode", "On");
+    expect(screen.getByRole("combobox", { name: "Monthly day" }).textContent).toContain("31st");
+  });
+
+  it("submits the selected monthly day schedule values", async () => {
+    const onSubmit = vi.fn(async (values: RecurringFormValues) => {
+      expect(values.scheduleKind).toBe("monthlyDay");
+      expect(values.monthlyDay).toBe("31");
+      return Result.fail(new CommandError("test submission"));
+    });
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    chooseOption("Schedule mode", "On");
+    chooseOption("Monthly day", "31st");
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Rent" } });
+    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "1200.00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create recurring transaction" }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("places first occurrence after notes and before schedule", () => {
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
     const firstOccurrenceField = screen
       .getByText("First occurrence")
       .closest('[data-slot="field"]');
     const categoryField = screen.getByText("Category").closest('[data-slot="field"]');
     const descriptionField = screen.getByText("Description").closest('[data-slot="field"]');
+    const notesField = screen.getByText("Notes").closest('[data-slot="field"]');
+    const scheduleField = screen.getByText("Schedule").closest('[data-slot="field"]');
 
-    expect(amountField).not.toBeNull();
     expect(firstOccurrenceField).not.toBeNull();
     expect(categoryField).not.toBeNull();
     expect(descriptionField).not.toBeNull();
-    expect(amountField?.nextElementSibling).toBe(firstOccurrenceField);
+    expect(notesField).not.toBeNull();
+    expect(scheduleField).not.toBeNull();
     expect(categoryField?.nextElementSibling).toBe(descriptionField);
+    expect(notesField?.nextElementSibling).toBe(firstOccurrenceField);
+    expect(firstOccurrenceField?.nextElementSibling).toBe(scheduleField);
     expect(firstOccurrenceField?.querySelector('input[type="datetime-local"]')).toBeNull();
     expect(firstOccurrenceField?.querySelector("button")).not.toBeNull();
     expect(firstOccurrenceField?.querySelector('input[type="time"]')).not.toBeNull();
