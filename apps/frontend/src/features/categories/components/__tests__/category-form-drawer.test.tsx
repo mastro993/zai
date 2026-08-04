@@ -93,6 +93,9 @@ describe("CategoryFormDrawer", () => {
 
     fireEvent.click(trigger);
 
+    const popup = screen.getByRole("dialog", { name: "Select category role" });
+    expect(popup.getAttribute("aria-label")).toBe("Select category role");
+
     const spending = screen.getByRole("option", { name: /Spending/ });
     const income = screen.getByRole("option", { name: /Income/ });
     expect(spending.textContent).toContain("Tracks outflows and can include refunds.");
@@ -119,6 +122,17 @@ describe("CategoryFormDrawer", () => {
     expect(trigger.textContent).toContain("Income");
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByRole("option", { name: /Income/ })).toBeNull();
+
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    const keyboardPopup = screen.getByRole("dialog", { name: "Select category role" });
+    expect(keyboardPopup.getAttribute("aria-label")).toBe("Select category role");
+
+    const keyboardList = screen.getByRole("listbox");
+    fireEvent.keyDown(keyboardList, { key: "ArrowDown" });
+    fireEvent.keyDown(keyboardList, { key: "ArrowDown" });
+    fireEvent.keyDown(keyboardList, { key: "Enter" });
+    expect(trigger.textContent).toContain("Income");
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Salary" } });
     fireEvent.click(screen.getByRole("button", { name: "Save category" }));

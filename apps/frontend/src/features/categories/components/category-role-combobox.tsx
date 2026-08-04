@@ -78,7 +78,7 @@ function CategoryRoleCombobox({
         </ComboboxValue>
       </ComboboxTrigger>
 
-      <ComboboxContent>
+      <ComboboxContent aria-label="Select category role">
         <ComboboxList>
           {(option) => (
             <ComboboxItem
