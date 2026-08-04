@@ -89,20 +89,20 @@ describe("CategoryFormDrawer", () => {
     );
 
     const trigger = screen.getByRole("combobox", { name: "Category role" });
-    expect(trigger).toHaveTextContent("Spending");
+    expect(trigger.textContent).toContain("Spending");
 
     fireEvent.click(trigger);
 
     const spending = screen.getByRole("option", { name: /Spending/ });
     const income = screen.getByRole("option", { name: /Income/ });
-    expect(spending).toHaveTextContent("Tracks outflows and can include refunds.");
-    expect(income).toHaveTextContent("Identifies genuine income only.");
+    expect(spending.textContent).toContain("Tracks outflows and can include refunds.");
+    expect(income.textContent).toContain("Identifies genuine income only.");
     expect(spending.querySelector('[data-slot="category-role-icon"]')).not.toBeNull();
     expect(income.querySelector('[data-slot="category-role-icon"]')).not.toBeNull();
 
     fireEvent.click(income);
-    expect(trigger).toHaveTextContent("Income");
-    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger.textContent).toContain("Income");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByRole("option", { name: /Income/ })).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Salary" } });
