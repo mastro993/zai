@@ -97,8 +97,23 @@ describe("CategoryFormDrawer", () => {
     const income = screen.getByRole("option", { name: /Income/ });
     expect(spending.textContent).toContain("Tracks outflows and can include refunds.");
     expect(income.textContent).toContain("Identifies genuine income only.");
-    expect(spending.querySelector('[data-slot="category-role-icon"]')).not.toBeNull();
-    expect(income.querySelector('[data-slot="category-role-icon"]')).not.toBeNull();
+    expect(spending.classList.contains("border-primary/30")).toBe(true);
+    expect(spending.classList.contains("bg-primary/5")).toBe(true);
+    expect(income.classList.contains("border-primary/30")).toBe(false);
+    expect(income.classList.contains("bg-primary/5")).toBe(false);
+
+    const spendingIcon = spending.querySelector('[data-slot="category-role-icon"]');
+    const incomeIcon = income.querySelector('[data-slot="category-role-icon"]');
+    expect(spendingIcon?.classList.contains("border-primary/30")).toBe(true);
+    expect(spendingIcon?.classList.contains("bg-primary/10")).toBe(true);
+    expect(spendingIcon?.classList.contains("text-primary")).toBe(true);
+    expect(incomeIcon?.classList.contains("border-border")).toBe(true);
+    expect(incomeIcon?.classList.contains("bg-muted/40")).toBe(true);
+    expect(incomeIcon?.classList.contains("text-muted-foreground")).toBe(true);
+
+    expect(spending.classList.contains("[&>span[data-selected]]:top-1/2")).toBe(true);
+    expect(spending.classList.contains("[&>span[data-selected]]:-translate-y-1/2")).toBe(true);
+    expect(spending.classList.contains("[&>span[data-selected]]:text-primary")).toBe(true);
 
     fireEvent.click(income);
     expect(trigger.textContent).toContain("Income");

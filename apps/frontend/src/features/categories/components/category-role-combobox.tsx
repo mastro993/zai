@@ -10,6 +10,7 @@ import {
   ComboboxTrigger,
   ComboboxValue,
 } from "@/components/ui/combobox";
+import { cn } from "@/lib/utils";
 
 import type { CategoryRole } from "../types/model";
 import { CATEGORY_ROLE_OPTIONS } from "./category-role-options";
@@ -83,11 +84,21 @@ function CategoryRoleCombobox({
             <ComboboxItem
               key={option.value}
               value={option}
-              className="items-start gap-3 py-2.5 pl-2"
+              className={cn(
+                "items-center gap-3 border border-transparent py-2.5 pl-2 [&>span[data-selected]]:top-1/2 [&>span[data-selected]]:-translate-y-1/2 [&>span[data-selected]]:text-primary",
+                selected?.value === option.value
+                  ? "border-primary/30 bg-primary/5 hover:bg-primary/5 focus:bg-primary/5"
+                  : null,
+              )}
             >
               <span
                 data-slot="category-role-icon"
-                className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 text-muted-foreground"
+                className={cn(
+                  "flex size-7 shrink-0 items-center justify-center rounded-md border",
+                  selected?.value === option.value
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-muted/40 text-muted-foreground",
+                )}
                 aria-hidden="true"
               >
                 <HugeiconsIcon icon={option.icon} strokeWidth={2} />
