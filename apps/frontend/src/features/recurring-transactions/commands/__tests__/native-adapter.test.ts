@@ -84,7 +84,6 @@ describe("recurring Tauri command adapter", () => {
       intervalUnit: "day",
       monthlyDay: "1",
       firstScheduledLocal: "2026-01-10T09:00",
-      totalMode: "finite",
       totalOccurrences: "2",
       description: "Native smoke recurring",
       amount: 1200,
@@ -136,6 +135,32 @@ describe("recurring Tauri command adapter", () => {
     expect(invokeMock).toHaveBeenNthCalledWith(7, "stop_recurring_transaction", {
       recurringTransactionId: "source-1",
       expectedRevision: 3,
+    });
+  });
+
+  it("maps a blank occurrence count to an indefinite native payload", async () => {
+    invokeMock.mockResolvedValue({});
+
+    const values: RecurringFormValues = {
+      scheduleKind: "interval",
+      intervalEvery: "1",
+      intervalUnit: "month",
+      monthlyDay: "1",
+      firstScheduledLocal: "2026-01-10T09:00",
+      totalOccurrences: "",
+      description: "Indefinite recurring",
+      amount: 1200,
+      transactionType: "expense",
+      transactionCategoryId: undefined,
+      notes: undefined,
+    };
+
+    await createRecurringTransaction(values);
+
+    expect(invokeMock).toHaveBeenCalledWith("create_recurring_transaction", {
+      newRecurringTransaction: expect.objectContaining({
+        totalOccurrences: null,
+      }),
     });
   });
 

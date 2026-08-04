@@ -40,6 +40,9 @@ const toBackendLocal = (value: string): string => {
   return value;
 };
 
+const toTotalOccurrences = (value: string | undefined): number | null =>
+  value ? Number(value) : null;
+
 export const getRecurringBudgetProjections = (input: {
   horizonMonths: number;
   includePausedBudgets?: boolean;
@@ -118,7 +121,7 @@ export const createRecurringTransaction = (
     newRecurringTransaction: {
       schedule: buildScheduleRule(values),
       firstScheduledLocal: toBackendLocal(values.firstScheduledLocal),
-      totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
+      totalOccurrences: toTotalOccurrences(values.totalOccurrences),
       template: {
         description: values.description,
         amount: values.amount,
@@ -173,7 +176,7 @@ export const updateRecurringTransaction = (
       expectedRevision: document.recurringTransaction.revision,
       schedule: buildScheduleRule(values),
       nextScheduledLocal: toBackendLocal(values.firstScheduledLocal),
-      totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
+      totalOccurrences: toTotalOccurrences(values.totalOccurrences),
       template: {
         description: values.description,
         amount: values.amount,

@@ -132,10 +132,11 @@ export function RecurringFormDrawer({
   });
   const scheduleKind = useWatch({ control, name: "scheduleKind" });
   const intervalEvery = useWatch({ control, name: "intervalEvery" });
-  const totalMode = useWatch({ control, name: "totalMode" });
   const amountErrorId = "recurring-amount-error";
   const dateErrorId = "recurring-first-error";
   const scheduleErrorId = "recurring-schedule-error";
+  const totalDescriptionId = "recurring-total-description";
+  const totalErrorId = "recurring-total-error";
   const typeErrorId = "recurring-type-error";
   const intervalUnitItems = getScheduleIntervalUnitItems(intervalEvery);
 
@@ -446,6 +447,9 @@ export function RecurringFormDrawer({
                     <Input
                       aria-label="Interval value"
                       aria-invalid={Boolean(errors.intervalEvery)}
+                      type="number"
+                      min={1}
+                      step={1}
                       inputMode="numeric"
                       readOnly={configLocked}
                       {...register("intervalEvery")}
@@ -494,7 +498,11 @@ export function RecurringFormDrawer({
                             }
                           }}
                         >
-                          <SelectTrigger aria-label="Monthly day" disabled={configLocked}>
+                          <SelectTrigger
+                            aria-label="Monthly day"
+                            className="w-full"
+                            disabled={configLocked}
+                          >
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent alignItemWithTrigger={false}>
@@ -522,40 +530,30 @@ export function RecurringFormDrawer({
               </FieldError>
             </Field>
 
-            <Field>
-              <FieldLabel>Total</FieldLabel>
-              <Controller
-                control={control}
-                name="totalMode"
-                render={({ field }) => (
-                  <ToggleGroup
-                    variant="outline"
-                    disabled={configLocked}
-                    value={[field.value ?? "indefinite"]}
-                    onValueChange={(value) => {
-                      if (value[0]) {
-                        field.onChange(value[0]);
-                      }
-                    }}
-                  >
-                    <ToggleGroupItem value="indefinite">Indefinite</ToggleGroupItem>
-                    <ToggleGroupItem value="finite">Finite</ToggleGroupItem>
-                  </ToggleGroup>
-                )}
+            <Field data-invalid={Boolean(errors.totalOccurrences)}>
+              <FieldLabel htmlFor="recurring-total">Occurrencies</FieldLabel>
+              <Input
+                id="recurring-total"
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                placeholder="Until stopped"
+                readOnly={configLocked}
+                aria-describedby={
+                  errors.totalOccurrences
+                    ? `${totalDescriptionId} ${totalErrorId}`
+                    : totalDescriptionId
+                }
+                aria-invalid={Boolean(errors.totalOccurrences)}
+                {...register("totalOccurrences")}
               />
+              <FieldDescription id={totalDescriptionId}>
+                Enter a number to stop after that many occurrences. Leave blank to continue until
+                you stop the recurring transaction.
+              </FieldDescription>
+              <FieldError id={totalErrorId}>{errors.totalOccurrences?.message}</FieldError>
             </Field>
-            {totalMode === "finite" ? (
-              <Field data-invalid={Boolean(errors.totalOccurrences)}>
-                <FieldLabel htmlFor="recurring-total">Number of occurrences</FieldLabel>
-                <Input
-                  id="recurring-total"
-                  inputMode="numeric"
-                  readOnly={configLocked}
-                  {...register("totalOccurrences")}
-                />
-                <FieldError>{errors.totalOccurrences?.message}</FieldError>
-              </Field>
-            ) : null}
           </FieldGroup>
         </FieldSet>
         <DrawerFooter>

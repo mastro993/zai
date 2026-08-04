@@ -104,7 +104,15 @@ describe("RecurringFormDrawer", () => {
     const occurrences = screen.getByLabelText("Occurrencies");
     expect(occurrences).toHaveProperty("type", "number");
     expect(occurrences).toHaveProperty("value", "");
-    expect(occurrences.getAttribute("placeholder")).toBe("indefinite");
+    expect(occurrences.getAttribute("placeholder")).toBe("Until stopped");
+    expect(occurrences.getAttribute("aria-describedby")).toBe("recurring-total-description");
+    expect(
+      screen
+        .getByText(
+          "Enter a number to stop after that many occurrences. Leave blank to continue until you stop the recurring transaction.",
+        )
+        .getAttribute("id"),
+    ).toBe("recurring-total-description");
     expect(screen.queryByText("Total")).toBeNull();
     expect(screen.queryByText("Indefinite")).toBeNull();
     expect(screen.queryByText("Finite")).toBeNull();
@@ -125,10 +133,11 @@ describe("RecurringFormDrawer", () => {
     expect(
       within(scheduleGroup).getByRole("combobox", { name: "Schedule mode" }).textContent,
     ).toContain("Every");
-    expect(within(scheduleGroup).getByRole("textbox", { name: "Interval value" })).toHaveProperty(
-      "value",
-      "1",
-    );
+    const interval = within(scheduleGroup).getByRole("spinbutton", { name: "Interval value" });
+    expect(interval).toHaveProperty("value", "1");
+    expect(interval).toHaveProperty("type", "number");
+    expect(interval.getAttribute("min")).toBe("1");
+    expect(interval.getAttribute("step")).toBe("1");
     expect(
       within(scheduleGroup).getByRole("combobox", { name: "Interval unit" }).textContent,
     ).toContain("month");
@@ -145,7 +154,7 @@ describe("RecurringFormDrawer", () => {
 
     render(<Harness onSubmit={onSubmit} />);
 
-    fireEvent.change(screen.getByRole("textbox", { name: "Interval value" }), {
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Interval value" }), {
       target: { value: "2" },
     });
     expect(screen.getByRole("combobox", { name: "Interval unit" }).textContent).toContain("months");
@@ -155,12 +164,14 @@ describe("RecurringFormDrawer", () => {
     chooseOption("Schedule mode", "On");
 
     expect(screen.getByText("of the month")).toBeDefined();
-    expect(screen.getByRole("combobox", { name: "Monthly day" }).textContent).toContain("1st");
+    const monthlyDay = screen.getByRole("combobox", { name: "Monthly day" });
+    expect(monthlyDay.textContent).toContain("1st");
+    expect(monthlyDay.classList.contains("w-full")).toBe(true);
     chooseOption("Monthly day", "31st");
 
     chooseOption("Schedule mode", "Every");
 
-    expect(screen.getByRole("textbox", { name: "Interval value" })).toHaveProperty("value", "2");
+    expect(screen.getByRole("spinbutton", { name: "Interval value" })).toHaveProperty("value", "2");
     expect(screen.getByRole("combobox", { name: "Interval unit" }).textContent).toContain("weeks");
 
     chooseOption("Schedule mode", "On");

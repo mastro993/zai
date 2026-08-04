@@ -92,7 +92,6 @@ export const recurringFormSchema = withPrivilegedRejection({
   intervalUnit: z.enum(SCHEDULE_INTERVAL_UNITS).default("month"),
   monthlyDay: z.string().trim().default("1"),
   firstScheduledLocal: z.string().min(1, "First occurrence is required"),
-  totalMode: z.enum(["indefinite", "finite"]).default("indefinite"),
   totalOccurrences: z.string().trim().optional(),
   description: z.string().trim().min(1, "Description is required"),
   amount: amountInputSchema,
@@ -119,12 +118,12 @@ export const recurringFormSchema = withPrivilegedRejection({
       });
     }
   }
-  if (value.totalMode === "finite") {
+  if (value.totalOccurrences) {
     const total = Number(value.totalOccurrences);
     if (!Number.isInteger(total) || total < 1) {
       ctx.addIssue({
         code: "custom",
-        message: "Total must be a positive whole number",
+        message: "Occurrences must be a positive whole number",
         path: ["totalOccurrences"],
       });
     }

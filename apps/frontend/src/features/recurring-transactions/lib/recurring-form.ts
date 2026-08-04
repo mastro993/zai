@@ -40,7 +40,6 @@ export const createRecurringFormDefaults = (): RecurringFormInput => ({
   intervalUnit: "month",
   monthlyDay: "1",
   firstScheduledLocal: defaultFirstScheduledLocal(),
-  totalMode: "indefinite",
   totalOccurrences: "",
   description: "",
   amount: "",
@@ -62,7 +61,6 @@ export const defaultsFromDocument = (
     firstScheduledLocal: toLocalInputValue(
       occurrenceSummary.nextScheduledLocal ?? schedule.firstScheduledLocal,
     ),
-    totalMode: recurringTransaction.totalOccurrences == null ? "indefinite" : "finite",
     totalOccurrences:
       recurringTransaction.totalOccurrences == null
         ? ""

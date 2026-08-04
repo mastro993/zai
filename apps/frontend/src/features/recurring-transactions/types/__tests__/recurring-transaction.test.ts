@@ -29,7 +29,6 @@ describe("recurring transaction schemas", () => {
       intervalUnit: "month",
       monthlyDay: "1",
       firstScheduledLocal: "2026-08-01T09:00",
-      totalMode: "finite",
       totalOccurrences: "12",
       amount: "45.00",
       description: "Gym",
@@ -38,7 +37,28 @@ describe("recurring transaction schemas", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.amount).toBe(4500);
+      expect(result.data.totalOccurrences).toBe("12");
+      expect("totalMode" in result.data).toBe(false);
     }
+  });
+
+  it("treats a blank occurrence count as indefinite and rejects invalid counts", () => {
+    const form = {
+      scheduleKind: "interval" as const,
+      intervalEvery: "1",
+      intervalUnit: "month" as const,
+      monthlyDay: "1",
+      firstScheduledLocal: "2026-08-01T09:00",
+      amount: "45.00",
+      description: "Gym",
+      transactionType: "expense" as const,
+    };
+
+    const indefinite = recurringFormSchema.safeParse({ ...form, totalOccurrences: "" });
+    expect(indefinite.success).toBe(true);
+
+    const invalid = recurringFormSchema.safeParse({ ...form, totalOccurrences: "0" });
+    expect(invalid.success).toBe(false);
   });
 
   it("parses a document without privileged fields", () => {
