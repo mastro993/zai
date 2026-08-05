@@ -32,6 +32,7 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
+  FieldSeparator,
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -424,6 +425,8 @@ export function RecurringFormDrawer({
                 disabled={templateLocked}
               />
             </Field>
+
+            <FieldSeparator />
 
             <Field data-invalid={Boolean(errors.firstScheduledLocal)}>
               <FieldLabel htmlFor="recurring-first-date">

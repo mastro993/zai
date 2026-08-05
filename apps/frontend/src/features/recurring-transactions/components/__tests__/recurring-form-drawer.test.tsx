@@ -391,7 +391,10 @@ describe("RecurringFormDrawer", () => {
     expect(notesField).not.toBeNull();
     expect(scheduleField).not.toBeNull();
     expect(categoryField?.nextElementSibling).toBe(descriptionField);
-    expect(notesField?.nextElementSibling).toBe(firstOccurrenceField);
+    const separator = notesField?.nextElementSibling;
+    expect(separator?.getAttribute("data-slot")).toBe("field-separator");
+    expect(separator?.querySelector('[data-slot="separator"]')).not.toBeNull();
+    expect(separator?.nextElementSibling).toBe(firstOccurrenceField);
     expect(firstOccurrenceField?.nextElementSibling).toBe(scheduleField);
     expect(firstOccurrenceField?.querySelector('input[type="datetime-local"]')).toBeNull();
     const datePicker = firstOccurrenceField?.querySelector("#recurring-first-date");
