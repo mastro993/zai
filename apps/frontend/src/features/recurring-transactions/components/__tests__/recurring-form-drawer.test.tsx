@@ -119,11 +119,19 @@ describe("RecurringFormDrawer", () => {
     expect(screen.getByRole("heading", { name: "Adopt as recurring" })).toBeTruthy();
     expect(
       screen.getByText(
+        "This transaction becomes occurrence 1. Choose the schedule and total occurrences.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
         "Transaction details and first occurrence come from the source transaction and cannot be changed here.",
       ),
     ).toBeTruthy();
     const sourceAlert = screen.getByRole("alert");
+    const notesField = screen.getByText("Notes").closest('[data-slot="field"]');
     expect(sourceAlert.getAttribute("data-slot")).toBe("alert");
+    expect(notesField?.nextElementSibling).toBe(sourceAlert);
+    expect(sourceAlert.nextElementSibling?.getAttribute("data-slot")).toBe("field-separator");
     expect(sourceAlert.classList.contains("bg-secondary")).toBe(true);
     expect(sourceAlert.classList.contains("text-secondary-foreground")).toBe(true);
     expect(within(sourceAlert).getByText("Source transaction")).toBeTruthy();

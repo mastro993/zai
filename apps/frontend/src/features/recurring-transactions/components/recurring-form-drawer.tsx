@@ -265,21 +265,7 @@ export function RecurringFormDrawer({
       <form className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 pt-4 pb-4" onSubmit={submit}>
         <FieldSet>
           <FieldGroup>
-            {isAdopt ? (
-              <Alert className="bg-secondary text-secondary-foreground">
-                <HugeiconsIcon
-                  icon={InformationCircleIcon}
-                  className="text-primary"
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
-                <AlertTitle className="text-primary">Source transaction</AlertTitle>
-                <AlertDescription>
-                  Transaction details and first occurrence come from the source transaction and
-                  cannot be changed here.
-                </AlertDescription>
-              </Alert>
-            ) : configLocked ? (
+            {configLocked ? (
               <FieldDescription>
                 Schedule, template amount/type/category/notes, and count are locked while this
                 source is stopped, completed, or needs attention. Description editing remains
@@ -425,6 +411,22 @@ export function RecurringFormDrawer({
                 disabled={templateLocked}
               />
             </Field>
+
+            {isAdopt ? (
+              <Alert className="bg-secondary text-secondary-foreground">
+                <HugeiconsIcon
+                  icon={InformationCircleIcon}
+                  className="text-primary"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+                <AlertTitle className="text-primary">Source transaction</AlertTitle>
+                <AlertDescription>
+                  Transaction details and first occurrence come from the source transaction and
+                  cannot be changed here.
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
             <FieldSeparator />
 

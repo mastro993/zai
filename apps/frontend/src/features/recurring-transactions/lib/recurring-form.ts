@@ -112,7 +112,8 @@ export const getRecurringFormCopy = (mode: RecurringFormMode) => {
   if (mode.type === "adopt") {
     return {
       title: "Adopt as recurring",
-      description: "This transaction becomes occurrence 1. Set its schedule and occurrences.",
+      description:
+        "This transaction becomes occurrence 1. Choose the schedule and total occurrences.",
       submitLabel: "Confirm adoption",
       submittingLabel: "Adopting...",
       successMessage: "Recurring transaction adopted",
