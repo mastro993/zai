@@ -47,7 +47,7 @@ describe("TransactionFormDrawer", () => {
     expect(screen.queryByText("Date and time when the transaction occurred.")).toBeNull();
   });
 
-  it("labels the transaction date field as date and time", () => {
+  it("uses the shadcn time input styling for the transaction time", () => {
     render(
       <Drawer open swipeDirection="right">
         <TransactionFormDrawer
@@ -59,5 +59,13 @@ describe("TransactionFormDrawer", () => {
     );
 
     expect(screen.getByText("Date and time")).toBeDefined();
+    const timeInput = document.getElementById("transaction-time");
+    expect(timeInput).not.toBeNull();
+    expect(timeInput).toHaveProperty("type", "time");
+    expect(timeInput?.getAttribute("step")).toBe("1");
+    expect(timeInput?.classList.contains("appearance-none")).toBe(true);
+    expect(timeInput?.classList.contains("[&::-webkit-calendar-picker-indicator]:hidden")).toBe(
+      true,
+    );
   });
 });

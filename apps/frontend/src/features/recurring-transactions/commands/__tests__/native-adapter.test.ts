@@ -13,10 +13,7 @@ import {
   resumeRecurringTransaction,
   stopRecurringTransaction,
 } from "../recurring-transactions";
-import type {
-  AdoptRecurringFormValues,
-  RecurringFormValues,
-} from "../../types/recurring-transaction";
+import type { RecurringFormValues } from "../../types/recurring-transaction";
 import type { Transaction } from "@/features/transactions/types/model";
 
 const invokeMock = vi.hoisted(() => vi.fn());
@@ -175,13 +172,18 @@ describe("recurring Tauri command adapter", () => {
       transactionCategoryId: "housing",
       notes: " Paid by bank transfer ",
     };
-    const values: AdoptRecurringFormValues = {
+    const values: RecurringFormValues = {
       scheduleKind: "interval",
       intervalEvery: "2",
       intervalUnit: "month",
       monthlyDay: "1",
-      totalMode: "finite",
+      firstScheduledLocal: "2026-01-10T09:00",
       totalOccurrences: "12",
+      description: "Rent",
+      amount: 120000,
+      transactionType: "income",
+      transactionCategoryId: "housing",
+      notes: "Paid by bank transfer",
     };
 
     await adoptRecurringTransaction(transaction, values);
@@ -189,6 +191,7 @@ describe("recurring Tauri command adapter", () => {
     expect(invokeMock).toHaveBeenCalledWith("adopt_recurring_transaction", {
       request: {
         transactionId: "transaction-1",
+        expectedTransactionDate: "2026-01-10T09:00:00",
         schedule: { type: "interval", every: 2, unit: "month" },
         totalOccurrences: 12,
         template: {

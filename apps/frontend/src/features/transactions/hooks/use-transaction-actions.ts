@@ -8,7 +8,7 @@ import {
   getTransactionRecurringProvenance,
 } from "@/features/recurring-transactions/commands/recurring-transactions";
 import type {
-  AdoptRecurringFormValues,
+  RecurringFormValues,
   TransactionRecurringProvenance,
 } from "@/features/recurring-transactions/types/recurring-transaction";
 
@@ -79,6 +79,10 @@ export function useTransactionActions(controller: TransactionActionsController) 
 
   const openAdoptDrawer = async (transaction: Transaction, trigger?: HTMLButtonElement | null) => {
     adoptButtonRef.current = trigger ?? null;
+    if (!transaction.description?.trim()) {
+      toast.error("Add a description to this transaction before adopting it.");
+      return;
+    }
     const provenance = await getTransactionRecurringProvenance(transaction.id);
     if (Result.isFailure(provenance)) {
       toast.error("Could not check recurring provenance", {
@@ -94,7 +98,7 @@ export function useTransactionActions(controller: TransactionActionsController) 
     setIsAdoptDrawerOpen(true);
   };
 
-  const submitAdopt = async (values: AdoptRecurringFormValues) => {
+  const submitAdopt = async (values: RecurringFormValues) => {
     if (!adoptTransaction) {
       return Result.fail(new CommandError("No transaction selected for adoption"));
     }

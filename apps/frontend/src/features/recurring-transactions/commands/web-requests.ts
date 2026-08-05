@@ -185,6 +185,9 @@ const buildAdoptionRequest = (
   if (!isNonEmptyString(valid.value.request.transactionId)) {
     return Result.fail(new CommandError("Adoption transaction id must be a non-empty string"));
   }
+  if (!isNonEmptyString(valid.value.request.expectedTransactionDate)) {
+    return Result.fail(new CommandError("Adoption expected transaction date must be provided"));
+  }
   return Result.succeed({ method: "POST", path, body: valid.value.request });
 };
 

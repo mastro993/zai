@@ -35,6 +35,22 @@ vi.mock("@/features/alerts/components/alerts-bell", () => ({
   AlertsBell: () => null,
 }));
 
+vi.mock("@/features/recurring-transactions/commands/recurring-transactions", async () => {
+  const { Result: ResultModule } = await import("@praha/byethrow");
+
+  return {
+    adoptRecurringTransaction: vi.fn(),
+    getTransactionRecurringProvenance: vi.fn(async () => ResultModule.succeed(null)),
+    previewRecurringAdoption: vi.fn(async (transactionId: string) =>
+      ResultModule.succeed({
+        transactionId,
+        firstScheduledLocal: "2026-07-01T10:00:00",
+        laterDueCount: 0,
+      }),
+    ),
+  };
+});
+
 vi.mock("@hugeicons/react", () => ({
   HugeiconsIcon: () => <span data-testid="icon" />,
 }));
@@ -454,6 +470,37 @@ describe("transaction screen request guard", () => {
     ).toHaveLength(1);
   });
 
+  it("styles missing descriptions as muted italic text", () => {
+    render(
+      <TransactionScreen
+        initialData={{
+          transactions: {
+            data: [
+              {
+                id: "tx-no-description",
+                description: null,
+                amount: 350,
+                transactionDate: "2026-07-01T10:00:00",
+                transactionType: "expense",
+                transactionCategoryId: null,
+                notes: null,
+              },
+            ],
+            page: 1,
+            perPage: 50,
+            totalPages: 1,
+          },
+          categories: [],
+        }}
+      />,
+    );
+
+    const noDescription = screen.getByText("No description");
+
+    expect(noDescription.classList.contains("text-muted-foreground")).toBe(true);
+    expect(noDescription.classList.contains("italic")).toBe(true);
+  });
+
   it("toasts when a transaction is created", async () => {
     const { Result: ResultModule } = await import("@praha/byethrow");
     vi.mocked(transactions.createTransaction).mockResolvedValue(
@@ -481,6 +528,53 @@ describe("transaction screen request guard", () => {
     fireEvent.click(screen.getByRole("button", { name: "New transaction" }));
 
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Amount")));
+  });
+
+  it("opens recurring adoption in the shared recurring form", async () => {
+    renderScreen();
+
+    fireEvent.click(screen.getByRole("button", { name: "Adopt Initial coffee as recurring" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Adopt as recurring" })).toBeTruthy();
+    });
+    expect(screen.getByLabelText("Amount")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Occurrences")).toHaveProperty("disabled", false);
+  });
+
+  it("blocks recurring adoption when the source transaction has no description", async () => {
+    render(
+      <TransactionScreen
+        initialData={{
+          transactions: {
+            data: [
+              {
+                id: "tx-no-description",
+                description: "   ",
+                amount: 350,
+                transactionDate: "2026-07-01T10:00:00",
+                transactionType: "expense",
+                transactionCategoryId: null,
+                notes: null,
+              },
+            ],
+            page: 1,
+            perPage: 50,
+            totalPages: 1,
+          },
+          categories: [],
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByTitle("Make recurring"));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "Add a description to this transaction before adopting it.",
+      );
+    });
+    expect(screen.queryByRole("heading", { name: "Adopt as recurring" })).toBeNull();
   });
 
   it("hides file actions when there are no transactions", () => {

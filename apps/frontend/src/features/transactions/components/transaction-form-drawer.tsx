@@ -290,7 +290,9 @@ function TransactionFormDrawer({
                     <Input
                       id="transaction-time"
                       type="time"
-                      className="w-28 shrink-0 bg-background"
+                      step="1"
+                      className="w-28 shrink-0 bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                      aria-label="Time"
                       aria-invalid={Boolean(errors.transactionDate)}
                       value={time}
                       onChange={(event) => {

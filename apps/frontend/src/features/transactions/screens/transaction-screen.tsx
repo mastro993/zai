@@ -27,7 +27,7 @@ import { TransactionPagination } from "../components/transaction-pagination";
 import { TransactionSelectionBar } from "../components/transaction-selection-bar";
 import { TransactionTable } from "../components/transaction-table";
 import { TransactionTypeFilter } from "../components/transaction-type-filter";
-import { RecurringAdoptDrawer } from "@/features/recurring-transactions/components/recurring-adopt-drawer";
+import { RecurringFormDrawer } from "@/features/recurring-transactions/components/recurring-form-drawer";
 import { useTransactionActions } from "../hooks/use-transaction-actions";
 import {
   useTransactionListController,
@@ -314,10 +314,10 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
         swipeDirection="right"
       >
         {actions.adoptTransaction ? (
-          <RecurringAdoptDrawer
+          <RecurringFormDrawer
             key={actions.adoptTransaction.id}
+            mode={{ type: "adopt", transaction: actions.adoptTransaction }}
             open={actions.isAdoptDrawerOpen}
-            transaction={actions.adoptTransaction}
             categories={controller.categories}
             onOpenChange={actions.setIsAdoptDrawerOpen}
             onSubmit={actions.submitAdopt}

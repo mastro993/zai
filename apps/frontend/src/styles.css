@@ -8,6 +8,10 @@
   corner-shape: squircle;
 }
 
+[data-slot="drawer-popup"] {
+  border-radius: var(--radius-xl);
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

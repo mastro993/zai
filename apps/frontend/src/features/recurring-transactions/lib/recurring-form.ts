@@ -1,5 +1,6 @@
 import { defaultFirstScheduledLocal } from "./recurring";
 import type { RecurringFormMode } from "../types/recurring-form-mode";
+import type { Transaction } from "@/features/transactions/types/model";
 import { SCHEDULE_INTERVAL_UNITS } from "../types/recurring-transaction";
 import type {
   RecurringFormInput,
@@ -48,6 +49,20 @@ export const createRecurringFormDefaults = (): RecurringFormInput => ({
   notes: "",
 });
 
+export const defaultsFromTransaction = (transaction: Transaction): RecurringFormInput => ({
+  scheduleKind: "interval",
+  intervalEvery: "1",
+  intervalUnit: "month",
+  monthlyDay: "1",
+  firstScheduledLocal: toLocalInputValue(transaction.transactionDate),
+  totalOccurrences: "",
+  description: transaction.description?.trim() ?? "",
+  amount: (transaction.amount / 100).toFixed(2),
+  transactionType: transaction.transactionType === "income" ? "income" : "expense",
+  transactionCategoryId: transaction.transactionCategoryId ?? undefined,
+  notes: transaction.notes?.trim() ?? "",
+});
+
 export const defaultsFromDocument = (
   document: RecurringTransactionDocument,
 ): RecurringFormInput => {
@@ -77,6 +92,9 @@ export const getRecurringFormDefaults = (mode: RecurringFormMode): RecurringForm
   if (mode.type === "edit") {
     return defaultsFromDocument(mode.document);
   }
+  if (mode.type === "adopt") {
+    return defaultsFromTransaction(mode.transaction);
+  }
   return createRecurringFormDefaults();
 };
 
@@ -89,6 +107,15 @@ export const getRecurringFormCopy = (mode: RecurringFormMode) => {
       submitLabel: "Save changes",
       submittingLabel: "Saving...",
       successMessage: "Recurring transaction updated",
+    };
+  }
+  if (mode.type === "adopt") {
+    return {
+      title: "Adopt as recurring",
+      description: "This transaction becomes occurrence 1. Set its schedule and occurrences.",
+      submitLabel: "Confirm adoption",
+      submittingLabel: "Adopting...",
+      successMessage: "Recurring transaction adopted",
     };
   }
   return {
