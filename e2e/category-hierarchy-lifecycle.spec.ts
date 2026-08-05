@@ -40,10 +40,7 @@ test("web mode persists category hierarchy edits and deletion through the UI", a
   const childName = `E2E category child ${suffix}`;
 
   await page.goto("/cash-flow/categories");
-  await page
-    .locator("main header")
-    .getByRole("button", { name: "New category", exact: true })
-    .click();
+  await page.getByRole("button", { name: "New category", exact: true }).click();
 
   const rootDrawer = page.getByRole("dialog", { name: "New category" });
   await rootDrawer.getByLabel("Name").fill(rootName);
