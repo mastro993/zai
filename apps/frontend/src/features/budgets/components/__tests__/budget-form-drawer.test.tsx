@@ -133,7 +133,7 @@ describe("BudgetFormDrawer", () => {
     expect(trigger.textContent).toContain("Net cash flow");
   });
 
-  it("keeps the budget form copy focused and identifies cadence items with icons", () => {
+  it("keeps the budget form copy focused and opens cadence options with icons", () => {
     renderBudgetForm();
 
     expect(screen.queryByText("Must be unique among your budgets.")).toBeNull();
@@ -142,12 +142,24 @@ describe("BudgetFormDrawer", () => {
       screen.queryByText("Empty includes all transactions. Roots include their subcategories."),
     ).toBeNull();
 
-    const cadence = screen.getByLabelText("Budget cadence");
+    const cadence = screen.getByRole("combobox", { name: "Budget cadence" });
+    expect(cadence.getAttribute("aria-describedby")).toBe("budget-cadence-description");
+
+    fireEvent.click(cadence);
+
+    const cadenceDialog = screen.getByRole("dialog", { name: "Select budget cadence" });
+    const cadenceOptions = within(cadenceDialog).getAllByRole("option");
+    expect(cadenceOptions).toHaveLength(4);
     expect(
-      within(cadence)
-        .getAllByRole("button")
-        .every((button) => button.querySelector("svg[data-icon='inline-start']")),
+      cadenceOptions.every((option) => option.querySelector("[data-slot='budget-rule-icon'] svg")),
     ).toBe(true);
+    expect(screen.getByText("One period for each calendar day.")).toBeTruthy();
+    expect(screen.getByText("One period from Monday to Sunday.")).toBeTruthy();
+    expect(screen.getByText("One period for each calendar month.")).toBeTruthy();
+    expect(screen.getByText("One period for each calendar year.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("option", { name: /Year/ }));
+    expect(cadence.textContent).toContain("Year");
   });
 
   it("filters and canonicalizes category selections", async () => {
@@ -306,12 +318,9 @@ describe("BudgetFormDrawer", () => {
     expect(screen.getByRole("heading", { name: "Edit budget" })).toBeTruthy();
     expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("Weekly groceries");
     expect((screen.getByLabelText("Allowance") as HTMLInputElement).value).toBe("125.00");
-    const cadence = screen.getByLabelText("Budget cadence");
-    expect(
-      within(cadence)
-        .getAllByRole("button")
-        .every((button) => (button as HTMLButtonElement).disabled),
-    ).toBe(true);
+    const cadence = screen.getByRole("combobox", { name: "Budget cadence" });
+    expect((cadence as HTMLButtonElement).disabled).toBe(true);
+    expect(cadence.textContent).toContain("Week");
     expect(screen.getByRole("button", { name: "Save budget" })).toBeTruthy();
   });
 });

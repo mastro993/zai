@@ -1,4 +1,8 @@
 import {
+  Calendar02Icon,
+  Calendar03Icon,
+  Calendar05Icon,
+  CalendarsIcon,
   Layers01Icon,
   MoneyExchange01Icon,
   RepeatOffIcon,
@@ -30,6 +34,7 @@ import {
 import {
   BUDGET_MEASUREMENT_MODES,
   BUDGET_ROLLOVER_MODES,
+  type BudgetCadence,
   type BudgetFormInput,
   type BudgetFormValues,
   type BudgetMeasurementMode,
@@ -58,6 +63,7 @@ interface BudgetRuleComboboxProps<T extends string> {
   placeholder: string;
   ariaLabel: string;
   parentOpen: boolean;
+  disabled?: boolean;
   onChange: (value: T) => void;
   onBlur?: () => void;
 }
@@ -90,6 +96,33 @@ const ROLLOVER_OPTIONS: Array<BudgetRuleOption<BudgetRolloverMode>> = BUDGET_ROL
   }),
 );
 
+const BUDGET_CADENCE_OPTIONS: Array<BudgetRuleOption<BudgetCadence>> = [
+  {
+    value: "day",
+    label: "Day",
+    description: "One period for each calendar day.",
+    icon: Calendar05Icon,
+  },
+  {
+    value: "week",
+    label: "Week",
+    description: "One period from Monday to Sunday.",
+    icon: Calendar02Icon,
+  },
+  {
+    value: "month",
+    label: "Month",
+    description: "One period for each calendar month.",
+    icon: Calendar03Icon,
+  },
+  {
+    value: "year",
+    label: "Year",
+    description: "One period for each calendar year.",
+    icon: CalendarsIcon,
+  },
+];
+
 function BudgetRuleCombobox<T extends string>({
   id,
   descriptionId,
@@ -98,6 +131,7 @@ function BudgetRuleCombobox<T extends string>({
   placeholder,
   ariaLabel,
   parentOpen,
+  disabled = false,
   onChange,
   onBlur,
 }: BudgetRuleComboboxProps<T>) {
@@ -113,6 +147,7 @@ function BudgetRuleCombobox<T extends string>({
       items={options}
       value={selected ?? null}
       open={open}
+      disabled={disabled}
       filter={null}
       itemToStringLabel={(option) => option.label}
       itemToStringValue={(option) => option.value}
@@ -129,6 +164,7 @@ function BudgetRuleCombobox<T extends string>({
           <Button
             id={id}
             type="button"
+            disabled={disabled}
             variant="outline"
             aria-label={ariaLabel}
             aria-describedby={descriptionId}
@@ -240,4 +276,4 @@ function BudgetFormRulesFields({ control, formOpen }: BudgetFormRulesFieldsProps
   );
 }
 
-export { BudgetFormRulesFields };
+export { BUDGET_CADENCE_OPTIONS, BudgetFormRulesFields, BudgetRuleCombobox };

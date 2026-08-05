@@ -1,7 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Result } from "@praha/byethrow";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { DotIcon, EllipsisIcon, GripHorizontalIcon, GripIcon } from "@hugeicons/core-free-icons";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -31,19 +29,22 @@ import {
   InputGroupInput,
   InputGroupText,
 } from "@/components/ui/input-group";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { CommandError } from "@/commands/errors";
 
 import { formatAmountFromMinor } from "@/features/transactions/lib/transaction";
 import {
-  BUDGET_CADENCES,
   budgetFormSchema,
   type Budget,
+  type BudgetCadence,
   type BudgetFormInput,
   type BudgetFormValues,
 } from "../types/budget";
 import type { TransactionCategory } from "@/features/categories/types/model";
-import { BudgetFormRulesFields } from "./budget-form-rules-fields";
+import {
+  BUDGET_CADENCE_OPTIONS,
+  BudgetFormRulesFields,
+  BudgetRuleCombobox,
+} from "./budget-form-rules-fields";
 import { BudgetCategoryCombobox } from "./budget-category-combobox";
 
 interface BudgetFormDrawerProps {
@@ -54,20 +55,6 @@ interface BudgetFormDrawerProps {
   budget?: Budget;
   mode?: "create" | "edit";
 }
-
-const cadenceToggleLabel = {
-  day: "Day",
-  week: "Week",
-  month: "Month",
-  year: "Year",
-} as const;
-
-const cadenceToggleIcon = {
-  day: DotIcon,
-  week: EllipsisIcon,
-  month: GripHorizontalIcon,
-  year: GripIcon,
-} as const;
 
 const getDefaultValues = (budget?: Budget): BudgetFormInput => ({
   name: budget?.name ?? "",
@@ -260,44 +247,24 @@ function BudgetFormDrawer({
                 <FieldDescription>Roots include their subcategories.</FieldDescription>
                 <FieldError errors={[errors.categoryIds]} />
               </Field>
-              <Field>
-                <FieldLabel>Cadence</FieldLabel>
+              <Field data-disabled={isEdit || undefined}>
+                <FieldLabel htmlFor="budget-cadence">Cadence</FieldLabel>
                 <Controller
                   control={form.control}
                   name="cadence"
                   render={({ field }) => (
-                    <ToggleGroup
-                      aria-label="Budget cadence"
-                      aria-describedby={cadenceDescriptionId}
-                      className="w-full"
+                    <BudgetRuleCombobox<BudgetCadence>
+                      id="budget-cadence"
+                      descriptionId={cadenceDescriptionId}
+                      placeholder="Select cadence"
+                      value={field.value ?? "month"}
+                      options={BUDGET_CADENCE_OPTIONS}
+                      ariaLabel="Budget cadence"
+                      parentOpen={open}
                       disabled={isEdit}
-                      spacing={0}
-                      variant="outline"
-                      value={field.value ? [field.value] : []}
-                      onValueChange={(values) => {
-                        const value = values.at(-1);
-                        if (
-                          value === "day" ||
-                          value === "week" ||
-                          value === "month" ||
-                          value === "year"
-                        ) {
-                          field.onChange(value);
-                        }
-                      }}
-                    >
-                      {BUDGET_CADENCES.map((value) => (
-                        <ToggleGroupItem key={value} value={value} className="flex-1">
-                          <HugeiconsIcon
-                            icon={cadenceToggleIcon[value]}
-                            data-icon="inline-start"
-                            aria-hidden="true"
-                            strokeWidth={2}
-                          />
-                          {cadenceToggleLabel[value]}
-                        </ToggleGroupItem>
-                      ))}
-                    </ToggleGroup>
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                    />
                   )}
                 />
                 <FieldDescription id={cadenceDescriptionId}>
