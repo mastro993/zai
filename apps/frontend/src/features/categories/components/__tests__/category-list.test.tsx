@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { TransactionCategory } from "../../types/model";
@@ -67,5 +67,28 @@ describe("CategoryList", () => {
         .getByRole("list", { name: "Subcategories of Food" })
         .classList.contains("overflow-hidden"),
     ).toBe(true);
+  });
+
+  it("hides the child count while a parent is expanded and restores it when collapsed", async () => {
+    render(
+      <CategoryList
+        categories={[food, groceries]}
+        onAddChild={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    const foodRow = screen.getByRole("button", { name: "Expand Food" });
+
+    expect(screen.getByText("+1")).toBeTruthy();
+
+    fireEvent.click(foodRow);
+
+    await waitFor(() => expect(screen.queryByText("+1")).toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Food" }));
+
+    expect(screen.getByText("+1")).toBeTruthy();
   });
 });

@@ -47,6 +47,7 @@ export interface CreateRecurringArgs {
 }
 export interface AdoptionRequest {
   transactionId: string;
+  expectedTransactionDate: string;
   schedule: ScheduleRule;
   totalOccurrences: number | null;
   template: RecurringTemplate;

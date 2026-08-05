@@ -1,7 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
-import { DrawerSelect } from "@/components/drawer-select";
 import { Button } from "@/components/ui/button";
 import {
   DrawerClose,
@@ -21,13 +20,12 @@ import {
   DEFAULT_CATEGORY_COLOR,
   categoryFormSchema,
   type CategoryFormValues,
-  type CategoryRole,
   type TransactionCategory,
 } from "../types/model";
 import { CategoryBadge } from "./category-badge";
 import { CategoryColorPicker } from "./category-color-picker";
-import { CategoryDrawerSelect } from "./category-drawer-select";
-import { CATEGORY_ROLE_OPTIONS } from "./category-role-options";
+import { CategoryParentCombobox } from "./category-parent-combobox";
+import { CategoryRoleCombobox } from "./category-role-combobox";
 
 const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
   if (mode.type === "create-root") {
@@ -163,19 +161,11 @@ function CategoryFormDrawer({
                 control={form.control}
                 name="parentId"
                 render={({ field }) => (
-                  <CategoryDrawerSelect
+                  <CategoryParentCombobox
                     id="category-parent-trigger"
-                    mode="single"
                     categories={rootOptions}
                     value={field.value ? field.value : null}
-                    clearable
                     parentOpen={open}
-                    placeholder="None"
-                    ariaLabel="Parent category"
-                    drawerTitle="Select parent"
-                    drawerDescription="Leave empty for a root category, or nest under an existing root."
-                    backAriaLabel="Back to category"
-                    emptyListMessage="No root categories yet."
                     onBlur={field.onBlur}
                     onChange={(nextParentId) => {
                       field.onChange(nextParentId ?? "");
@@ -234,16 +224,11 @@ function CategoryFormDrawer({
                 control={form.control}
                 name="role"
                 render={({ field }) => (
-                  <DrawerSelect<CategoryRole>
+                  <CategoryRoleCombobox
                     id="category-role"
-                    ariaLabel="Category role"
-                    drawerTitle="Role"
-                    drawerDescription="Choose whether this category tracks spending or income."
-                    placeholder="Select a role"
-                    value={field.value ?? null}
-                    options={CATEGORY_ROLE_OPTIONS}
+                    value={field.value}
                     parentOpen={open}
-                    backAriaLabel="Back to category"
+                    invalid={Boolean(errors.role)}
                     onChange={field.onChange}
                     onBlur={field.onBlur}
                   />

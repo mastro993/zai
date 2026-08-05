@@ -79,6 +79,7 @@ export const budgetHistorySchema = z.object({
 export type BudgetFormInput = z.input<typeof budgetFormSchema>;
 export type BudgetFormValues = z.infer<typeof budgetFormSchema>;
 export type Budget = z.infer<typeof budgetSchema>;
+export type BudgetCadence = (typeof BUDGET_CADENCES)[number];
 export type BudgetMeasurementMode = (typeof BUDGET_MEASUREMENT_MODES)[number];
 export type BudgetRolloverMode = (typeof BUDGET_ROLLOVER_MODES)[number];
 export type BudgetStatus = (typeof BUDGET_STATUSES)[number];

@@ -1,3 +1,5 @@
+import { RepeatIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
 import { useRef, useState } from "react";
 
@@ -5,6 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Drawer } from "@/components/ui/drawer";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { ScreenBase } from "@/components/screen-base";
 import type { TransactionCategory } from "@/features/categories/types/model";
 
@@ -102,6 +112,7 @@ export function RecurringScreen({
   const hasActiveFeedFilters = Boolean(
     feedFilters.search || feedFilters.lifecycle || feedFilters.needsAttention !== undefined,
   );
+  const showFilters = items.length > 0 || hasActiveFeedFilters || isFiltering;
   const showSelectAllMatching = shouldShowSelectAllMatching(
     pageCheckboxState,
     Boolean(nextCursor) || hiddenCount > 0 || items.length < selection.selectedCount,
@@ -230,24 +241,21 @@ export function RecurringScreen({
   return (
     <ScreenBase
       actions={
-        <Button ref={createButtonRef} onClick={() => setIsCreateOpen(true)}>
-          New recurring
-        </Button>
+        showFilters ? (
+          <Button ref={createButtonRef} size="sm" onClick={() => setIsCreateOpen(true)}>
+            New recurring
+          </Button>
+        ) : undefined
       }
     >
       <div className="space-y-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Recurring transactions</h1>
-          <p className="text-sm text-muted-foreground">
-            Create schedules and browse upcoming occurrence cards.
-          </p>
-        </div>
-
-        <RecurringFeedFiltersBar
-          filters={feedFilters}
-          disabled={selectionLocked}
-          onChange={changeFeedFilters}
-        />
+        {showFilters ? (
+          <RecurringFeedFiltersBar
+            filters={feedFilters}
+            disabled={selectionLocked}
+            onChange={changeFeedFilters}
+          />
+        ) : null}
         {isFiltering ? (
           <p className="text-sm text-muted-foreground" role="status">
             Filtering recurring transactions...
@@ -315,11 +323,50 @@ export function RecurringScreen({
         ) : null}
 
         {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {hasActiveFeedFilters
-              ? "No recurring transactions match these filters."
-              : "No recurring transactions yet. Create one to start scheduling cash flow."}
-          </p>
+          hasActiveFeedFilters ? (
+            <Empty
+              role="region"
+              aria-label="No recurring transactions match your filters"
+              className="flex-none gap-3 rounded-lg border p-6"
+            >
+              <EmptyHeader className="max-w-none gap-1.5">
+                <EmptyDescription>No recurring transactions match your filters.</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent className="max-w-none">
+                <Button variant="outline" size="sm" onClick={() => void changeFeedFilters({})}>
+                  Clear filters
+                </Button>
+              </EmptyContent>
+            </Empty>
+          ) : (
+            <Empty
+              role="region"
+              aria-labelledby="recurring-empty-state-title"
+              className="min-h-72 rounded-lg border px-6 py-10 sm:px-8"
+            >
+              <EmptyHeader className="max-w-md gap-1.5">
+                <EmptyMedia variant="icon">
+                  <HugeiconsIcon icon={RepeatIcon} strokeWidth={2} aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle
+                  id="recurring-empty-state-title"
+                  role="heading"
+                  aria-level={2}
+                  className="text-base"
+                >
+                  No recurring transactions yet
+                </EmptyTitle>
+                <EmptyDescription>
+                  Create your first recurring transaction to start scheduling cash flow.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent className="max-w-none flex-row flex-wrap justify-center">
+                <Button ref={createButtonRef} onClick={() => setIsCreateOpen(true)}>
+                  New recurring
+                </Button>
+              </EmptyContent>
+            </Empty>
+          )
         ) : (
           <>
             {items.some((item) => item.needsAttention) ? (

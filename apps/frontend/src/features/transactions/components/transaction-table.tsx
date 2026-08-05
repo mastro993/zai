@@ -208,7 +208,12 @@ function TransactionTable({
                   {formatCurrencyFromMinor(transaction.amount, "EUR")}
                 </TableCell>
                 <TableCell className="max-w-0 p-3">
-                  <span className="block truncate">
+                  <span
+                    className={cn(
+                      "block truncate",
+                      !transaction.description && "italic text-muted-foreground",
+                    )}
+                  >
                     {transaction.description || "No description"}
                   </span>
                 </TableCell>

@@ -1,4 +1,4 @@
-import { DownloadIcon, UploadIcon } from "@hugeicons/core-free-icons";
+import { DownloadIcon, Tag01Icon, UploadIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
 import { useMemo, useState } from "react";
@@ -9,6 +9,14 @@ import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Drawer } from "@/components/ui/drawer";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { exportCategories } from "../commands/category-export";
@@ -237,18 +245,20 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
     <ScreenBase
       actions={
         <>
-          <TooltipProvider>
-            <ButtonGroup aria-label="Category file actions">
-              <Tooltip>
-                <TooltipTrigger render={importCategoriesButton} />
-                <TooltipContent>Import categories</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger render={exportCategoriesButton} />
-                <TooltipContent>Export categories</TooltipContent>
-              </Tooltip>
-            </ButtonGroup>
-          </TooltipProvider>
+          {hasCategories ? (
+            <TooltipProvider>
+              <ButtonGroup aria-label="Category file actions">
+                <Tooltip>
+                  <TooltipTrigger render={importCategoriesButton} />
+                  <TooltipContent>Import categories</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger render={exportCategoriesButton} />
+                  <TooltipContent>Export categories</TooltipContent>
+                </Tooltip>
+              </ButtonGroup>
+            </TooltipProvider>
+          ) : null}
           {hasCategories ? (
             <Button size="sm" onClick={() => openFormDrawer({ type: "create-root" })}>
               New category
@@ -323,26 +333,35 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
       {isLoading ? (
         <CategoryListSkeleton />
       ) : categories.length === 0 ? (
-        <section
+        <Empty
+          role="region"
           aria-labelledby="category-empty-state-title"
-          className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-lg border border-dashed px-6 py-10 text-center sm:px-8"
+          className="min-h-72 rounded-lg border px-6 py-10 sm:px-8"
         >
-          <div className="flex max-w-md flex-col items-center gap-1.5">
-            <h2 id="category-empty-state-title" className="text-base font-medium">
+          <EmptyHeader className="max-w-md gap-1.5">
+            <EmptyMedia variant="icon">
+              <HugeiconsIcon icon={Tag01Icon} strokeWidth={2} aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle
+              id="category-empty-state-title"
+              role="heading"
+              aria-level={2}
+              className="text-base"
+            >
               Set up your categories
-            </h2>
-            <p className="text-sm text-muted-foreground">
+            </EmptyTitle>
+            <EmptyDescription>
               Create your first spending or income category to organize transactions.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-2">
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent className="max-w-none flex-row flex-wrap justify-center">
             <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
             <Button type="button" variant="outline" onClick={() => setIsImportDialogOpen(true)}>
               <HugeiconsIcon icon={UploadIcon} strokeWidth={2} />
               Import categories
             </Button>
-          </div>
-        </section>
+          </EmptyContent>
+        </Empty>
       ) : (
         <CategoryList
           categories={categories}

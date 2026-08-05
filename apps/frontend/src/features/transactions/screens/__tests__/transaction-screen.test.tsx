@@ -35,6 +35,22 @@ vi.mock("@/features/alerts/components/alerts-bell", () => ({
   AlertsBell: () => null,
 }));
 
+vi.mock("@/features/recurring-transactions/commands/recurring-transactions", async () => {
+  const { Result: ResultModule } = await import("@praha/byethrow");
+
+  return {
+    adoptRecurringTransaction: vi.fn(),
+    getTransactionRecurringProvenance: vi.fn(async () => ResultModule.succeed(null)),
+    previewRecurringAdoption: vi.fn(async (transactionId: string) =>
+      ResultModule.succeed({
+        transactionId,
+        firstScheduledLocal: "2026-07-01T10:00:00",
+        laterDueCount: 0,
+      }),
+    ),
+  };
+});
+
 vi.mock("@hugeicons/react", () => ({
   HugeiconsIcon: () => <span data-testid="icon" />,
 }));
@@ -56,7 +72,9 @@ const transactionState = vi.hoisted(() => ({
   releaseCurrent: undefined as undefined | (() => void),
   holdStale: false,
   holdCurrent: false,
+  returnInitialEmpty: false,
   returnEmptyOnPage2: false,
+  returnEmptyForQuery: false,
 }));
 
 vi.mock("../../commands/transactions", async () => {
@@ -153,6 +171,17 @@ vi.mock("../../commands/transactions", async () => {
         }
       }
 
+      if (query === "no-matches" && transactionState.returnEmptyForQuery) {
+        return Promise.resolve(
+          ResultModule.succeed({
+            data: [],
+            page: 1,
+            perPage: 50,
+            totalPages: 1,
+          }),
+        );
+      }
+
       if (query === "empty-page" && page === 2) {
         return Promise.resolve(
           ResultModule.succeed({
@@ -160,6 +189,17 @@ vi.mock("../../commands/transactions", async () => {
             page: 2,
             perPage: 50,
             totalPages: 2,
+          }),
+        );
+      }
+
+      if (!query && transactionState.returnInitialEmpty) {
+        return Promise.resolve(
+          ResultModule.succeed({
+            data: [],
+            page: 1,
+            perPage: 50,
+            totalPages: 1,
           }),
         );
       }
@@ -284,7 +324,9 @@ describe("transaction screen request guard", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     transactionState.holdStale = false;
     transactionState.holdCurrent = false;
+    transactionState.returnInitialEmpty = false;
     transactionState.returnEmptyOnPage2 = false;
+    transactionState.returnEmptyForQuery = false;
     transactionState.releaseStale = undefined;
     transactionState.releaseCurrent = undefined;
     Object.defineProperty(window, "matchMedia", {
@@ -428,6 +470,37 @@ describe("transaction screen request guard", () => {
     ).toHaveLength(1);
   });
 
+  it("styles missing descriptions as muted italic text", () => {
+    render(
+      <TransactionScreen
+        initialData={{
+          transactions: {
+            data: [
+              {
+                id: "tx-no-description",
+                description: null,
+                amount: 350,
+                transactionDate: "2026-07-01T10:00:00",
+                transactionType: "expense",
+                transactionCategoryId: null,
+                notes: null,
+              },
+            ],
+            page: 1,
+            perPage: 50,
+            totalPages: 1,
+          },
+          categories: [],
+        }}
+      />,
+    );
+
+    const noDescription = screen.getByText("No description");
+
+    expect(noDescription.classList.contains("text-muted-foreground")).toBe(true);
+    expect(noDescription.classList.contains("italic")).toBe(true);
+  });
+
   it("toasts when a transaction is created", async () => {
     const { Result: ResultModule } = await import("@praha/byethrow");
     vi.mocked(transactions.createTransaction).mockResolvedValue(
@@ -449,7 +522,62 @@ describe("transaction screen request guard", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Transaction created"));
   });
 
-  it("disables export when there are no transactions to export", () => {
+  it("focuses the amount field when opening a new transaction", async () => {
+    renderScreen();
+
+    fireEvent.click(screen.getByRole("button", { name: "New transaction" }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Amount")));
+  });
+
+  it("opens recurring adoption in the shared recurring form", async () => {
+    renderScreen();
+
+    fireEvent.click(screen.getByRole("button", { name: "Adopt Initial coffee as recurring" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Adopt as recurring" })).toBeTruthy();
+    });
+    expect(screen.getByLabelText("Amount")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Occurrences")).toHaveProperty("disabled", false);
+  });
+
+  it("blocks recurring adoption when the source transaction has no description", async () => {
+    render(
+      <TransactionScreen
+        initialData={{
+          transactions: {
+            data: [
+              {
+                id: "tx-no-description",
+                description: "   ",
+                amount: 350,
+                transactionDate: "2026-07-01T10:00:00",
+                transactionType: "expense",
+                transactionCategoryId: null,
+                notes: null,
+              },
+            ],
+            page: 1,
+            perPage: 50,
+            totalPages: 1,
+          },
+          categories: [],
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByTitle("Make recurring"));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "Add a description to this transaction before adopting it.",
+      );
+    });
+    expect(screen.queryByRole("heading", { name: "Adopt as recurring" })).toBeNull();
+  });
+
+  it("hides file actions when there are no transactions", () => {
     render(
       <TransactionScreen
         initialData={{
@@ -459,8 +587,56 @@ describe("transaction screen request guard", () => {
       />,
     );
 
+    expect(screen.queryByRole("group", { name: "Transaction file actions" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Import transactions" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "New transaction" })).toHaveLength(1);
+    expect(screen.queryByPlaceholderText("Search description or notes...")).toBeNull();
+  });
+
+  it("renders the no-transactions onboarding state with create and import actions", () => {
+    render(
+      <TransactionScreen
+        initialData={{
+          transactions: { data: [], page: 1, perPage: 50, totalPages: 1 },
+          categories: [],
+        }}
+      />,
+    );
+
+    const emptyState = screen.getByRole("region", { name: "No transactions yet" });
+    const emptyContent = emptyState.querySelector('[data-slot="empty-content"]');
+
+    expect(emptyState.classList.contains("border")).toBe(true);
+    expect(emptyState.classList.contains("border-dashed")).toBe(true);
+    expect(emptyState.querySelector('[data-slot="empty-icon"]')).not.toBeNull();
+    expect(emptyContent?.classList.contains("justify-center")).toBe(true);
+    expect(screen.getByRole("heading", { name: "No transactions yet" })).not.toBeNull();
     expect(
-      (screen.getByRole("button", { name: "Export transactions" }) as HTMLButtonElement).disabled,
-    ).toBe(true);
+      screen.getByText("Add income or an expense to start tracking cash flow."),
+    ).not.toBeNull();
+    expect(screen.getAllByRole("button", { name: "New transaction" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Import transactions" })).toHaveLength(1);
+  });
+
+  it("keeps filters visible when an active filter returns no transactions", async () => {
+    transactionState.returnEmptyForQuery = true;
+
+    renderScreen();
+    typeSearchQuery("no-matches");
+
+    await waitFor(() =>
+      expect(screen.getByText("No transactions match your filters.")).toBeTruthy(),
+    );
+    const emptyState = screen.getByRole("region", { name: "No transactions match your filters" });
+    const emptyContent = emptyState.querySelector('[data-slot="empty-content"]');
+    const clearFiltersButton = emptyState.querySelector("button");
+
+    expect(emptyState.getAttribute("data-slot")).toBe("empty");
+    expect(emptyState.classList.contains("border")).toBe(true);
+    expect(emptyState.classList.contains("border-dashed")).toBe(true);
+    expect(emptyState.querySelector('[data-slot="empty-header"]')).not.toBeNull();
+    expect(emptyContent).not.toBeNull();
+    expect(clearFiltersButton?.classList.contains("border-border")).toBe(true);
+    expect(screen.getByPlaceholderText("Search description or notes...")).toBeTruthy();
   });
 });

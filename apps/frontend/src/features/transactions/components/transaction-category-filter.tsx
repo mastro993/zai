@@ -4,6 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Cancel01Icon, Tag01Icon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
@@ -87,13 +88,13 @@ export function TransactionCategoryFilter({
   };
 
   return (
-    <div className="flex items-center">
+    <ButtonGroup aria-label="Category filter">
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger
           render={
             <Button
               type="button"
-              variant="outline"
+              variant={active ? "secondary" : "outline"}
               disabled={isLoading}
               aria-label="Filter by category"
               className={cn("justify-start gap-2 font-normal", !active && "text-muted-foreground")}
@@ -214,18 +215,17 @@ export function TransactionCategoryFilter({
           </div>
         </PopoverContent>
       </Popover>
-
       {active ? (
         <Button
           type="button"
-          variant="ghost"
-          size="icon-sm"
+          variant="secondary"
+          size="icon"
           aria-label="Clear category filter"
           onClick={() => onSelectionChange(DEFAULT_CATEGORY_FILTER_SELECTION)}
         >
           <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
         </Button>
       ) : null}
-    </div>
+    </ButtonGroup>
   );
 }

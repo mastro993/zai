@@ -273,10 +273,11 @@ pub fn adopt_success(id: &str, transaction_id: &str) -> ContractExpectation {
             body: Some(json!({
                 "id": id,
                 "transactionId": transaction_id,
+                "expectedTransactionDate": "2026-07-15T12:00:00",
                 "schedule": { "type": "interval", "every": 1, "unit": "month" },
                 "totalOccurrences": 6,
                 "template": {
-                    "description": "Adopted membership",
+                    "description": "Adopt seed",
                     "amount": 1500,
                     "transactionType": "expense",
                     "transactionCategoryId": null,

@@ -1,5 +1,6 @@
 import { invokeDecodedCommand } from "@/commands/shared";
 import type { CommandResult } from "@/commands/shared";
+import type { Transaction } from "@/features/transactions/types/model";
 
 import type {
   RecurringBulkAction,
@@ -9,7 +10,6 @@ import type {
   RecurringMatchingIds,
 } from "../types/recurring-bulk";
 import type {
-  AdoptRecurringFormValues,
   AdoptionPreview,
   BudgetProjectionResult,
   GenerationFailureDiagnostics,
@@ -39,6 +39,9 @@ const toBackendLocal = (value: string): string => {
   return value;
 };
 
+const toTotalOccurrences = (value: string | undefined): number | null =>
+  value ? Number(value) : null;
+
 export const getRecurringBudgetProjections = (input: {
   horizonMonths: number;
   includePausedBudgets?: boolean;
@@ -53,7 +56,7 @@ export const getRecurringBudgetProjections = (input: {
 
 export const buildScheduleRule = (
   values: Pick<
-    RecurringFormValues | AdoptRecurringFormValues,
+    RecurringFormValues,
     "scheduleKind" | "monthlyDay" | "intervalEvery" | "intervalUnit"
   >,
 ): ScheduleRule => {
@@ -117,7 +120,7 @@ export const createRecurringTransaction = (
     newRecurringTransaction: {
       schedule: buildScheduleRule(values),
       firstScheduledLocal: toBackendLocal(values.firstScheduledLocal),
-      totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
+      totalOccurrences: toTotalOccurrences(values.totalOccurrences),
       template: {
         description: values.description,
         amount: values.amount,
@@ -131,32 +134,36 @@ export const createRecurringTransaction = (
 
 export const previewRecurringAdoption = (
   transactionId: string,
-  values: AdoptRecurringFormValues,
+  values: Pick<
+    RecurringFormValues,
+    "scheduleKind" | "monthlyDay" | "intervalEvery" | "intervalUnit" | "totalOccurrences"
+  >,
 ): CommandResult<AdoptionPreview> => {
   return invokeDecodedCommand(RECURRING_COMMANDS.preview_recurring_adoption, {
     request: {
       transactionId,
       schedule: buildScheduleRule(values),
-      totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
+      totalOccurrences: toTotalOccurrences(values.totalOccurrences),
     },
   });
 };
 
 export const adoptRecurringTransaction = (
-  transactionId: string,
-  values: AdoptRecurringFormValues,
+  transaction: Transaction,
+  values: RecurringFormValues,
 ): CommandResult<RecurringAdoptOutcome> => {
   return invokeDecodedCommand(RECURRING_COMMANDS.adopt_recurring_transaction, {
     request: {
-      transactionId,
+      transactionId: transaction.id,
+      expectedTransactionDate: toBackendLocal(transaction.transactionDate),
       schedule: buildScheduleRule(values),
-      totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
+      totalOccurrences: toTotalOccurrences(values.totalOccurrences),
       template: {
-        description: values.description,
-        amount: values.amount,
-        transactionType: values.transactionType,
-        transactionCategoryId: values.transactionCategoryId || null,
-        notes: values.notes || null,
+        description: transaction.description?.trim() || "Recurring transaction",
+        amount: transaction.amount,
+        transactionType: transaction.transactionType === "income" ? "income" : "expense",
+        transactionCategoryId: transaction.transactionCategoryId ?? null,
+        notes: transaction.notes?.trim() || null,
       },
     },
   });
@@ -172,7 +179,7 @@ export const updateRecurringTransaction = (
       expectedRevision: document.recurringTransaction.revision,
       schedule: buildScheduleRule(values),
       nextScheduledLocal: toBackendLocal(values.firstScheduledLocal),
-      totalOccurrences: values.totalMode === "finite" ? Number(values.totalOccurrences) : null,
+      totalOccurrences: toTotalOccurrences(values.totalOccurrences),
       template: {
         description: values.description,
         amount: values.amount,

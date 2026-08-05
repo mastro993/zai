@@ -46,6 +46,7 @@ const newRecurringTransaction = {
 };
 const adoptionRequest = {
   transactionId,
+  expectedTransactionDate: "2026-08-15T09:30:00",
   schedule: { type: "interval" as const, every: 2, unit: "month" as const },
   totalOccurrences: null,
   template,

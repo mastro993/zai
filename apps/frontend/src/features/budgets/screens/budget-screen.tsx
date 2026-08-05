@@ -1,3 +1,5 @@
+import { Wallet03Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -5,6 +7,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Drawer } from "@/components/ui/drawer";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -108,6 +118,7 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
   const [isListLoading, setIsListLoading] = useState(false);
   const [listError, setListError] = useState<string>();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const hasBudgets = budgets.length > 0;
 
   const changeFilter = async (values: Array<string>) => {
     const nextFilter = values.at(-1);
@@ -146,24 +157,33 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
   };
 
   return (
-    <ScreenBase actions={<Button onClick={() => setIsFormOpen(true)}>New budget</Button>}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-medium">Budgets</h1>
-        <ToggleGroup
-          aria-label="Budget filter"
-          disabled={isListLoading}
-          spacing={0}
-          value={[filter]}
-          variant="outline"
-          onValueChange={(values) => void changeFilter(values)}
-        >
-          {BUDGET_LIST_FILTERS.map((value) => (
-            <ToggleGroupItem key={value} value={value}>
-              {budgetListFilterLabel[value]}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
+    <ScreenBase
+      actions={
+        hasBudgets ? (
+          <Button size="sm" onClick={() => setIsFormOpen(true)}>
+            New budget
+          </Button>
+        ) : undefined
+      }
+    >
+      {hasBudgets ? (
+        <div className="flex justify-end">
+          <ToggleGroup
+            aria-label="Budget filter"
+            disabled={isListLoading}
+            spacing={0}
+            value={[filter]}
+            variant="outline"
+            onValueChange={(values) => void changeFilter(values)}
+          >
+            {BUDGET_LIST_FILTERS.map((value) => (
+              <ToggleGroupItem key={value} value={value}>
+                {budgetListFilterLabel[value]}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
+      ) : null}
       {listError ? (
         <p
           role="alert"
@@ -178,21 +198,33 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
         </p>
       ) : null}
       {budgets.length === 0 ? (
-        <div className="flex flex-col items-start gap-3 border p-6">
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium">
+        <Empty
+          role="region"
+          aria-labelledby="budget-empty-state-title"
+          className="flex-none min-h-72 rounded-lg border px-6 py-10 sm:px-8"
+        >
+          <EmptyHeader className="max-w-md gap-1.5">
+            <EmptyMedia variant="icon">
+              <HugeiconsIcon icon={Wallet03Icon} strokeWidth={2} aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle
+              id="budget-empty-state-title"
+              role="heading"
+              aria-level={2}
+              className="text-base"
+            >
               {filter === "active" ? "No active budgets" : `No ${filter} budgets`}
-            </p>
-            <p className="text-sm text-muted-foreground">
+            </EmptyTitle>
+            <EmptyDescription>
               {filter === "active"
                 ? "Create a budget for any cadence, category scope, or measurement mode."
                 : "Change filter or create a budget to see it here."}
-            </p>
-          </div>
-          {filter === "active" ? (
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent className="max-w-none flex-row flex-wrap justify-center">
             <Button onClick={() => setIsFormOpen(true)}>New budget</Button>
-          ) : null}
-        </div>
+          </EmptyContent>
+        </Empty>
       ) : (
         <div className="border" aria-busy={isListLoading}>
           <div className="border-b bg-muted/40 px-3 py-2 text-xs font-medium">Budgets</div>
@@ -214,7 +246,6 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
 export function BudgetScreenSkeleton() {
   return (
     <ScreenBase>
-      <h1 className="text-2xl font-medium">Budgets</h1>
       <div className="border">
         <div className="border-b bg-muted/40 px-3 py-2">
           <Skeleton className="h-4 w-20" />

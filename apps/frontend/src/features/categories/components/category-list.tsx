@@ -78,17 +78,39 @@ function CategoryRowActions({
 function CategoryRowContent({
   category,
   childCount,
+  showChildCount = true,
 }: {
   category: TransactionCategory;
   childCount?: number;
+  showChildCount?: boolean;
 }) {
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
       <CategoryBadge color={getCategoryDisplayColor(category)}>{category.name}</CategoryBadge>
       {childCount !== undefined && childCount > 0 ? (
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">+{childCount}</span>
+        <CategoryChildCount count={childCount} isVisible={showChildCount} />
       ) : null}
     </div>
+  );
+}
+
+function CategoryChildCount({ count, isVisible }: { count: number; isVisible: boolean }) {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <AnimatePresence initial={false} mode="sync">
+      {isVisible ? (
+        <m.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.15, ease: "easeOut" }}
+          className="shrink-0 text-xs tabular-nums text-muted-foreground"
+        >
+          +{count}
+        </m.span>
+      ) : null}
+    </AnimatePresence>
   );
 }
 
@@ -140,7 +162,7 @@ function CategoryParentRow({
       onClick={onToggle}
       onKeyDown={handleKeyDown}
     >
-      <CategoryRowContent category={category} childCount={childCount} />
+      <CategoryRowContent category={category} childCount={childCount} showChildCount={!isOpen} />
       <div
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}

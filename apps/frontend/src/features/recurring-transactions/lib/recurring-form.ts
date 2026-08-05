@@ -1,5 +1,7 @@
 import { defaultFirstScheduledLocal } from "./recurring";
 import type { RecurringFormMode } from "../types/recurring-form-mode";
+import type { Transaction } from "@/features/transactions/types/model";
+import { SCHEDULE_INTERVAL_UNITS } from "../types/recurring-transaction";
 import type {
   RecurringFormInput,
   RecurringTransactionDocument,
@@ -12,19 +14,53 @@ export const toLocalInputValue = (value: string | null | undefined): string => {
   return value.length >= 16 ? value.slice(0, 16) : value;
 };
 
+export const getScheduleIntervalUnitItems = (every: string | undefined) =>
+  SCHEDULE_INTERVAL_UNITS.map((unit) => ({
+    value: unit,
+    label: Number(every) === 1 ? unit : `${unit}s`,
+  }));
+
+export const formatRecurringOrdinal = (value: number) => {
+  const lastTwoDigits = value % 100;
+  const suffix =
+    lastTwoDigits >= 11 && lastTwoDigits <= 13
+      ? "th"
+      : value % 10 === 1
+        ? "st"
+        : value % 10 === 2
+          ? "nd"
+          : value % 10 === 3
+            ? "rd"
+            : "th";
+  return `${value}${suffix}`;
+};
+
 export const createRecurringFormDefaults = (): RecurringFormInput => ({
   scheduleKind: "interval",
   intervalEvery: "1",
   intervalUnit: "month",
   monthlyDay: "1",
   firstScheduledLocal: defaultFirstScheduledLocal(),
-  totalMode: "indefinite",
   totalOccurrences: "",
   description: "",
   amount: "",
   transactionType: "expense",
   transactionCategoryId: undefined,
   notes: "",
+});
+
+export const defaultsFromTransaction = (transaction: Transaction): RecurringFormInput => ({
+  scheduleKind: "interval",
+  intervalEvery: "1",
+  intervalUnit: "month",
+  monthlyDay: "1",
+  firstScheduledLocal: toLocalInputValue(transaction.transactionDate),
+  totalOccurrences: "",
+  description: transaction.description?.trim() ?? "",
+  amount: (transaction.amount / 100).toFixed(2),
+  transactionType: transaction.transactionType === "income" ? "income" : "expense",
+  transactionCategoryId: transaction.transactionCategoryId ?? undefined,
+  notes: transaction.notes?.trim() ?? "",
 });
 
 export const defaultsFromDocument = (
@@ -40,7 +76,6 @@ export const defaultsFromDocument = (
     firstScheduledLocal: toLocalInputValue(
       occurrenceSummary.nextScheduledLocal ?? schedule.firstScheduledLocal,
     ),
-    totalMode: recurringTransaction.totalOccurrences == null ? "indefinite" : "finite",
     totalOccurrences:
       recurringTransaction.totalOccurrences == null
         ? ""
@@ -57,6 +92,9 @@ export const getRecurringFormDefaults = (mode: RecurringFormMode): RecurringForm
   if (mode.type === "edit") {
     return defaultsFromDocument(mode.document);
   }
+  if (mode.type === "adopt") {
+    return defaultsFromTransaction(mode.transaction);
+  }
   return createRecurringFormDefaults();
 };
 
@@ -71,10 +109,19 @@ export const getRecurringFormCopy = (mode: RecurringFormMode) => {
       successMessage: "Recurring transaction updated",
     };
   }
+  if (mode.type === "adopt") {
+    return {
+      title: "Adopt as recurring",
+      description:
+        "This transaction becomes occurrence 1. Choose the schedule and total occurrences.",
+      submitLabel: "Confirm adoption",
+      submittingLabel: "Adopting...",
+      successMessage: "Recurring transaction adopted",
+    };
+  }
   return {
     title: "New recurring transaction",
-    description:
-      "Fill the transaction template, then add schedule options for first occurrence and total.",
+    description: "Record a recurring income or expense",
     submitLabel: "Create recurring transaction",
     submittingLabel: "Creating...",
     successMessage: "Recurring transaction created",

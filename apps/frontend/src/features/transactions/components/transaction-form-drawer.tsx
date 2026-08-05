@@ -1,6 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  ArrowDown01Icon,
+  ArrowUp01Icon,
+  Calendar03Icon,
+  Clock01Icon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { format, parseISO } from "date-fns";
 import { Controller, useForm } from "react-hook-form";
+import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -12,7 +20,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   InputGroup,
@@ -25,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Link } from "@tanstack/react-router";
 
+import { TransactionCategoryCombobox } from "./transaction-category-combobox";
 import type { TransactionRecurringProvenance } from "@/features/recurring-transactions/types/recurring-transaction";
 
 import {
@@ -36,7 +45,6 @@ import {
   toDateTimeInputValue,
 } from "../lib/transaction";
 import type { TransactionCategory } from "@/features/categories/types/model";
-import { CategoryDrawerSelect } from "@/features/categories/components/category-drawer-select";
 
 import {
   TRANSACTION_TYPES,
@@ -52,6 +60,11 @@ const getLocalDateTimeInputValue = () => {
   date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
   return date.toISOString().slice(0, 16);
 };
+
+const TRANSACTION_TYPE_CONTROLS = {
+  expense: { icon: ArrowDown01Icon, iconClassName: "text-destructive" },
+  income: { icon: ArrowUp01Icon, iconClassName: "text-primary" },
+} as const;
 
 const getFormDefaults = (mode: TransactionFormMode): TransactionFormInput => {
   if (mode.type === "create") {
@@ -85,7 +98,7 @@ const getFormCopy = (mode: TransactionFormMode) => {
 
   return {
     title: "New transaction",
-    description: "Record income or an expense. Category is optional.",
+    description: "Record income or an expense",
   };
 };
 
@@ -114,9 +127,9 @@ function TransactionFormDrawer({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: getFormDefaults(mode),
   });
+  const amountInputRef = useRef<HTMLInputElement>(null);
   const { title, description } = getFormCopy(mode);
   const isCreate = mode.type === "create";
-  const hasCategories = categories.length > 0;
   const { errors, isSubmitting } = form.formState;
   const amountErrorId = "transaction-amount-error";
   const dateErrorId = "transaction-date-error";
@@ -124,7 +137,10 @@ function TransactionFormDrawer({
   const visibleSource = recurringProvenance?.source;
 
   return (
-    <DrawerContent className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem]">
+    <DrawerContent
+      className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem]"
+      initialFocus={isCreate ? amountInputRef : undefined}
+    >
       <DrawerHeader>
         <DrawerTitle>{title}</DrawerTitle>
         <DrawerDescription>{description}</DrawerDescription>
@@ -169,7 +185,14 @@ function TransactionFormDrawer({
                   }}
                 >
                   {TRANSACTION_TYPES.map((type) => (
-                    <ToggleGroupItem key={type} value={type} className="flex-1 capitalize">
+                    <ToggleGroupItem key={type} value={type} className="flex-1 gap-1.5 capitalize">
+                      <HugeiconsIcon
+                        icon={TRANSACTION_TYPE_CONTROLS[type].icon}
+                        className={TRANSACTION_TYPE_CONTROLS[type].iconClassName}
+                        strokeWidth={2}
+                        data-icon="inline-start"
+                        aria-hidden="true"
+                      />
                       {type}
                     </ToggleGroupItem>
                   ))}
@@ -190,7 +213,6 @@ function TransactionFormDrawer({
                     id="transaction-amount"
                     type="text"
                     inputMode="decimal"
-                    autoFocus={isCreate}
                     placeholder="0.00"
                     aria-describedby={errors.amount ? amountErrorId : undefined}
                     aria-invalid={Boolean(errors.amount)}
@@ -204,7 +226,10 @@ function TransactionFormDrawer({
                       }
                     }}
                     name={field.name}
-                    ref={field.ref}
+                    ref={(element) => {
+                      field.ref(element);
+                      amountInputRef.current = element;
+                    }}
                     onChange={(event) => {
                       const nextValue = event.target.value;
 
@@ -219,12 +244,11 @@ function TransactionFormDrawer({
                 </InputGroup>
               )}
             />
-            <FieldDescription>Zero or greater. Enter the value in euros.</FieldDescription>
             <FieldError id={amountErrorId}>{errors.amount?.message}</FieldError>
           </Field>
 
           <Field data-invalid={Boolean(errors.transactionDate)}>
-            <FieldLabel>Date</FieldLabel>
+            <FieldLabel>Date and time</FieldLabel>
             <Controller
               control={form.control}
               name="transactionDate"
@@ -246,6 +270,12 @@ function TransactionFormDrawer({
                           />
                         }
                       >
+                        <HugeiconsIcon
+                          icon={Calendar03Icon}
+                          strokeWidth={2}
+                          data-icon="inline-start"
+                          aria-hidden="true"
+                        />
                         {formatDateLabel(date)}
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -262,21 +292,32 @@ function TransactionFormDrawer({
                         />
                       </PopoverContent>
                     </Popover>
-                    <Input
-                      id="transaction-time"
-                      type="time"
-                      className="w-28 shrink-0 bg-background"
-                      aria-invalid={Boolean(errors.transactionDate)}
-                      value={time}
-                      onChange={(event) => {
-                        field.onChange(combineDateTime(date, event.target.value));
-                      }}
-                    />
+                    <InputGroup className="w-28 shrink-0">
+                      <InputGroupInput
+                        id="transaction-time"
+                        type="time"
+                        step="60"
+                        className="appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                        aria-label="Time"
+                        aria-invalid={Boolean(errors.transactionDate)}
+                        defaultValue={time}
+                        onChange={(event) => {
+                          field.onChange(combineDateTime(date, event.target.value));
+                        }}
+                      />
+                      <InputGroupAddon align="inline-start">
+                        <HugeiconsIcon
+                          icon={Clock01Icon}
+                          strokeWidth={2}
+                          data-icon="inline-start"
+                          aria-hidden="true"
+                        />
+                      </InputGroupAddon>
+                    </InputGroup>
                   </div>
                 );
               }}
             />
-            <FieldDescription>Date and time when the transaction occurred.</FieldDescription>
             <FieldError id={dateErrorId}>{errors.transactionDate?.message}</FieldError>
           </Field>
 
@@ -286,29 +327,16 @@ function TransactionFormDrawer({
               control={form.control}
               name="transactionCategoryId"
               render={({ field }) => (
-                <CategoryDrawerSelect
+                <TransactionCategoryCombobox
                   id="transaction-category-trigger"
-                  mode="single"
                   categories={categories}
                   value={field.value ? field.value : null}
                   onChange={(next) => field.onChange(next ?? "")}
                   onBlur={field.onBlur}
                   parentOpen={open}
-                  clearable
-                  placeholder="Uncategorized"
-                  ariaLabel="Choose category"
-                  drawerTitle="Select category"
-                  drawerDescription="Optional. Pick a category for this transaction."
-                  backAriaLabel="Back to transaction"
-                  emptyListMessage="No categories yet. Create some under Cash flow → Categories."
                 />
               )}
             />
-            <FieldDescription>
-              {hasCategories
-                ? "Optional. Leave empty for uncategorized."
-                : "Optional. Create categories under Cash flow → Categories to group transactions."}
-            </FieldDescription>
           </Field>
 
           <Field>
@@ -318,7 +346,6 @@ function TransactionFormDrawer({
               placeholder="Coffee, salary, rent..."
               {...form.register("description")}
             />
-            <FieldDescription>Short label shown in the transaction list.</FieldDescription>
           </Field>
 
           <Field>
