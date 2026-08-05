@@ -9,6 +9,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
+import { format, parseISO } from "date-fns";
 import { useEffect, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Calendar } from "@/components/ui/calendar";
 import {
   DrawerClose,
   DrawerContent,
@@ -39,6 +41,7 @@ import {
   InputGroupInput,
   InputGroupText,
 } from "@/components/ui/input-group";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -92,6 +95,14 @@ const MONTHLY_DAY_OPTIONS = Array.from({ length: 31 }, (_, index) => {
   const value = index + 1;
   return { value: String(value), label: formatRecurringOrdinal(value) };
 });
+
+const formatDateLabel = (dateValue: string) => {
+  if (!dateValue) {
+    return "Pick a date";
+  }
+
+  return format(parseISO(dateValue), "MMM d, yyyy");
+};
 
 interface RecurringFormDrawerProps {
   mode: RecurringFormMode;
@@ -423,41 +434,58 @@ export function RecurringFormDrawer({
                 name="firstScheduledLocal"
                 render={({ field }) => {
                   const { date, time } = splitDateTime(field.value);
+                  const selectedDate = date ? parseISO(date) : undefined;
 
                   return (
                     <div className="flex gap-2">
-                      <InputGroup className="min-w-0 flex-1">
-                        <InputGroupInput
-                          id="recurring-first-date"
-                          type="date"
-                          className="appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                          aria-describedby={errors.firstScheduledLocal ? dateErrorId : undefined}
-                          aria-invalid={Boolean(errors.firstScheduledLocal)}
-                          value={date}
-                          disabled={isAdopt || configLocked}
-                          onChange={(event) => {
-                            field.onChange(combineDateTime(event.target.value, time));
-                          }}
-                        />
-                        <InputGroupAddon align="inline-start">
+                      <Popover>
+                        <PopoverTrigger
+                          render={
+                            <Button
+                              id="recurring-first-date"
+                              type="button"
+                              variant="outline"
+                              className="min-w-0 flex-1 justify-start font-normal"
+                              aria-describedby={
+                                errors.firstScheduledLocal ? dateErrorId : undefined
+                              }
+                              aria-invalid={Boolean(errors.firstScheduledLocal)}
+                              disabled={isAdopt || configLocked}
+                            />
+                          }
+                        >
                           <HugeiconsIcon
                             icon={Calendar03Icon}
                             strokeWidth={2}
                             data-icon="inline-start"
                             aria-hidden="true"
                           />
-                        </InputGroupAddon>
-                      </InputGroup>
+                          {formatDateLabel(date)}
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={(nextDate) => {
+                              if (!nextDate) {
+                                return;
+                              }
+
+                              field.onChange(combineDateTime(format(nextDate, "yyyy-MM-dd"), time));
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
                       <InputGroup className="w-28 shrink-0">
                         <InputGroupInput
                           id="recurring-first-time"
                           type="time"
-                          step="1"
+                          step="60"
                           className="appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
                           aria-label="Time"
                           aria-describedby={errors.firstScheduledLocal ? dateErrorId : undefined}
                           aria-invalid={Boolean(errors.firstScheduledLocal)}
-                          value={time}
+                          defaultValue={time}
                           disabled={isAdopt || configLocked}
                           onChange={(event) => {
                             field.onChange(combineDateTime(date, event.target.value));

@@ -47,7 +47,7 @@ describe("TransactionFormDrawer", () => {
     expect(screen.queryByText("Date and time when the transaction occurred.")).toBeNull();
   });
 
-  it("uses the shadcn time input styling for the transaction time", () => {
+  it("uses minute precision for native time editing", () => {
     render(
       <Drawer open swipeDirection="right">
         <TransactionFormDrawer
@@ -62,10 +62,14 @@ describe("TransactionFormDrawer", () => {
     const timeInput = document.getElementById("transaction-time");
     expect(timeInput).not.toBeNull();
     expect(timeInput).toHaveProperty("type", "time");
-    expect(timeInput?.getAttribute("step")).toBe("1");
+    expect(timeInput?.getAttribute("data-slot")).toBe("input-group-control");
+    expect(timeInput?.getAttribute("step")).toBe("60");
     expect(timeInput?.classList.contains("appearance-none")).toBe(true);
     expect(timeInput?.classList.contains("[&::-webkit-calendar-picker-indicator]:hidden")).toBe(
       true,
     );
+    const timeGroup = timeInput?.closest('[data-slot="input-group"]');
+    expect(timeGroup).not.toBeNull();
+    expect(timeGroup?.querySelector("svg[data-icon='inline-start']")).not.toBeNull();
   });
 });

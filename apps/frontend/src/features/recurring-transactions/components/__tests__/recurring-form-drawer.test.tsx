@@ -394,14 +394,16 @@ describe("RecurringFormDrawer", () => {
     expect(notesField?.nextElementSibling).toBe(firstOccurrenceField);
     expect(firstOccurrenceField?.nextElementSibling).toBe(scheduleField);
     expect(firstOccurrenceField?.querySelector('input[type="datetime-local"]')).toBeNull();
-    const dateInput = firstOccurrenceField?.querySelector("#recurring-first-date");
-    expect(dateInput).not.toBeNull();
-    expect(dateInput).toHaveProperty("type", "date");
-    expect(firstOccurrenceField?.querySelector("button")).toBeNull();
+    const datePicker = firstOccurrenceField?.querySelector("#recurring-first-date");
+    expect(datePicker).not.toBeNull();
+    expect(datePicker).toHaveProperty("type", "button");
+    expect(datePicker?.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(firstOccurrenceField?.querySelector('input[type="date"]')).toBeNull();
+    expect(firstOccurrenceField?.querySelector("button")).not.toBeNull();
     const timeInput = firstOccurrenceField?.querySelector("#recurring-first-time");
     expect(timeInput).not.toBeNull();
     expect(timeInput).toHaveProperty("type", "time");
-    expect(timeInput?.getAttribute("step")).toBe("1");
+    expect(timeInput?.getAttribute("step")).toBe("60");
     expect(timeInput?.classList.contains("appearance-none")).toBe(true);
     expect(timeInput?.classList.contains("[&::-webkit-calendar-picker-indicator]:hidden")).toBe(
       true,

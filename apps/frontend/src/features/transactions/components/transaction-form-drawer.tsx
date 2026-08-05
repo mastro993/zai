@@ -1,5 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowDown01Icon, ArrowUp01Icon, Calendar03Icon } from "@hugeicons/core-free-icons";
+import {
+  ArrowDown01Icon,
+  ArrowUp01Icon,
+  Calendar03Icon,
+  Clock01Icon,
+} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { format, parseISO } from "date-fns";
 import { Controller, useForm } from "react-hook-form";
@@ -287,18 +292,28 @@ function TransactionFormDrawer({
                         />
                       </PopoverContent>
                     </Popover>
-                    <Input
-                      id="transaction-time"
-                      type="time"
-                      step="1"
-                      className="w-28 shrink-0 bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                      aria-label="Time"
-                      aria-invalid={Boolean(errors.transactionDate)}
-                      value={time}
-                      onChange={(event) => {
-                        field.onChange(combineDateTime(date, event.target.value));
-                      }}
-                    />
+                    <InputGroup className="w-28 shrink-0">
+                      <InputGroupInput
+                        id="transaction-time"
+                        type="time"
+                        step="60"
+                        className="appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                        aria-label="Time"
+                        aria-invalid={Boolean(errors.transactionDate)}
+                        defaultValue={time}
+                        onChange={(event) => {
+                          field.onChange(combineDateTime(date, event.target.value));
+                        }}
+                      />
+                      <InputGroupAddon align="inline-start">
+                        <HugeiconsIcon
+                          icon={Clock01Icon}
+                          strokeWidth={2}
+                          data-icon="inline-start"
+                          aria-hidden="true"
+                        />
+                      </InputGroupAddon>
+                    </InputGroup>
                   </div>
                 );
               }}
