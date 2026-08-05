@@ -8,7 +8,7 @@ const apiOrigin = process.env.VITE_ZAI_API_ORIGIN ?? "http://127.0.0.1:3000";
 
 export default defineConfig({
   testDir: "e2e",
-  fullyParallel: false,
+  fullyParallel: true,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
@@ -16,10 +16,18 @@ export default defineConfig({
   expect: {
     timeout: 15_000,
   },
+  reporter: "list",
+  outputDir: "test-results",
   use: {
     ...devices["Desktop Chrome"],
     baseURL: "http://127.0.0.1:1420",
+    actionTimeout: 15_000,
+    navigationTimeout: 30_000,
+    screenshot: "only-on-failure",
+    trace: "retain-on-failure",
+    video: "off",
   },
+  maxFailures: Number.parseInt(process.env.PLAYWRIGHT_MAX_FAILURES ?? "0", 10),
   webServer: [
     {
       command: "cargo run -p zai-server",
