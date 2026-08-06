@@ -81,7 +81,6 @@ jobs:
       CARGO_TERM_COLOR: always
       RUSTFLAGS: "-C debuginfo=0"
       PLAYWRIGHT_MAX_FAILURES: "1"
-      ZAI_DATA_DIR: ${{ runner.temp }}/zai-e2e-${{ matrix.shard }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -117,6 +116,8 @@ jobs:
           echo "E2E_SETUP_DURATION=$((setup_end - E2E_JOB_START))" >> "$GITHUB_ENV"
 
       - name: Run web E2E shard
+        env:
+          ZAI_DATA_DIR: ${{ runner.temp }}/zai-e2e-${{ matrix.shard }}
         run: |
           test_start=$(date +%s)
           set +e
