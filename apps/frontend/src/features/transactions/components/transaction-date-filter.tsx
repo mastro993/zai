@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Calendar03Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -69,13 +70,13 @@ export function TransactionDateFilter({
   };
 
   return (
-    <div className="flex items-center">
+    <ButtonGroup aria-label="Date filter">
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger
           render={
             <Button
               type="button"
-              variant="outline"
+              variant={active ? "secondary" : "outline"}
               className={cn("justify-start gap-2 font-normal", !active && "text-muted-foreground")}
             />
           }
@@ -114,18 +115,17 @@ export function TransactionDateFilter({
           </div>
         </PopoverContent>
       </Popover>
-
       {active ? (
         <Button
           type="button"
-          variant="ghost"
-          size="icon-sm"
+          variant="secondary"
+          size="icon"
           aria-label="Clear date filter"
           onClick={() => onSelectionChange(DEFAULT_DATE_SELECTION)}
         >
           <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
         </Button>
       ) : null}
-    </div>
+    </ButtonGroup>
   );
 }

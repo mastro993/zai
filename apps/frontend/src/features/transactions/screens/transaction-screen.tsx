@@ -1,9 +1,21 @@
+import { DownloadIcon, TransactionHistoryIcon, UploadIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { toast } from "@/components/toaster/toast";
 
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Drawer } from "@/components/ui/drawer";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { TransactionBulkDeleteDialog } from "../components/transaction-bulk-delete-dialog";
 import { TransactionCategoryFilter } from "../components/transaction-category-filter";
@@ -15,7 +27,7 @@ import { TransactionPagination } from "../components/transaction-pagination";
 import { TransactionSelectionBar } from "../components/transaction-selection-bar";
 import { TransactionTable } from "../components/transaction-table";
 import { TransactionTypeFilter } from "../components/transaction-type-filter";
-import { RecurringAdoptDrawer } from "@/features/recurring-transactions/components/recurring-adopt-drawer";
+import { RecurringFormDrawer } from "@/features/recurring-transactions/components/recurring-form-drawer";
 import { useTransactionActions } from "../hooks/use-transaction-actions";
 import {
   useTransactionListController,
@@ -29,68 +41,102 @@ interface TransactionScreenProps {
 export function TransactionScreen({ initialData }: TransactionScreenProps) {
   const controller = useTransactionListController(initialData);
   const actions = useTransactionActions(controller);
+  const showFilters = controller.transactions.length > 0 || controller.hasActiveFilters;
+  const importTransactionsButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon-sm"
+      aria-label="Import transactions"
+      onClick={() => actions.setIsImportDialogOpen(true)}
+    >
+      <HugeiconsIcon icon={UploadIcon} strokeWidth={2} />
+    </Button>
+  );
+  const exportTransactionsLabel = actions.isExporting
+    ? actions.selectedCount > 0
+      ? "Exporting selected transactions"
+      : "Exporting transactions"
+    : actions.selectedCount > 0
+      ? "Export selected transactions"
+      : "Export transactions";
+  const exportTransactionsButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon-sm"
+      aria-label={exportTransactionsLabel}
+      aria-busy={actions.isExporting}
+      disabled={
+        controller.isLoading ||
+        actions.isExporting ||
+        (actions.selectedCount === 0 && controller.transactions.length === 0)
+      }
+      onClick={actions.exportTransactionCsv}
+    >
+      <HugeiconsIcon icon={DownloadIcon} strokeWidth={2} />
+    </Button>
+  );
 
   return (
     <ScreenBase
       actions={
         <>
-          <Button variant="outline" onClick={() => actions.setIsImportDialogOpen(true)}>
-            Import transactions
-          </Button>
-          <Button
-            variant="outline"
-            disabled={
-              controller.isLoading ||
-              actions.isExporting ||
-              (actions.selectedCount === 0 && controller.transactions.length === 0)
-            }
-            onClick={actions.exportTransactionCsv}
-          >
-            {actions.isExporting
-              ? actions.selectedCount > 0
-                ? "Exporting selected..."
-                : "Exporting..."
-              : actions.selectedCount > 0
-                ? "Export selected transactions"
-                : "Export transactions"}
-          </Button>
-          <Button onClick={() => actions.openFormDrawer({ type: "create" })}>
-            New transaction
-          </Button>
+          {showFilters ? (
+            <TooltipProvider>
+              <ButtonGroup aria-label="Transaction file actions">
+                <Tooltip>
+                  <TooltipTrigger render={importTransactionsButton} />
+                  <TooltipContent>Import transactions</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger render={exportTransactionsButton} />
+                  <TooltipContent>{exportTransactionsLabel}</TooltipContent>
+                </Tooltip>
+              </ButtonGroup>
+            </TooltipProvider>
+          ) : null}
+          {showFilters ? (
+            <Button size="sm" onClick={() => actions.openFormDrawer({ type: "create" })}>
+              New transaction
+            </Button>
+          ) : null}
         </>
       }
     >
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <TransactionSelectionBar
-          selectedCount={actions.selectedCount}
-          isDeleting={actions.isBulkDeleting}
-          onDelete={() => actions.setIsBulkDeleteDialogOpen(true)}
-          onClearSelection={actions.clearSelection}
-        />
-        <Input
-          type="search"
-          placeholder="Search description or notes..."
-          value={controller.query}
-          className="w-72"
-          onChange={(event) => {
-            controller.setQuery(event.target.value);
-          }}
-        />
-        <TransactionDateFilter
-          selection={controller.dateSelection}
-          onSelectionChange={controller.changeDateSelection}
-        />
-        <TransactionTypeFilter
-          selection={controller.typeSelection}
-          onSelectionChange={controller.changeTypeSelection}
-        />
-        <TransactionCategoryFilter
-          categories={controller.categories}
-          selection={controller.categorySelection}
-          isLoading={controller.isLoading && controller.categories.length === 0}
-          onSelectionChange={controller.changeCategorySelection}
-        />
-      </div>
+      {showFilters ? (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <TransactionSelectionBar
+            selectedCount={actions.selectedCount}
+            isDeleting={actions.isBulkDeleting}
+            onDelete={() => actions.setIsBulkDeleteDialogOpen(true)}
+            onClearSelection={actions.clearSelection}
+          />
+          <Input
+            type="search"
+            placeholder="Search description or notes..."
+            value={controller.query}
+            className="w-72"
+            onChange={(event) => {
+              controller.setQuery(event.target.value);
+            }}
+          />
+          <TransactionDateFilter
+            selection={controller.dateSelection}
+            onSelectionChange={controller.changeDateSelection}
+          />
+          <TransactionTypeFilter
+            selection={controller.typeSelection}
+            onSelectionChange={controller.changeTypeSelection}
+          />
+          <TransactionCategoryFilter
+            categories={controller.categories}
+            selection={controller.categorySelection}
+            isLoading={controller.isLoading && controller.categories.length === 0}
+            onSelectionChange={controller.changeCategorySelection}
+          />
+        </div>
+      ) : null}
 
       {controller.errorMessage ? (
         <div className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -108,16 +154,56 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
 
       {!controller.isLoading && controller.transactions.length === 0 ? (
         controller.hasActiveFilters ? (
-          <div className="flex flex-col items-start gap-3 border border-dashed p-6">
-            <p className="text-sm text-muted-foreground">No transactions match your filters.</p>
-            <Button variant="outline" size="sm" onClick={controller.clearFilters}>
-              Clear filters
-            </Button>
-          </div>
+          <Empty
+            role="region"
+            aria-label="No transactions match your filters"
+            className="flex-none gap-3 rounded-lg border p-6"
+          >
+            <EmptyHeader className="max-w-none gap-1.5">
+              <EmptyDescription>No transactions match your filters.</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent className="max-w-none">
+              <Button variant="outline" size="sm" onClick={controller.clearFilters}>
+                Clear filters
+              </Button>
+            </EmptyContent>
+          </Empty>
         ) : (
-          <p className="border border-dashed p-6 text-sm text-muted-foreground">
-            No transactions yet. Add income or an expense to start tracking cash flow.
-          </p>
+          <Empty
+            role="region"
+            aria-labelledby="transaction-empty-state-title"
+            className="min-h-72 rounded-lg border px-6 py-10 sm:px-8"
+          >
+            <EmptyHeader className="max-w-md gap-1.5">
+              <EmptyMedia variant="icon">
+                <HugeiconsIcon icon={TransactionHistoryIcon} strokeWidth={2} aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle
+                id="transaction-empty-state-title"
+                role="heading"
+                aria-level={2}
+                className="text-base"
+              >
+                No transactions yet
+              </EmptyTitle>
+              <EmptyDescription>
+                Add income or an expense to start tracking cash flow.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent className="max-w-none flex-row flex-wrap justify-center">
+              <Button onClick={() => actions.openFormDrawer({ type: "create" })}>
+                New transaction
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => actions.setIsImportDialogOpen(true)}
+              >
+                <HugeiconsIcon icon={UploadIcon} strokeWidth={2} data-icon="inline-start" />
+                Import transactions
+              </Button>
+            </EmptyContent>
+          </Empty>
         )
       ) : null}
 
@@ -228,10 +314,10 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
         swipeDirection="right"
       >
         {actions.adoptTransaction ? (
-          <RecurringAdoptDrawer
+          <RecurringFormDrawer
             key={actions.adoptTransaction.id}
+            mode={{ type: "adopt", transaction: actions.adoptTransaction }}
             open={actions.isAdoptDrawerOpen}
-            transaction={actions.adoptTransaction}
             categories={controller.categories}
             onOpenChange={actions.setIsAdoptDrawerOpen}
             onSubmit={actions.submitAdopt}

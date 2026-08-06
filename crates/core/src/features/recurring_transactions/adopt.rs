@@ -11,6 +11,7 @@ pub struct AdoptRecurringTransaction {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     pub transaction_id: String,
+    pub expected_transaction_date: NaiveDateTime,
     pub schedule: ScheduleRule,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub total_occurrences: Option<i32>,

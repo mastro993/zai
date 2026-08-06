@@ -10,6 +10,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useScreenBreadcrumbs } from "@/hooks/use-screen-breadcrumbs";
 import { cn } from "@/lib/utils";
@@ -70,7 +71,9 @@ export function ScreenBase({ actions, children, className }: ScreenBaseProps) {
           <AlertsBell />
         </div>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">{children}</div>
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="flex min-h-full flex-col gap-4 p-6">{children}</div>
+      </ScrollArea>
     </div>
   );
 }

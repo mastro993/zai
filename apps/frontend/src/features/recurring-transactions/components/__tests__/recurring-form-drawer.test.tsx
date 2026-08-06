@@ -1,19 +1,47 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Result } from "@praha/byethrow";
 import { useRef, useState } from "react";
 
 import { Drawer } from "@/components/ui/drawer";
-import type { CommandError } from "@/commands/errors";
+import { CommandError } from "@/commands/errors";
+import type { Transaction } from "@/features/transactions/types/model";
 
 import { RecurringFormDrawer } from "../recurring-form-drawer";
 import type {
+  RecurringAdoptOutcome,
   RecurringCreateOutcome,
   RecurringFormValues,
   RecurringTransactionDocument,
 } from "../../types/recurring-transaction";
+
+const adoptTransaction = {
+  id: "txn-adopt",
+  description: "Rent",
+  amount: 120_000,
+  transactionDate: "2026-04-21T10:00:00",
+  transactionType: "expense",
+  transactionCategoryId: null,
+  notes: "Paid by bank transfer",
+} satisfies Transaction;
+
+vi.mock("@/features/recurring-transactions/commands/recurring-transactions", async () => {
+  const actual = await vi.importActual(
+    "@/features/recurring-transactions/commands/recurring-transactions",
+  );
+  return {
+    ...(actual as object),
+    previewRecurringAdoption: vi.fn(async () =>
+      Result.succeed({
+        transactionId: adoptTransaction.id,
+        firstScheduledLocal: adoptTransaction.transactionDate,
+        laterDueCount: 2,
+      }),
+    ),
+  };
+});
 
 afterEach(() => {
   cleanup();
@@ -48,7 +76,352 @@ function Harness({
   );
 }
 
+function AdoptHarness({
+  onSubmit,
+  transaction = adoptTransaction,
+}: {
+  onSubmit: (
+    values: RecurringFormValues,
+  ) => Promise<Result.Result<RecurringAdoptOutcome, CommandError>>;
+  transaction?: Transaction;
+}) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <Drawer open={open} onOpenChange={setOpen} swipeDirection="right">
+      <RecurringFormDrawer
+        mode={{ type: "adopt", transaction }}
+        open={open}
+        onOpenChange={setOpen}
+        onSubmit={onSubmit}
+        categories={[]}
+      />
+    </Drawer>
+  );
+}
+
+function chooseOption(triggerName: string, optionName: string) {
+  fireEvent.click(screen.getByRole("combobox", { name: triggerName }));
+  const option = screen.getByRole("option", { name: optionName });
+  fireEvent.pointerDown(option, { pointerType: "mouse" });
+  fireEvent.click(option);
+}
+
 describe("RecurringFormDrawer", () => {
+  it("disables adopted transaction fields in the shared form", () => {
+    const onSubmit =
+      vi.fn<
+        (values: RecurringFormValues) => Promise<Result.Result<RecurringAdoptOutcome, CommandError>>
+      >();
+
+    render(<AdoptHarness onSubmit={onSubmit} />);
+
+    expect(screen.getByRole("heading", { name: "Adopt as recurring" })).toBeTruthy();
+    expect(
+      screen.getByText(
+        "This transaction becomes occurrence 1. Choose the schedule and total occurrences.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Transaction details and first occurrence come from the source transaction and cannot be changed here.",
+      ),
+    ).toBeTruthy();
+    const sourceAlert = screen.getByRole("alert");
+    const notesField = screen.getByText("Notes").closest('[data-slot="field"]');
+    expect(sourceAlert.getAttribute("data-slot")).toBe("alert");
+    expect(notesField?.nextElementSibling).toBe(sourceAlert);
+    expect(sourceAlert.nextElementSibling?.getAttribute("data-slot")).toBe("field-separator");
+    expect(sourceAlert.classList.contains("bg-secondary")).toBe(true);
+    expect(sourceAlert.classList.contains("text-secondary-foreground")).toBe(true);
+    expect(within(sourceAlert).getByText("Source transaction")).toBeTruthy();
+    expect(
+      sourceAlert.querySelector("[data-slot='alert-title']")?.classList.contains("text-primary"),
+    ).toBe(true);
+    expect(sourceAlert.querySelector("svg")?.classList.contains("text-primary")).toBe(true);
+
+    const typeGroup = screen.getByRole("group", { name: "Transaction type" });
+    expect(within(typeGroup).getByRole("button", { name: "expense" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(screen.getByLabelText("Amount")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Amount")).toHaveProperty("value", "1200.00");
+    expect(screen.getByLabelText("Category")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Category")).toHaveProperty("value", "Uncategorized");
+    expect(screen.getByLabelText("Description")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Description")).toHaveProperty("value", "Rent");
+    expect(screen.getByLabelText("Notes")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Notes")).toHaveProperty("value", "Paid by bank transfer");
+    expect(screen.getByLabelText("First occurrence")).toHaveProperty("disabled", true);
+    expect(document.getElementById("recurring-first-time")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Schedule mode")).toHaveProperty("disabled", false);
+  });
+
+  it("explains that the adopted transaction counts as occurrence one", () => {
+    const onSubmit =
+      vi.fn<
+        (values: RecurringFormValues) => Promise<Result.Result<RecurringAdoptOutcome, CommandError>>
+      >();
+
+    render(<AdoptHarness onSubmit={onSubmit} />);
+
+    expect(
+      screen.getByText(
+        "Includes this transaction as occurrence 1. Leave blank to continue until stopped.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("does not mislabel an unavailable source category as uncategorized", () => {
+    const onSubmit =
+      vi.fn<
+        (values: RecurringFormValues) => Promise<Result.Result<RecurringAdoptOutcome, CommandError>>
+      >();
+
+    render(
+      <AdoptHarness
+        onSubmit={onSubmit}
+        transaction={{ ...adoptTransaction, transactionCategoryId: "missing-category" }}
+      />,
+    );
+
+    expect(screen.getByLabelText("Category")).toHaveProperty("value", "Category unavailable");
+  });
+
+  it("previews later due occurrences before enabling adoption", async () => {
+    const onSubmit =
+      vi.fn<
+        (values: RecurringFormValues) => Promise<Result.Result<RecurringAdoptOutcome, CommandError>>
+      >();
+
+    render(<AdoptHarness onSubmit={onSubmit} />);
+
+    expect(screen.getByRole("button", { name: "Confirm adoption" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    await waitFor(() => {
+      const statusAlert = screen.getByRole("status");
+      expect(
+        within(statusAlert).getByText("Confirming will catch up 2 later due occurrences."),
+      ).toBeTruthy();
+    });
+    const statusAlert = screen.getByRole("status");
+    expect(statusAlert.getAttribute("data-slot")).toBe("alert");
+    expect(within(statusAlert).getByText("Catch up occurrences")).toBeTruthy();
+    expect(statusAlert.querySelector("svg")).not.toBeNull();
+    expect(statusAlert.classList.contains("border-amber-500/30")).toBe(true);
+    expect(statusAlert.classList.contains("mb-2")).toBe(true);
+    expect(screen.getByRole("button", { name: "Confirm adoption" })).toHaveProperty(
+      "disabled",
+      false,
+    );
+  });
+
+  it("uses the transaction entry controls for recurring template fields", () => {
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    expect(screen.getByText("Record a recurring income or expense")).toBeDefined();
+
+    const typeGroup = screen.getByRole("group", { name: "Transaction type" });
+    const expense = within(typeGroup).getByRole("button", { name: "expense" });
+    const income = within(typeGroup).getByRole("button", { name: "income" });
+
+    expect(expense.querySelector("svg[data-icon='inline-start']")).not.toBeNull();
+    expect(income.querySelector("svg[data-icon='inline-start']")).not.toBeNull();
+    expect(expense.querySelector("svg")?.classList.contains("text-destructive")).toBe(true);
+    expect(income.querySelector("svg")?.classList.contains("text-primary")).toBe(true);
+
+    const amount = screen.getByLabelText("Amount");
+    expect(amount.getAttribute("placeholder")).toBe("0.00");
+    expect(screen.getByText("EUR")).toBeDefined();
+
+    expect(screen.getByRole("combobox", { name: "Choose category" })).toBeDefined();
+    expect(screen.getByLabelText("Description").getAttribute("placeholder")).toBe(
+      "Coffee, salary, rent...",
+    );
+
+    const notes = screen.getByLabelText("Notes");
+    expect(notes.tagName).toBe("TEXTAREA");
+    expect(notes.getAttribute("placeholder")).toBe("Optional details for your own reference");
+  });
+
+  it("removes the drawer footer padding already provided by the form", () => {
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    const footer = document.querySelector('[data-slot="drawer-footer"]');
+    expect(footer?.classList.contains("p-0")).toBe(true);
+  });
+
+  it("renders one occurrence input with an indefinite placeholder", () => {
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    const occurrences = screen.getByLabelText("Occurrences");
+    expect(occurrences).toHaveProperty("type", "number");
+    expect(occurrences).toHaveProperty("value", "");
+    expect(occurrences.getAttribute("placeholder")).toBe("Until stopped");
+    expect(occurrences.getAttribute("aria-describedby")).toBe("recurring-total-description");
+    expect(
+      screen
+        .getByText(
+          "Enter a number to stop after that many occurrences. Leave blank to continue until you stop the recurring transaction.",
+        )
+        .getAttribute("id"),
+    ).toBe("recurring-total-description");
+    expect(screen.queryByText("Total")).toBeNull();
+    expect(screen.queryByText("Indefinite")).toBeNull();
+    expect(screen.queryByText("Finite")).toBeNull();
+  });
+
+  it("renders the default schedule as one joined Every input group", () => {
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    const scheduleGroup = screen.getByRole("group", { name: "Schedule" });
+    expect(scheduleGroup).toBeDefined();
+    expect(
+      within(scheduleGroup).getByRole("combobox", { name: "Schedule mode" }).textContent,
+    ).toContain("Every");
+    const interval = within(scheduleGroup).getByRole("spinbutton", { name: "Interval value" });
+    expect(interval).toHaveProperty("value", "1");
+    expect(interval).toHaveProperty("type", "number");
+    expect(interval.getAttribute("min")).toBe("1");
+    expect(interval.getAttribute("step")).toBe("1");
+    expect(
+      within(scheduleGroup).getByRole("combobox", { name: "Interval unit" }).textContent,
+    ).toContain("month");
+    expect(screen.queryByText("of the month")).toBeNull();
+  });
+
+  it("preserves interval and monthly day values while switching schedule modes", () => {
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Interval value" }), {
+      target: { value: "2" },
+    });
+    expect(screen.getByRole("combobox", { name: "Interval unit" }).textContent).toContain("months");
+    chooseOption("Interval unit", "weeks");
+    expect(screen.getByRole("combobox", { name: "Interval unit" }).textContent).toContain("weeks");
+
+    chooseOption("Schedule mode", "On");
+
+    expect(screen.getByText("of the month")).toBeDefined();
+    const monthlyDay = screen.getByRole("combobox", { name: "Monthly day" });
+    expect(monthlyDay.textContent).toContain("1st");
+    expect(monthlyDay.classList.contains("w-full")).toBe(true);
+    chooseOption("Monthly day", "31st");
+
+    chooseOption("Schedule mode", "Every");
+
+    expect(screen.getByRole("spinbutton", { name: "Interval value" })).toHaveProperty("value", "2");
+    expect(screen.getByRole("combobox", { name: "Interval unit" }).textContent).toContain("weeks");
+
+    chooseOption("Schedule mode", "On");
+    expect(screen.getByRole("combobox", { name: "Monthly day" }).textContent).toContain("31st");
+  });
+
+  it("submits the selected monthly day schedule values", async () => {
+    const onSubmit = vi.fn(async (values: RecurringFormValues) => {
+      expect(values.scheduleKind).toBe("monthlyDay");
+      expect(values.monthlyDay).toBe("31");
+      return Result.fail(new CommandError("test submission"));
+    });
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    chooseOption("Schedule mode", "On");
+    chooseOption("Monthly day", "31st");
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Rent" } });
+    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "1200.00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create recurring transaction" }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("places first occurrence after notes and before schedule", () => {
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    const firstOccurrenceField = screen
+      .getByText("First occurrence")
+      .closest('[data-slot="field"]');
+    const categoryField = screen.getByText("Category").closest('[data-slot="field"]');
+    const descriptionField = screen.getByText("Description").closest('[data-slot="field"]');
+    const notesField = screen.getByText("Notes").closest('[data-slot="field"]');
+    const scheduleField = screen.getByText("Schedule").closest('[data-slot="field"]');
+
+    expect(firstOccurrenceField).not.toBeNull();
+    expect(categoryField).not.toBeNull();
+    expect(descriptionField).not.toBeNull();
+    expect(notesField).not.toBeNull();
+    expect(scheduleField).not.toBeNull();
+    expect(categoryField?.nextElementSibling).toBe(descriptionField);
+    const separator = notesField?.nextElementSibling;
+    expect(separator?.getAttribute("data-slot")).toBe("field-separator");
+    expect(separator?.querySelector('[data-slot="separator"]')).not.toBeNull();
+    expect(separator?.nextElementSibling).toBe(firstOccurrenceField);
+    expect(firstOccurrenceField?.nextElementSibling).toBe(scheduleField);
+    expect(firstOccurrenceField?.querySelector('input[type="datetime-local"]')).toBeNull();
+    const datePicker = firstOccurrenceField?.querySelector("#recurring-first-date");
+    expect(datePicker).not.toBeNull();
+    expect(datePicker).toHaveProperty("type", "button");
+    expect(datePicker?.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(firstOccurrenceField?.querySelector('input[type="date"]')).toBeNull();
+    expect(firstOccurrenceField?.querySelector("button")).not.toBeNull();
+    const timeInput = firstOccurrenceField?.querySelector("#recurring-first-time");
+    expect(timeInput).not.toBeNull();
+    expect(timeInput).toHaveProperty("type", "time");
+    expect(timeInput?.getAttribute("step")).toBe("60");
+    expect(timeInput?.classList.contains("appearance-none")).toBe(true);
+    expect(timeInput?.classList.contains("[&::-webkit-calendar-picker-indicator]:hidden")).toBe(
+      true,
+    );
+    expect(firstOccurrenceField?.querySelectorAll('svg[data-icon="inline-start"]')).toHaveLength(2);
+  });
+
   it("submits a valid create and returns focus to the trigger", async () => {
     const onSubmit = vi.fn(async (values: RecurringFormValues) => {
       expect(values.description).toBe("Gym");

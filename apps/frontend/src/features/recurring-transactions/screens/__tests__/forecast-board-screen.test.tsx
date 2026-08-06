@@ -232,8 +232,8 @@ import { routeTree } from "@/routeTree.gen";
 async function renderPath(pathname: string) {
   const history = createMemoryHistory({ initialEntries: [pathname] });
   const router = createRouter({ routeTree, history });
-  render(<RouterProvider router={router} />);
   await router.load();
+  render(<RouterProvider router={router} />);
   return router;
 }
 
@@ -268,8 +268,13 @@ describe("forecast board screen", () => {
 
   it("renders the budgets-by-periods matrix with cell values", async () => {
     await renderPath("/cash-flow/forecast");
-    expect(await screen.findByRole("heading", { name: "Forecast" })).toBeTruthy();
-    expect(screen.getByRole("table", { name: "Budget forecast matrix" })).toBeTruthy();
+    expect(await screen.findByRole("table", { name: "Budget forecast matrix" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Forecast" })).toBeNull();
+    expect(
+      screen.queryByText(
+        "Projected budget impact across periods. Forecast values are non-authoritative and do not change recorded budget state.",
+      ),
+    ).toBeNull();
     expect(screen.getByRole("rowheader", { name: "Housing" })).toBeTruthy();
     expect(screen.getAllByText("actual").length).toBeGreaterThan(0);
     expect(screen.getAllByText("+ proj").length).toBeGreaterThan(0);
@@ -324,7 +329,25 @@ describe("forecast board screen", () => {
   it("shows empty and error states distinctly", async () => {
     projectionState.mode = "empty";
     await renderPath("/cash-flow/forecast");
-    expect(await screen.findByText("No forecast periods")).toBeTruthy();
+    const emptyState = await screen.findByRole("region", { name: "No forecast periods" });
+    const emptyContent = emptyState.querySelector('[data-slot="empty-content"]');
+
+    expect(emptyState.classList.contains("border")).toBe(true);
+    expect(emptyState.classList.contains("border-dashed")).toBe(true);
+    expect(emptyState.querySelector('[data-slot="empty-icon"]')).not.toBeNull();
+    expect(emptyContent?.classList.contains("justify-center")).toBe(true);
+    expect(screen.getByRole("heading", { name: "No forecast periods" })).toBeTruthy();
+    expect(
+      within(emptyState).getByText(
+        "Create an active budget and recurring source, or include paused budgets to inspect history.",
+      ),
+    ).toBeTruthy();
+    const budgetsLink = within(emptyState).getByRole("button", { name: "Open budgets" });
+    const recurringLink = within(emptyState).getByRole("button", {
+      name: "Open recurring transactions",
+    });
+    expect(budgetsLink.getAttribute("href")).toBe("/cash-flow/budgets");
+    expect(recurringLink.getAttribute("href")).toBe("/cash-flow/recurring");
 
     cleanup();
     projectionState.mode = "error";
@@ -335,7 +358,7 @@ describe("forecast board screen", () => {
 
   it("refetches when horizon or paused toggle changes and separates refresh failure", async () => {
     await renderPath("/cash-flow/forecast");
-    await screen.findByRole("heading", { name: "Forecast" });
+    await screen.findByRole("table", { name: "Budget forecast matrix" });
 
     fireEvent.change(screen.getByLabelText("Horizon"), { target: { value: "3" } });
     await waitFor(() => {

@@ -79,7 +79,8 @@ static NEXT_TEMP_DATA_DIR: AtomicU64 = AtomicU64::new(1);
 impl TempDataDir {
     fn new() -> Self {
         let suffix = NEXT_TEMP_DATA_DIR.fetch_add(1, Ordering::Relaxed);
-        Self(std::env::temp_dir().join(format!("zai-tauri-recurring-smoke-{suffix}")))
+        let process_id = std::process::id();
+        Self(std::env::temp_dir().join(format!("zai-tauri-recurring-smoke-{process_id}-{suffix}")))
     }
 
     fn path(&self) -> &Path {

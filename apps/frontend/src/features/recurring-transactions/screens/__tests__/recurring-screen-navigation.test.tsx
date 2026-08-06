@@ -134,6 +134,7 @@ const documentFixture = {
 };
 
 const provenanceState = vi.hoisted(() => ({ sourceVisible: true }));
+const feedState = vi.hoisted(() => ({ empty: false }));
 
 vi.mock("@/features/recurring-transactions/commands/recurring-transactions", async () => {
   const { Result } = await import("@praha/byethrow");
@@ -141,14 +142,16 @@ vi.mock("@/features/recurring-transactions/commands/recurring-transactions", asy
     getRecurringTransactions: vi.fn(() =>
       Promise.resolve(
         Result.succeed({
-          items: [
-            {
-              recurringTransaction: documentFixture.recurringTransaction,
-              description: "Monthly rent",
-              nextScheduledLocal: "2026-09-01T09:00:00",
-              needsAttention: false,
-            },
-          ],
+          items: feedState.empty
+            ? []
+            : [
+                {
+                  recurringTransaction: documentFixture.recurringTransaction,
+                  description: "Monthly rent",
+                  nextScheduledLocal: "2026-09-01T09:00:00",
+                  needsAttention: false,
+                },
+              ],
           nextCursor: null,
         }),
       ),
@@ -269,15 +272,31 @@ describe("recurring screen navigation", () => {
   afterEach(() => {
     cleanup();
     provenanceState.sourceVisible = true;
+    feedState.empty = false;
   });
 
   it("shows the occurrence-card feed and create control", async () => {
     await renderPath("/cash-flow/recurring");
-    expect(await screen.findByRole("heading", { name: "Recurring transactions" })).toBeTruthy();
-    expect(screen.getByRole("feed", { name: "Recurring transactions" })).toBeTruthy();
+    expect(await screen.findByRole("feed", { name: "Recurring transactions" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Monthly rent" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "New recurring" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "New recurring" }).className).toContain("h-7");
     expect(screen.getByLabelText(/Monthly rent, Active/)).toBeTruthy();
+  });
+
+  it("shows the shared first-use empty state without list controls", async () => {
+    feedState.empty = true;
+    await renderPath("/cash-flow/recurring");
+
+    expect(
+      await screen.findByRole("heading", { name: "No recurring transactions yet" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("Create your first recurring transaction to start scheduling cash flow."),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "New recurring" })).toBeTruthy();
+    expect(screen.queryByLabelText("Recurring transaction filters")).toBeNull();
+    expect(screen.queryByRole("heading", { name: /^Recurring transactions$/ })).toBeNull();
+    expect(screen.queryByText("Create schedules and browse upcoming occurrence cards.")).toBeNull();
   });
 
   it("opens the full-bleed document with required sections", async () => {

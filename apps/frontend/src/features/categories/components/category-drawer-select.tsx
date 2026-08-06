@@ -21,6 +21,7 @@ interface CategoryDrawerSelectBase {
   drawerDescription?: string;
   backAriaLabel?: string;
   emptyListMessage?: string;
+  emptyListActionLabel?: string;
   parentOpen?: boolean;
   onBlur?: () => void;
   open?: boolean;
@@ -57,6 +58,7 @@ function CategoryDrawerSelect(props: CategoryDrawerSelectProps) {
     drawerDescription,
     backAriaLabel = "Back",
     emptyListMessage = "No categories yet.",
+    emptyListActionLabel,
     parentOpen,
     onBlur,
     open,
@@ -167,6 +169,7 @@ function CategoryDrawerSelect(props: CategoryDrawerSelectProps) {
           drawerDescription={drawerDescription}
           backAriaLabel={backAriaLabel}
           emptyListMessage={emptyListMessage}
+          emptyListActionLabel={emptyListActionLabel}
           searchInputId={searchInputId}
         />
       ) : (
@@ -182,6 +185,7 @@ function CategoryDrawerSelect(props: CategoryDrawerSelectProps) {
           drawerDescription={drawerDescription}
           backAriaLabel={backAriaLabel}
           emptyListMessage={emptyListMessage}
+          emptyListActionLabel={emptyListActionLabel}
           searchInputId={searchInputId}
         />
       )}

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Result } from "@praha/byethrow";
 
 import {
+  adoptRecurringTransaction,
   createRecurringTransaction,
   getRecurringProcessingStatus,
   getRecurringTransaction,
@@ -13,6 +14,7 @@ import {
   stopRecurringTransaction,
 } from "../recurring-transactions";
 import type { RecurringFormValues } from "../../types/recurring-transaction";
+import type { Transaction } from "@/features/transactions/types/model";
 
 const invokeMock = vi.hoisted(() => vi.fn());
 const isTauriMock = vi.hoisted(() => vi.fn());
@@ -79,7 +81,6 @@ describe("recurring Tauri command adapter", () => {
       intervalUnit: "day",
       monthlyDay: "1",
       firstScheduledLocal: "2026-01-10T09:00",
-      totalMode: "finite",
       totalOccurrences: "2",
       description: "Native smoke recurring",
       amount: 1200,
@@ -131,6 +132,76 @@ describe("recurring Tauri command adapter", () => {
     expect(invokeMock).toHaveBeenNthCalledWith(7, "stop_recurring_transaction", {
       recurringTransactionId: "source-1",
       expectedRevision: 3,
+    });
+  });
+
+  it("maps a blank occurrence count to an indefinite native payload", async () => {
+    invokeMock.mockResolvedValue({});
+
+    const values: RecurringFormValues = {
+      scheduleKind: "interval",
+      intervalEvery: "1",
+      intervalUnit: "month",
+      monthlyDay: "1",
+      firstScheduledLocal: "2026-01-10T09:00",
+      totalOccurrences: "",
+      description: "Indefinite recurring",
+      amount: 1200,
+      transactionType: "expense",
+      transactionCategoryId: undefined,
+      notes: undefined,
+    };
+
+    await createRecurringTransaction(values);
+
+    expect(invokeMock).toHaveBeenCalledWith("create_recurring_transaction", {
+      newRecurringTransaction: expect.objectContaining({
+        totalOccurrences: null,
+      }),
+    });
+  });
+
+  it("builds adoption template from source transaction", async () => {
+    invokeMock.mockResolvedValue({});
+    const transaction: Transaction = {
+      id: "transaction-1",
+      description: " Rent ",
+      amount: 120000,
+      transactionDate: "2026-01-10T09:00:00",
+      transactionType: "income",
+      transactionCategoryId: "housing",
+      notes: " Paid by bank transfer ",
+    };
+    const values: RecurringFormValues = {
+      scheduleKind: "interval",
+      intervalEvery: "2",
+      intervalUnit: "month",
+      monthlyDay: "1",
+      firstScheduledLocal: "2026-01-10T09:00",
+      totalOccurrences: "12",
+      description: "Rent",
+      amount: 120000,
+      transactionType: "income",
+      transactionCategoryId: "housing",
+      notes: "Paid by bank transfer",
+    };
+
+    await adoptRecurringTransaction(transaction, values);
+
+    expect(invokeMock).toHaveBeenCalledWith("adopt_recurring_transaction", {
+      request: {
+        transactionId: "transaction-1",
+        expectedTransactionDate: "2026-01-10T09:00:00",
+        schedule: { type: "interval", every: 2, unit: "month" },
+        totalOccurrences: 12,
+        template: {
+          description: "Rent",
+          amount: 120000,
+          transactionType: "income",
+          transactionCategoryId: "housing",
+          notes: "Paid by bank transfer",
+        },
+      },
     });
   });
 });

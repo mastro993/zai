@@ -1,8 +1,20 @@
+import { Calendar03Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
+import { Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Label } from "@/components/ui/label";
 import { ScreenBase } from "@/components/screen-base";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -101,14 +113,6 @@ export function ForecastBoardScreen({ initialProjection }: ForecastBoardScreenPr
       }
     >
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-medium">Forecast</h1>
-          <p className="text-sm text-muted-foreground">
-            Projected budget impact across periods. Forecast values are non-authoritative and do not
-            change recorded budget state.
-          </p>
-        </div>
-
         <div className="sr-only" aria-live="polite">
           {isUpdating
             ? "Updating forecast"
@@ -161,13 +165,41 @@ export function ForecastBoardScreen({ initialProjection }: ForecastBoardScreenPr
         ) : null}
 
         {isEmpty ? (
-          <div className="flex flex-col gap-1 border p-6">
-            <p className="text-sm font-medium">No forecast periods</p>
-            <p className="text-sm text-muted-foreground">
-              Create an active budget and recurring source, or include paused budgets to inspect
-              history.
-            </p>
-          </div>
+          <Empty
+            role="region"
+            aria-labelledby="forecast-empty-state-title"
+            className="flex-none min-h-72 rounded-lg border px-6 py-10 sm:px-8"
+          >
+            <EmptyHeader className="max-w-md gap-1.5">
+              <EmptyMedia variant="icon">
+                <HugeiconsIcon icon={Calendar03Icon} strokeWidth={2} aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle
+                id="forecast-empty-state-title"
+                role="heading"
+                aria-level={2}
+                className="text-base"
+              >
+                No forecast periods
+              </EmptyTitle>
+              <EmptyDescription>
+                Create an active budget and recurring source, or include paused budgets to inspect
+                history.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent className="max-w-none flex-row flex-wrap justify-center">
+              <Button nativeButton={false} render={<Link to="/cash-flow/budgets" />}>
+                Open budgets
+              </Button>
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<Link to="/cash-flow/recurring" />}
+              >
+                Open recurring transactions
+              </Button>
+            </EmptyContent>
+          </Empty>
         ) : (
           <ForecastMatrixTable
             matrix={matrix}
@@ -190,7 +222,6 @@ export function ForecastBoardScreen({ initialProjection }: ForecastBoardScreenPr
 export function ForecastBoardSkeleton() {
   return (
     <ScreenBase>
-      <h1 className="text-2xl font-medium">Forecast</h1>
       <p className="text-sm text-muted-foreground" aria-live="polite">
         Loading forecast…
       </p>

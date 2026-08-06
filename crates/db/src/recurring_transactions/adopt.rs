@@ -28,6 +28,12 @@ pub fn adopt_existing_transaction(
 ) -> Result<RecurringTransaction> {
     let transaction = load_visible_transaction(conn, &input.transaction_id)?;
 
+    if !transaction_matches_review(&transaction, &input) {
+        return Err(StorageError::CoreError(Error::Conflict(
+            "Transaction changed since adoption review. Reopen the form and try again.".to_string(),
+        )));
+    }
+
     if find_provenance_by_transaction(conn, &input.transaction_id)
         .map_err(StorageError::from)?
         .is_some()
@@ -78,6 +84,25 @@ pub fn adopt_existing_transaction(
 
     complete_or_advance_after_fulfillment(conn, &created, &schedule, 1, 1, now)?;
     get_recurring_transaction(conn, &created.id).map_err(StorageError::from)
+}
+
+fn transaction_matches_review(
+    transaction: &TransactionRow,
+    input: &AdoptRecurringTransaction,
+) -> bool {
+    let description = transaction.description.as_deref().map(str::trim);
+    let notes = transaction
+        .notes
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+
+    transaction.transaction_date == input.expected_transaction_date
+        && description == Some(input.template.description.as_str())
+        && transaction.amount == input.template.amount
+        && transaction.transaction_type == input.template.transaction_type
+        && transaction.transaction_category_id == input.template.transaction_category_id
+        && notes == input.template.notes.as_deref()
 }
 
 fn load_visible_transaction(

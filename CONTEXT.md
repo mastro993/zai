@@ -113,6 +113,13 @@ through generation, including catch-up. The first scheduled occurrence may be
 past, present, or future. Automatically generated catch-up occurrences still
 create recurring occurrence alerts; adopted occurrences stay silent.
 
+**Recurring transaction adoption**:
+Creating a recurring transaction from an existing transaction reviewed by the
+user. The source transaction becomes occurrence 1, its transaction date and time
+anchor the schedule, and its payload becomes the recurring transaction template;
+confirmation fails if the source changes after review.
+_Avoid_: Adopt transaction
+
 **Catch-up generation**:
 The creation of every due, not-yet-created recurring transaction occurrence after
 Zai becomes able to process schedules again, stopping when a finite total is

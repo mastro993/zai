@@ -79,6 +79,7 @@ async fn adopt_preserves_transaction_records_occurrence_one_without_alert_and_ca
         .adopt(AdoptRecurringTransaction {
             id: Some("rt-adopt".into()),
             transaction_id: txn_id.into(),
+            expected_transaction_date: first,
             schedule: monthly(),
             total_occurrences: Some(6),
             template: template_from(120_000),
@@ -154,12 +155,14 @@ async fn adopt_rejects_transaction_with_existing_provenance_including_tombstoned
     let observed = local(2026, 7, 21, 10, 0);
     let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let txn_id = "txn-already";
-    insert_transaction(&repo, txn_id, local(2026, 6, 1, 9, 0), 50).await;
+    let first = local(2026, 6, 1, 9, 0);
+    insert_transaction(&repo, txn_id, first, 50).await;
 
     service
         .adopt(AdoptRecurringTransaction {
             id: Some("rt-first".into()),
             transaction_id: txn_id.into(),
+            expected_transaction_date: first,
             schedule: monthly(),
             total_occurrences: Some(2),
             template: template_from(50),
@@ -185,6 +188,7 @@ async fn adopt_rejects_transaction_with_existing_provenance_including_tombstoned
         .adopt(AdoptRecurringTransaction {
             id: Some("rt-second".into()),
             transaction_id: txn_id.into(),
+            expected_transaction_date: first,
             schedule: monthly(),
             total_occurrences: Some(2),
             template: template_from(50),
@@ -199,16 +203,66 @@ async fn adopt_rejects_transaction_with_existing_provenance_including_tombstoned
 }
 
 #[tokio::test]
+async fn adopt_rejects_when_transaction_changes_after_review() {
+    let observed = local(2026, 7, 21, 10, 0);
+    let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
+    let txn_id = "txn-changed-after-review";
+    let first = local(2026, 7, 1, 9, 0);
+    insert_transaction(&repo, txn_id, first, 120_000).await;
+
+    repo.writer()
+        .exec(move |conn| {
+            diesel::update(transactions::table.find(txn_id))
+                .set(transactions::amount.eq(125_000))
+                .execute(conn)
+                .map_err(crate::errors::StorageError::from)
+                .map(|_| ())
+        })
+        .await
+        .expect("change transaction");
+
+    let error = service
+        .adopt(AdoptRecurringTransaction {
+            id: Some("rt-stale-review".into()),
+            transaction_id: txn_id.into(),
+            expected_transaction_date: first,
+            schedule: monthly(),
+            total_occurrences: Some(2),
+            template: template_from(120_000),
+        })
+        .await
+        .expect_err("stale review must fail");
+    assert!(
+        matches!(error, zai_core::Error::Conflict(_)),
+        "expected conflict, found {error}"
+    );
+
+    let pool = repo.pool().clone();
+    let recurring_count = tokio::task::spawn_blocking(move || {
+        let mut conn = get_connection(&pool).expect("conn");
+        recurring_transactions::table
+            .count()
+            .get_result::<i64>(&mut conn)
+            .expect("count recurring transactions")
+    })
+    .await
+    .expect("join");
+    assert_eq!(recurring_count, 0);
+}
+
+#[tokio::test]
 async fn tombstoning_adopted_transaction_keeps_occurrence_and_finite_count() {
     let observed = local(2026, 7, 21, 10, 0);
     let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let txn_id = "txn-tombstone-adopted";
-    insert_transaction(&repo, txn_id, local(2026, 7, 1, 9, 0), 80).await;
+    let first = local(2026, 7, 1, 9, 0);
+    insert_transaction(&repo, txn_id, first, 80).await;
 
     service
         .adopt(AdoptRecurringTransaction {
             id: Some("rt-keep".into()),
             transaction_id: txn_id.into(),
+            expected_transaction_date: first,
             schedule: monthly(),
             total_occurrences: Some(3),
             template: template_from(80),
@@ -256,12 +310,14 @@ async fn provenance_hides_source_link_when_recurring_is_tombstoned() {
     let observed = local(2026, 7, 21, 10, 0);
     let (_db, service, repo, _clock, _lock) = setup_service(observed).await;
     let txn_id = "txn-link";
-    insert_transaction(&repo, txn_id, local(2026, 7, 10, 8, 0), 40).await;
+    let first = local(2026, 7, 10, 8, 0);
+    insert_transaction(&repo, txn_id, first, 40).await;
 
     service
         .adopt(AdoptRecurringTransaction {
             id: Some(Uuid::new_v4().to_string()),
             transaction_id: txn_id.into(),
+            expected_transaction_date: first,
             schedule: monthly(),
             total_occurrences: Some(1),
             template: template_from(40),

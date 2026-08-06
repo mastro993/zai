@@ -1,5 +1,6 @@
-import { ArrowLeft01Icon, Search01Icon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, Search01Icon, Tag01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { Link } from "@tanstack/react-router";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,14 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+} from "@/components/ui/empty";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +47,7 @@ interface CategoryDrawerSelectPanelBase {
   drawerDescription?: string;
   backAriaLabel: string;
   emptyListMessage: string;
+  emptyListActionLabel?: string;
   searchInputId: string;
 }
 
@@ -71,6 +80,7 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
     drawerDescription,
     backAriaLabel,
     emptyListMessage,
+    emptyListActionLabel,
     searchInputId,
   } = props;
   const [query, setQuery] = useState("");
@@ -141,16 +151,41 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
         <div
           role={props.mode === "single" ? "listbox" : "group"}
           aria-label={drawerTitle}
-          className="overflow-y-auto rounded-lg border"
+          className={cn(
+            "overflow-y-auto rounded-lg",
+            categories.length > 0 && groups.length > 0 ? "border" : undefined,
+          )}
         >
           {categories.length === 0 ? (
-            <FieldDescription className="px-3 py-8 text-center">
-              {emptyListMessage}
-            </FieldDescription>
+            <Empty className="gap-2 rounded-lg border px-3 py-8">
+              <EmptyHeader className="gap-2">
+                <EmptyMedia variant="icon">
+                  <HugeiconsIcon icon={Tag01Icon} strokeWidth={2} aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyDescription>{emptyListMessage}</EmptyDescription>
+              </EmptyHeader>
+              {emptyListActionLabel ? (
+                <EmptyContent className="max-w-none gap-2">
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 text-sm"
+                    nativeButton={false}
+                    render={<Link to="/cash-flow/categories" />}
+                  >
+                    {emptyListActionLabel}
+                  </Button>
+                </EmptyContent>
+              ) : null}
+            </Empty>
           ) : groups.length === 0 ? (
-            <FieldDescription className="px-3 py-8 text-center">
-              No categories match “{query.trim()}”.
-            </FieldDescription>
+            <Empty className="gap-2 rounded-lg border px-3 py-8">
+              <EmptyHeader className="gap-2">
+                <EmptyMedia variant="icon">
+                  <HugeiconsIcon icon={Search01Icon} strokeWidth={2} aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyDescription>No categories match “{query.trim()}”.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             groups.map(({ root, children, visibleChildren }) => {
               if (!root) {

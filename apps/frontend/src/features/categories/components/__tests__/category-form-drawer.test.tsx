@@ -15,6 +15,13 @@ const food = {
   role: "spending",
 } as TransactionCategory;
 
+const salary = {
+  id: "salary",
+  parentId: null,
+  name: "Salary",
+  role: "income",
+} as TransactionCategory;
+
 describe("CategoryFormDrawer", () => {
   afterEach(() => cleanup());
 
@@ -72,5 +79,112 @@ describe("CategoryFormDrawer", () => {
     const roleValue = screen.getByText("Spending");
 
     expect(roleValue.classList.contains("rounded-lg")).toBe(true);
+  });
+
+  it("uses a searchable combobox for the parent category", () => {
+    render(
+      <Drawer open swipeDirection="right">
+        <CategoryFormDrawer
+          open
+          mode={{ type: "create-root" }}
+          categories={[food, salary]}
+          onSubmit={vi.fn()}
+        />
+      </Drawer>,
+    );
+
+    const trigger = screen.getByRole("combobox", { name: "Parent category" });
+    expect(trigger.textContent).toContain("None");
+
+    fireEvent.click(trigger);
+
+    const search = screen.getByPlaceholderText("Search categories");
+    fireEvent.change(search, { target: { value: "food" } });
+
+    const foodOption = screen.getByRole("option", { name: "Food" });
+    expect(foodOption.querySelector('[data-slot="badge"]')).not.toBeNull();
+    expect(screen.queryByRole("option", { name: "Salary" })).toBeNull();
+
+    fireEvent.click(foodOption);
+    expect(trigger.textContent).toContain("Food");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByPlaceholderText("Search categories")).toBeNull();
+
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("option", { name: "None" }));
+    expect(screen.getByRole("combobox", { name: "Category role" })).not.toBeNull();
+  });
+
+  it("uses a rich combobox for the root category role", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <Drawer open swipeDirection="right">
+        <CategoryFormDrawer
+          open
+          mode={{ type: "create-root" }}
+          categories={[]}
+          onSubmit={onSubmit}
+        />
+      </Drawer>,
+    );
+
+    const trigger = screen.getByRole("combobox", { name: "Category role" });
+    expect(trigger.textContent).toContain("Spending");
+
+    fireEvent.click(trigger);
+
+    const popup = screen.getByRole("dialog", { name: "Select category role" });
+    expect(popup.getAttribute("aria-label")).toBe("Select category role");
+
+    const spending = screen.getByRole("option", { name: /Spending/ });
+    const income = screen.getByRole("option", { name: /Income/ });
+    expect(spending.textContent).toContain("Tracks outflows and can include refunds.");
+    expect(income.textContent).toContain("Identifies genuine income only.");
+    expect(spending.classList.contains("border-primary/30")).toBe(true);
+    expect(spending.classList.contains("bg-primary/5")).toBe(true);
+    expect(income.classList.contains("border-primary/30")).toBe(false);
+    expect(income.classList.contains("bg-primary/5")).toBe(false);
+
+    const spendingIcon = spending.querySelector('[data-slot="category-role-icon"]');
+    const incomeIcon = income.querySelector('[data-slot="category-role-icon"]');
+    expect(spendingIcon?.classList.contains("border-primary/30")).toBe(true);
+    expect(spendingIcon?.classList.contains("bg-primary/10")).toBe(true);
+    expect(spendingIcon?.classList.contains("text-primary")).toBe(true);
+    expect(incomeIcon?.classList.contains("border-border")).toBe(true);
+    expect(incomeIcon?.classList.contains("bg-muted/40")).toBe(true);
+    expect(incomeIcon?.classList.contains("text-muted-foreground")).toBe(true);
+
+    expect(spending.classList.contains("[&>span[data-selected]]:top-1/2")).toBe(true);
+    expect(spending.classList.contains("[&>span[data-selected]]:-translate-y-1/2")).toBe(true);
+    expect(spending.classList.contains("[&>span[data-selected]]:text-primary")).toBe(true);
+
+    fireEvent.click(income);
+    expect(trigger.textContent).toContain("Income");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("option", { name: /Income/ })).toBeNull();
+
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    const keyboardPopup = screen.getByRole("dialog", { name: "Select category role" });
+    expect(keyboardPopup.getAttribute("aria-label")).toBe("Select category role");
+
+    const reopenedSpending = screen.getByRole("option", { name: /Spending/ });
+    const reopenedIncome = screen.getByRole("option", { name: /Income/ });
+    expect(screen.getAllByRole("option")).toHaveLength(2);
+    expect(reopenedSpending.classList.contains("border-primary/30")).toBe(false);
+    expect(reopenedIncome.classList.contains("border-primary/30")).toBe(true);
+    expect(reopenedIncome.classList.contains("bg-primary/5")).toBe(true);
+
+    fireEvent.click(reopenedIncome);
+    expect(trigger.textContent).toContain("Income");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Salary" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save category" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ role: "income" })),
+    );
   });
 });
