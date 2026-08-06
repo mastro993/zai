@@ -113,12 +113,12 @@ function BudgetRows({ budgets }: { budgets: Array<Budget> }) {
 }
 
 export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) {
-  const [budgets, setBudgets] = useState(initialBudgets);
+  const [budgets, setBudgets] = useState(() => initialBudgets.filter((budget) => !budget.paused));
+  const [hasAnyBudgets, setHasAnyBudgets] = useState(initialBudgets.length > 0);
   const [filter, setFilter] = useState<BudgetListFilter>("active");
   const [isListLoading, setIsListLoading] = useState(false);
   const [listError, setListError] = useState<string>();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const hasBudgets = budgets.length > 0;
 
   const changeFilter = async (values: Array<string>) => {
     const nextFilter = values.at(-1);
@@ -138,6 +138,9 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
     if (Result.isSuccess(result)) {
       setFilter(typedFilter);
       setBudgets(result.value);
+      if (typedFilter === "all") {
+        setHasAnyBudgets(result.value.length > 0);
+      }
     } else {
       setListError(result.error.message);
     }
@@ -147,6 +150,7 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
   const submitBudget = async (values: BudgetFormValues) => {
     const result = await createBudget(values);
     if (Result.isSuccess(result)) {
+      setHasAnyBudgets(true);
       if (filter !== "paused") {
         setBudgets((current) =>
           [...current, result.value].toSorted((left, right) => left.name.localeCompare(right.name)),
@@ -159,14 +163,14 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
   return (
     <ScreenBase
       actions={
-        hasBudgets ? (
+        hasAnyBudgets ? (
           <Button size="sm" onClick={() => setIsFormOpen(true)}>
             New budget
           </Button>
         ) : undefined
       }
     >
-      {hasBudgets ? (
+      {hasAnyBudgets ? (
         <div className="flex justify-end">
           <ToggleGroup
             aria-label="Budget filter"

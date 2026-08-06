@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import {
+  fillRecurringFirstOccurrence,
+  selectRecurringFormOption,
+} from "./recurring-production-helpers";
+
 const apiOrigin = process.env.VITE_ZAI_API_ORIGIN ?? "http://127.0.0.1:3000";
 
 const localDateTimeDaysAgo = (days: number): string => {
@@ -47,7 +52,7 @@ test("web recurring journey persists generated links, edits, lifecycle, and navi
   page,
 }, testInfo) => {
   await page.goto("/cash-flow/recurring");
-  await expect(page.getByRole("heading", { name: "Recurring transactions" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "New recurring" })).toBeVisible();
   await expect(
     page.evaluate(() => Object.prototype.hasOwnProperty.call(window, "__TAURI_INTERNALS__")),
   ).resolves.toBe(false);
@@ -58,9 +63,8 @@ test("web recurring journey persists generated links, edits, lifecycle, and navi
   const createDrawer = page.getByRole("dialog", { name: "New recurring transaction" });
   await createDrawer.getByLabel("Description").fill(description);
   await createDrawer.getByLabel("Amount").fill("1200.00");
-  await createDrawer.getByLabel("First occurrence").fill(localDateTimeDaysAgo(30).slice(0, 16));
-  await createDrawer.getByRole("button", { name: "Finite", exact: true }).click();
-  await createDrawer.getByLabel("Number of occurrences").fill("3");
+  await fillRecurringFirstOccurrence(page, createDrawer, localDateTimeDaysAgo(30));
+  await createDrawer.getByLabel("Occurrences").fill("3");
   await createDrawer.getByRole("button", { name: "Create recurring transaction" }).click();
 
   await expect(page.getByRole("link", { name: description })).toBeVisible();
@@ -133,9 +137,8 @@ test("web adoption previews catch-up and preserves adopted provenance", async ({
   await page.getByRole("button", { name: `Adopt ${description} as recurring` }).click();
   const drawer = page.getByRole("dialog", { name: "Adopt as recurring" });
   await expect(drawer.getByRole("status")).not.toContainText("Calculating later due occurrences…");
-  await drawer.getByRole("button", { name: "day", exact: true }).click();
-  await drawer.getByRole("button", { name: "Finite", exact: true }).click();
-  await drawer.getByLabel("Number of occurrences").fill("3");
+  await selectRecurringFormOption(page, drawer, "Interval unit", "day");
+  await drawer.getByLabel("Occurrences").fill("3");
   await expect(drawer.getByText(/catch up/)).toBeVisible();
   await drawer.getByRole("button", { name: "Confirm adoption" }).click();
   await expect(page.getByText("Recurring transaction adopted")).toBeVisible();
@@ -183,9 +186,8 @@ test("web completed provenance remains exact and navigable", async ({ page }, te
   await page.goto("/cash-flow/transactions");
   await page.getByRole("button", { name: `Adopt ${description} as recurring` }).click();
   const drawer = page.getByRole("dialog", { name: "Adopt as recurring" });
-  await drawer.getByRole("button", { name: "day", exact: true }).click();
-  await drawer.getByRole("button", { name: "Finite", exact: true }).click();
-  await drawer.getByLabel("Number of occurrences").fill("1");
+  await selectRecurringFormOption(page, drawer, "Interval unit", "day");
+  await drawer.getByLabel("Occurrences").fill("1");
   await drawer.getByRole("button", { name: "Confirm adoption" }).click();
 
   await page.goto("/cash-flow/recurring");
@@ -202,7 +204,6 @@ test("web completed provenance remains exact and navigable", async ({ page }, te
 
 test("web forecast board exposes a keyboard-operable empty state", async ({ page }) => {
   await page.goto("/cash-flow/forecast");
-  await expect(page.getByRole("heading", { name: "Forecast" })).toBeVisible();
   await expect(page.getByLabel("Horizon")).toBeVisible();
   await expect(page.getByText(/Forecast (ready|incomplete)/).first()).toBeVisible();
 

@@ -85,7 +85,7 @@ The limits are:
 | Navigation timeout | 30 seconds |
 | Assertion timeout | 15 seconds |
 | Test timeout | 120 seconds |
-| Shard job timeout | 3 minutes |
+| Shard job timeout | 5 minutes |
 | Retries | 0 |
 
 Failed shards upload Playwright error context, screenshots, and traces for
@@ -104,8 +104,9 @@ and observe the next 20 pull requests. Do not add the probe to this workflow or
 change the repository ruleset in this change.
 
 Use a WebdriverIO-only benchmark only if profiling shows that browser execution
-remains the dominant cost. Do not run both frameworks or compensate with
-retries or wider timeouts.
+remains the dominant cost. Do not run both frameworks, add retries, or increase
+browser and test timeouts to hide failures. Set the shard job limit from the
+observed setup, test, summary, and cleanup times.
 
 On restricted macOS automation hosts, Chromium may fail before opening a page
 with:

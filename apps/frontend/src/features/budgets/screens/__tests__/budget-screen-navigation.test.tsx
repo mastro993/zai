@@ -43,6 +43,8 @@ const { budget, budgetState, history } = vi.hoisted(() => ({
   budgetState: {
     deferRefresh: false,
     deleted: false,
+    lifecyclePaused: false,
+    pausedOnly: false,
     resolveRefresh: undefined as undefined | (() => void),
   },
 }));
@@ -60,9 +62,16 @@ vi.mock("@/features/budgets/commands/budgets", async () => {
       return success(undefined);
     }),
     editBudget: vi.fn(() => success(budget)),
-    getBudget: vi.fn(() => success(budget)),
-    getBudgets: vi.fn(() => {
+    getBudget: vi.fn(() =>
+      success(budgetState.lifecyclePaused ? { ...budget, paused: true, revision: 2 } : budget),
+    ),
+    getBudgets: vi.fn((filter?: string) => {
       if (!budgetState.deleted) {
+        if (budgetState.pausedOnly || budgetState.lifecyclePaused) {
+          return success(
+            filter === "all" || filter === "paused" ? [{ ...budget, paused: true }] : [],
+          );
+        }
         return success([budget]);
       }
       if (!budgetState.deferRefresh) {
@@ -73,8 +82,14 @@ vi.mock("@/features/budgets/commands/budgets", async () => {
       });
     }),
     getBudgetHistory: vi.fn(() => success(history)),
-    pauseBudget: vi.fn(() => success(budget)),
-    resumeBudget: vi.fn(() => success(budget)),
+    pauseBudget: vi.fn(() => {
+      budgetState.lifecyclePaused = true;
+      return success({ ...budget, paused: true, revision: 2 });
+    }),
+    resumeBudget: vi.fn(() => {
+      budgetState.lifecyclePaused = false;
+      return success({ ...budget, revision: 3 });
+    }),
     updateBudget: vi.fn(() => success(budget)),
   };
 });
@@ -126,6 +141,8 @@ describe("cash-flow budget navigation", () => {
   beforeEach(() => {
     budgetState.deferRefresh = false;
     budgetState.deleted = false;
+    budgetState.lifecyclePaused = false;
+    budgetState.pausedOnly = false;
     budgetState.resolveRefresh = undefined;
     Object.defineProperty(window, "scrollTo", {
       configurable: true,
@@ -231,6 +248,40 @@ describe("cash-flow budget navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create budget" }));
 
     expect(await screen.findByRole("link", { name: "New monthly budget" })).toBeTruthy();
+  });
+
+  it("keeps the filters available when only paused budgets exist", async () => {
+    budgetState.pausedOnly = true;
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ["/cash-flow/budgets"] }),
+    });
+
+    render(<RouterProvider router={router} />);
+
+    expect(await screen.findByText("No active budgets")).toBeTruthy();
+    const pausedFilter = screen.getByRole("button", { name: "Paused" });
+    fireEvent.click(pausedFilter);
+
+    await waitFor(() => expect(pausedFilter.getAttribute("aria-pressed")).toBe("true"));
+    expect(await screen.findByRole("link", { name: budget.name })).toBeTruthy();
+  });
+
+  it("refreshes the budget list after changing lifecycle state", async () => {
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ["/cash-flow/budgets"] }),
+    });
+
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(await screen.findByRole("link", { name: budget.name }));
+    fireEvent.click(await screen.findByRole("button", { name: "Pause budget" }));
+    expect(await screen.findByText("Paused ·", { exact: false })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Back to budgets" }));
+
+    expect(await screen.findByText("No active budgets")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Paused" })).toBeTruthy();
   });
 
   it("refreshes the budget list after deleting a budget", async () => {
