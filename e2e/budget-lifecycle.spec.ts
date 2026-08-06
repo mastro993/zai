@@ -97,7 +97,6 @@ test("web mode completes the budget lifecycle end to end", async ({ page }) => {
 
   await page.reload();
   await expect(page.getByText("No active budgets")).toBeVisible();
-  await page.getByRole("button", { name: "All" }).click();
   await expect(page.getByRole("link", { name: "Updated groceries" })).toHaveCount(0);
   expect(nativeButtonWarnings).toEqual([]);
 });

@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
 export const apiOrigin = process.env.VITE_ZAI_API_ORIGIN ?? "http://127.0.0.1:3000";
 
@@ -200,6 +200,56 @@ export async function waitForDocument(
     .toBe("ready");
 }
 
+export async function fillRecurringFirstOccurrence(
+  page: Page,
+  drawer: Locator,
+  firstScheduledLocal: string,
+  fieldLabel: "First occurrence" | "Next occurrence" = "First occurrence",
+) {
+  const date = firstScheduledLocal.slice(0, 10);
+  const time = firstScheduledLocal.slice(11, 16);
+  const year = Number(date.slice(0, 4));
+  const month = Number(date.slice(5, 7));
+  const day = Number(date.slice(8, 10));
+
+  await drawer.getByLabel(fieldLabel).click();
+  const calendar = page.locator('[data-slot="calendar"]');
+  const target = await page.evaluate(
+    ({ targetYear, targetMonth, targetDay }) => {
+      const selectedDate = new Date(targetYear, targetMonth - 1, targetDay);
+      const currentDate = new Date();
+      return {
+        dataDay: selectedDate.toLocaleDateString(),
+        monthOffset:
+          selectedDate.getFullYear() * 12 +
+          selectedDate.getMonth() -
+          (currentDate.getFullYear() * 12 + currentDate.getMonth()),
+      };
+    },
+    { targetYear: year, targetMonth: month, targetDay: day },
+  );
+  const navigationLabel =
+    target.monthOffset < 0 ? "Go to the Previous Month" : "Go to the Next Month";
+
+  for (let offset = 0; offset < Math.abs(target.monthOffset); offset += 1) {
+    await calendar.getByRole("button", { name: navigationLabel }).click();
+  }
+
+  await calendar.locator(`[data-day="${target.dataDay}"]`).click();
+  await page.keyboard.press("Escape");
+  await drawer.getByLabel("Time").fill(time);
+}
+
+export async function selectRecurringFormOption(
+  page: Page,
+  drawer: Locator,
+  triggerName: string,
+  optionName: string,
+) {
+  await drawer.getByRole("combobox", { name: triggerName }).click();
+  await page.getByRole("option", { name: optionName, exact: true }).click();
+}
+
 export async function createRecurringInUi(
   page: Page,
   input: { description: string; firstScheduledLocal: string; totalOccurrences?: number },
@@ -209,10 +259,9 @@ export async function createRecurringInUi(
   const drawer = page.getByRole("dialog", { name: "New recurring transaction" });
   await drawer.getByLabel("Description").fill(input.description);
   await drawer.getByLabel("Amount").fill("120.00");
-  await drawer.getByLabel("First occurrence").fill(input.firstScheduledLocal.slice(0, 16));
+  await fillRecurringFirstOccurrence(page, drawer, input.firstScheduledLocal);
   if (input.totalOccurrences !== undefined) {
-    await drawer.getByRole("button", { name: "Finite", exact: true }).click();
-    await drawer.getByLabel("Number of occurrences").fill(String(input.totalOccurrences));
+    await drawer.getByLabel("Occurrences").fill(String(input.totalOccurrences));
   }
   await drawer.getByRole("button", { name: "Create recurring transaction" }).click();
   await expect(page.getByRole("link", { name: input.description })).toBeVisible();

@@ -6,11 +6,28 @@ import {
   createApiRecurring,
   createApiTransaction,
   createRecurringInUi,
+  fillRecurringFirstOccurrence,
   getApiDocument,
   localDateTime,
   openRecurringDocument,
+  selectRecurringFormOption,
   waitForDocument,
 } from "./recurring-production-helpers";
+
+const formatOrdinal = (value: number) => {
+  const lastTwoDigits = value % 100;
+  const suffix =
+    lastTwoDigits >= 11 && lastTwoDigits <= 13
+      ? "th"
+      : value % 10 === 1
+        ? "st"
+        : value % 10 === 2
+          ? "nd"
+          : value % 10 === 3
+            ? "rd"
+            : "th";
+  return `${value}${suffix}`;
+};
 
 const recurringLink = (page: import("@playwright/test").Page) =>
   page.getByRole("link", { name: /Open (generated|adopted) transaction for occurrence/ });
@@ -78,9 +95,8 @@ test("web covers past, present, and future creation plus adoption catch-up", asy
   await page.goto("/cash-flow/transactions");
   await page.getByRole("button", { name: `Adopt ${adoptedDescription} as recurring` }).click();
   const adoptionDrawer = page.getByRole("dialog", { name: "Adopt as recurring" });
-  await adoptionDrawer.getByRole("button", { name: "day", exact: true }).click();
-  await adoptionDrawer.getByRole("button", { name: "Finite", exact: true }).click();
-  await adoptionDrawer.getByLabel("Number of occurrences").fill("3");
+  await selectRecurringFormOption(page, adoptionDrawer, "Interval unit", "day");
+  await adoptionDrawer.getByLabel("Occurrences").fill("3");
   await expect(adoptionDrawer.getByRole("status")).toContainText("catch up");
   await adoptionDrawer.getByRole("button", { name: "Confirm adoption" }).click();
   await expect(page.getByText("Recurring transaction adopted")).toBeVisible();
@@ -123,18 +139,17 @@ test("web edits the full recurring configuration and preserves the revision", as
   const editDrawer = page.getByRole("dialog", { name: "Edit recurring transaction" });
   await editDrawer.getByLabel("Description").fill(updatedDescription);
   await editDrawer.getByLabel("Amount").fill("145.50");
-  await editDrawer.getByRole("button", { name: "Income", exact: true }).click();
-  await editDrawer.getByLabel("Transaction category").click();
+  await editDrawer.getByRole("button", { name: "income", exact: true }).click();
+  await editDrawer.getByRole("combobox", { name: "Choose category" }).click();
   await page
-    .getByRole("dialog", { name: "Choose category" })
+    .getByRole("dialog", { name: "Select category" })
     .getByRole("option", { name: category.name })
     .click();
   await editDrawer.getByLabel("Notes").fill("Updated from production workflow");
-  await editDrawer.getByRole("button", { name: "Monthly day", exact: true }).click();
-  await editDrawer.getByLabel("Day of month").fill(String(monthlyDay));
-  await editDrawer.getByLabel("Next occurrence").fill(nextScheduledLocal.slice(0, 16));
-  await editDrawer.getByRole("button", { name: "Finite", exact: true }).click();
-  await editDrawer.getByLabel("Number of occurrences").fill("3");
+  await selectRecurringFormOption(page, editDrawer, "Schedule mode", "On");
+  await selectRecurringFormOption(page, editDrawer, "Monthly day", formatOrdinal(monthlyDay));
+  await fillRecurringFirstOccurrence(page, editDrawer, nextScheduledLocal, "Next occurrence");
+  await editDrawer.getByLabel("Occurrences").fill("3");
   await editDrawer.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Recurring transaction updated")).toBeVisible();
 
@@ -257,14 +272,20 @@ test("recurring creation and dialogs return focus predictably", async ({ page })
 
 test("web reconnects after a network interruption and keeps durable state available", async ({
   page,
-}) => {
+}, testInfo) => {
+  const description = `E2E durable recurring ${testInfo.workerIndex}-${testInfo.repeatEachIndex}`;
+  await createApiRecurring(page.request, {
+    description,
+    firstScheduledLocal: localDateTime(1),
+    totalOccurrences: 3,
+  });
   await page.goto("/cash-flow/recurring");
-  const heading = page.getByRole("heading", { name: "Recurring transactions" });
-  await expect(heading).toBeVisible();
+  const recurring = page.getByRole("link", { name: description, exact: true });
+  await expect(recurring).toBeVisible();
 
   await page.context().setOffline(true);
-  await expect(heading).toBeVisible();
+  await expect(recurring).toBeVisible();
   await page.context().setOffline(false);
   await page.reload();
-  await expect(heading).toBeVisible();
+  await expect(recurring).toBeVisible();
 });

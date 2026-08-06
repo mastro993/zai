@@ -64,7 +64,7 @@ test("web freezes filtered selections and runs every recurring bulk lifecycle ac
 
   await selectFilteredBatch(page, prefix);
   await confirmBulkAction(page, "Delete", "Delete");
-  await expect(page.getByText("No recurring transactions match these filters.")).toBeVisible();
+  await expect(page.getByText("No recurring transactions match your filters.")).toBeVisible();
 });
 
 test("web reports concurrent eligibility changes as partial bulk success", async ({

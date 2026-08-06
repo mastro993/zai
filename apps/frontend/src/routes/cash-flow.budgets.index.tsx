@@ -15,7 +15,7 @@ export interface BudgetRouteData {
 
 export const Route = createFileRoute("/cash-flow/budgets/")({
   loader: async (): Promise<BudgetRouteData> => {
-    const result = await getBudgets();
+    const result = await getBudgets("all");
     if (Result.isFailure(result)) {
       return { errorMessage: result.error.message };
     }
@@ -33,7 +33,15 @@ function CashFlowBudgetsPage() {
   if (result.errorMessage) {
     return <BudgetErrorScreen message={result.errorMessage} />;
   }
+  const budgets = result.budgets ?? [];
+  const budgetListKey = budgets
+    .map((budget) => `${budget.id}:${budget.revision}:${budget.paused}`)
+    .join("|");
   return (
-    <BudgetScreen initialBudgets={result.budgets ?? []} categories={result.categories ?? []} />
+    <BudgetScreen
+      key={budgetListKey}
+      initialBudgets={budgets}
+      categories={result.categories ?? []}
+    />
   );
 }
