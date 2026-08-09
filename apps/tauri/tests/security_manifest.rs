@@ -47,6 +47,14 @@ const REQUIRED_MAIN_PERMISSIONS: &[(&str, &str)] = &[
     ("core:default", "IPC invoke transport"),
     ("core:path:default", "documentDir default save path"),
     ("core:event:default", "domain alert event listen"),
+    (
+        "core:window:allow-start-dragging",
+        "manual macOS title-bar dragging",
+    ),
+    (
+        "core:window:allow-toggle-maximize",
+        "manual macOS title-bar maximization",
+    ),
     ("dialog:allow-open", "CSV import file picker"),
     ("dialog:allow-save", "CSV export save dialog"),
     ("fs:allow-read-text-file", "dialog-selected CSV read"),
@@ -143,6 +151,25 @@ fn production_csp_is_restrictive_and_dev_csp_is_isolated() {
         production_blob, development_blob,
         "development CSP override should differ from production"
     );
+}
+
+#[test]
+fn main_window_uses_native_overlay_chrome() {
+    let config_path = manifest_dir().join("tauri.conf.json");
+    let source = fs::read_to_string(&config_path).expect("tauri config should exist");
+    let config: serde_json::Value =
+        serde_json::from_str(&source).expect("tauri config should parse");
+    let windows = config["app"]["windows"]
+        .as_array()
+        .expect("app windows should be configured");
+    let main_window = windows
+        .iter()
+        .find(|window| window["label"] == "main")
+        .expect("main window should be configured");
+
+    assert_eq!(main_window["decorations"], true);
+    assert_eq!(main_window["titleBarStyle"], "Overlay");
+    assert_eq!(main_window["hiddenTitle"], true);
 }
 
 #[test]

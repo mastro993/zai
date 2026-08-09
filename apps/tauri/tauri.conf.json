@@ -28,6 +28,9 @@
       {
         "label": "main",
         "title": "Zai",
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
         "width": 1280,
         "height": 960,
         "minWidth": 480,
