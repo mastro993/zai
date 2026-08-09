@@ -213,3 +213,14 @@
     background-color: currentColor;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"],
+  [data-slot="sidebar-menu-button"],
+  [data-slot="sidebar-group-label"],
+  [data-slot="title-bar-leading"],
+  [data-slot="title-bar-drag-region"] {
+    transition-duration: 0ms !important;
+  }
+}
