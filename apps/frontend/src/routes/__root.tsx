@@ -3,7 +3,7 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { Result } from "@praha/byethrow";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   ApplicationTitleBar,
@@ -32,7 +32,11 @@ import {
 import { Toaster } from "@/components/toaster/toaster";
 import { parseCommandBuildTarget, type CommandBuildTarget } from "@/commands/build-target";
 import { navigationItems, settingsItem } from "@/lib/navigation";
-import { readSidebarOpen, writeSidebarOpen } from "@/lib/sidebar-preference";
+import {
+  clearSidebarStateCookie,
+  readSidebarOpen,
+  writeSidebarOpen,
+} from "@/lib/sidebar-preference";
 
 export const Route = createRootRoute({
   component: AppLayout,
@@ -66,6 +70,10 @@ interface ApplicationShellProps {
 
 function ApplicationShell({ buildTarget }: ApplicationShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
+
+  useEffect(() => {
+    clearSidebarStateCookie();
+  }, [sidebarOpen]);
 
   const handleSidebarOpenChange = useCallback((open: boolean) => {
     setSidebarOpen(open);
