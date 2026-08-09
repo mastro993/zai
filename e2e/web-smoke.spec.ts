@@ -7,22 +7,21 @@ test("web shell aligns sidebar and title bar with allowed motion", async ({ page
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/dashboard");
 
-  await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS(
-    "transition-duration",
-    "0.2s",
-  );
+  await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("transition-duration", "0.2s");
   await expect(page.locator('[data-slot="title-bar-leading"]')).toHaveCSS(
     "transition-duration",
     "0.2s",
   );
 
-  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
+  await page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" }).click();
 
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
   await expect(page.locator('[data-slot="title-bar-leading"]')).toHaveCSS("width", "48px");
 });
 
-test("web shell keeps wide sidebar preference separate from narrow navigation", async ({ page }) => {
+test("web shell keeps wide sidebar preference separate from narrow navigation", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/dashboard");
@@ -43,7 +42,7 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
     "0s",
   );
 
-  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
+  await page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" }).click();
 
   await expect(page.getByRole("link", { name: "財", exact: true })).toBeVisible();
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
@@ -65,7 +64,7 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
   await expect(mobileSidebar).toBeHidden();
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
+  await page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" }).click();
 
   await expect(mobileSidebar).toBeVisible();
   await expect(page.evaluate((key) => localStorage.getItem(key), sidebarPreferenceKey)).toBe(
