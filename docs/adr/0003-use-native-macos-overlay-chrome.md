@@ -1,0 +1,3 @@
+# Use native macOS overlay chrome with shared web title bar
+
+Zai will keep native macOS window decorations with an overlay title bar, hide the native title text, retain the native traffic lights, and use manual drag regions. This preserves native window behavior while integrating window chrome into the existing 48px application header; web and desktop share the header structure, but desktop hides the brand and fully hides a collapsed sidebar, while web retains its brand and 48px collapsed icon rail. Sidebar state is a local UI preference with no database storage, and narrow layouts retain the existing non-persistent sidebar sheet.
