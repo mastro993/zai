@@ -47,9 +47,9 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
   await expect(page.getByRole("link", { name: "財", exact: true })).toBeVisible();
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
   await expect(page.locator('[data-slot="title-bar-leading"]')).toHaveCSS("width", "48px");
-  await expect(page.evaluate((key) => localStorage.getItem(key), sidebarPreferenceKey)).toBe(
-    JSON.stringify({ version: 1, open: false }),
-  );
+  await expect(
+    page.evaluate((key) => localStorage.getItem(key), sidebarPreferenceKey),
+  ).resolves.toBe(JSON.stringify({ version: 1, open: false }));
   await expect(page.evaluate(() => document.cookie)).resolves.not.toContain("sidebar_state=");
 
   await page.reload();
@@ -67,9 +67,9 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
   await page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" }).click();
 
   await expect(mobileSidebar).toBeVisible();
-  await expect(page.evaluate((key) => localStorage.getItem(key), sidebarPreferenceKey)).toBe(
-    JSON.stringify({ version: 1, open: false }),
-  );
+  await expect(
+    page.evaluate((key) => localStorage.getItem(key), sidebarPreferenceKey),
+  ).resolves.toBe(JSON.stringify({ version: 1, open: false }));
 });
 
 test("web mode loads Cash flow categories and persists a created category", async ({
