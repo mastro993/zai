@@ -97,7 +97,9 @@ function ApplicationShell({ buildTarget }: ApplicationShellProps) {
           <AppSidebar buildTarget={buildTarget} />
           <SidebarInset className="min-h-0 overflow-hidden">
             <ApplicationTitleBar buildTarget={buildTarget} />
-            <Outlet />
+            <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <Outlet />
+            </main>
           </SidebarInset>
           <Toaster />
           <TanStackDevtools

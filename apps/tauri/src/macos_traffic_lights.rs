@@ -5,17 +5,17 @@
 //! enough to center controls in a custom header, so we set frame origins
 //! ourselves after the window exists.
 
-/// Matches the frontend application title bar (`h-12` / 48px).
-pub const HEADER_HEIGHT: f64 = 48.0;
-/// Leading inset for the close button cluster.
-pub const TRAFFIC_LIGHT_X: f64 = 16.0;
-
 /// Position traffic lights and re-apply after layout-affecting window events.
 #[cfg(target_os = "macos")]
 pub fn install(window: &tauri::WebviewWindow) {
     use tauri::Manager;
 
-    apply(window);
+    /// Matches the frontend application title bar (`h-12` / 48px).
+    const HEADER_HEIGHT: f64 = 48.0;
+    /// Leading inset for the close button cluster.
+    const TRAFFIC_LIGHT_X: f64 = 16.0;
+
+    apply(window, TRAFFIC_LIGHT_X, HEADER_HEIGHT);
 
     let label = window.label().to_string();
     let app = window.app_handle().clone();
@@ -26,7 +26,7 @@ pub fn install(window: &tauri::WebviewWindow) {
             | WindowEvent::ScaleFactorChanged { .. }
             | WindowEvent::ThemeChanged(_) => {
                 if let Some(win) = app.get_webview_window(&label) {
-                    apply(&win);
+                    apply(&win, TRAFFIC_LIGHT_X, HEADER_HEIGHT);
                 }
             }
             _ => {}
@@ -35,7 +35,7 @@ pub fn install(window: &tauri::WebviewWindow) {
 }
 
 #[cfg(target_os = "macos")]
-fn apply(window: &tauri::WebviewWindow) {
+fn apply(window: &tauri::WebviewWindow, traffic_light_x: f64, header_height: f64) {
     use objc2::rc::Retained;
     use objc2_app_kit::NSWindow;
 
@@ -50,7 +50,7 @@ fn apply(window: &tauri::WebviewWindow) {
         return;
     };
 
-    inset_and_center(&ns_window, TRAFFIC_LIGHT_X, HEADER_HEIGHT);
+    inset_and_center(&ns_window, traffic_light_x, header_height);
 }
 
 #[cfg(target_os = "macos")]

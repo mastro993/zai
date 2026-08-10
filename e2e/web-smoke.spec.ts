@@ -8,7 +8,10 @@ test("web shell keeps full-height sidebar with content-column title bar", async 
   await page.goto("/dashboard");
 
   const sidebarContainer = page.locator('[data-slot="sidebar-container"]');
-  const titleBar = page.getByRole("banner");
+  const titleBar = page.locator('[data-slot="application-title-bar"]');
+  await expect(titleBar).toBeVisible();
+  await expect(sidebarContainer).toBeVisible();
+
   const sidebarBox = await sidebarContainer.boundingBox();
   const titleBarBox = await titleBar.boundingBox();
 
