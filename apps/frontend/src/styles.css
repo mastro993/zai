@@ -167,7 +167,13 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply select-none bg-background text-foreground;
+  }
+  input,
+  textarea,
+  [contenteditable="true"],
+  [contenteditable="plaintext-only"] {
+    user-select: text;
   }
   [data-sonner-toaster] {
     --width: 356px;

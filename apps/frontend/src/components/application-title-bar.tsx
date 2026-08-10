@@ -114,7 +114,7 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
       ? hasNativeMacWindowChrome
         ? NATIVE_CHROME_LEADING_INSET
         : WEB_CHROME_LEADING_INSET
-      : "0.5rem",
+      : "1.5rem",
   };
 
   return (
