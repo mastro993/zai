@@ -59,7 +59,8 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
 
   await page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" }).click();
 
-  await expect(page.getByRole("link", { name: "財", exact: true })).toBeVisible();
+  // Brand (kanji + logo) only when expanded.
+  await expect(page.getByRole("link", { name: "財 Zai" })).toHaveCount(0);
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
   await expect(
     page.evaluate((key) => localStorage.getItem(key), sidebarPreferenceKey),
@@ -69,7 +70,7 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
   await page.reload();
 
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
-  await expect(page.getByRole("link", { name: "財", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "財 Zai" })).toHaveCount(0);
 
   await page.setViewportSize({ width: 767, height: 768 });
   await page.reload();

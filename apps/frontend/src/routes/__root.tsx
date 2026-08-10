@@ -9,7 +9,7 @@ import {
   ApplicationTitleBar,
   ApplicationTitleBarProvider,
 } from "@/components/application-title-bar";
-import { WindowDragRegion } from "@/components/window-drag-region";
+import { WindowDragRegion, TRAFFIC_LIGHT_LEADING_WIDTH } from "@/components/window-drag-region";
 import { AlertsControllerProvider } from "@/features/alerts/hooks/use-alerts-controller";
 
 import {
@@ -29,6 +29,7 @@ import {
   SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/toaster/toaster";
 import { parseCommandBuildTarget, type CommandBuildTarget } from "@/commands/build-target";
@@ -118,37 +119,51 @@ function AppSidebar({ buildTarget: sidebarBuildTarget }: AppSidebarProps) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const { state: sidebarState } = useSidebar();
+  const showBrand = sidebarState === "expanded";
 
   return (
     <Sidebar collapsible={sidebarBuildTarget === "tauri" ? "offcanvas" : "icon"}>
       {sidebarBuildTarget === "tauri" ? (
-        <div data-slot="sidebar-traffic-light-spacer" className="flex h-12 shrink-0 items-stretch">
-          {/* Same height as content title bar; drag strip sits past traffic lights. */}
+        <div data-slot="sidebar-chrome-header" className="relative flex h-12 shrink-0 items-center">
+          {/* Full-width drag under traffic lights + brand; same height as content title bar. */}
           <WindowDragRegion
             buildTarget={sidebarBuildTarget}
             data-slot="sidebar-drag-region"
             reserveTrafficLightInset
-            className="min-w-0 flex-1"
+            className="absolute inset-0"
           />
+          {showBrand ? (
+            <Link
+              to="/dashboard"
+              data-slot="sidebar-brand"
+              className="relative z-10 flex min-w-0 items-center gap-2 pr-2 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+              style={{
+                // Clear traffic lights, then 12px gap before 財 / Zai.
+                paddingLeft: `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + 0.75rem)`,
+              }}
+            >
+              <span className="flex size-4 shrink-0 items-center justify-center text-lg font-semibold text-primary">
+                財
+              </span>
+              <span className="truncate text-lg font-semibold text-primary">Zai</span>
+            </Link>
+          ) : null}
         </div>
       ) : (
         <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                size="lg"
-                className="group-data-[collapsible=icon]:justify-center"
-                render={<Link to="/dashboard" />}
-              >
-                <span className="flex size-4 shrink-0 items-center justify-center text-lg font-semibold text-primary">
-                  財
-                </span>
-                <span className="text-lg font-semibold text-primary group-data-[collapsible=icon]:hidden">
-                  Zai
-                </span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          {showBrand ? (
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton size="lg" render={<Link to="/dashboard" />}>
+                  <span className="flex size-4 shrink-0 items-center justify-center text-lg font-semibold text-primary">
+                    財
+                  </span>
+                  <span className="text-lg font-semibold text-primary">Zai</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          ) : null}
         </SidebarHeader>
       )}
       <SidebarContent>
