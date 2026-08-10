@@ -60,12 +60,13 @@ describe("ApplicationTitleBar", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps breadcrumbs, alerts, and accessible sidebar control visible in web mode", () => {
+  it("keeps breadcrumbs, alerts, and route actions visible in web mode", () => {
     renderTitleBar("web", <button type="button">Route action</button>);
 
     expect(screen.getByRole("banner").getAttribute("data-build-target")).toBe("web");
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeTruthy();
+    // Toggle lives in FixedSidebarTrigger (shell), not the title bar.
+    expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
     expect(screen.getByRole("button", { name: "Alerts" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Route action" })).toBeTruthy();
     expect(
@@ -73,16 +74,15 @@ describe("ApplicationTitleBar", () => {
     ).toBeNull();
   });
 
-  it("keeps title bar free of traffic-light inset when sidebar is expanded", () => {
+  it("keeps title bar free of chrome inset when sidebar is expanded", () => {
     renderTitleBar("tauri", <button type="button">Route action</button>);
     const banner = screen.getByRole("banner");
     const leading = banner.querySelector<HTMLElement>('[data-slot="title-bar-leading"]');
     const dragRegion = banner.querySelector<HTMLElement>('[data-slot="title-bar-drag-region"]');
     const routeAction = screen.getByRole("button", { name: "Route action" });
 
-    // Expanded desktop: traffic lights sit over full-height sidebar, not title bar.
+    // Expanded desktop: fixed toggle sits over the sidebar, not the content title bar.
     expect(leading?.style.paddingLeft).toBe("0.5rem");
-    expect(leading?.style.width).toBe("");
     expect(banner.querySelector("[data-tauri-drag-region]")).toBeNull();
     expect(dragRegion).not.toBeNull();
     if (!dragRegion) {
@@ -106,7 +106,7 @@ describe("ApplicationTitleBar", () => {
     expect(toggleMaximize).toHaveBeenCalledTimes(1);
   });
 
-  it("reserves traffic-light inset when the sidebar is collapsed on desktop", () => {
+  it("clears fixed traffic-light + toggle chrome when the sidebar is collapsed on desktop", () => {
     render(
       <SidebarProvider defaultOpen={false}>
         <ApplicationTitleBarProvider>
@@ -119,6 +119,11 @@ describe("ApplicationTitleBar", () => {
       .getByRole("banner")
       .querySelector<HTMLElement>('[data-slot="title-bar-leading"]');
 
-    expect(leading?.style.paddingLeft).toBe("76px");
+    // jsdom may reorder calc() terms; assert the chrome pieces are present.
+    const padding = leading?.style.paddingLeft ?? "";
+    expect(padding.startsWith("calc(")).toBe(true);
+    expect(padding).toContain("76px");
+    expect(padding).toContain("0.5rem");
+    expect(padding).toContain("2rem");
   });
 });

@@ -9,7 +9,12 @@ import {
   ApplicationTitleBar,
   ApplicationTitleBarProvider,
 } from "@/components/application-title-bar";
-import { WindowDragRegion, TRAFFIC_LIGHT_LEADING_WIDTH } from "@/components/window-drag-region";
+import { FixedSidebarTrigger } from "@/components/fixed-sidebar-trigger";
+import {
+  NATIVE_CHROME_LEADING_INSET,
+  WEB_CHROME_LEADING_INSET,
+  WindowDragRegion,
+} from "@/components/window-drag-region";
 import { AlertsControllerProvider } from "@/features/alerts/hooks/use-alerts-controller";
 
 import {
@@ -90,6 +95,7 @@ function ApplicationShell({ buildTarget }: ApplicationShellProps) {
         className="h-svh overflow-hidden"
       >
         <ApplicationTitleBarProvider>
+          <FixedSidebarTrigger buildTarget={buildTarget} />
           <AppSidebar buildTarget={buildTarget} />
           <SidebarInset className="min-h-0 overflow-hidden">
             <ApplicationTitleBar buildTarget={buildTarget} />
@@ -126,7 +132,7 @@ function AppSidebar({ buildTarget: sidebarBuildTarget }: AppSidebarProps) {
     <Sidebar collapsible={sidebarBuildTarget === "tauri" ? "offcanvas" : "icon"}>
       {sidebarBuildTarget === "tauri" ? (
         <div data-slot="sidebar-chrome-header" className="relative flex h-12 shrink-0 items-center">
-          {/* Full-width drag under traffic lights + brand; same height as content title bar. */}
+          {/* Drag under lights + toggle + brand; toggle itself is fixed chrome. */}
           <WindowDragRegion
             buildTarget={sidebarBuildTarget}
             data-slot="sidebar-drag-region"
@@ -137,16 +143,21 @@ function AppSidebar({ buildTarget: sidebarBuildTarget }: AppSidebarProps) {
             <Link
               to="/dashboard"
               data-slot="sidebar-brand"
-              className="relative z-10 flex min-w-0 items-center gap-2 pr-2 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+              className="relative z-10 flex h-12 min-w-0 items-center gap-1.5 pr-2 leading-none outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
               style={{
-                // Clear traffic lights, then 12px gap before 財 / Zai.
-                paddingLeft: `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + 0.75rem)`,
+                // lights | gap | toggle | gap | 財 Zai
+                paddingLeft: NATIVE_CHROME_LEADING_INSET,
               }}
             >
-              <span className="flex size-4 shrink-0 items-center justify-center text-lg font-semibold text-primary">
-                財
+              {/* Optical nudge: text-lg metrics sit slightly high in the 48px strip. */}
+              <span className="flex translate-y-[0.5px] items-center gap-1.5">
+                <span className="flex shrink-0 items-center justify-center text-lg leading-none font-semibold text-primary">
+                  財
+                </span>
+                <span className="truncate text-lg leading-none font-semibold text-primary">
+                  Zai
+                </span>
               </span>
-              <span className="truncate text-lg font-semibold text-primary">Zai</span>
             </Link>
           ) : null}
         </div>
@@ -155,11 +166,18 @@ function AppSidebar({ buildTarget: sidebarBuildTarget }: AppSidebarProps) {
           {showBrand ? (
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton size="lg" render={<Link to="/dashboard" />}>
-                  <span className="flex size-4 shrink-0 items-center justify-center text-lg font-semibold text-primary">
-                    財
+                <SidebarMenuButton
+                  size="lg"
+                  className="h-12 leading-none"
+                  style={{ paddingLeft: WEB_CHROME_LEADING_INSET }}
+                  render={<Link to="/dashboard" />}
+                >
+                  <span className="flex translate-y-[0.5px] items-center gap-1.5">
+                    <span className="flex shrink-0 items-center justify-center text-lg leading-none font-semibold text-primary">
+                      財
+                    </span>
+                    <span className="text-lg leading-none font-semibold text-primary">Zai</span>
                   </span>
-                  <span className="text-lg font-semibold text-primary">Zai</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

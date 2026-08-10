@@ -6,6 +6,18 @@ import { cn } from "@/lib/utils";
 
 /** Logical width reserved for macOS traffic lights (close / minimize / zoom). */
 export const TRAFFIC_LIGHT_LEADING_WIDTH = "76px";
+/** Slot for the fixed sidebar trigger after traffic lights (`size="icon-sm"` ≈ 32px). */
+export const SIDEBAR_TRIGGER_SLOT_WIDTH = "2rem";
+/** Gap between traffic lights and the sidebar trigger. */
+export const TRAFFIC_LIGHT_TO_TRIGGER_GAP = "0.5rem";
+/** Gap between sidebar trigger and brand / title content. */
+export const TRIGGER_TO_CONTENT_GAP = "0.5rem";
+
+/** Window-left inset through traffic lights + trigger (native mac chrome). */
+export const NATIVE_CHROME_LEADING_INSET = `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP} + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_CONTENT_GAP})`;
+
+/** Window-left inset through trigger only (web / no traffic lights). */
+export const WEB_CHROME_LEADING_INSET = `calc(0.5rem + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_CONTENT_GAP})`;
 
 const isPrimaryEmptyRegionPointer = (
   event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>,

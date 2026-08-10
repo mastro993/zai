@@ -30,7 +30,8 @@ test("web shell keeps full-height sidebar with content-column title bar", async 
     "0.2s",
   );
 
-  await page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" }).click();
+  // Toggle is fixed window chrome (not inside the content title bar).
+  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
 
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
 });
@@ -57,11 +58,20 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
     "0s",
   );
 
-  await page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" }).click();
+  const toggle = page.getByRole("button", { name: "Toggle Sidebar" });
+  const toggleBoxBefore = await toggle.boundingBox();
+  await toggle.click();
 
-  // Brand (kanji + logo) only when expanded.
+  // Brand (kanji + logo) only when expanded; toggle stays fixed.
   await expect(page.getByRole("link", { name: "財 Zai" })).toHaveCount(0);
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
+  const toggleBoxAfter = await toggle.boundingBox();
+  expect(toggleBoxBefore).not.toBeNull();
+  expect(toggleBoxAfter).not.toBeNull();
+  if (toggleBoxBefore && toggleBoxAfter) {
+    expect(toggleBoxAfter.x).toBe(toggleBoxBefore.x);
+    expect(toggleBoxAfter.y).toBe(toggleBoxBefore.y);
+  }
   await expect(
     page.evaluate((key) => localStorage.getItem(key), sidebarPreferenceKey),
   ).resolves.toBe(JSON.stringify({ version: 1, open: false }));
@@ -79,7 +89,7 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
   await expect(mobileSidebar).toBeHidden();
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCount(0);
 
-  await page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" }).click();
+  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
 
   await expect(mobileSidebar).toBeVisible();
   await expect(

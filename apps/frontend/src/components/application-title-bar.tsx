@@ -10,8 +10,12 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { TRAFFIC_LIGHT_LEADING_WIDTH, WindowDragRegion } from "@/components/window-drag-region";
-import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import {
+  NATIVE_CHROME_LEADING_INSET,
+  WEB_CHROME_LEADING_INSET,
+  WindowDragRegion,
+} from "@/components/window-drag-region";
+import { useSidebar } from "@/components/ui/sidebar";
 import { AlertsBell } from "@/features/alerts/components/alerts-bell";
 import { useScreenBreadcrumbs } from "@/hooks/use-screen-breadcrumbs";
 import { createWindowChromeAdapter } from "@/lib/window-chrome";
@@ -101,12 +105,16 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
   const windowChrome = useMemo(() => createWindowChromeAdapter(buildTarget), [buildTarget]);
   const hasNativeMacWindowChrome =
     buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
-  // Traffic lights sit over the full-height sidebar when expanded.
-  // Only reserve leading inset when they would land on the title bar.
-  const needsTrafficLightInset = hasNativeMacWindowChrome && (isMobile || state === "collapsed");
+  // Toggle is fixed to the window. Clear it only when the title bar sits under that
+  // zone: mobile sheet, or Tauri offcanvas collapsed (no sidebar column).
+  const needsFixedTriggerClearance = isMobile || (buildTarget === "tauri" && state === "collapsed");
 
   const leadingStyle = {
-    paddingLeft: needsTrafficLightInset ? TRAFFIC_LIGHT_LEADING_WIDTH : "0.5rem",
+    paddingLeft: needsFixedTriggerClearance
+      ? hasNativeMacWindowChrome
+        ? NATIVE_CHROME_LEADING_INSET
+        : WEB_CHROME_LEADING_INSET
+      : "0.5rem",
   };
 
   return (
@@ -122,9 +130,8 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
           data-slot="title-bar-leading"
           className="flex min-w-0 shrink-0 items-center transition-[padding] duration-200 ease-linear"
           style={leadingStyle}
-        >
-          <SidebarTrigger />
-        </div>
+          aria-hidden
+        />
         <div className="flex min-w-0 flex-1 items-center">
           <div data-slot="title-bar-breadcrumbs" className="min-w-0 shrink-0">
             <ScreenBreadcrumbs />
