@@ -117,10 +117,11 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
     () => createWindowChromeAdapter(buildTarget),
     [buildTarget],
   );
-  const isTauri = buildTarget === "tauri";
+  const hasNativeMacWindowChrome =
+    buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
   const isExpandedDesktop = !isMobile && state === "expanded";
 
-  const leadingStyle = isTauri
+  const leadingStyle = hasNativeMacWindowChrome
     ? {
         width: isExpandedDesktop
           ? "var(--sidebar-width)"
@@ -135,7 +136,7 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
         };
 
   const startDragging = (event: PointerEvent<HTMLDivElement>) => {
-    if (!isTauri || !isPrimaryEmptyRegionPointer(event)) {
+    if (!hasNativeMacWindowChrome || !isPrimaryEmptyRegionPointer(event)) {
       return;
     }
 
@@ -144,7 +145,7 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
   };
 
   const toggleMaximize = (event: MouseEvent<HTMLDivElement>) => {
-    if (!isTauri || !isPrimaryEmptyRegionPointer(event)) {
+    if (!hasNativeMacWindowChrome || !isPrimaryEmptyRegionPointer(event)) {
       return;
     }
 
@@ -167,10 +168,9 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
           style={leadingStyle}
         >
           <SidebarTrigger />
-          {isTauri && isExpandedDesktop ? (
+          {hasNativeMacWindowChrome && isExpandedDesktop ? (
             <div
               data-slot="title-bar-drag-region"
-              data-tauri-drag-region="true"
               className="h-12 min-w-2 flex-1 cursor-default transition-[width] duration-200 ease-linear"
               onPointerDown={startDragging}
               onDoubleClick={toggleMaximize}
@@ -180,14 +180,16 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
         <div className="flex min-w-0 flex-1 items-center">
           <div
             data-slot="title-bar-breadcrumbs"
-            className={cn("min-w-0", isTauri && !isExpandedDesktop ? "shrink-0" : "flex-1")}
+            className={cn(
+              "min-w-0",
+              hasNativeMacWindowChrome && !isExpandedDesktop ? "shrink-0" : "flex-1",
+            )}
           >
             <ScreenBreadcrumbs />
           </div>
-          {isTauri && !isExpandedDesktop ? (
+          {hasNativeMacWindowChrome && !isExpandedDesktop ? (
             <div
               data-slot="title-bar-drag-region"
-              data-tauri-drag-region="true"
               className="ml-2 h-12 min-w-2 flex-1 cursor-default transition-[width] duration-200 ease-linear"
               onPointerDown={startDragging}
               onDoubleClick={toggleMaximize}

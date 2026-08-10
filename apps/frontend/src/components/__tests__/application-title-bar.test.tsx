@@ -23,7 +23,11 @@ vi.mock("@/hooks/use-screen-breadcrumbs", () => ({
 }));
 
 vi.mock("@/lib/window-chrome", () => ({
-  createWindowChromeAdapter: () => ({ startDragging, toggleMaximize }),
+  createWindowChromeAdapter: () => ({
+    supportsNativeWindowChrome: true,
+    startDragging,
+    toggleMaximize,
+  }),
 }));
 
 const renderTitleBar = (buildTarget: "tauri" | "web", actions?: ReactNode) =>
@@ -64,25 +68,38 @@ describe("ApplicationTitleBar", () => {
     expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Alerts" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Route action" })).toBeTruthy();
-    expect(screen.getByRole("banner").querySelector('[data-tauri-drag-region="true"]')).toBeNull();
+    expect(
+      screen.getByRole("banner").querySelector('[data-slot="title-bar-drag-region"]'),
+    ).toBeNull();
   });
 
-  it("starts drag and toggles maximization only from the empty native region", () => {
+  it("reserves native controls and limits actions to the empty primary-pointer region", () => {
     renderTitleBar("tauri", <button type="button">Route action</button>);
-    const dragRegion = screen
-      .getByRole("banner")
-      .querySelector<HTMLElement>('[data-tauri-drag-region="true"]');
+    const banner = screen.getByRole("banner");
+    const leading = banner.querySelector<HTMLElement>('[data-slot="title-bar-leading"]');
+    const dragRegion = banner.querySelector<HTMLElement>('[data-slot="title-bar-drag-region"]');
     const routeAction = screen.getByRole("button", { name: "Route action" });
 
+    expect(leading?.style.paddingLeft).toBe("76px");
+    expect(leading?.style.width).toBe("var(--sidebar-width)");
+    expect(banner.querySelector("[data-tauri-drag-region]")).toBeNull();
     expect(dragRegion).not.toBeNull();
     if (!dragRegion) {
       return;
     }
 
+    fireEvent.pointerDown(dragRegion, { button: 2 });
+    fireEvent.pointerDown(dragRegion, { button: 1 });
     fireEvent.pointerDown(dragRegion, { button: 0 });
+    fireEvent.doubleClick(dragRegion, { button: 2 });
     fireEvent.doubleClick(dragRegion, { button: 0 });
     fireEvent.pointerDown(routeAction, { button: 0 });
     fireEvent.doubleClick(routeAction, { button: 0 });
+
+    const interactiveDescendant = document.createElement("button");
+    dragRegion.append(interactiveDescendant);
+    fireEvent.pointerDown(interactiveDescendant, { button: 0 });
+    fireEvent.doubleClick(interactiveDescendant, { button: 0 });
 
     expect(startDragging).toHaveBeenCalledTimes(1);
     expect(toggleMaximize).toHaveBeenCalledTimes(1);

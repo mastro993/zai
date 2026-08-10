@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const isTauriMock = vi.hoisted(() => vi.fn());
+const getRouterMock = vi.hoisted(() => vi.fn(() => ({})));
 const renderMock = vi.hoisted(() => vi.fn());
 const createRootMock = vi.hoisted(() => vi.fn(() => ({ render: renderMock })));
 
@@ -15,7 +16,7 @@ vi.mock("react-dom/client", () => ({
 }));
 
 vi.mock("../router", () => ({
-  getRouter: vi.fn(() => ({})),
+  getRouter: getRouterMock,
 }));
 
 describe("app bootstrap", () => {
@@ -23,6 +24,7 @@ describe("app bootstrap", () => {
     vi.resetModules();
     vi.stubEnv("VITE_ZAI_BUILD_TARGET", "tauri");
     isTauriMock.mockReset();
+    getRouterMock.mockClear();
     createRootMock.mockClear();
     renderMock.mockClear();
     document.body.innerHTML = '<div id="root"></div>';
@@ -34,6 +36,7 @@ describe("app bootstrap", () => {
     await import("../main");
 
     expect(createRootMock).not.toHaveBeenCalled();
+    expect(getRouterMock).not.toHaveBeenCalled();
     expect(document.getElementById("root")?.textContent).toContain(
       "This desktop frontend must be opened by Tauri",
     );

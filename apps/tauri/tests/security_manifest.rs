@@ -44,7 +44,6 @@ fn load_main_capability(manifest_dir: &Path) -> CapabilityFile {
 }
 
 const REQUIRED_MAIN_PERMISSIONS: &[(&str, &str)] = &[
-    ("core:default", "IPC invoke transport"),
     ("core:path:default", "documentDir default save path"),
     ("core:event:default", "domain alert event listen"),
     (
@@ -63,6 +62,10 @@ const REQUIRED_MAIN_PERMISSIONS: &[(&str, &str)] = &[
 ];
 
 const FORBIDDEN_MAIN_PERMISSIONS: &[(&str, &str)] = &[
+    (
+        "core:default",
+        "broad core default includes unrequested window permissions",
+    ),
     ("shell:default", "no shell consumer"),
     ("store:default", "no store consumer"),
     ("stronghold:default", "no renderer stronghold consumer"),
