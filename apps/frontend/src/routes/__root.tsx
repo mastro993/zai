@@ -10,11 +10,7 @@ import {
   ApplicationTitleBarProvider,
 } from "@/components/application-title-bar";
 import { FixedSidebarTrigger } from "@/components/fixed-sidebar-trigger";
-import {
-  NATIVE_CHROME_LEADING_INSET,
-  WEB_CHROME_LEADING_INSET,
-  WindowDragRegion,
-} from "@/components/window-drag-region";
+import { NATIVE_BRAND_LEADING_INSET, WindowDragRegion } from "@/components/window-drag-region";
 import { AlertsControllerProvider } from "@/features/alerts/hooks/use-alerts-controller";
 
 import {
@@ -34,6 +30,7 @@ import {
   SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/toaster/toaster";
@@ -44,6 +41,7 @@ import {
   readSidebarOpen,
   writeSidebarOpen,
 } from "@/lib/sidebar-preference";
+import { cn } from "@/lib/utils";
 
 export const Route = createRootRoute({
   component: AppLayout,
@@ -121,20 +119,33 @@ interface AppSidebarProps {
   buildTarget: CommandBuildTarget;
 }
 
-function SidebarBrandMark({ paddingLeft }: { paddingLeft: string }) {
+function SidebarBrandMark({
+  wordmark = true,
+  className,
+}: {
+  /** When false, only the 財 kanji is shown (collapsed icon rail). */
+  wordmark?: boolean;
+  className?: string;
+}) {
   return (
     <div
       data-slot="sidebar-brand"
+      data-wordmark={wordmark ? "true" : "false"}
       aria-hidden
-      className="pointer-events-none relative z-10 flex h-12 min-w-0 select-none items-center gap-1.5 pr-2"
-      style={{ paddingLeft }}
+      className={cn(
+        "pointer-events-none relative z-10 flex min-w-0 select-none items-center gap-1.5",
+        className,
+      )}
     >
       {/* Optical nudge: text-lg metrics sit slightly high in the 48px strip. */}
       <span className="flex translate-y-[0.5px] items-center gap-1.5 leading-none">
-        <span className="flex shrink-0 items-center justify-center text-lg leading-none font-semibold text-primary">
+        {/* size-8 matches icon menu buttons in the rail. */}
+        <span className="flex size-8 shrink-0 items-center justify-center text-lg leading-none font-semibold text-primary">
           財
         </span>
-        <span className="truncate text-lg leading-none font-semibold text-primary">Zai</span>
+        {wordmark ? (
+          <span className="truncate text-lg leading-none font-semibold text-primary">Zai</span>
+        ) : null}
       </span>
     </div>
   );
@@ -145,26 +156,52 @@ function AppSidebar({ buildTarget: sidebarBuildTarget }: AppSidebarProps) {
     select: (state) => state.location.pathname,
   });
   const { state: sidebarState } = useSidebar();
-  const showBrand = sidebarState === "expanded";
+  const isExpanded = sidebarState === "expanded";
+  // Match SidebarGroup `p-2` (0.5rem) so chrome lines up with nav rows.
+  const itemPad = "0.5rem";
+  const chromePaddingLeft = sidebarBuildTarget === "tauri" ? NATIVE_BRAND_LEADING_INSET : itemPad;
+
+  const chromeHeader = (
+    <div
+      data-slot="sidebar-chrome-header"
+      className={cn(
+        "relative flex h-12 w-full shrink-0 items-center",
+        isExpanded ? "justify-between" : "justify-center",
+      )}
+      style={{
+        paddingLeft: isExpanded ? chromePaddingLeft : itemPad,
+        paddingRight: itemPad,
+      }}
+    >
+      {sidebarBuildTarget === "tauri" ? (
+        <WindowDragRegion
+          buildTarget={sidebarBuildTarget}
+          data-slot="sidebar-drag-region"
+          reserveTrafficLightInset
+          className="absolute inset-0"
+        />
+      ) : null}
+      {isExpanded ? (
+        <>
+          {/* Brand left, toggle right — spread across sidebar width. */}
+          <SidebarBrandMark wordmark />
+          <div className="relative z-10 flex size-8 shrink-0 items-center justify-center">
+            <SidebarTrigger />
+          </div>
+        </>
+      ) : (
+        // Collapsed icon rail: kanji only, centered with nav icons.
+        <SidebarBrandMark wordmark={false} />
+      )}
+    </div>
+  );
 
   return (
     <Sidebar collapsible={sidebarBuildTarget === "tauri" ? "offcanvas" : "icon"}>
       {sidebarBuildTarget === "tauri" ? (
-        <div data-slot="sidebar-chrome-header" className="relative flex h-12 shrink-0 items-center">
-          {/* Drag under lights + toggle + brand; toggle itself is fixed chrome. */}
-          <WindowDragRegion
-            buildTarget={sidebarBuildTarget}
-            data-slot="sidebar-drag-region"
-            reserveTrafficLightInset
-            className="absolute inset-0"
-          />
-          {showBrand ? <SidebarBrandMark paddingLeft={NATIVE_CHROME_LEADING_INSET} /> : null}
-        </div>
+        chromeHeader
       ) : (
-        // Always reserve h-12 so the fixed toggle stays visible when icon-collapsed.
-        <SidebarHeader className="h-12 shrink-0 gap-0 p-0">
-          {showBrand ? <SidebarBrandMark paddingLeft={WEB_CHROME_LEADING_INSET} /> : null}
-        </SidebarHeader>
+        <SidebarHeader className="h-12 shrink-0 gap-0 p-0">{chromeHeader}</SidebarHeader>
       )}
       <SidebarContent>
         <SidebarGroup>

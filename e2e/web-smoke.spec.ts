@@ -30,7 +30,7 @@ test("web shell keeps full-height sidebar with content-column title bar", async 
     "0.2s",
   );
 
-  // Toggle is fixed window chrome (not inside the content title bar).
+  // Expanded: toggle sits after the brand inside the sidebar chrome.
   await page.getByRole("button", { name: "Toggle Sidebar" }).click();
 
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
@@ -54,26 +54,28 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
   await expect(page.locator('[data-slot="sidebar-brand"]')).toBeVisible();
   await expect(page.locator('[data-slot="sidebar-brand"]')).toContainText("財");
   await expect(page.locator('[data-slot="sidebar-brand"]')).toContainText("Zai");
+  await expect(page.locator('[data-slot="sidebar-brand"]')).toHaveAttribute(
+    "data-wordmark",
+    "true",
+  );
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "256px");
   await expect(page.locator('[data-slot="title-bar-leading"]')).toHaveCSS(
     "transition-duration",
     "0s",
   );
 
-  const toggle = page.getByRole("button", { name: "Toggle Sidebar" });
-  const toggleBoxBefore = await toggle.boundingBox();
-  await toggle.click();
+  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
 
-  // Brand (kanji + logo) only when expanded; toggle stays fixed.
-  await expect(page.locator('[data-slot="sidebar-brand"]')).toHaveCount(0);
+  // Collapsed icon rail: kanji only, toggle hidden (use rail edge to re-expand).
+  await expect(page.locator('[data-slot="sidebar-brand"]')).toBeVisible();
+  await expect(page.locator('[data-slot="sidebar-brand"]')).toHaveAttribute(
+    "data-wordmark",
+    "false",
+  );
+  await expect(page.locator('[data-slot="sidebar-brand"]')).toContainText("財");
+  await expect(page.locator('[data-slot="sidebar-brand"]')).not.toContainText("Zai");
+  await expect(page.getByRole("button", { name: "Toggle Sidebar" })).toHaveCount(0);
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
-  const toggleBoxAfter = await toggle.boundingBox();
-  expect(toggleBoxBefore).not.toBeNull();
-  expect(toggleBoxAfter).not.toBeNull();
-  if (toggleBoxBefore && toggleBoxAfter) {
-    expect(toggleBoxAfter.x).toBe(toggleBoxBefore.x);
-    expect(toggleBoxAfter.y).toBe(toggleBoxBefore.y);
-  }
   await expect(
     page.evaluate((key) => localStorage.getItem(key), sidebarPreferenceKey),
   ).resolves.toBe(JSON.stringify({ version: 1, open: false }));
@@ -82,7 +84,11 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
   await page.reload();
 
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
-  await expect(page.locator('[data-slot="sidebar-brand"]')).toHaveCount(0);
+  await expect(page.locator('[data-slot="sidebar-brand"]')).toHaveAttribute(
+    "data-wordmark",
+    "false",
+  );
+  await expect(page.getByRole("button", { name: "Toggle Sidebar" })).toHaveCount(0);
 
   await page.setViewportSize({ width: 767, height: 768 });
   await page.reload();

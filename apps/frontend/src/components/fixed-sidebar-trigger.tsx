@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import type { CommandBuildTarget } from "@/commands/build-target";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import {
   TRAFFIC_LIGHT_LEADING_WIDTH,
   TRAFFIC_LIGHT_TO_TRIGGER_GAP,
@@ -13,13 +13,20 @@ interface FixedSidebarTriggerProps {
 }
 
 /**
- * Sidebar toggle pinned to the window top-left (after traffic lights on macOS).
- * Stays put when the sidebar expands or collapses.
+ * Toggle only when the sidebar chrome cannot host it:
+ * mobile sheet, or Tauri offcanvas collapsed (no sidebar column).
+ * Expanded desktop hosts the toggle after the brand; icon-collapsed shows kanji only.
  */
 export function FixedSidebarTrigger({ buildTarget }: FixedSidebarTriggerProps) {
+  const { isMobile, state } = useSidebar();
   const windowChrome = useMemo(() => createWindowChromeAdapter(buildTarget), [buildTarget]);
   const hasNativeMacWindowChrome =
     buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
+
+  const showFixedTrigger = isMobile || (buildTarget === "tauri" && state === "collapsed");
+  if (!showFixedTrigger) {
+    return null;
+  }
 
   const paddingLeft = hasNativeMacWindowChrome
     ? `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP})`
