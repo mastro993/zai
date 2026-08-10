@@ -74,7 +74,7 @@ describe("ApplicationTitleBar", () => {
     ).toBeNull();
   });
 
-  it("keeps title bar free of chrome inset when sidebar is expanded", () => {
+  it("aligns expanded title-bar breadcrumbs with page content", () => {
     renderTitleBar("tauri", <button type="button">Route action</button>);
     const banner = screen.getByRole("banner");
     const leading = banner.querySelector<HTMLElement>('[data-slot="title-bar-leading"]');
@@ -82,7 +82,7 @@ describe("ApplicationTitleBar", () => {
     const routeAction = screen.getByRole("button", { name: "Route action" });
 
     // Expanded desktop: fixed toggle sits over the sidebar, not the content title bar.
-    expect(leading?.style.paddingLeft).toBe("0.5rem");
+    expect(leading?.style.paddingLeft).toBe("1rem");
     expect(banner.querySelector("[data-tauri-drag-region]")).toBeNull();
     expect(dragRegion).not.toBeNull();
     if (!dragRegion) {
