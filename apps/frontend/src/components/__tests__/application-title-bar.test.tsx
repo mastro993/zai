@@ -82,7 +82,7 @@ describe("ApplicationTitleBar", () => {
     const routeAction = screen.getByRole("button", { name: "Route action" });
 
     // Expanded desktop: fixed toggle sits over the sidebar, not the content title bar.
-    expect(leading?.style.paddingLeft).toBe("1.5rem");
+    expect(leading?.style.paddingLeft).toBe("1rem");
     expect(banner.querySelector("[data-tauri-drag-region]")).toBeNull();
     expect(dragRegion).not.toBeNull();
     if (!dragRegion) {

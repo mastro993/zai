@@ -15,7 +15,7 @@ export function ScreenBase({ actions, children, className }: ScreenBaseProps) {
     <div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", className)}>
       <ApplicationTitleBarActions>{actions}</ApplicationTitleBarActions>
       <ScrollArea className="min-h-0 flex-1">
-        <div className="flex min-h-full flex-col gap-4 p-6">{children}</div>
+        <div className="flex min-h-full flex-col gap-4 px-4 py-6">{children}</div>
       </ScrollArea>
     </div>
   );

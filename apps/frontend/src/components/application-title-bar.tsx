@@ -114,7 +114,7 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
       ? hasNativeMacWindowChrome
         ? NATIVE_CHROME_LEADING_INSET
         : WEB_CHROME_LEADING_INSET
-      : "1.5rem",
+      : "1rem",
   };
 
   return (
@@ -145,7 +145,7 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
       </div>
       <div
         data-slot="title-bar-actions"
-        className="flex shrink-0 flex-wrap items-center justify-end gap-2 px-6"
+        className="flex shrink-0 flex-wrap items-center justify-end gap-2 px-4"
       >
         <div
           ref={titleBarContextValue?.setActionsTarget}
