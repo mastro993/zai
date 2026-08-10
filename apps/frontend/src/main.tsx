@@ -8,7 +8,6 @@ import { getRouter } from "./router";
 
 import "./styles.css";
 
-const router = getRouter();
 const rootElement = document.getElementById("root");
 
 if (rootElement === null) {
@@ -17,6 +16,8 @@ if (rootElement === null) {
   rootElement.textContent =
     "This desktop frontend must be opened by Tauri. Run `pnpm dev:tauri` and use the Zai window.";
 } else {
+  const router = getRouter();
+
   createRoot(rootElement).render(
     <StrictMode>
       <ThemeProvider
