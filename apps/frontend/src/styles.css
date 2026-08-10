@@ -12,6 +12,14 @@
   border-radius: var(--radius-xl);
 }
 
+[data-slot="scroll-area-scrollbar"][data-orientation="vertical"] {
+  width: 0.375rem;
+}
+
+[data-slot="scroll-area-scrollbar"][data-orientation="horizontal"] {
+  height: 0.375rem;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
