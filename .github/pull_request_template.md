@@ -1,3 +1,5 @@
+<!-- If the PR closes an issue add it here. E.g. "Closes #123" -->
+
 ## Summary
 
 <!-- What does this PR do, and why? Keep it brief. -->
