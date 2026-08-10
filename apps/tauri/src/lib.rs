@@ -1,4 +1,5 @@
 mod commands;
+mod macos_traffic_lights;
 
 use dotenvy::dotenv;
 use std::sync::Arc;
@@ -191,6 +192,10 @@ pub fn run() {
                     error!("Critical setup failed: {}", e);
                     tauri::Error::Setup(e.into())
                 })?;
+
+                if let Some(main_window) = app.get_webview_window("main") {
+                    macos_traffic_lights::install(&main_window);
+                }
 
                 Ok(())
             })

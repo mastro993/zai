@@ -73,15 +73,16 @@ describe("ApplicationTitleBar", () => {
     ).toBeNull();
   });
 
-  it("reserves native controls and limits actions to the empty primary-pointer region", () => {
+  it("keeps title bar free of traffic-light inset when sidebar is expanded", () => {
     renderTitleBar("tauri", <button type="button">Route action</button>);
     const banner = screen.getByRole("banner");
     const leading = banner.querySelector<HTMLElement>('[data-slot="title-bar-leading"]');
     const dragRegion = banner.querySelector<HTMLElement>('[data-slot="title-bar-drag-region"]');
     const routeAction = screen.getByRole("button", { name: "Route action" });
 
-    expect(leading?.style.paddingLeft).toBe("76px");
-    expect(leading?.style.width).toBe("var(--sidebar-width)");
+    // Expanded desktop: traffic lights sit over full-height sidebar, not title bar.
+    expect(leading?.style.paddingLeft).toBe("0.5rem");
+    expect(leading?.style.width).toBe("");
     expect(banner.querySelector("[data-tauri-drag-region]")).toBeNull();
     expect(dragRegion).not.toBeNull();
     if (!dragRegion) {
@@ -103,5 +104,21 @@ describe("ApplicationTitleBar", () => {
 
     expect(startDragging).toHaveBeenCalledTimes(1);
     expect(toggleMaximize).toHaveBeenCalledTimes(1);
+  });
+
+  it("reserves traffic-light inset when the sidebar is collapsed on desktop", () => {
+    render(
+      <SidebarProvider defaultOpen={false}>
+        <ApplicationTitleBarProvider>
+          <ApplicationTitleBar buildTarget="tauri" />
+        </ApplicationTitleBarProvider>
+      </SidebarProvider>,
+    );
+
+    const leading = screen
+      .getByRole("banner")
+      .querySelector<HTMLElement>('[data-slot="title-bar-leading"]');
+
+    expect(leading?.style.paddingLeft).toBe("76px");
   });
 });

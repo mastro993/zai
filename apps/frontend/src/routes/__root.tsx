@@ -9,6 +9,7 @@ import {
   ApplicationTitleBar,
   ApplicationTitleBarProvider,
 } from "@/components/application-title-bar";
+import { WindowDragRegion } from "@/components/window-drag-region";
 import { AlertsControllerProvider } from "@/features/alerts/hooks/use-alerts-controller";
 
 import {
@@ -85,16 +86,14 @@ function ApplicationShell({ buildTarget }: ApplicationShellProps) {
       <SidebarProvider
         open={sidebarOpen}
         onOpenChange={handleSidebarOpenChange}
-        className="h-svh flex-col overflow-hidden"
+        className="h-svh overflow-hidden"
       >
         <ApplicationTitleBarProvider>
-          <ApplicationTitleBar buildTarget={buildTarget} />
-          <div className="flex min-h-0 flex-1">
-            <AppSidebar buildTarget={buildTarget} />
-            <SidebarInset className="min-h-0 overflow-hidden">
-              <Outlet />
-            </SidebarInset>
-          </div>
+          <AppSidebar buildTarget={buildTarget} />
+          <SidebarInset className="min-h-0 overflow-hidden">
+            <ApplicationTitleBar buildTarget={buildTarget} />
+            <Outlet />
+          </SidebarInset>
           <Toaster />
           <TanStackDevtools
             config={{ position: "bottom-right" }}
@@ -121,11 +120,18 @@ function AppSidebar({ buildTarget: sidebarBuildTarget }: AppSidebarProps) {
   });
 
   return (
-    <Sidebar
-      collapsible={sidebarBuildTarget === "tauri" ? "offcanvas" : "icon"}
-      className="md:top-12 md:bottom-auto md:h-[calc(100svh-3rem)]"
-    >
-      {sidebarBuildTarget === "web" ? (
+    <Sidebar collapsible={sidebarBuildTarget === "tauri" ? "offcanvas" : "icon"}>
+      {sidebarBuildTarget === "tauri" ? (
+        <div data-slot="sidebar-traffic-light-spacer" className="flex h-12 shrink-0 items-stretch">
+          {/* Same height as content title bar; drag strip sits past traffic lights. */}
+          <WindowDragRegion
+            buildTarget={sidebarBuildTarget}
+            data-slot="sidebar-drag-region"
+            reserveTrafficLightInset
+            className="min-w-0 flex-1"
+          />
+        </div>
+      ) : (
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
@@ -144,7 +150,7 @@ function AppSidebar({ buildTarget: sidebarBuildTarget }: AppSidebarProps) {
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>
-      ) : null}
+      )}
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
