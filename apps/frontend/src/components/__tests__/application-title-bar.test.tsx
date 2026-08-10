@@ -64,6 +64,7 @@ describe("ApplicationTitleBar", () => {
     expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Alerts" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Route action" })).toBeTruthy();
+    expect(screen.getByRole("banner").querySelector('[data-tauri-drag-region="true"]')).toBeNull();
   });
 
   it("starts drag and toggles maximization only from the empty native region", () => {

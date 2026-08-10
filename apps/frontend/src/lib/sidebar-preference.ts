@@ -3,6 +3,7 @@ import { z } from "zod";
 
 export const SIDEBAR_PREFERENCE_STORAGE_KEY = "zai-sidebar-preference";
 export const SIDEBAR_PREFERENCE_VERSION = 1 as const;
+const SIDEBAR_STATE_COOKIE_NAME = "sidebar_state";
 
 export interface SidebarPreferenceStorage {
   getItem(key: string): string | null;
@@ -72,6 +73,21 @@ export const writeSidebarOpen = (open: boolean, storage?: SidebarPreferenceStora
         SIDEBAR_PREFERENCE_STORAGE_KEY,
         JSON.stringify({ version: SIDEBAR_PREFERENCE_VERSION, open }),
       ),
+    catch: () => undefined,
+  });
+
+  void result;
+};
+
+export const clearSidebarStateCookie = (): void => {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const result = Result.try({
+    try: () => {
+      document.cookie = `${SIDEBAR_STATE_COOKIE_NAME}=; path=/; max-age=0`;
+    },
     catch: () => undefined,
   });
 

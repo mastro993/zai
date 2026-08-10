@@ -1,5 +1,77 @@
 import { expect, test } from "@playwright/test";
 
+const sidebarPreferenceKey = "zai-sidebar-preference";
+
+test("web shell aligns sidebar and title bar with allowed motion", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/dashboard");
+
+  await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("transition-duration", "0.2s");
+  await expect(page.locator('[data-slot="title-bar-leading"]')).toHaveCSS(
+    "transition-duration",
+    "0.2s",
+  );
+
+  await page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" }).click();
+
+  await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
+  await expect(page.locator('[data-slot="title-bar-leading"]')).toHaveCSS("width", "48px");
+});
+
+test("web shell keeps wide sidebar preference separate from narrow navigation", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/dashboard");
+  await page.evaluate((key) => {
+    localStorage.setItem(key, JSON.stringify({ version: 2, open: false }));
+  }, sidebarPreferenceKey);
+  await page.reload();
+
+  await expect(page).toHaveTitle("Zai");
+  await expect(page.getByRole("banner")).toHaveAttribute("data-build-target", "web");
+  await expect(page.getByRole("button", { name: /Alerts/ })).toBeVisible();
+  await expect(page.locator('[data-tauri-drag-region="true"]')).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "財 Zai" })).toBeVisible();
+  await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "256px");
+  await expect(page.locator('[data-slot="title-bar-leading"]')).toHaveCSS("width", "256px");
+  await expect(page.locator('[data-slot="title-bar-leading"]')).toHaveCSS(
+    "transition-duration",
+    "0s",
+  );
+
+  await page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" }).click();
+
+  await expect(page.getByRole("link", { name: "財", exact: true })).toBeVisible();
+  await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
+  await expect(page.locator('[data-slot="title-bar-leading"]')).toHaveCSS("width", "48px");
+  await expect(
+    page.evaluate((key) => localStorage.getItem(key), sidebarPreferenceKey),
+  ).resolves.toBe(JSON.stringify({ version: 1, open: false }));
+  await expect(page.evaluate(() => document.cookie)).resolves.not.toContain("sidebar_state=");
+
+  await page.reload();
+
+  await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
+  await expect(page.getByRole("link", { name: "財", exact: true })).toBeVisible();
+
+  await page.setViewportSize({ width: 767, height: 768 });
+  await page.reload();
+
+  const mobileSidebar = page.locator('[data-slot="sidebar"][data-mobile="true"]');
+  await expect(mobileSidebar).toBeHidden();
+  await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCount(0);
+
+  await page.getByRole("banner").getByRole("button", { name: "Toggle Sidebar" }).click();
+
+  await expect(mobileSidebar).toBeVisible();
+  await expect(
+    page.evaluate((key) => localStorage.getItem(key), sidebarPreferenceKey),
+  ).resolves.toBe(JSON.stringify({ version: 1, open: false }));
+});
+
 test("web mode loads Cash flow categories and persists a created category", async ({
   page,
 }, testInfo) => {
