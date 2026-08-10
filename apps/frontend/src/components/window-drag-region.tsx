@@ -11,7 +11,7 @@ export const SIDEBAR_TRIGGER_SLOT_WIDTH = "2rem";
 /** Gap between traffic lights and the sidebar trigger. */
 export const TRAFFIC_LIGHT_TO_TRIGGER_GAP = "0.5rem";
 /** Gap between sidebar trigger and brand / title content. */
-export const TRIGGER_TO_CONTENT_GAP = "0.5rem";
+export const TRIGGER_TO_CONTENT_GAP = "0.25rem";
 
 /** Window-left inset through traffic lights + trigger (native mac chrome). */
 export const NATIVE_CHROME_LEADING_INSET = `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP} + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_CONTENT_GAP})`;

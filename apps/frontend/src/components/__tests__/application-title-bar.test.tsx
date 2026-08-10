@@ -125,5 +125,6 @@ describe("ApplicationTitleBar", () => {
     expect(padding).toContain("76px");
     expect(padding).toContain("0.5rem");
     expect(padding).toContain("2rem");
+    expect(padding).toContain("0.25rem");
   });
 });

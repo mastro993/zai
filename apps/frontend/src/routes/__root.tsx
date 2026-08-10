@@ -121,6 +121,25 @@ interface AppSidebarProps {
   buildTarget: CommandBuildTarget;
 }
 
+function SidebarBrandMark({ paddingLeft }: { paddingLeft: string }) {
+  return (
+    <div
+      data-slot="sidebar-brand"
+      aria-hidden
+      className="pointer-events-none relative z-10 flex h-12 min-w-0 select-none items-center gap-1.5 pr-2"
+      style={{ paddingLeft }}
+    >
+      {/* Optical nudge: text-lg metrics sit slightly high in the 48px strip. */}
+      <span className="flex translate-y-[0.5px] items-center gap-1.5 leading-none">
+        <span className="flex shrink-0 items-center justify-center text-lg leading-none font-semibold text-primary">
+          財
+        </span>
+        <span className="truncate text-lg leading-none font-semibold text-primary">Zai</span>
+      </span>
+    </div>
+  );
+}
+
 function AppSidebar({ buildTarget: sidebarBuildTarget }: AppSidebarProps) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -139,49 +158,12 @@ function AppSidebar({ buildTarget: sidebarBuildTarget }: AppSidebarProps) {
             reserveTrafficLightInset
             className="absolute inset-0"
           />
-          {showBrand ? (
-            <Link
-              to="/dashboard"
-              data-slot="sidebar-brand"
-              className="relative z-10 flex h-12 min-w-0 items-center gap-1.5 pr-2 leading-none outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-              style={{
-                // lights | gap | toggle | gap | 財 Zai
-                paddingLeft: NATIVE_CHROME_LEADING_INSET,
-              }}
-            >
-              {/* Optical nudge: text-lg metrics sit slightly high in the 48px strip. */}
-              <span className="flex translate-y-[0.5px] items-center gap-1.5">
-                <span className="flex shrink-0 items-center justify-center text-lg leading-none font-semibold text-primary">
-                  財
-                </span>
-                <span className="truncate text-lg leading-none font-semibold text-primary">
-                  Zai
-                </span>
-              </span>
-            </Link>
-          ) : null}
+          {showBrand ? <SidebarBrandMark paddingLeft={NATIVE_CHROME_LEADING_INSET} /> : null}
         </div>
       ) : (
-        <SidebarHeader>
-          {showBrand ? (
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  size="lg"
-                  className="h-12 leading-none"
-                  style={{ paddingLeft: WEB_CHROME_LEADING_INSET }}
-                  render={<Link to="/dashboard" />}
-                >
-                  <span className="flex translate-y-[0.5px] items-center gap-1.5">
-                    <span className="flex shrink-0 items-center justify-center text-lg leading-none font-semibold text-primary">
-                      財
-                    </span>
-                    <span className="text-lg leading-none font-semibold text-primary">Zai</span>
-                  </span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          ) : null}
+        // Always reserve h-12 so the fixed toggle stays visible when icon-collapsed.
+        <SidebarHeader className="h-12 shrink-0 gap-0 p-0">
+          {showBrand ? <SidebarBrandMark paddingLeft={WEB_CHROME_LEADING_INSET} /> : null}
         </SidebarHeader>
       )}
       <SidebarContent>
