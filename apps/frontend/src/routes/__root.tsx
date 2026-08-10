@@ -9,6 +9,8 @@ import {
   ApplicationTitleBar,
   ApplicationTitleBarProvider,
 } from "@/components/application-title-bar";
+import { FixedSidebarTrigger } from "@/components/fixed-sidebar-trigger";
+import { NATIVE_BRAND_LEADING_INSET, WindowDragRegion } from "@/components/window-drag-region";
 import { AlertsControllerProvider } from "@/features/alerts/hooks/use-alerts-controller";
 
 import {
@@ -28,6 +30,8 @@ import {
   SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
+  SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/toaster/toaster";
 import { parseCommandBuildTarget, type CommandBuildTarget } from "@/commands/build-target";
@@ -37,6 +41,7 @@ import {
   readSidebarOpen,
   writeSidebarOpen,
 } from "@/lib/sidebar-preference";
+import { cn } from "@/lib/utils";
 
 export const Route = createRootRoute({
   component: AppLayout,
@@ -85,16 +90,17 @@ function ApplicationShell({ buildTarget }: ApplicationShellProps) {
       <SidebarProvider
         open={sidebarOpen}
         onOpenChange={handleSidebarOpenChange}
-        className="h-svh flex-col overflow-hidden"
+        className="h-svh overflow-hidden"
       >
         <ApplicationTitleBarProvider>
-          <ApplicationTitleBar buildTarget={buildTarget} />
-          <div className="flex min-h-0 flex-1">
-            <AppSidebar buildTarget={buildTarget} />
-            <SidebarInset className="min-h-0 overflow-hidden">
+          <FixedSidebarTrigger buildTarget={buildTarget} />
+          <AppSidebar buildTarget={buildTarget} />
+          <SidebarInset className="min-h-0 overflow-hidden">
+            <ApplicationTitleBar buildTarget={buildTarget} />
+            <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <Outlet />
-            </SidebarInset>
-          </div>
+            </main>
+          </SidebarInset>
           <Toaster />
           <TanStackDevtools
             config={{ position: "bottom-right" }}
@@ -115,36 +121,105 @@ interface AppSidebarProps {
   buildTarget: CommandBuildTarget;
 }
 
+function SidebarBrandMark({ className }: { className?: string }) {
+  return (
+    <div
+      data-slot="sidebar-brand"
+      data-wordmark="true"
+      aria-hidden
+      className={cn(
+        "pointer-events-none relative z-10 flex min-w-0 select-none items-center gap-1.5",
+        className,
+      )}
+    >
+      {/* Optical nudge: text-lg metrics sit slightly high in the 48px strip. */}
+      <span className="flex translate-y-[0.5px] items-center gap-1.5 leading-none">
+        {/* size-8 matches icon menu buttons in the rail. */}
+        <span className="flex size-8 shrink-0 items-center justify-center text-lg leading-none font-semibold text-primary">
+          財
+        </span>
+        <span className="truncate text-lg leading-none font-semibold text-primary">Zai</span>
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Collapsed icon-rail chrome: show 財 by default; hover/focus reveals the toggle
+ * with a short cross-fade so the user can expand the sidebar.
+ */
+function CollapsedSidebarChrome() {
+  return (
+    <div
+      data-slot="sidebar-collapsed-chrome"
+      className="group/collapsed-chrome relative z-10 flex size-8 items-center justify-center"
+    >
+      <span
+        data-slot="sidebar-brand"
+        data-wordmark="false"
+        aria-hidden
+        className="pointer-events-none absolute inset-0 flex translate-y-[0.5px] items-center justify-center text-lg leading-none font-semibold text-primary transition-[opacity,transform] duration-200 ease-out group-hover/collapsed-chrome:scale-95 group-hover/collapsed-chrome:opacity-0 group-focus-within/collapsed-chrome:scale-95 group-focus-within/collapsed-chrome:opacity-0 motion-reduce:transition-none"
+      >
+        財
+      </span>
+      <div className="absolute inset-0 flex scale-95 items-center justify-center opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover/collapsed-chrome:scale-100 group-hover/collapsed-chrome:opacity-100 group-focus-within/collapsed-chrome:scale-100 group-focus-within/collapsed-chrome:opacity-100 motion-reduce:transition-none pointer-events-none group-hover/collapsed-chrome:pointer-events-auto group-focus-within/collapsed-chrome:pointer-events-auto">
+        <SidebarTrigger />
+      </div>
+    </div>
+  );
+}
+
 function AppSidebar({ buildTarget: sidebarBuildTarget }: AppSidebarProps) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const { state: sidebarState } = useSidebar();
+  const isExpanded = sidebarState === "expanded";
+  // Match SidebarGroup `p-2` (0.5rem) so chrome lines up with nav rows.
+  const itemPad = "0.5rem";
+  const chromePaddingLeft = sidebarBuildTarget === "tauri" ? NATIVE_BRAND_LEADING_INSET : itemPad;
+
+  const chromeHeader = (
+    <div
+      data-slot="sidebar-chrome-header"
+      className={cn(
+        "relative flex h-12 w-full shrink-0 items-center",
+        isExpanded ? "justify-between" : "justify-center",
+      )}
+      style={{
+        paddingLeft: isExpanded ? chromePaddingLeft : itemPad,
+        paddingRight: itemPad,
+      }}
+    >
+      {sidebarBuildTarget === "tauri" ? (
+        <WindowDragRegion
+          buildTarget={sidebarBuildTarget}
+          data-slot="sidebar-drag-region"
+          reserveTrafficLightInset
+          className="absolute inset-0"
+        />
+      ) : null}
+      {isExpanded ? (
+        <>
+          {/* Brand left, toggle right — spread across sidebar width. */}
+          <SidebarBrandMark />
+          <div className="relative z-10 flex size-8 shrink-0 items-center justify-center">
+            <SidebarTrigger />
+          </div>
+        </>
+      ) : (
+        <CollapsedSidebarChrome />
+      )}
+    </div>
+  );
 
   return (
-    <Sidebar
-      collapsible={sidebarBuildTarget === "tauri" ? "offcanvas" : "icon"}
-      className="md:top-12 md:bottom-auto md:h-[calc(100svh-3rem)]"
-    >
-      {sidebarBuildTarget === "web" ? (
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                size="lg"
-                className="group-data-[collapsible=icon]:justify-center"
-                render={<Link to="/dashboard" />}
-              >
-                <span className="flex size-4 shrink-0 items-center justify-center text-lg font-semibold text-primary">
-                  財
-                </span>
-                <span className="text-lg font-semibold text-primary group-data-[collapsible=icon]:hidden">
-                  Zai
-                </span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
-      ) : null}
+    <Sidebar collapsible={sidebarBuildTarget === "tauri" ? "offcanvas" : "icon"}>
+      {sidebarBuildTarget === "tauri" ? (
+        chromeHeader
+      ) : (
+        <SidebarHeader className="h-12 shrink-0 gap-0 p-0">{chromeHeader}</SidebarHeader>
+      )}
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>

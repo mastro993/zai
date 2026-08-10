@@ -173,6 +173,8 @@ fn main_window_uses_native_overlay_chrome() {
     assert_eq!(main_window["decorations"], true);
     assert_eq!(main_window["titleBarStyle"], "Overlay");
     assert_eq!(main_window["hiddenTitle"], true);
+    // Traffic-light Y is applied at runtime (macos_traffic_lights), not via config.
+    assert!(main_window.get("trafficLightPosition").is_none());
 }
 
 #[test]

@@ -11,8 +11,12 @@ publish.workspace = true
 name = "zai_app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[lints]
-workspace = true
+# Override workspace forbid: macOS traffic lights need objc2 FFI.
+[lints.rust]
+unsafe_code = "allow"
+
+[lints.clippy]
+all = "warn"
 
 [build-dependencies]
 tauri-build = { version = "~2.6", features = [] }
@@ -40,3 +44,14 @@ custom-protocol = ["tauri/custom-protocol"]
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "=2.4.3"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3.0", default-features = false, features = [
+  "std",
+  "NSWindow",
+  "NSView",
+  "NSButton",
+  "NSControl",
+  "NSResponder",
+] }

@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-  type MouseEvent,
-  type PointerEvent,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 
@@ -18,11 +10,15 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import {
+  NATIVE_CHROME_LEADING_INSET,
+  WEB_CHROME_LEADING_INSET,
+  WindowDragRegion,
+} from "@/components/window-drag-region";
+import { useSidebar } from "@/components/ui/sidebar";
 import { AlertsBell } from "@/features/alerts/components/alerts-bell";
 import { useScreenBreadcrumbs } from "@/hooks/use-screen-breadcrumbs";
-import { cn } from "@/lib/utils";
-import { createWindowChromeAdapter, type WindowChromeAdapter } from "@/lib/window-chrome";
+import { createWindowChromeAdapter } from "@/lib/window-chrome";
 import type { CommandBuildTarget } from "@/commands/build-target";
 
 type TitleBarActionsTarget = HTMLElement | null;
@@ -99,13 +95,6 @@ function ScreenBreadcrumbs() {
   );
 }
 
-const isPrimaryEmptyRegionPointer = (
-  event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>,
-) => event.button === 0 && event.currentTarget === event.target;
-
-const titleBarNativeLeadingWidth = "76px";
-const titleBarToggleWidth = "28px";
-
 interface ApplicationTitleBarProps {
   buildTarget: CommandBuildTarget;
 }
@@ -113,44 +102,19 @@ interface ApplicationTitleBarProps {
 export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
   const { isMobile, state } = useSidebar();
   const titleBarContextValue = useContext(titleBarContext);
-  const windowChrome = useMemo<WindowChromeAdapter>(
-    () => createWindowChromeAdapter(buildTarget),
-    [buildTarget],
-  );
+  const windowChrome = useMemo(() => createWindowChromeAdapter(buildTarget), [buildTarget]);
   const hasNativeMacWindowChrome =
     buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
-  const isExpandedDesktop = !isMobile && state === "expanded";
+  // Toggle is fixed to the window. Clear it only when the title bar sits under that
+  // zone: mobile sheet, or Tauri offcanvas collapsed (no sidebar column).
+  const needsFixedTriggerClearance = isMobile || (buildTarget === "tauri" && state === "collapsed");
 
-  const leadingStyle = hasNativeMacWindowChrome
-    ? {
-        width: isExpandedDesktop
-          ? "var(--sidebar-width)"
-          : `calc(${titleBarNativeLeadingWidth} + ${titleBarToggleWidth})`,
-        paddingLeft: titleBarNativeLeadingWidth,
-      }
-    : isMobile
-      ? { paddingLeft: "0.5rem" }
-      : {
-          width: state === "expanded" ? "var(--sidebar-width)" : "var(--sidebar-width-icon)",
-          paddingLeft: "0.5rem",
-        };
-
-  const startDragging = (event: PointerEvent<HTMLDivElement>) => {
-    if (!hasNativeMacWindowChrome || !isPrimaryEmptyRegionPointer(event)) {
-      return;
-    }
-
-    event.preventDefault();
-    windowChrome.startDragging();
-  };
-
-  const toggleMaximize = (event: MouseEvent<HTMLDivElement>) => {
-    if (!hasNativeMacWindowChrome || !isPrimaryEmptyRegionPointer(event)) {
-      return;
-    }
-
-    event.preventDefault();
-    windowChrome.toggleMaximize();
+  const leadingStyle = {
+    paddingLeft: needsFixedTriggerClearance
+      ? hasNativeMacWindowChrome
+        ? NATIVE_CHROME_LEADING_INSET
+        : WEB_CHROME_LEADING_INSET
+      : "0.5rem",
   };
 
   return (
@@ -164,37 +128,19 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
       <div className="flex min-w-0 flex-1 items-center">
         <div
           data-slot="title-bar-leading"
-          className="flex min-w-0 shrink-0 items-center transition-[padding,width] duration-200 ease-linear"
+          className="flex min-w-0 shrink-0 items-center transition-[padding] duration-200 ease-linear"
           style={leadingStyle}
-        >
-          <SidebarTrigger />
-          {hasNativeMacWindowChrome && isExpandedDesktop ? (
-            <div
-              data-slot="title-bar-drag-region"
-              className="h-12 min-w-2 flex-1 cursor-default transition-[width] duration-200 ease-linear"
-              onPointerDown={startDragging}
-              onDoubleClick={toggleMaximize}
-            />
-          ) : null}
-        </div>
+          aria-hidden
+        />
         <div className="flex min-w-0 flex-1 items-center">
-          <div
-            data-slot="title-bar-breadcrumbs"
-            className={cn(
-              "min-w-0",
-              hasNativeMacWindowChrome && !isExpandedDesktop ? "shrink-0" : "flex-1",
-            )}
-          >
+          <div data-slot="title-bar-breadcrumbs" className="min-w-0 shrink-0">
             <ScreenBreadcrumbs />
           </div>
-          {hasNativeMacWindowChrome && !isExpandedDesktop ? (
-            <div
-              data-slot="title-bar-drag-region"
-              className="ml-2 h-12 min-w-2 flex-1 cursor-default transition-[width] duration-200 ease-linear"
-              onPointerDown={startDragging}
-              onDoubleClick={toggleMaximize}
-            />
-          ) : null}
+          <WindowDragRegion
+            buildTarget={buildTarget}
+            data-slot="title-bar-drag-region"
+            className="ml-2 min-w-2 flex-1"
+          />
         </div>
       </div>
       <div
