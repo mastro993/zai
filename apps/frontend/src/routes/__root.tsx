@@ -132,7 +132,7 @@ function SidebarBrandMark({ className }: { className?: string }) {
       )}
     >
       {/* Optical nudge: text-lg metrics sit slightly high in the 48px strip. */}
-      <span className="flex translate-y-[0.5px] items-center gap-1.5 leading-none">
+      <span className="flex translate-y-[0.5px] items-center gap-0 leading-none">
         {/* size-8 matches icon menu buttons in the rail. */}
         <span className="flex size-8 shrink-0 items-center justify-center text-lg leading-none font-semibold text-primary">
           財
