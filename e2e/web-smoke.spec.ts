@@ -1,6 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const sidebarPreferenceKey = "zai-sidebar-preference";
+
+/** Prefer the chrome trigger; rail also uses the accessible name "Toggle Sidebar". */
+const sidebarTrigger = (page: Page) => page.locator('[data-slot="sidebar-trigger"]');
 
 test("web shell keeps full-height sidebar with content-column title bar", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
@@ -34,7 +37,7 @@ test("web shell keeps full-height sidebar with content-column title bar", async 
   );
 
   // Expanded: toggle sits after the brand inside the sidebar chrome.
-  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
+  await sidebarTrigger(page).click();
 
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
 });
@@ -67,7 +70,7 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
     "0s",
   );
 
-  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
+  await sidebarTrigger(page).click();
 
   // Collapsed icon rail: kanji by default; hover reveals toggle to re-expand.
   const collapsedChrome = page.locator('[data-slot="sidebar-collapsed-chrome"]');
@@ -79,7 +82,7 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
   await expect(page.locator('[data-slot="sidebar-brand"]')).toContainText("財");
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
   await collapsedChrome.hover();
-  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
+  await sidebarTrigger(page).click({ force: true });
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "256px");
   await expect(page.locator('[data-slot="sidebar-brand"]')).toHaveAttribute(
     "data-wordmark",
@@ -87,7 +90,7 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
   );
 
   // Collapse again and persist.
-  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
+  await sidebarTrigger(page).click();
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
   await expect(
     page.evaluate((key) => localStorage.getItem(key), sidebarPreferenceKey),
@@ -110,7 +113,7 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
   await expect(mobileSidebar).toBeHidden();
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
+  await sidebarTrigger(page).click();
 
   await expect(mobileSidebar).toBeVisible();
   await expect(
