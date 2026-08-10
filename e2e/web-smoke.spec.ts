@@ -66,15 +66,25 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
 
   await page.getByRole("button", { name: "Toggle Sidebar" }).click();
 
-  // Collapsed icon rail: kanji only, toggle hidden (use rail edge to re-expand).
-  await expect(page.locator('[data-slot="sidebar-brand"]')).toBeVisible();
+  // Collapsed icon rail: kanji by default; hover reveals toggle to re-expand.
+  const collapsedChrome = page.locator('[data-slot="sidebar-collapsed-chrome"]');
+  await expect(collapsedChrome).toBeVisible();
   await expect(page.locator('[data-slot="sidebar-brand"]')).toHaveAttribute(
     "data-wordmark",
     "false",
   );
   await expect(page.locator('[data-slot="sidebar-brand"]')).toContainText("財");
-  await expect(page.locator('[data-slot="sidebar-brand"]')).not.toContainText("Zai");
-  await expect(page.getByRole("button", { name: "Toggle Sidebar" })).toHaveCount(0);
+  await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
+  await collapsedChrome.hover();
+  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
+  await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "256px");
+  await expect(page.locator('[data-slot="sidebar-brand"]')).toHaveAttribute(
+    "data-wordmark",
+    "true",
+  );
+
+  // Collapse again and persist.
+  await page.getByRole("button", { name: "Toggle Sidebar" }).click();
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
   await expect(
     page.evaluate((key) => localStorage.getItem(key), sidebarPreferenceKey),
@@ -84,11 +94,11 @@ test("web shell keeps wide sidebar preference separate from narrow navigation", 
   await page.reload();
 
   await expect(page.locator('[data-slot="sidebar-gap"]')).toHaveCSS("width", "48px");
+  await expect(page.locator('[data-slot="sidebar-collapsed-chrome"]')).toBeVisible();
   await expect(page.locator('[data-slot="sidebar-brand"]')).toHaveAttribute(
     "data-wordmark",
     "false",
   );
-  await expect(page.getByRole("button", { name: "Toggle Sidebar" })).toHaveCount(0);
 
   await page.setViewportSize({ width: 767, height: 768 });
   await page.reload();

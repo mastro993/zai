@@ -119,18 +119,11 @@ interface AppSidebarProps {
   buildTarget: CommandBuildTarget;
 }
 
-function SidebarBrandMark({
-  wordmark = true,
-  className,
-}: {
-  /** When false, only the 財 kanji is shown (collapsed icon rail). */
-  wordmark?: boolean;
-  className?: string;
-}) {
+function SidebarBrandMark({ className }: { className?: string }) {
   return (
     <div
       data-slot="sidebar-brand"
-      data-wordmark={wordmark ? "true" : "false"}
+      data-wordmark="true"
       aria-hidden
       className={cn(
         "pointer-events-none relative z-10 flex min-w-0 select-none items-center gap-1.5",
@@ -143,10 +136,33 @@ function SidebarBrandMark({
         <span className="flex size-8 shrink-0 items-center justify-center text-lg leading-none font-semibold text-primary">
           財
         </span>
-        {wordmark ? (
-          <span className="truncate text-lg leading-none font-semibold text-primary">Zai</span>
-        ) : null}
+        <span className="truncate text-lg leading-none font-semibold text-primary">Zai</span>
       </span>
+    </div>
+  );
+}
+
+/**
+ * Collapsed icon-rail chrome: show 財 by default; hover/focus reveals the toggle
+ * with a short cross-fade so the user can expand the sidebar.
+ */
+function CollapsedSidebarChrome() {
+  return (
+    <div
+      data-slot="sidebar-collapsed-chrome"
+      className="group/collapsed-chrome relative z-10 flex size-8 items-center justify-center"
+    >
+      <span
+        data-slot="sidebar-brand"
+        data-wordmark="false"
+        aria-hidden
+        className="pointer-events-none absolute inset-0 flex translate-y-[0.5px] items-center justify-center text-lg leading-none font-semibold text-primary transition-[opacity,transform] duration-200 ease-out group-hover/collapsed-chrome:scale-95 group-hover/collapsed-chrome:opacity-0 group-focus-within/collapsed-chrome:scale-95 group-focus-within/collapsed-chrome:opacity-0 motion-reduce:transition-none"
+      >
+        財
+      </span>
+      <div className="absolute inset-0 flex scale-95 items-center justify-center opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover/collapsed-chrome:scale-100 group-hover/collapsed-chrome:opacity-100 group-focus-within/collapsed-chrome:scale-100 group-focus-within/collapsed-chrome:opacity-100 motion-reduce:transition-none pointer-events-none group-hover/collapsed-chrome:pointer-events-auto group-focus-within/collapsed-chrome:pointer-events-auto">
+        <SidebarTrigger />
+      </div>
     </div>
   );
 }
@@ -184,14 +200,13 @@ function AppSidebar({ buildTarget: sidebarBuildTarget }: AppSidebarProps) {
       {isExpanded ? (
         <>
           {/* Brand left, toggle right — spread across sidebar width. */}
-          <SidebarBrandMark wordmark />
+          <SidebarBrandMark />
           <div className="relative z-10 flex size-8 shrink-0 items-center justify-center">
             <SidebarTrigger />
           </div>
         </>
       ) : (
-        // Collapsed icon rail: kanji only, centered with nav icons.
-        <SidebarBrandMark wordmark={false} />
+        <CollapsedSidebarChrome />
       )}
     </div>
   );
