@@ -146,14 +146,16 @@ _Avoid_: Failed transaction, unconverted transaction
 **Incomplete cross-currency result**:
 A budget, projection, statistic, chart value, or other aggregate that cannot be
 fully calculated because at least one contributing transaction or projected
-occurrence lacks a required exchange rate. Zai identifies it as incomplete and
-never presents a cached or guessed value as complete.
+occurrence lacks a required exchange rate, or because it depends on such a
+period through rollover. It may show the known converted sum. Zai never claims
+a complete status, remaining allowance, or alert from it, and never presents a
+guessed value as complete.
 _Avoid_: Estimated result
 
 **Projection exchange rate**:
-The latest available conversion rate used for a projected occurrence. A later
-rate may change a projection but never changes a completed transaction or its
-results.
+The latest available conversion rate used for a projected occurrence or a
+future projected allowance. A later rate may change a projection but never
+changes a completed transaction or its results.
 _Avoid_: Transaction exchange rate
 
 **Live exchange-rate refresh**:
@@ -376,8 +378,10 @@ A snapshot-derived forecast over a bounded rolling device-local calendar window.
 The window starts from one sampled local-clock observation and ends at the same
 local time after the selected number of calendar months, retaining the
 day-of-month or clamping to the target month's last valid day. It combines
-persisted budget activity with projected occurrences and may derive hypothetical
-rollover and status without changing actual budget state or emitting alerts.
+persisted budget activity converted at each transaction exchange rate with
+projected occurrences and future allowances converted at the projection
+exchange rate. It may derive hypothetical rollover and status without changing
+actual budget state or emitting alerts.
 
 **Recurring occurrence alert**:
 The durable domain alert created with one automatically generated occurrence. It
@@ -401,21 +405,34 @@ separate recovery alert.
 **Rollover mode**:
 A budget's rule for carrying a remaining allowance or overspending between
 periods. Off carries nothing. Previous-period-only adds the immediately
-preceding period's base allowance minus its net budget spending, excluding any
-rollover that period received. Cumulative adds the preceding period's remaining
-allowance. A budget's first period has zero carry. Every period participates
-even when it has no matching transactions; pausing does not break the rollover
-chain. A historical result correction recalculates every later period whose
-rollover depends on it.
+preceding period's converted base allowance minus its converted net budget
+spending, excluding any rollover that period received. Cumulative adds the
+preceding period's converted remaining allowance. Carry always uses the same
+default-currency restatement as the period that receives it. A budget's first
+period has zero carry. Every period participates even when it has no matching
+transactions; pausing does not break the rollover chain. An incomplete
+predecessor makes every later dependent period incomplete. A historical result
+correction recalculates every later period whose rollover depends on it.
 
 **Effective allowance**:
-A budget period's base allowance plus the carry determined by its rollover mode.
-It may be negative when carried overspending exceeds the base allowance.
+A complete budget period's converted base allowance plus the carry determined
+by its rollover mode. It may be negative when carried overspending exceeds the
+base allowance. An incomplete period does not claim an effective allowance.
 
 **Base allowance**:
-A non-negative minor-unit amount assigned to each active budget period. Zero is
+A non-negative authored allowance assigned to each active budget period. Zero is
 a valid no-spending target: any positive net budget spending is overspent when
 the effective allowance remains zero.
+
+**Authored allowance**:
+The base allowance as the user entered it, stored as money in the default
+currency at the time that configuration version was written. Closed period
+configuration does not change.
+
+**Converted allowance**:
+The authored allowance restated in the current default currency. Actual periods
+use the period-start rate of the same class as a transaction exchange rate;
+future projected periods use the projection exchange rate.
 
 **Budget period**:
 The calendar day, week, month, or year over which a budget allowance is
@@ -442,20 +459,24 @@ immutable, while corrections to source transactions may recalculate its result.
 
 **Net budget spending**:
 The signed sum of matching transaction contributions within a budget period,
-without clamping. Expenses add. In Spending mode, income subtracts only in a
-Spending category; in Net cash flow mode, all matching income subtracts. It may
-be negative when contributing income exceeds expenses.
+converted into the default currency, without clamping. Expenses add. In
+Spending mode, income subtracts only in a Spending category; in Net cash flow
+mode, all matching income subtracts. It may be negative when contributing
+income exceeds expenses. An exchange-rate pending transaction adds nothing to
+the sum and makes the period an incomplete cross-currency result.
 
 **Remaining allowance**:
-A budget period's effective allowance minus its net budget spending. It may
-exceed the effective allowance or become negative.
+A complete budget period's effective allowance minus its net budget spending.
+It may exceed the effective allowance or become negative. An incomplete period
+does not claim a remaining allowance.
 
 **Budget status**:
-A budget period is overspent when net budget spending exceeds its effective
-allowance. Otherwise it is warning when a configured percentage threshold has
-been reached against a positive effective allowance; percentage warnings are
-not evaluated for zero or negative effective allowances. All other periods are
-on track. Overspent takes precedence over warning.
+A complete budget period is overspent when net budget spending exceeds its
+effective allowance. Otherwise it is warning when a configured percentage
+threshold has been reached against a positive effective allowance; percentage
+warnings are not evaluated for zero or negative effective allowances. All other
+complete periods are on track. Overspent takes precedence over warning. An
+incomplete period has no claimed status.
 
 **Warning threshold**:
 An optional whole percentage from 1 through 100 used to determine a budget
