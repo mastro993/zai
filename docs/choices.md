@@ -24,3 +24,12 @@ Agent defaults:
 - Wire Money stays a JSON number. Authored cap remains `i32::MAX` minor units. Persist `i64`.
 - `create`/`update`/`get` transaction return the detail DTO. List stays converted + completeness.
 - Last-used transaction currency stays session memory.
+
+## 2026-08-17 — [Define multi-currency production verification and rollout contract](https://github.com/mastro993/zai/issues/377)
+
+User-locked: all four grill recommendations.
+
+- Automated evidence is the complete ship gate. No human walkthrough or signed QA checklist.
+- Performance split matches recurring: PR = structural; `main` = `pnpm benchmark:currency`. Seed `377`. 10k mixed-currency restatement + 1k-row bound import. Fail >60s or >64 MiB working-set growth.
+- One atomic app version. No feature flag. Silent EUR migrate on first launch behind a pre-migration backup. Fail-closed downgrade.
+- Closed must-pass list. Living file: `docs/multi-currency-release-gate.md`. Implementer may add tests. Dropping a listed family blocks ship.
