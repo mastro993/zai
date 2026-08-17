@@ -7,3 +7,16 @@
 - **Scenes via `?scene=`.** Variant and scene are orthogonal so a reviewer can compare the same surface across layouts without remounting fixtures.
 - **In-memory fixtures only.** EUR default, USD last-used, GBP stale, JPY adding, CHF disabled, CAD import-only. No backend, no persistence.
 - **Accepted UI mix:** Ledger for Currency settings, transaction form, and detail/pending. Inspector for import currency prep and initial setup. Do not ship Workspace.
+
+## 2026-08-17 — [Define multi-currency API, command, and event parity contract](https://github.com/mastro993/zai/issues/376)
+
+User-locked: durable currency jobs; list DTOs convert-only; mapped-row bound import preview; backend manual-rate confirmation; same-release fail-closed; setup gates all money reads/writes.
+
+Agent defaults:
+
+- One currency job at a time. Jobs = provider fetch or valuation-generation build (setup, currency addition, default-currency change, import preview). Sync = disable, import commit, CRUD, quotes, reads.
+- One `currency-state` event channel. Refresh publication is `stateChanged`, not a job.
+- Disable-currency warning is frontend-only.
+- Wire Money stays a JSON number. Authored cap remains `i32::MAX` minor units. Persist `i64`.
+- `create`/`update`/`get` transaction return the detail DTO. List stays converted + completeness.
+- Last-used transaction currency stays session memory.
