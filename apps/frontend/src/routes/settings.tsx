@@ -11,8 +11,15 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { CurrencyControlsPrototypeScreen } from "@/features/currency-prototype/screens/currency-controls-prototype-screen";
+import { parseSettingsPrototypeSearch } from "@/features/currency-prototype/lib/prototype-search";
 
-export const Route = createFileRoute("/settings")({ component: SettingsPage });
+// Three variants of currency settings and transaction currency controls,
+// switchable via ?variant=, on the existing /settings route.
+export const Route = createFileRoute("/settings")({
+  validateSearch: parseSettingsPrototypeSearch,
+  component: SettingsPage,
+});
 
 const THEME_MODES = [
   { value: "light", label: "Light" },
@@ -32,6 +39,15 @@ const isThemeMode = (value: string | undefined): value is ThemeMode =>
   value === "light" || value === "dark" || value === "system";
 
 function SettingsPage() {
+  const search = Route.useSearch();
+  if (search.variant) {
+    return (
+      <CurrencyControlsPrototypeScreen
+        search={{ variant: search.variant, scene: search.scene ?? "settings" }}
+      />
+    );
+  }
+
   return (
     <ScreenBase>
       <FieldGroup className="max-w-3xl gap-3">
