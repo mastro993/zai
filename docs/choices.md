@@ -33,3 +33,11 @@ User-locked: all four grill recommendations.
 - Performance split matches recurring: PR = structural; `main` = `pnpm benchmark:currency`. Seed `377`. 10k mixed-currency restatement + 1k-row bound import. Fail >60s or >64 MiB working-set growth.
 - One atomic app version. No feature flag. Silent EUR migrate on first launch behind a pre-migration backup. Fail-closed downgrade.
 - Closed must-pass list. Living file: `docs/multi-currency-release-gate.md`. Implementer may add tests. Dropping a listed family blocks ship.
+
+## 2026-08-17 — [Decompose multi-currency implementation into a sequenced handoff](https://github.com/mastro993/zai/issues/382)
+
+User-locked: all three grill recommendations (A/A/A).
+
+- Merge surface: long-lived `feat/multi-currency` stack. `main` stays pre-currency. One merge when the release gate is green. That merge is the atomic version. Unused core does not land on `main` early.
+- Eight stacked PRs: Money+manifest → schema/EUR/fixtures → ECB+privacy → valuation generations → currency lifecycle API → existing money DTOs → bound import/export → frontend+e2e+smoke+benchmark.
+- Living sequence: `docs/multi-currency-handoff.md`. Implementer may split a listed PR. Dropping a listed seam or landing it on `main` early blocks ship.
