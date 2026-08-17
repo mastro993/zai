@@ -34,7 +34,9 @@ _Avoid_: Reporting currency, base currency, home currency
 **Initial currency setup**:
 The first-use step in which the user selects the default currency. Zai
 preselects the currency inferred from the device's current locale, but the user
-must confirm or change it before setup completes.
+must confirm or change it before setup completes. Until setup completes, Zai
+refuses every money-bearing write and every read that requires a default
+currency.
 _Avoid_: Silent locale currency selection
 
 **Legacy EUR migration**:
@@ -83,11 +85,19 @@ user must confirm or change it. If a currency column exists, a row with no
 currency is invalid.
 _Avoid_: Silent default-currency assignment
 
+**Bound import preview**:
+A validated transaction-import preview tied to the selected file content and to
+the currency, default-currency, and manifest revisions used to build it. Commit
+revalidates that binding. A stale preview cannot be committed and must be
+rebuilt.
+_Avoid_: Unbound import commit, client-assembled import write
+
 **Atomic transaction import**:
 A confirmed transaction import that commits every prepared currency, category,
 transaction, exchange rate, and affected result together, or commits none of
-them. Empty rows and identified duplicates are explicit skips. Any other invalid
-row blocks the import until the user corrects or removes it.
+them. The only write path is commit of a bound import preview. Empty rows and
+identified duplicates are explicit skips. Any other invalid row blocks the
+import until the user corrects or removes it.
 _Avoid_: Partial transaction import
 
 **Full-fidelity transaction export**:
@@ -130,9 +140,9 @@ _Avoid_: Custom currency
 
 **Rate-sensitive transaction edit**:
 A change to a completed transaction's date or transaction currency. Zai obtains
-a new date-specific transaction exchange rate; replacing a manual exchange rate
-requires a user warning. Editing only the original amount keeps the existing
-rate.
+a new date-specific transaction exchange rate. Replacing a manual exchange rate
+is rejected until the user confirms the replacement. Editing only the original
+amount keeps the existing rate.
 _Avoid_: Rate refresh after every transaction edit
 
 **Exchange-rate pending transaction**:
