@@ -14,6 +14,171 @@ _Avoid_: Cash flow feature
 A user-defined grouping for transactions.
 _Avoid_: Transaction category in user-facing language
 
+**Transaction currency**:
+The currency in which a transaction's amount is recorded. Each transaction
+retains its transaction currency and original amount.
+_Avoid_: Original currency
+
+**Default currency**:
+The single user-selected currency in which Zai displays monetary values and
+cross-currency results, including budgets, projections, statistics, and charts.
+It preselects the first transaction currency in a transaction addition flow.
+When a transaction has another transaction currency, its original amount is
+visible only in transaction details and the edit form. The user may change the
+default currency at any time; that explicit change re-expresses app values and
+history while preserving original amounts and transaction currencies. The old
+default currency remains active until all new results are ready, and a failed
+change leaves it active.
+_Avoid_: Reporting currency, base currency, home currency
+
+**Initial currency setup**:
+The first-use step in which the user selects the default currency. Zai
+preselects the currency inferred from the device's current locale, but the user
+must confirm or change it before setup completes.
+_Avoid_: Silent locale currency selection
+
+**Legacy EUR migration**:
+The silent assignment of EUR as the transaction currency for all monetary
+values created before Zai stored currencies explicitly. It preserves each
+original amount and does not ask the user to reinterpret existing history.
+_Avoid_: Locale-based legacy currency
+
+**Supported currency**:
+An active ISO 4217 fiat currency for which Zai can obtain complete historical
+exchange-rate coverage. Cryptocurrencies, commodities, obsolete currencies,
+and user-defined currency codes are not supported currencies.
+_Avoid_: Crypto asset, custom currency
+
+**Enabled currency**:
+A currency the user has added and can select as a transaction currency or the
+default currency. It must have complete historical exchange-rate coverage
+before use. The user may add enabled currencies at any time.
+_Avoid_: Added currency, active currency
+
+**Historical exchange-rate coverage**:
+The exchange-rate history required to convert an enabled currency across every
+period covered by the user's financial history. Coverage is complete only when
+no required period lacks a usable rate.
+_Avoid_: Partial currency history
+
+**Currency addition**:
+The process that retrieves and validates complete historical exchange-rate
+coverage before a currency becomes enabled. While this work continues, the
+currency is identified as Adding currency and cannot be selected. If complete
+coverage cannot be obtained, addition fails and identifies the missing periods;
+partial activation is never allowed.
+_Avoid_: Currency activation before backfill
+
+**Import currency preparation**:
+The combined preparation of every new, disabled, or insufficiently covered
+currency required by a transaction import. The preview lists all currency
+changes and coverage ranges. One user confirmation prepares all currencies and
+imports all transactions as one atomic operation.
+_Avoid_: Silent currency addition, per-currency import confirmation
+
+**Currencyless transaction import**:
+A transaction import whose source has no currency column. The user selects one
+transaction currency for all rows. Zai preselects the default currency, but the
+user must confirm or change it. If a currency column exists, a row with no
+currency is invalid.
+_Avoid_: Silent default-currency assignment
+
+**Atomic transaction import**:
+A confirmed transaction import that commits every prepared currency, category,
+transaction, exchange rate, and affected result together, or commits none of
+them. Empty rows and identified duplicates are explicit skips. Any other invalid
+row blocks the import until the user corrects or removes it.
+_Avoid_: Partial transaction import
+
+**Full-fidelity transaction export**:
+The single transaction export format that preserves each exact original amount,
+transaction currency, fixed transaction exchange rate, rate date, rate state,
+and supplied or manual origin. A later import can restore the exact monetary
+meaning. A converted default-currency display value never replaces those source
+values.
+_Avoid_: Display-only transaction export, simplified transaction export
+
+**Disabled currency**:
+A previously enabled currency that cannot be selected for new transactions or
+as the default currency. Its original amounts, exchange rates, and historical
+use remain unchanged. After a warning, existing recurring transactions continue
+to use it and Zai continues to maintain their required rates. Disabling is
+reversible; the default currency cannot be disabled.
+_Avoid_: Deleted currency, removed currency
+
+**Last-used transaction currency**:
+The transaction currency selected for the most recent transaction in the active
+app session. It preselects later transaction currencies across transaction
+addition flows until the app closes; without one, the default currency is
+preselected.
+_Avoid_: Default currency
+
+**Transaction exchange rate**:
+The date-specific conversion rate associated with a completed transaction. It
+does not change when later market rates change, so completed budget and
+statistical results remain stable. An explicit default currency change may
+re-express it for the new default currency. Zai supplies a rate by default, but
+the user may replace it with a manual exchange rate.
+_Avoid_: Live rate for completed transactions
+
+**Manual exchange rate**:
+A transaction exchange rate supplied by the user instead of the default rate.
+An exchange rate mapped from an external transaction import is a manual exchange
+rate. Its manual origin and direction remain part of the transaction so Zai can
+distinguish it from a supplied rate.
+_Avoid_: Custom currency
+
+**Rate-sensitive transaction edit**:
+A change to a completed transaction's date or transaction currency. Zai obtains
+a new date-specific transaction exchange rate; replacing a manual exchange rate
+requires a user warning. Editing only the original amount keeps the existing
+rate.
+_Avoid_: Rate refresh after every transaction edit
+
+**Exchange-rate pending transaction**:
+A completed transaction in an enabled currency that needs a transaction
+exchange rate but does not yet have one because of a temporary rate-lookup
+failure. Zai retains its transaction currency and original amount, retries the
+rate lookup, and allows a manual exchange rate. Until resolution, any affected
+cross-currency result is incomplete rather than estimated.
+_Avoid_: Failed transaction, unconverted transaction
+
+**Incomplete cross-currency result**:
+A budget, projection, statistic, chart value, or other aggregate that cannot be
+fully calculated because at least one contributing transaction or projected
+occurrence lacks a required exchange rate. Zai identifies it as incomplete and
+never presents a cached or guessed value as complete.
+_Avoid_: Estimated result
+
+**Projection exchange rate**:
+The latest available conversion rate used for a projected occurrence. A later
+rate may change a projection but never changes a completed transaction or its
+results.
+_Avoid_: Transaction exchange rate
+
+**Live exchange-rate refresh**:
+Automatic retrieval of projection exchange rates when the app starts, returns
+to the foreground, and every 15 minutes while its process remains active,
+including while hidden or minimized. It stops when the app quits. When refresh
+is unavailable, Zai identifies the cached rate with its timestamp and stale
+status.
+_Avoid_: Continuous exchange-rate streaming, refresh after app quit
+
+**Exchange-rate details**:
+The original amount, transaction currency, fixed transaction exchange rate,
+rate date, and supplied or manual origin shown in transaction details and the
+edit form. Currency settings show historical coverage, last refresh, and
+current status. Other app surfaces show monetary values only in the default
+currency.
+_Avoid_: Dedicated exchange-rate screen
+
+**Exchange-rate refresh failure alert**:
+The durable, user-visible domain alert for a persistent live exchange-rate
+refresh failure that affects cross-currency results. A transient failure shows
+only stale status. Repeated failures update one alert, and successful refresh
+resolves it.
+_Avoid_: Alert for every refresh attempt, silent persistent failure
+
 **Root category**:
 A category without a parent category. Root category names are unique among other
 root categories.
@@ -181,11 +346,13 @@ prevention; it can never generate occurrences or resume.
 
 **Recurring transaction template**:
 The transaction payload copied into future generated transactions: required
-description, amount, type, optional category, and optional notes. It has no
-transaction date or time; each fulfillment takes those from its scheduled
-occurrence. Template changes affect only future occurrences; each generated
-transaction remains an independently editable snapshot linked to its recurring
-transaction.
+description, original amount, transaction currency, type, optional category,
+and optional notes. It has no transaction date, time, or fixed exchange rate;
+each fulfillment takes its date and time from its scheduled occurrence and
+locks that occurrence's date-specific transaction exchange rate. Template
+changes affect only future occurrences; each generated transaction remains an
+independently editable snapshot linked to its recurring transaction. A manual
+exchange rate can correct a fulfilled transaction but never the template.
 
 **Fulfilled occurrence**:
 A scheduled occurrence linked to exactly one transaction, either by automatic
@@ -201,6 +368,8 @@ alert because no transaction was automatically inserted.
 A future occurrence computed from an active recurring transaction for forecasting.
 It may contribute to a budget projection but does not affect actual transactions,
 budget results, statuses, rollover, or alerts until it becomes due and fulfilled.
+Its conversion uses the projection exchange rate rather than a transaction
+exchange rate.
 
 **Budget projection**:
 A snapshot-derived forecast over a bounded rolling device-local calendar window.
