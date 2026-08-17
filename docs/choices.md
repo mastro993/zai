@@ -11,3 +11,16 @@
 - **Unknown rollover carry does not pretend to be zero.** Incomplete dependents may show known converted spending; they do not claim remaining or effective allowance.
 - **No separate budget allowance-currency picker.** The user authors the allowance in the default currency of that configuration version.
 - **Net worth stays outside this multi-currency map.** Statistics and charts that ship use the transaction valuation cache.
+
+## 2026-08-17 — [Define multi-currency API, command, and event parity contract](https://github.com/mastro993/zai/issues/376)
+
+User-locked: durable currency jobs; list DTOs convert-only; mapped-row bound import preview; backend manual-rate confirmation; same-release fail-closed; setup gates all money reads/writes.
+
+Agent defaults:
+
+- One currency job at a time. Jobs = provider fetch or valuation-generation build (setup, currency addition, default-currency change, import preview). Sync = disable, import commit, CRUD, quotes, reads.
+- One `currency-state` event channel. Refresh publication is `stateChanged`, not a job.
+- Disable-currency warning is frontend-only.
+- Wire Money stays a JSON number. Authored cap remains `i32::MAX` minor units. Persist `i64`.
+- `create`/`update`/`get` transaction return the detail DTO. List stays converted + completeness.
+- Last-used transaction currency stays session memory.
