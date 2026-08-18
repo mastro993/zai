@@ -31,6 +31,11 @@ pub fn create_recurring_transaction(
     let first_scheduled_local = input.first_scheduled_local;
 
     let (interval_every, interval_unit, monthly_day) = schedule_columns(&input.schedule);
+    crate::transactions::rate_revisions::require_selectable_currency(
+        conn,
+        &input.template.currency,
+    )
+    .map_err(StorageError::from)?;
 
     diesel::insert_into(recurring_transactions::table)
         .values(RecurringTransactionRow {
@@ -72,7 +77,7 @@ pub fn create_recurring_transaction(
             effective_until_local: None,
             description: input.template.description,
             amount: i64::from(input.template.amount),
-            currency: crate::currency::default_currency(conn).map_err(StorageError::from)?,
+            currency: input.template.currency,
             transaction_type: input.template.transaction_type,
             transaction_category_id: input.template.transaction_category_id,
             notes: input.template.notes,

@@ -115,6 +115,7 @@ async fn native_recurring_workflow_smoke_boots_processes_and_resolves_links() {
                 "template": {
                     "description": "Invalid native recurring",
                     "amount": -1,
+                    "currency": "EUR",
                     "transactionType": "expense",
                     "transactionCategoryId": null,
                     "notes": null

@@ -124,6 +124,7 @@ export const createRecurringTransaction = (
       template: {
         description: values.description,
         amount: values.amount,
+        currency: values.currency,
         transactionType: values.transactionType,
         transactionCategoryId: values.transactionCategoryId || null,
         notes: values.notes || null,
@@ -161,6 +162,7 @@ export const adoptRecurringTransaction = (
       template: {
         description: transaction.description?.trim() || "Recurring transaction",
         amount: transaction.amount,
+        currency: transaction.currency,
         transactionType: transaction.transactionType === "income" ? "income" : "expense",
         transactionCategoryId: transaction.transactionCategoryId ?? null,
         notes: transaction.notes?.trim() || null,
@@ -183,6 +185,7 @@ export const updateRecurringTransaction = (
       template: {
         description: values.description,
         amount: values.amount,
+        currency: values.currency,
         transactionType: values.transactionType,
         transactionCategoryId: values.transactionCategoryId || null,
         notes: values.notes || null,
@@ -275,7 +278,7 @@ export const previewRecurringGenerationRepair = (
   repairFieldKey: RecurringRepairField,
   values: Pick<
     RecurringFormValues,
-    "description" | "amount" | "transactionType" | "transactionCategoryId" | "notes"
+    "description" | "amount" | "currency" | "transactionType" | "transactionCategoryId" | "notes"
   >,
 ): CommandResult<RecurringRepairPreview> => {
   return invokeDecodedCommand(RECURRING_COMMANDS.preview_recurring_generation_repair, {
@@ -286,6 +289,7 @@ export const previewRecurringGenerationRepair = (
       template: {
         description: values.description,
         amount: values.amount,
+        currency: values.currency,
         transactionType: values.transactionType,
         transactionCategoryId: values.transactionCategoryId || null,
         notes: values.notes || null,
@@ -299,7 +303,7 @@ export const repairRecurringGenerationFailure = (
   repairFieldKey: RecurringRepairField,
   values: Pick<
     RecurringFormValues,
-    "description" | "amount" | "transactionType" | "transactionCategoryId" | "notes"
+    "description" | "amount" | "currency" | "transactionType" | "transactionCategoryId" | "notes"
   >,
 ): CommandResult<RecurringRecoveryOutcome> => {
   return invokeDecodedCommand(RECURRING_COMMANDS.repair_recurring_generation_failure, {
@@ -310,6 +314,7 @@ export const repairRecurringGenerationFailure = (
       template: {
         description: values.description,
         amount: values.amount,
+        currency: values.currency,
         transactionType: values.transactionType,
         transactionCategoryId: values.transactionCategoryId || null,
         notes: values.notes || null,

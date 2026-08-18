@@ -19,9 +19,12 @@ pub(crate) fn activate_currency_schema(db_path: &Path) -> Result<Arc<DbPool>> {
     if needs_currency_activation {
         create_pre_currency_backup(db_path, &pool)?;
         #[cfg(any(test, feature = "failpoints"))]
-        super::failpoints::hit(
+        if let Err(error) = super::failpoints::hit(
             super::failpoints::CurrencyMigrationFailpoint::AfterBackupBeforeMigrate,
-        )?;
+        ) {
+            drop(pool);
+            return Err(error);
+        }
     }
 
     if let Err(error) = run_migrations(&pool).and_then(|()| verify_currency_activation(&pool)) {

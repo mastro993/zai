@@ -34,6 +34,7 @@ const transactionId = "transaction-1";
 const template = {
   description: "Monthly rent",
   amount: 120000,
+  currency: "EUR",
   transactionType: "expense",
   transactionCategoryId: "housing",
   notes: "Paid by bank transfer",

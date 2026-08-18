@@ -59,6 +59,7 @@ const documentFixture: RecurringTransactionDocument = {
     sequence: 1,
     effectiveFromLocal: "2026-08-01T09:00:00",
     amount: 120000,
+    currency: "EUR",
     transactionType: "expense",
     description: "Monthly rent",
   },

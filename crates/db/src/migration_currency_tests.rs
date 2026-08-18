@@ -75,6 +75,15 @@ fn v0009() -> &'static crate::migration_fixture_support::ReleasedSchemaFixture {
         .expect("v0009 fixture")
 }
 
+fn reopen(db_path: &Path) -> SqliteConnection {
+    let mut connection =
+        SqliteConnection::establish(db_path.to_str().expect("utf8")).expect("reopen");
+    connection
+        .batch_execute("PRAGMA busy_timeout = 30000;")
+        .expect("busy timeout");
+    connection
+}
+
 fn count(connection: &mut SqliteConnection, sql: &str) -> i64 {
     diesel::sql_query(sql)
         .get_result::<CountRow>(connection)
@@ -238,8 +247,7 @@ fn migration_failure_after_backup_keeps_backup_and_refuses_open() {
 
     assert!(matches!(error, Error::Database(_)));
     assert!(pre_currency_backup_path(&staged.db_path()).exists());
-    let mut connection =
-        SqliteConnection::establish(staged.db_path().to_str().expect("utf8")).expect("reopen");
+    let mut connection = reopen(&staged.db_path());
     assert_eq!(
         count(
             &mut connection,
@@ -265,8 +273,7 @@ fn migration_failure_after_migrate_restores_backup_and_refuses_open() {
 
     assert!(matches!(error, Error::Database(_)));
     assert!(pre_currency_backup_path(&staged.db_path()).exists());
-    let mut connection =
-        SqliteConnection::establish(staged.db_path().to_str().expect("utf8")).expect("reopen");
+    let mut connection = reopen(&staged.db_path());
     assert_eq!(
         count(
             &mut connection,
