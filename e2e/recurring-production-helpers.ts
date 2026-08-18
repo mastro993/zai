@@ -157,6 +157,7 @@ export async function createApiTransaction(
     id: input.id,
     description: input.description,
     amount: 5000,
+    currency: "EUR",
     transactionDate: input.transactionDate,
     transactionType: "expense",
     transactionCategoryId: null,
