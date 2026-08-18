@@ -667,4 +667,21 @@ describe("RecurringFormDrawer", () => {
       expect(screen.getByLabelText("Transaction currency").textContent).toContain("USD");
     });
   });
+
+  it("keeps the current create currency visible while currencies are loading", async () => {
+    setLastUsedTransactionCurrency("USD");
+    vi.spyOn(currencyCommands, "getCurrencies").mockReturnValue(new Promise(() => undefined));
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Transaction currency").textContent).toContain("USD");
+    });
+  });
 });

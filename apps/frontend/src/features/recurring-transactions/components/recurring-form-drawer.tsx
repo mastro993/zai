@@ -183,7 +183,8 @@ export function RecurringFormDrawer({
   const currency =
     useWatch({ control, name: "currency", defaultValue: resolvedDefault }) ?? resolvedDefault;
   const currencyItems = useMemo(() => {
-    const keepCurrent = mode.type === "create" ? enabledCodes.includes(currency) : true;
+    const keepCurrent =
+      mode.type !== "create" || enabledCodes.length === 0 || enabledCodes.includes(currency);
     const codes = selectableCodes(currencies, keepCurrent ? currency : undefined);
     return codes.map((code) => ({ value: code, label: code }));
   }, [currencies, currency, enabledCodes, mode.type]);
