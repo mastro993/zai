@@ -79,10 +79,12 @@ async fn history_advances_empty_periods_and_applies_rollover_modes() {
             id: Some("january-spending".to_string()),
             description: None,
             amount: 30,
+            currency: "EUR".to_string(),
             transaction_date: january,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
@@ -206,6 +208,7 @@ async fn confirmed_category_role_change_rebuilds_historical_rollover_suffix() {
     for (id, amount, transaction_type) in [("expense", 30, "expense"), ("refund", 10, "income")] {
         transactions
             .create_transaction(NewTransaction {
+                currency: "EUR".to_string(),
                 id: Some(id.to_string()),
                 description: None,
                 amount,
@@ -213,6 +216,7 @@ async fn confirmed_category_role_change_rebuilds_historical_rollover_suffix() {
                 transaction_type: transaction_type.to_string(),
                 transaction_category_id: Some(category.id.clone()),
                 notes: None,
+                manual_exchange_rate: None,
             })
             .await
             .expect("transaction");
@@ -294,10 +298,12 @@ async fn paused_budget_still_advances_periods_and_rollover() {
             id: Some("paused-january-spending".to_string()),
             description: None,
             amount: 30,
+            currency: "EUR".to_string(),
             transaction_date: january,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");

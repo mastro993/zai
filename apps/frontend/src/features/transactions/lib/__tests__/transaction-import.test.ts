@@ -52,6 +52,7 @@ describe("transaction import", () => {
         id: "id-1",
         description: "Groceries",
         amount: 1250,
+        currency: "EUR",
         transactionDate: "2026-01-15T00:00:00",
         transactionType: "expense",
         transactionCategoryId: null,
@@ -208,7 +209,7 @@ describe("transaction import", () => {
     const content = ["date,amount,type,description", "2026-01-15,12.50,expense,Groceries"].join(
       "\n",
     );
-    const existingDuplicateKeys = ["2026-01-15\u00001250\u0000groceries"];
+    const existingDuplicateKeys = ["2026-01-15\u00001250\u0000EUR\u0000groceries"];
 
     const preview = buildPreview(content, { existingDuplicateKeys });
 
@@ -225,8 +226,8 @@ describe("transaction import", () => {
     ].join("\n");
 
     const existingDuplicateKeys = [
-      "2026-01-15\u00001250\u0000groceries",
-      "2026-04-02\u0000700\u0000",
+      "2026-01-15\u00001250\u0000EUR\u0000groceries",
+      "2026-04-02\u0000700\u0000EUR\u0000",
     ];
 
     const preview = buildPreview(content, {

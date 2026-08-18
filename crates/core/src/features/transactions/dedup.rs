@@ -3,13 +3,15 @@ use chrono::NaiveDateTime;
 pub fn duplicate_key(
     transaction_date: NaiveDateTime,
     amount: i32,
+    currency: &str,
     description: Option<&str>,
 ) -> String {
     let normalized_description = description.unwrap_or_default().trim().to_lowercase();
     format!(
-        "{}\u{0000}{}\u{0000}{}",
+        "{}\u{0000}{}\u{0000}{}\u{0000}{}",
         transaction_date.date().format("%Y-%m-%d"),
         amount,
+        currency,
         normalized_description
     )
 }
@@ -26,11 +28,22 @@ mod tests {
         let evening = NaiveDateTime::parse_from_str("2026-01-15T20:45:00", "%Y-%m-%dT%H:%M:%S")
             .expect("valid datetime");
 
-        let left = duplicate_key(morning, 1250, Some(" Groceries "));
-        let right = duplicate_key(evening, 1250, Some("groceries"));
+        let left = duplicate_key(morning, 1250, "EUR", Some(" Groceries "));
+        let right = duplicate_key(evening, 1250, "EUR", Some("groceries"));
 
-        assert_eq!(left, "2026-01-15\u{0000}1250\u{0000}groceries");
+        assert_eq!(left, "2026-01-15\u{0000}1250\u{0000}EUR\u{0000}groceries");
         assert_eq!(left, right);
+    }
+
+    #[test]
+    fn distinguishes_same_amount_in_different_transaction_currencies() {
+        let date = NaiveDateTime::parse_from_str("2026-01-15T08:30:00", "%Y-%m-%dT%H:%M:%S")
+            .expect("valid datetime");
+
+        assert_ne!(
+            duplicate_key(date, 1250, "EUR", Some("groceries")),
+            duplicate_key(date, 1250, "USD", Some("groceries"))
+        );
     }
 
     #[test]
@@ -39,8 +52,8 @@ mod tests {
             .expect("valid datetime");
 
         assert_eq!(
-            duplicate_key(date, 700, None),
-            "2026-04-02\u{0000}700\u{0000}"
+            duplicate_key(date, 700, "EUR", None),
+            "2026-04-02\u{0000}700\u{0000}EUR\u{0000}"
         );
     }
 }

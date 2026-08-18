@@ -68,4 +68,13 @@ describe("transaction amount helpers", () => {
     expect(isPartialAmountInput("12.345")).toBe(false);
     expect(isPartialAmountInput("abc")).toBe(false);
   });
+
+  it("formats and parses using ISO fraction digits", () => {
+    expect(formatAmountFromMinor(1234, 0)).toBe("1234");
+    expect(formatAmountFromMinor(1234, 3)).toBe("1.234");
+    expect(isPartialAmountInput("12.345", 3)).toBe(true);
+    expect(isPartialAmountInput("12.3456", 3)).toBe(false);
+    expect(isPartialAmountInput("12.", 0)).toBe(false);
+    expect(normalizeAmountInput("12", 0)).toBe("12");
+  });
 });

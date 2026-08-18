@@ -144,7 +144,7 @@ async fn list_transactions_sorts_by_amount_desc() {
         .as_array()
         .expect("data")
         .iter()
-        .map(|row| row["amount"].as_i64().expect("amount"))
+        .map(|row| row["convertedAmount"].as_i64().expect("convertedAmount"))
         .collect();
     assert_eq!(amounts, vec![500000, 80000, 2500, 1200, 350]);
 }
@@ -167,7 +167,7 @@ async fn list_transactions_sorts_by_amount_asc() {
         .as_array()
         .expect("data")
         .iter()
-        .map(|row| row["amount"].as_i64().expect("amount"))
+        .map(|row| row["convertedAmount"].as_i64().expect("convertedAmount"))
         .collect();
     assert_eq!(amounts, vec![350, 1200, 2500, 80000, 500000]);
 }

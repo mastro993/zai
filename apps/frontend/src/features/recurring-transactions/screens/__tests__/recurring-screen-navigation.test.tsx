@@ -19,7 +19,7 @@ import {
 import { SidebarProvider } from "@/components/ui/sidebar";
 import * as alertsController from "@/features/alerts/hooks/use-alerts-controller";
 import type { AlertsControllerValue } from "@/features/alerts/hooks/alerts-controller-context";
-import { transactionSchema } from "@/features/transactions/types/model";
+import { sampleTransaction } from "@/features/transactions/types/sample";
 import { TransactionDetailScreen } from "@/features/transactions/screens/transaction-detail-screen";
 import * as breadcrumbs from "@/hooks/use-screen-breadcrumbs";
 
@@ -162,7 +162,7 @@ const feedItem: RecurringFeedItem = {
   needsAttention: false,
 };
 
-const transaction = transactionSchema.parse({
+const transaction = sampleTransaction({
   id: "txn-1",
   description: "Monthly rent",
   amount: 120000,

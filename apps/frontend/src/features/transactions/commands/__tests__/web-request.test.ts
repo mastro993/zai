@@ -25,6 +25,7 @@ const unwrap = <T>(result: Result.Result<T, CommandError>): T | undefined => {
 const transaction = {
   description: "Coffee",
   amount: 350,
+  currency: "EUR",
   transactionDate: "2026-07-09T12:30:00",
   transactionType: "expense",
 };
@@ -106,7 +107,12 @@ describe("transaction web requests", () => {
       },
     });
     const candidates = [
-      { transactionDate: "2026-01-15T08:30:00", amount: 1250, description: "Groceries" },
+      {
+        transactionDate: "2026-01-15T08:30:00",
+        amount: 1250,
+        currency: "EUR",
+        description: "Groceries",
+      },
     ];
     expect(unwrap(buildFindDuplicateKeysRequest({ request: { candidates } }))).toEqual({
       method: "POST",

@@ -1,11 +1,7 @@
 use crate::schema::transactions;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
-use zai_core::Error;
-use zai_core::features::transactions::models::{NewTransaction, Transaction, TransactionUpdate};
-use zai_core::money::WIRE_MAX_MINOR_UNITS;
-
-const DEFAULT_IDENTITY_CURRENCY: &str = "EUR";
+use zai_core::features::transactions::models::{NewTransaction, TransactionUpdate};
 
 #[derive(AsChangeset)]
 #[diesel(table_name = transactions)]
@@ -44,13 +40,13 @@ pub struct TransactionRow {
 }
 
 impl TransactionRow {
-    pub fn from_new(value: NewTransaction, currency: &str) -> Self {
+    pub fn from_new(value: NewTransaction) -> Self {
         let now = chrono::Utc::now().naive_utc();
         Self {
             id: value.id.unwrap_or_default(),
             description: value.description,
             amount: i64::from(value.amount),
-            currency: currency.to_string(),
+            currency: value.currency,
             transaction_date: value.transaction_date,
             transaction_type: value.transaction_type,
             transaction_category_id: value.transaction_category_id,
@@ -60,40 +56,11 @@ impl TransactionRow {
             deleted_at: None,
         }
     }
-
-    pub fn into_domain(self) -> zai_core::Result<Transaction> {
-        if self.amount > WIRE_MAX_MINOR_UNITS {
-            return Err(Error::InvalidData(
-                "Persisted money exceeds the JavaScript-safe wire maximum".to_string(),
-            ));
-        }
-        Ok(Transaction {
-            id: self.id,
-            description: self.description,
-            amount: i32::try_from(self.amount).map_err(|_| {
-                Error::InvalidData(
-                    "Persisted money exceeds the JavaScript-safe wire maximum".to_string(),
-                )
-            })?,
-            transaction_date: self.transaction_date,
-            transaction_type: self.transaction_type,
-            transaction_category_id: self.transaction_category_id,
-            notes: self.notes,
-        })
-    }
 }
 
 impl From<NewTransaction> for TransactionRow {
     fn from(value: NewTransaction) -> Self {
-        Self::from_new(value, DEFAULT_IDENTITY_CURRENCY)
-    }
-}
-
-impl From<TransactionRow> for Transaction {
-    fn from(value: TransactionRow) -> Self {
-        value
-            .into_domain()
-            .expect("persisted transaction amount exceeds i32 wire cap")
+        Self::from_new(value)
     }
 }
 
@@ -102,7 +69,7 @@ impl From<TransactionUpdate> for TransactionRowUpdate {
         Self {
             description: value.description,
             amount: i64::from(value.amount),
-            currency: None,
+            currency: Some(value.currency),
             transaction_date: value.transaction_date,
             transaction_type: value.transaction_type,
             transaction_category_id: value.transaction_category_id,

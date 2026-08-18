@@ -42,10 +42,12 @@ async fn import_skips_existing_transaction_in_fractional_last_second() {
         id: Some(Uuid::new_v4().to_string()),
         description: Some("groceries".to_string()),
         amount: 1250,
+        currency: "EUR".to_string(),
         transaction_date: late,
         transaction_type: "expense".to_string(),
         transaction_category_id: None,
         notes: None,
+        manual_exchange_rate: None,
     })
     .await
     .expect("create existing transaction");
@@ -71,10 +73,12 @@ async fn import_skips_existing_transaction_at_maximum_datetime() {
         id: Some(Uuid::new_v4().to_string()),
         description: Some("groceries".to_string()),
         amount: 1250,
+        currency: "EUR".to_string(),
         transaction_date: chrono::NaiveDateTime::MAX,
         transaction_type: "expense".to_string(),
         transaction_category_id: None,
         notes: None,
+        manual_exchange_rate: None,
     })
     .await
     .expect("create existing transaction");
@@ -84,10 +88,12 @@ async fn import_skips_existing_transaction_at_maximum_datetime() {
             id: Some(Uuid::new_v4().to_string()),
             description: Some(" Groceries ".to_string()),
             amount: 1250,
+            currency: "EUR".to_string(),
             transaction_date: chrono::NaiveDateTime::MAX,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         }])
         .await
         .expect("import duplicate");
@@ -136,10 +142,12 @@ async fn manual_create_still_allows_duplicate_logical_rows() {
         id: Some(Uuid::new_v4().to_string()),
         description: Some(" Groceries ".to_string()),
         amount: 1250,
+        currency: "EUR".to_string(),
         transaction_date: parse_datetime("2026-01-15T08:30:00"),
         transaction_type: "expense".to_string(),
         transaction_category_id: None,
         notes: None,
+        manual_exchange_rate: None,
     };
 
     repo.create_transaction(shared.clone())
@@ -227,19 +235,23 @@ async fn import_transactions_with_categories_rolls_back_when_any_transaction_is_
         id: Some(Uuid::new_v4().to_string()),
         description: Some("Lunch".to_string()),
         amount: 1200,
+        currency: "EUR".to_string(),
         transaction_date: chrono::Utc::now().naive_utc(),
         transaction_type: "expense".to_string(),
         transaction_category_id: Some(category_id),
         notes: None,
+        manual_exchange_rate: None,
     };
     let invalid_transaction = NewTransaction {
         id: valid_transaction.id.clone(),
         description: Some("Broken".to_string()),
         amount: 800,
+        currency: "EUR".to_string(),
         transaction_date: chrono::Utc::now().naive_utc(),
         transaction_type: "expense".to_string(),
         transaction_category_id: None,
         notes: None,
+        manual_exchange_rate: None,
     };
 
     let result = repo

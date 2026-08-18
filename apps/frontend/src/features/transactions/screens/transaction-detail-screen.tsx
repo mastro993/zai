@@ -3,10 +3,12 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { toast } from "@/components/toaster/toast";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { ScreenBase } from "@/components/screen-base";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
 import type { TransactionCategory } from "@/features/categories/types/model";
 import { formatCurrencyFromMinor } from "@/lib/currency";
 import {
@@ -18,7 +20,11 @@ import type { TransactionRecurringProvenance } from "@/features/recurring-transa
 import { updateTransaction } from "../commands/transactions";
 import { TransactionFormDrawer } from "../components/transaction-form-drawer";
 import { TransactionTypeBadge } from "../components/transaction-type-badge";
+import { formValuesFromTransaction } from "../lib/transaction-write";
 import type { Transaction, TransactionFormValues } from "../types/model";
+
+const rateOriginLabel = (origin: Transaction["exchangeRate"]["origin"]) =>
+  origin === "manual" ? "Manual" : "Supplied";
 
 export function TransactionErrorScreen({ message }: { message: string }) {
   return (
@@ -41,19 +47,72 @@ export function TransactionDetailScreen({
 }) {
   const [transaction, setTransaction] = useState(initialTransaction);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [pendingManualRate, setPendingManualRate] = useState<TransactionFormValues | null>(null);
+  const [recoveryRate, setRecoveryRate] = useState("");
+  const [isRecovering, setIsRecovering] = useState(false);
   const source = recurringProvenance?.source;
   const description = transaction.description?.trim() || "Transaction";
+  const convertedLabel =
+    transaction.complete && transaction.convertedAmount !== null
+      ? formatCurrencyFromMinor(transaction.convertedAmount, transaction.convertedCurrency)
+      : "Incomplete";
+  const pending = transaction.exchangeRate.variant === "pending";
 
-  const submitEdit = async (values: TransactionFormValues) => {
-    const result = await updateTransaction(transaction.id, values);
+  const applyUpdate = async (
+    values: TransactionFormValues,
+    options: { confirmManualRateReplacement?: boolean; retryRateLookup?: boolean } = {},
+  ) => {
+    const result = await updateTransaction(transaction.id, values, options);
     if (Result.isFailure(result)) {
+      if (result.error.code === "manualRateReplacementRequired") {
+        setPendingManualRate(values);
+        return false;
+      }
       toast.error("Failed to update transaction", { description: result.error.message });
-      return;
+      return false;
     }
 
     setTransaction(result.value);
+    setPendingManualRate(null);
+    return true;
+  };
+
+  const submitEdit = async (values: TransactionFormValues) => {
+    const updated = await applyUpdate(values);
+    if (!updated) {
+      return;
+    }
+
     setIsEditOpen(false);
     toast.success("Transaction updated");
+  };
+
+  const retryPending = async () => {
+    setIsRecovering(true);
+    const updated = await applyUpdate(formValuesFromTransaction(transaction), {
+      retryRateLookup: true,
+    });
+    setIsRecovering(false);
+    if (updated) {
+      toast.success("Exchange rate updated");
+    }
+  };
+
+  const enterPendingRate = async () => {
+    const rate = recoveryRate.trim();
+    if (!rate) {
+      return;
+    }
+    setIsRecovering(true);
+    const updated = await applyUpdate({
+      ...formValuesFromTransaction(transaction),
+      manualExchangeRate: rate,
+    });
+    setIsRecovering(false);
+    if (updated) {
+      setRecoveryRate("");
+      toast.success("Exchange rate updated");
+    }
   };
 
   return (
@@ -84,7 +143,14 @@ export function TransactionDetailScreen({
             <div>
               <dt className="text-muted-foreground">Amount</dt>
               <dd className="text-base tabular-nums">
-                {formatCurrencyFromMinor(transaction.amount, "EUR")}
+                {convertedLabel}
+                <p className="text-xs text-muted-foreground">
+                  {formatCurrencyFromMinor(transaction.amount, transaction.currency)}
+                  {transaction.exchangeRate.originalDecimal
+                    ? ` · ${transaction.exchangeRate.originalDecimal}`
+                    : ""}
+                  {` · ${transaction.exchangeRate.rateDate} · ${rateOriginLabel(transaction.exchangeRate.origin)}`}
+                </p>
               </dd>
             </div>
             <div>
@@ -114,6 +180,28 @@ export function TransactionDetailScreen({
               </div>
             ) : null}
           </dl>
+          {pending ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+              <p>Exchange-rate pending. Cross-currency results stay incomplete.</p>
+              <Button size="sm" disabled={isRecovering} onClick={() => void retryPending()}>
+                Retry
+              </Button>
+              <Input
+                className="w-28"
+                aria-label="Manual recovery rate"
+                value={recoveryRate}
+                onChange={(event) => setRecoveryRate(event.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isRecovering || !recoveryRate.trim()}
+                onClick={() => void enterPendingRate()}
+              >
+                Enter rate
+              </Button>
+            </div>
+          ) : null}
         </section>
 
         {source ? (
@@ -154,6 +242,36 @@ export function TransactionDetailScreen({
           />
         ) : null}
       </Drawer>
+
+      <ConfirmationDialog
+        open={pendingManualRate !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingManualRate(null);
+          }
+        }}
+        title="Replace the current exchange rate?"
+        description={`This stores a manual exchange rate of ${pendingManualRate?.manualExchangeRate ?? ""}. The previous supplied or manual origin is replaced and stays visible as manual.`}
+      >
+        <Button
+          size="sm"
+          onClick={() => {
+            if (!pendingManualRate) {
+              return;
+            }
+            void applyUpdate(pendingManualRate, { confirmManualRateReplacement: true }).then(
+              (updated) => {
+                if (updated) {
+                  setIsEditOpen(false);
+                  toast.success("Transaction updated");
+                }
+              },
+            );
+          }}
+        >
+          Use manual rate
+        </Button>
+      </ConfirmationDialog>
     </ScreenBase>
   );
 }

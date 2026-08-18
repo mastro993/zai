@@ -9,6 +9,7 @@ fn sample_transaction_payload() -> Value {
     json!({
         "description": "Coffee",
         "amount": 350,
+        "currency": "EUR",
         "transactionDate": "2026-07-09T12:30:00",
         "transactionType": "expense",
         "transactionCategoryId": null,
@@ -105,6 +106,7 @@ async fn create_transaction_with_category_succeeds() {
             "transactions": [{
                 "description": "Lunch",
                 "amount": 1200,
+                "currency": "EUR",
                 "transactionDate": "2026-07-09T12:30:00",
                 "transactionType": "expense",
                 "transactionCategoryId": "food-cat"
@@ -121,6 +123,7 @@ async fn create_transaction_with_category_succeeds() {
         Some(json!({
             "description": "Dinner",
             "amount": 1500,
+            "currency": "EUR",
             "transactionDate": "2026-07-10T19:00:00",
             "transactionType": "expense",
             "transactionCategoryId": "food-cat"
@@ -147,7 +150,12 @@ async fn create_get_update_delete_transaction_round_trip() {
     assert_eq!(create_status, StatusCode::CREATED);
     assert_eq!(created["description"], "Coffee");
     assert_eq!(created["amount"], 350);
+    assert_eq!(created["currency"], "EUR");
     assert_eq!(created["transactionType"], "expense");
+    assert_eq!(created["complete"], true);
+    assert_eq!(created["convertedAmount"], 350);
+    assert_eq!(created["convertedCurrency"], "EUR");
+    assert_eq!(created["exchangeRate"]["variant"], "identity");
 
     let transaction_id = created["id"].as_str().expect("created id");
 
@@ -168,6 +176,7 @@ async fn create_get_update_delete_transaction_round_trip() {
         Some(json!({
             "description": "Updated coffee",
             "amount": 400,
+            "currency": "EUR",
             "transactionDate": "2026-07-10T08:00:00",
             "transactionType": "income",
             "transactionCategoryId": null,
@@ -219,6 +228,7 @@ async fn bulk_delete_transactions_returns_deleted_rows() {
             Some(json!({
                 "description": description,
                 "amount": 100,
+                "currency": "EUR",
                 "transactionDate": "2026-07-09T12:30:00",
                 "transactionType": "expense"
             })),
@@ -236,7 +246,16 @@ async fn bulk_delete_transactions_returns_deleted_rows() {
     .await;
 
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(deleted.as_array().expect("array").len(), 2);
+    let rows = deleted.as_array().expect("array");
+    assert_eq!(rows.len(), 2);
+    for row in rows {
+        assert!(row.get("amount").is_none());
+        assert!(row.get("currency").is_none());
+        assert!(row.get("exchangeRate").is_none());
+        assert!(row.get("convertedAmount").is_some());
+        assert!(row.get("convertedCurrency").is_some());
+        assert!(row.get("complete").is_some());
+    }
 }
 
 #[tokio::test]
@@ -250,6 +269,7 @@ async fn create_transaction_rejects_invalid_type() {
         Some(json!({
             "description": "Bad",
             "amount": 100,
+            "currency": "EUR",
             "transactionDate": "2026-07-09T12:30:00",
             "transactionType": "transfer"
         })),
@@ -277,6 +297,7 @@ async fn create_transaction_returns_conflict_for_missing_category() {
         Some(json!({
             "description": "Categorized",
             "amount": 100,
+            "currency": "EUR",
             "transactionDate": "2026-07-09T12:30:00",
             "transactionType": "expense",
             "transactionCategoryId": "missing-category"
@@ -302,6 +323,7 @@ async fn import_transactions_returns_imported_rows() {
                 {
                     "description": "Imported",
                     "amount": 500,
+                    "currency": "EUR",
                     "transactionDate": "2026-07-09T12:30:00",
                     "transactionType": "expense"
                 }
@@ -333,6 +355,7 @@ async fn import_transaction_batch_returns_imported_transactions_only() {
                 {
                     "description": "Lunch",
                     "amount": 1200,
+                    "currency": "EUR",
                     "transactionDate": "2026-07-09T12:30:00",
                     "transactionType": "expense"
                 }

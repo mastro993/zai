@@ -9,7 +9,7 @@ import {
   toggleRowInSelection,
   type PageCheckboxState,
 } from "../lib/transaction-selection";
-import type { Transaction } from "../types/model";
+import type { TransactionListItem } from "../types/model";
 
 type UseTransactionSelectionResult = {
   selectedIds: Set<string>;
@@ -19,8 +19,8 @@ type UseTransactionSelectionResult = {
   lastAnchorId: string | null;
   clearSelection: () => void;
   syncFilterFingerprint: (filters: TransactionFilters | undefined) => void;
-  toggleRow: (transaction: Transaction, selected: boolean, shiftKey: boolean) => void;
-  togglePage: (transactions: Array<Transaction>, selectAll: boolean) => void;
+  toggleRow: (transaction: TransactionListItem, selected: boolean, shiftKey: boolean) => void;
+  togglePage: (transactions: Array<TransactionListItem>, selectAll: boolean) => void;
   applySelectAllMatching: (
     transactionIds: Array<string>,
     filters: TransactionFilters | undefined,
@@ -29,7 +29,7 @@ type UseTransactionSelectionResult = {
 };
 
 export function useTransactionSelection(
-  visibleTransactions: Array<Transaction>,
+  visibleTransactions: Array<TransactionListItem>,
 ): UseTransactionSelectionResult {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [selectAllMatching, setSelectAllMatching] = useState(false);
@@ -58,7 +58,7 @@ export function useTransactionSelection(
   );
 
   const toggleRow = useCallback(
-    (transaction: Transaction, selected: boolean, shiftKey: boolean) => {
+    (transaction: TransactionListItem, selected: boolean, shiftKey: boolean) => {
       setSelectAllMatching(false);
       setMatchingFingerprint(null);
 
@@ -75,7 +75,7 @@ export function useTransactionSelection(
     [lastAnchorId, visibleTransactions],
   );
 
-  const togglePage = useCallback((transactions: Array<Transaction>, selectAll: boolean) => {
+  const togglePage = useCallback((transactions: Array<TransactionListItem>, selectAll: boolean) => {
     setSelectAllMatching(false);
     setMatchingFingerprint(null);
     setSelectedIds((current) => togglePageInSelection(current, transactions, selectAll));

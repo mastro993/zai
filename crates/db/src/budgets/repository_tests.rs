@@ -96,10 +96,12 @@ async fn create_budget_uses_existing_month_transactions_and_materializes_project
             id: Some(Uuid::new_v4().to_string()),
             description: Some("Before budget".to_string()),
             amount: 1_250,
+            currency: "EUR".to_string(),
             transaction_date: fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: Some(spending_category.id),
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
@@ -153,6 +155,7 @@ async fn spending_budget_counts_refunds_but_ignores_income_category_income() {
     ] {
         transactions
             .create_transaction(NewTransaction {
+                currency: "EUR".to_string(),
                 id: Some(Uuid::new_v4().to_string()),
                 description: None,
                 amount,
@@ -160,6 +163,7 @@ async fn spending_budget_counts_refunds_but_ignores_income_category_income() {
                 transaction_type: transaction_type.to_string(),
                 transaction_category_id: category_id,
                 notes: None,
+                manual_exchange_rate: None,
             })
             .await
             .expect("transaction");
@@ -212,10 +216,12 @@ async fn reading_budget_rebuilds_projected_result_after_transaction_changes() {
             id: Some(Uuid::new_v4().to_string()),
             description: None,
             amount: 2_500,
+            currency: "EUR".to_string(),
             transaction_date: fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
@@ -271,6 +277,7 @@ async fn category_scope_includes_children_and_canonicalizes_redundant_selection(
     ] {
         transactions
             .create_transaction(NewTransaction {
+                currency: "EUR".to_string(),
                 id: Some(id.to_string()),
                 description: None,
                 amount,
@@ -278,6 +285,7 @@ async fn category_scope_includes_children_and_canonicalizes_redundant_selection(
                 transaction_type: "expense".to_string(),
                 transaction_category_id: Some(category_id),
                 notes: None,
+                manual_exchange_rate: None,
             })
             .await
             .expect("transaction");
@@ -340,6 +348,7 @@ async fn measurement_mode_applies_signed_income_rules_to_empty_scope() {
     ] {
         transactions
             .create_transaction(NewTransaction {
+                currency: "EUR".to_string(),
                 id: Some(id.to_string()),
                 description: None,
                 amount,
@@ -347,6 +356,7 @@ async fn measurement_mode_applies_signed_income_rules_to_empty_scope() {
                 transaction_type: transaction_type.to_string(),
                 transaction_category_id: category_id,
                 notes: None,
+                manual_exchange_rate: None,
             })
             .await
             .expect("transaction");

@@ -41,7 +41,8 @@ fn status_for_error(error: &Error) -> StatusCode {
         | Error::CurrencyJobConflict
         | Error::DefaultCurrencyDisableForbidden
         | Error::ProviderDisclosureRequired
-        | Error::IncompatibleApplicationFormat => StatusCode::CONFLICT,
+        | Error::IncompatibleApplicationFormat
+        | Error::ManualRateReplacementRequired { .. } => StatusCode::CONFLICT,
         Error::CurrencyJobNotFound(_) => StatusCode::NOT_FOUND,
         Error::Database(db_error) => match db_error {
             DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,

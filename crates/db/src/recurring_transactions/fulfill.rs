@@ -168,17 +168,19 @@ fn fulfill_generated_occurrence(
 
     let before = snapshot_active_budgets(conn, now)?;
     let transaction_id = Uuid::new_v4().to_string();
+    let currency = crate::currency::default_currency(conn).map_err(StorageError::from)?;
     let new_transaction = NewTransaction {
         id: Some(transaction_id.clone()),
         description: Some(template.description.clone()),
         amount: template.amount,
+        currency: currency.clone(),
         transaction_date: scheduled_local,
         transaction_type: template.transaction_type.clone(),
         transaction_category_id: template.transaction_category_id.clone(),
         notes: template.notes.clone(),
+        manual_exchange_rate: None,
     };
-    let currency = crate::currency::default_currency(conn).map_err(StorageError::from)?;
-    let transaction_row = TransactionRow::from_new(new_transaction, &currency);
+    let transaction_row = TransactionRow::from_new(new_transaction);
 
     diesel::insert_into(transactions::table)
         .values(&transaction_row)

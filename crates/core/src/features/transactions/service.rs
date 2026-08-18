@@ -5,8 +5,8 @@ use crate::features::transaction_categories::models::{
 };
 use crate::features::transaction_categories::service::normalize_import_categories;
 use crate::features::transactions::models::{
-    DuplicateKeyCandidate, NewTransaction, Transaction, TransactionSearchFilters,
-    TransactionUpdate, validate_list_paging,
+    DuplicateKeyCandidate, NewTransaction, Transaction, TransactionListItem,
+    TransactionSearchFilters, TransactionUpdate, validate_list_paging,
 };
 use crate::features::transactions::traits::{
     TransactionsRepositoryTrait, TransactionsServiceTrait,
@@ -42,7 +42,7 @@ impl TransactionsServiceTrait for TransactionsService {
         per_page: i64,
         filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
-    ) -> Result<PaginatedData<Transaction>> {
+    ) -> Result<PaginatedData<TransactionListItem>> {
         self.currency_setup.require_setup()?;
         validate_list_paging(page, per_page)?;
         self.repository
@@ -108,7 +108,7 @@ impl TransactionsServiceTrait for TransactionsService {
         self.repository.delete_transaction(id).await
     }
 
-    async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<Transaction>> {
+    async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<TransactionListItem>> {
         self.currency_setup.require_setup()?;
         self.repository.delete_transactions(ids).await
     }
@@ -168,7 +168,29 @@ mod tests {
     use super::*;
     use crate::errors::Error;
     use crate::features::transactions::dedup::duplicate_key;
-    use crate::features::transactions::models::DuplicateKeyCandidate;
+    use crate::features::transactions::models::{
+        DuplicateKeyCandidate, TransactionExchangeRateRevision,
+    };
+
+    fn identity_detail(transaction: NewTransaction) -> Transaction {
+        let currency = transaction.currency;
+        let exchange_rate =
+            TransactionExchangeRateRevision::identity(&currency, transaction.transaction_date);
+        Transaction {
+            id: transaction.id.unwrap_or_default(),
+            description: transaction.description,
+            amount: transaction.amount,
+            currency: currency.clone(),
+            transaction_date: transaction.transaction_date,
+            transaction_type: transaction.transaction_type,
+            transaction_category_id: transaction.transaction_category_id,
+            notes: transaction.notes,
+            exchange_rate,
+            converted_amount: Some(transaction.amount),
+            converted_currency: currency,
+            complete: true,
+        }
+    }
     use chrono::NaiveDateTime;
     use std::sync::Mutex;
 
@@ -203,7 +225,7 @@ mod tests {
             _per_page: i64,
             _filters: Option<TransactionSearchFilters<'_>>,
             _sort: Option<Sort>,
-        ) -> Result<PaginatedData<Transaction>> {
+        ) -> Result<PaginatedData<TransactionListItem>> {
             *self.list_calls.lock().unwrap() += 1;
             Err(Error::InvalidData("unused in test".to_string()))
         }
@@ -248,6 +270,7 @@ mod tests {
                     let key = duplicate_key(
                         candidate.transaction_date,
                         candidate.amount,
+                        &candidate.currency,
                         candidate.description.as_deref(),
                     );
                     existing_set.contains(&key).then_some(key)
@@ -273,7 +296,7 @@ mod tests {
             Err(Error::InvalidData("unused in test".to_string()))
         }
 
-        async fn delete_transactions(&self, _ids: Vec<&str>) -> Result<Vec<Transaction>> {
+        async fn delete_transactions(&self, _ids: Vec<&str>) -> Result<Vec<TransactionListItem>> {
             Err(Error::InvalidData("unused in test".to_string()))
         }
 
@@ -293,6 +316,7 @@ mod tests {
                     duplicate_key(
                         transaction.transaction_date,
                         transaction.amount,
+                        &transaction.currency,
                         transaction.description.as_deref(),
                     )
                 })
@@ -303,18 +327,11 @@ mod tests {
                 let key = duplicate_key(
                     transaction.transaction_date,
                     transaction.amount,
+                    &transaction.currency,
                     transaction.description.as_deref(),
                 );
                 if seen_keys.insert(key) {
-                    let row = Transaction {
-                        id: transaction.id.unwrap_or_default(),
-                        description: transaction.description,
-                        amount: transaction.amount,
-                        transaction_date: transaction.transaction_date,
-                        transaction_type: transaction.transaction_type,
-                        transaction_category_id: transaction.transaction_category_id,
-                        notes: transaction.notes,
-                    };
+                    let row = identity_detail(transaction);
                     existing.push(row.clone());
                     imported.push(row);
                 }
@@ -341,10 +358,12 @@ mod tests {
             id: None,
             description: Some(" Groceries ".to_string()),
             amount: 1250,
+            currency: "EUR".to_string(),
             transaction_date: parse_datetime("2026-01-15T08:30:00"),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         }];
 
         let first = service.import_transactions(payload.clone()).await.unwrap();
@@ -356,15 +375,17 @@ mod tests {
 
     #[tokio::test]
     async fn import_transactions_skips_duplicates_against_existing_same_day_key() {
-        let existing = vec![Transaction {
-            id: "existing".to_string(),
+        let existing = vec![identity_detail(NewTransaction {
+            id: Some("existing".to_string()),
             description: Some("groceries".to_string()),
             amount: 1250,
+            currency: "EUR".to_string(),
             transaction_date: parse_datetime("2026-01-15T20:45:00"),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
-        }];
+            manual_exchange_rate: None,
+        })];
         let repository = Arc::new(FakeRepository::with_existing(existing));
         let service = TransactionsService::new(repository);
 
@@ -373,10 +394,12 @@ mod tests {
                 id: None,
                 description: Some(" Groceries ".to_string()),
                 amount: 1250,
+                currency: "EUR".to_string(),
                 transaction_date: parse_datetime("2026-01-15T08:30:00"),
                 transaction_type: "expense".to_string(),
                 transaction_category_id: None,
                 notes: None,
+                manual_exchange_rate: None,
             }])
             .await
             .unwrap();
@@ -440,6 +463,7 @@ mod tests {
             .push(duplicate_key(
                 parse_datetime("2026-01-15T08:30:00"),
                 1250,
+                "EUR",
                 Some("groceries"),
             ));
         let service = TransactionsService::new(repository);
@@ -449,11 +473,13 @@ mod tests {
                 DuplicateKeyCandidate {
                     transaction_date: parse_datetime("2026-01-15T20:45:00"),
                     amount: 1250,
+                    currency: "EUR".to_string(),
                     description: Some(" Groceries ".to_string()),
                 },
                 DuplicateKeyCandidate {
                     transaction_date: parse_datetime("2026-01-16T08:30:00"),
                     amount: 900,
+                    currency: "EUR".to_string(),
                     description: Some("Coffee".to_string()),
                 },
             ])
@@ -461,7 +487,10 @@ mod tests {
             .expect("duplicate keys");
 
         assert_eq!(keys.len(), 1);
-        assert_eq!(keys[0], "2026-01-15\u{0000}1250\u{0000}groceries");
+        assert_eq!(
+            keys[0],
+            "2026-01-15\u{0000}1250\u{0000}EUR\u{0000}groceries"
+        );
     }
 
     struct RejectSetup;

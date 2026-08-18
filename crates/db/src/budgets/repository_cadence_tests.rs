@@ -26,10 +26,12 @@ async fn every_budget_cadence_uses_half_open_periods() {
                 id: Some(format!("cadence-start-{index}")),
                 description: None,
                 amount: 100,
+                currency: "EUR".to_string(),
                 transaction_date: start,
                 transaction_type: "expense".to_string(),
                 transaction_category_id: None,
                 notes: None,
+                manual_exchange_rate: None,
             })
             .await
             .expect("start transaction");
@@ -38,10 +40,12 @@ async fn every_budget_cadence_uses_half_open_periods() {
                 id: Some(format!("cadence-end-{index}")),
                 description: None,
                 amount: 1_000,
+                currency: "EUR".to_string(),
                 transaction_date: end,
                 transaction_type: "expense".to_string(),
                 transaction_category_id: None,
                 notes: None,
+                manual_exchange_rate: None,
             })
             .await
             .expect("end transaction");

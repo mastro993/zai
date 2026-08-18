@@ -8,7 +8,7 @@ use zai_app::ServiceContext;
 use zai_core::features::transaction_categories::models::NewTransactionCategory;
 use zai_core::features::transactions::models::{
     DuplicateKeyCandidate, NewTransaction, Transaction, TransactionCsvExportResponse,
-    TransactionSearchFilters, TransactionUpdate,
+    TransactionListItem, TransactionSearchFilters, TransactionUpdate,
 };
 use zai_core::query::{PaginatedData, Sort};
 
@@ -111,7 +111,7 @@ pub async fn get_transactions(
     filters: Option<TransactionSearchFiltersDto>,
     sort: Option<Sort>,
     state: State<'_, Arc<ServiceContext>>,
-) -> CommandResult<PaginatedData<Transaction>> {
+) -> CommandResult<PaginatedData<TransactionListItem>> {
     debug!("Getting transactions ...");
     let filters = filters
         .as_ref()
@@ -179,7 +179,7 @@ pub async fn delete_transaction(
 pub async fn delete_transactions(
     transaction_ids: Vec<String>,
     state: State<'_, Arc<ServiceContext>>,
-) -> CommandResult<Vec<Transaction>> {
+) -> CommandResult<Vec<TransactionListItem>> {
     debug!("Deleting {} transactions ...", transaction_ids.len());
     let transaction_id_refs = transaction_ids.iter().map(String::as_str).collect();
     state

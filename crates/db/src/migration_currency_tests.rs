@@ -326,10 +326,12 @@ async fn amount_only_write_persists_default_currency_identity_money() {
             id: Some("txn-identity".to_string()),
             description: Some("Identity write".to_string()),
             amount: 2500,
+            currency: "EUR".to_string(),
             transaction_date: crate::test_utils::fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("create");

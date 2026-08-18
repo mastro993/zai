@@ -17,6 +17,7 @@ pub async fn seed_filter_test_transactions(app: &axum::Router) {
                 {
                     "description": "Morning coffee",
                     "amount": 350,
+                    "currency": "EUR",
                     "transactionDate": "2026-07-05T08:00:00",
                     "transactionType": "expense",
                     "transactionCategoryId": "food-cat",
@@ -25,6 +26,7 @@ pub async fn seed_filter_test_transactions(app: &axum::Router) {
                 {
                     "description": "Salary payment",
                     "amount": 500000,
+                    "currency": "EUR",
                     "transactionDate": "2026-07-01T12:00:00",
                     "transactionType": "income",
                     "transactionCategoryId": null
@@ -32,6 +34,7 @@ pub async fn seed_filter_test_transactions(app: &axum::Router) {
                 {
                     "description": "Train ticket",
                     "amount": 2500,
+                    "currency": "EUR",
                     "transactionDate": "2026-07-15T14:30:00",
                     "transactionType": "expense",
                     "transactionCategoryId": "travel-cat"
@@ -39,6 +42,7 @@ pub async fn seed_filter_test_transactions(app: &axum::Router) {
                 {
                     "description": "Coffee beans",
                     "amount": 1200,
+                    "currency": "EUR",
                     "transactionDate": "2026-07-20T10:00:00",
                     "transactionType": "expense",
                     "transactionCategoryId": "food-cat"
@@ -46,6 +50,7 @@ pub async fn seed_filter_test_transactions(app: &axum::Router) {
                 {
                     "description": "Freelance gig",
                     "amount": 80000,
+                    "currency": "EUR",
                     "transactionDate": "2026-07-25T16:00:00",
                     "transactionType": "income",
                     "transactionCategoryId": null

@@ -33,6 +33,7 @@ fn parse_datetime(value: &str) -> chrono::NaiveDateTime {
 
 fn import_candidate(description: &str, amount: i32, value: &str) -> NewTransaction {
     NewTransaction {
+        currency: "EUR".to_string(),
         id: Some(Uuid::new_v4().to_string()),
         description: Some(description.to_string()),
         amount,
@@ -40,6 +41,7 @@ fn import_candidate(description: &str, amount: i32, value: &str) -> NewTransacti
         transaction_type: "expense".to_string(),
         transaction_category_id: None,
         notes: None,
+        manual_exchange_rate: None,
     }
 }
 

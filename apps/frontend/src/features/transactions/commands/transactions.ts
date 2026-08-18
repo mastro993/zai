@@ -6,16 +6,25 @@ import {
   type CategoryImportPayload,
 } from "@/features/categories/lib/category-import";
 import { toBackendDateTime } from "../lib/transaction";
-import type { PaginatedTransactions, Transaction, TransactionFormValues } from "../types/model";
+import type {
+  PaginatedTransactions,
+  Transaction,
+  TransactionFormValues,
+  TransactionListItem,
+} from "../types/model";
 import { TRANSACTION_COMMANDS } from "./registry";
 
 type TransactionPayload = {
   description?: string | null;
   amount: number;
+  currency: string;
   transactionDate: string;
   transactionType: string;
   transactionCategoryId?: string | null;
   notes?: string | null;
+  manualExchangeRate?: string;
+  confirmManualRateReplacement?: boolean;
+  retryRateLookup?: boolean;
 };
 
 export type TransactionFilters = {
@@ -35,13 +44,25 @@ type TransactionSort = {
   desc: boolean;
 };
 
-const toTransactionPayload = (values: TransactionFormValues): TransactionPayload => ({
+export interface TransactionWriteOptions {
+  confirmManualRateReplacement?: boolean;
+  retryRateLookup?: boolean;
+}
+
+const toTransactionPayload = (
+  values: TransactionFormValues,
+  options: TransactionWriteOptions = {},
+): TransactionPayload => ({
   description: values.description || null,
   amount: values.amount,
+  currency: values.currency,
   transactionDate: toBackendDateTime(values.transactionDate),
   transactionType: values.transactionType,
   transactionCategoryId: values.transactionCategoryId || null,
   notes: values.notes || null,
+  manualExchangeRate: values.manualExchangeRate,
+  confirmManualRateReplacement: options.confirmManualRateReplacement,
+  retryRateLookup: options.retryRateLookup,
 });
 
 export const getTransactions = (
@@ -77,6 +98,7 @@ export const getFilteredTransactionIds = (
 export type DuplicateKeyCandidate = {
   transactionDate: string;
   amount: number;
+  currency: string;
   description?: string | null;
 };
 
@@ -109,11 +131,12 @@ export const createTransaction = (values: TransactionFormValues): CommandResult<
 export const updateTransaction = (
   id: string,
   values: TransactionFormValues,
+  options: TransactionWriteOptions = {},
 ): CommandResult<Transaction> => {
   return invokeDecodedCommand(TRANSACTION_COMMANDS.update_transaction, {
     updatedTransaction: {
       id,
-      ...toTransactionPayload(values),
+      ...toTransactionPayload(values, options),
     },
   });
 };
@@ -126,7 +149,7 @@ export const deleteTransaction = (transactionId: string): CommandResult<Transact
 
 export const deleteTransactions = (
   transactionIds: Array<string>,
-): CommandResult<Array<Transaction>> => {
+): CommandResult<Array<TransactionListItem>> => {
   return invokeDecodedCommand(TRANSACTION_COMMANDS.delete_transactions, {
     transactionIds,
   });

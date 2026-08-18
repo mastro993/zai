@@ -13,7 +13,7 @@ use zai_app::ServiceContext;
 use zai_core::features::transaction_categories::models::NewTransactionCategory;
 use zai_core::features::transactions::models::{
     DuplicateKeyCandidate, NewTransaction, Transaction, TransactionCsvExportResponse,
-    TransactionSearchFilters, TransactionUpdate,
+    TransactionListItem, TransactionSearchFilters, TransactionUpdate,
 };
 use zai_core::query::{PaginatedData, Sort};
 
@@ -128,10 +128,17 @@ struct TransactionPayload {
     id: Option<String>,
     description: Option<String>,
     amount: i32,
+    currency: String,
     transaction_date: NaiveDateTime,
     transaction_type: String,
     transaction_category_id: Option<String>,
     notes: Option<String>,
+    #[serde(default)]
+    manual_exchange_rate: Option<String>,
+    #[serde(default)]
+    confirm_manual_rate_replacement: bool,
+    #[serde(default)]
+    retry_rate_lookup: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -319,7 +326,7 @@ pub fn router() -> Router<Arc<ServiceContext>> {
 async fn list_transactions(
     State(context): State<Arc<ServiceContext>>,
     ValidatedListQuery(query): ValidatedListQuery,
-) -> TransactionResult<Json<PaginatedData<Transaction>>> {
+) -> TransactionResult<Json<PaginatedData<TransactionListItem>>> {
     let filters = list_query_to_filters(&query)?;
     let sort = list_query_to_sort(&query);
 
@@ -414,10 +421,12 @@ async fn create_transaction(
         id: payload.id,
         description: payload.description,
         amount: payload.amount,
+        currency: payload.currency,
         transaction_date: payload.transaction_date,
         transaction_type: payload.transaction_type,
         transaction_category_id: payload.transaction_category_id,
         notes: payload.notes,
+        manual_exchange_rate: payload.manual_exchange_rate,
     };
 
     context
@@ -438,10 +447,14 @@ async fn update_transaction(
         id: transaction_id,
         description: payload.description,
         amount: payload.amount,
+        currency: payload.currency,
         transaction_date: payload.transaction_date,
         transaction_type: payload.transaction_type,
         transaction_category_id: payload.transaction_category_id,
         notes: payload.notes,
+        manual_exchange_rate: payload.manual_exchange_rate,
+        confirm_manual_rate_replacement: payload.confirm_manual_rate_replacement,
+        retry_rate_lookup: payload.retry_rate_lookup,
     };
 
     context
@@ -467,7 +480,7 @@ async fn delete_transaction(
 async fn bulk_delete_transactions(
     State(context): State<Arc<ServiceContext>>,
     body: Result<Json<BulkDeleteBody>, JsonRejection>,
-) -> TransactionResult<Json<Vec<Transaction>>> {
+) -> TransactionResult<Json<Vec<TransactionListItem>>> {
     let Json(payload) = parse_json(body)?;
     let transaction_id_refs = payload.transaction_ids.iter().map(String::as_str).collect();
 
