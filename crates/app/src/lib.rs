@@ -16,8 +16,11 @@ use zai_core::features::{
     transactions::{service::TransactionsService, traits::TransactionsServiceTrait},
 };
 
+mod currency_refresh;
+pub use currency_refresh::CurrencyRefreshHandle;
 mod ecb;
 mod recurring_supervisor;
+use currency_refresh::CurrencyRefreshSupervisor;
 use ecb::EcbHttpAdapter;
 use recurring_supervisor::{ProcessDelayAlertPort, RepositorySupervisorHeads};
 use zai_core::features::exchange_rates::{ExchangeRateService, SystemUtcClock};
@@ -34,6 +37,8 @@ pub struct ServiceContext {
     pub recurring_processing_event_bus: Arc<RecurringProcessingEventBus>,
     pub currency_state_event_bus: Arc<CurrencyStateEventBus>,
     pub recurring_processing_supervisor: RecurringProcessingSupervisorHandle,
+    pub currency_refresh_supervisor: CurrencyRefreshHandle,
+    pub domain_alerts_repository: Arc<zai_db::domain_alerts::DomainAlertsRepository>,
 }
 
 impl ServiceContext {
@@ -77,14 +82,51 @@ impl ServiceContext {
         Arc::clone(&self.currency_state_event_bus)
     }
 
+    pub fn spawn_currency_job_drive(&self) {
+        let service = self.currency_service();
+        let exchange = self.exchange_rate_service();
+        tokio::spawn(async move {
+            if let Ok(status) = service.status()
+                && let Some(job) = status.job
+                && job.job_type == zai_core::features::currency::CurrencyJobType::AddCurrency
+                && job
+                    .currency_code
+                    .as_deref()
+                    .is_some_and(zai_core::features::currency::needs_provider)
+            {
+                let _ = exchange.refresh().await;
+            }
+            let _ = service.drive_running_job();
+        });
+    }
+
+    pub async fn retry_exchange_rate_refresh(&self) {
+        let outcome = self.exchange_rate_service().refresh().await;
+        let _ = crate::currency_refresh::apply_refresh_outcome(
+            &self.currency_service,
+            &self.domain_alerts_repository,
+            &outcome,
+        )
+        .await;
+        let _ = zai_core::features::currency::CurrencyStateEventPublisher::publish(
+            self.currency_state_event_bus().as_ref(),
+            &zai_core::features::currency::CurrencyStateEvent::StateChanged,
+        );
+    }
+
     pub fn recurring_processing_supervisor(&self) -> RecurringProcessingSupervisorHandle {
         self.recurring_processing_supervisor.clone()
+    }
+
+    pub fn currency_refresh_supervisor(&self) -> CurrencyRefreshHandle {
+        self.currency_refresh_supervisor.clone()
     }
 }
 
 pub struct BootstrappedApp {
     pub context: ServiceContext,
     pub supervisor: RecurringProcessingSupervisor,
+    pub currency_refresh: CurrencyRefreshSupervisor,
 }
 
 pub fn initialize_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<ServiceContext> {
@@ -195,6 +237,13 @@ pub fn bootstrap_context_with_buses_and_clock(
     );
     let handle = supervisor.handle();
     recurring_transactions_service.attach_wake(Arc::new(handle.clone()));
+    let currency_refresh = CurrencyRefreshSupervisor::new(
+        exchange_rate_service.clone(),
+        currency_service.clone(),
+        domain_alerts_repository.clone(),
+        currency_state_event_bus.clone(),
+    );
+    let currency_refresh_handle = currency_refresh.handle();
 
     Ok(BootstrappedApp {
         context: ServiceContext {
@@ -204,7 +253,10 @@ pub fn bootstrap_context_with_buses_and_clock(
             ),
             currency_service: currency_service.clone(),
             exchange_rate_service,
-            domain_alerts_service: Arc::new(DomainAlertsService::new(domain_alerts_repository)),
+            domain_alerts_service: Arc::new(DomainAlertsService::new(
+                domain_alerts_repository.clone(),
+            )),
+            domain_alerts_repository,
             recurring_transactions_service,
             transaction_categories_service: Arc::new(TransactionCategoriesService::new(
                 transaction_categories_repository,
@@ -217,8 +269,10 @@ pub fn bootstrap_context_with_buses_and_clock(
             recurring_processing_event_bus,
             currency_state_event_bus,
             recurring_processing_supervisor: handle,
+            currency_refresh_supervisor: currency_refresh_handle,
         },
         supervisor,
+        currency_refresh,
     })
 }
 

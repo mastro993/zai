@@ -135,6 +135,58 @@ async fn currency_bootstrap_catalog_and_setup_required_match_across_transports()
     assert_read_parity(&harness, missing_job()).await;
 }
 
+fn add_usd_without_disclosure() -> ContractExpectation {
+    ContractExpectation {
+        http: HttpCall {
+            method: "POST",
+            path: "/api/currencies/USD/add".to_string(),
+            body: Some(json!({ "confirmProviderDisclosure": false })),
+            expected_status: StatusCode::CONFLICT,
+        },
+        compare_body: false,
+        expected_error_code: Some("providerDisclosureRequired"),
+    }
+}
+
+fn disable_default_forbidden() -> ContractExpectation {
+    ContractExpectation {
+        http: HttpCall {
+            method: "POST",
+            path: "/api/currencies/EUR/disable".to_string(),
+            body: None,
+            expected_status: StatusCode::CONFLICT,
+        },
+        compare_body: false,
+        expected_error_code: Some("defaultCurrencyDisableForbidden"),
+    }
+}
+
+fn change_default_not_enabled() -> ContractExpectation {
+    ContractExpectation {
+        http: HttpCall {
+            method: "POST",
+            path: "/api/currencies/default".to_string(),
+            body: Some(json!({ "code": "USD" })),
+            expected_status: StatusCode::CONFLICT,
+        },
+        compare_body: false,
+        expected_error_code: Some("currencyNotEnabled"),
+    }
+}
+
+fn quote_identity() -> ContractExpectation {
+    ContractExpectation {
+        http: HttpCall {
+            method: "GET",
+            path: "/api/exchange-rates/quote?source=EUR&target=EUR&date=2026-08-18".to_string(),
+            body: None,
+            expected_status: StatusCode::OK,
+        },
+        compare_body: true,
+        expected_error_code: None,
+    }
+}
+
 #[tokio::test]
 async fn currency_setup_command_and_settings_read_match_across_transports() {
     let harness = setup_unconfirmed_contract("zai-currency-setup").await;
@@ -150,4 +202,8 @@ async fn currency_setup_command_and_settings_read_match_across_transports() {
 
     let confirmed = setup_contract("zai-currency-confirmed").await;
     assert_read_parity(&confirmed, settings_ok()).await;
+    assert_read_parity(&confirmed, add_usd_without_disclosure()).await;
+    assert_read_parity(&confirmed, disable_default_forbidden()).await;
+    assert_read_parity(&confirmed, change_default_not_enabled()).await;
+    assert_read_parity(&confirmed, quote_identity()).await;
 }

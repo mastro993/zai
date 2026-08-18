@@ -25,7 +25,8 @@ export const isUnreadAlert = (alert: DomainAlert): boolean => !alert.readAt && !
 
 export const isNavigableAlertDestination = (
   destination: DomainAlert["destination"],
-): destination is NonNullable<DomainAlert["destination"]> => destination?.type === "budget";
+): destination is NonNullable<DomainAlert["destination"]> =>
+  destination?.type === "budget" || destination?.type === "currencySettings";
 
 export const parseAlertRichData = <TRaw>(value: TRaw): DomainAlertRichData | null => {
   const record = asWireObject(value);

@@ -127,13 +127,16 @@ pub async fn serve(config: ServerConfig) -> Result<(), ServerError> {
     let bootstrapped = bootstrap_context(&config.data_dir)?;
     let context = Arc::new(bootstrapped.context);
     let supervisor_handle = context.recurring_processing_supervisor();
+    let currency_refresh_handle = context.currency_refresh_supervisor();
     let _supervisor = bootstrapped.supervisor.spawn();
+    std::mem::drop(bootstrapped.currency_refresh.spawn());
     let app = create_router(context);
     let listener = config.bind_listener().await?;
     axum::serve(listener, app)
         .with_graceful_shutdown(async move {
             let _ = tokio::signal::ctrl_c().await;
             supervisor_handle.request_shutdown();
+            currency_refresh_handle.request_shutdown();
         })
         .await
         .map_err(ServerError::Serve)

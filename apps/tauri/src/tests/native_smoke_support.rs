@@ -140,6 +140,7 @@ impl NativeHarness {
         start_alert_event_forwarder(app.handle().clone(), alert_bus);
         start_recurring_processing_forwarder(app.handle().clone(), processing_bus);
         bootstrapped.supervisor.spawn();
+        std::mem::drop(bootstrapped.currency_refresh.spawn());
 
         Self {
             app,

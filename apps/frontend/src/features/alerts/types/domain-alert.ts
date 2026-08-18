@@ -8,6 +8,9 @@ const domainAlertDestinationSchema = z.discriminatedUnion("type", [
     type: z.literal("budget"),
     budgetId: z.string().uuid(),
   }),
+  z.object({
+    type: z.literal("currencySettings"),
+  }),
 ]);
 
 const domainAlertRichDataSchema = z.object({

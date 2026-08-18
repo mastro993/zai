@@ -215,6 +215,7 @@ diesel::table! {
         default_currency -> Text,
         setup_completed_at -> Nullable<Timestamp>,
         default_currency_revision -> Integer,
+        provider_disclosure_accepted_at -> Nullable<Timestamp>,
     }
 }
 
@@ -236,6 +237,8 @@ diesel::table! {
         stage_total -> Integer,
         error_code -> Nullable<Text>,
         error_message -> Nullable<Text>,
+        generation_id -> Nullable<Text>,
+        error_details -> Nullable<Text>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
     }
