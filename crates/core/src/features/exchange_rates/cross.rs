@@ -2,6 +2,7 @@ use chrono::NaiveDate;
 
 use crate::money::{AutomaticRate, CanonicalRate, ConversionRate, CurrencyCode, RateObservation};
 
+use super::contract::{ATTRIBUTION, ZAI_CROSS_ATTRIBUTION};
 use super::payload::AcceptedRateSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +35,14 @@ pub fn rate_source_for(currency: CurrencyCode, accepted: Option<&AcceptedRateSet
         RateSource::AutomaticEcb
     } else {
         RateSource::ManualOnly
+    }
+}
+
+pub fn pair_attribution(source: CurrencyCode, target: CurrencyCode) -> &'static str {
+    if source.as_str() != "EUR" && target.as_str() != "EUR" {
+        ZAI_CROSS_ATTRIBUTION
+    } else {
+        ATTRIBUTION
     }
 }
 

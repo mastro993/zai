@@ -9,6 +9,7 @@ pub const ECB_FLOW: &str = "EXR";
 pub const ECB_FORMAT: &str = "csvdata";
 pub const ECB_DETAIL: &str = "dataonly";
 pub const ATTRIBUTION: &str = "European Central Bank";
+pub const ZAI_CROSS_ATTRIBUTION: &str = "Zai calculation from ECB source legs";
 
 pub const ECB_HISTORY_START: NaiveDate = match NaiveDate::from_ymd_opt(1999, 1, 4) {
     Some(date) => date,

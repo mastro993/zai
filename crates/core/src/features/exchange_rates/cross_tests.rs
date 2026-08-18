@@ -3,8 +3,10 @@ use chrono::NaiveDate;
 use crate::money::{CurrencyCode, Money, convert};
 
 use super::contract::APPROVED_ECB_CURRENCIES;
+use super::contract::{ATTRIBUTION, ZAI_CROSS_ATTRIBUTION};
 use super::cross::{
-    RateSource, automatic_pair, eur_identity_observation, legs_for_pair, rate_source_for,
+    RateSource, automatic_pair, eur_identity_observation, legs_for_pair, pair_attribution,
+    rate_source_for,
 };
 use super::payload::{parse_ecb_csv, validate_complete_set};
 
@@ -61,6 +63,7 @@ fn eur_cross_rate_keeps_both_ecb_legs_and_converts() {
     let converted = convert(Money::from_authored(110, "USD").unwrap(), gbp, &rate).unwrap();
     assert!(converted.complete);
     assert_eq!(converted.converted.unwrap().minor_units(), 85);
+    assert_eq!(pair_attribution(usd, gbp), ZAI_CROSS_ATTRIBUTION);
 }
 
 #[test]
@@ -73,4 +76,5 @@ fn usd_to_eur_uses_identity_eur_leg() {
     let rate = automatic_pair(&set.id, source, reference).expect("pair");
     let converted = convert(Money::from_authored(110, "USD").unwrap(), eur, &rate).unwrap();
     assert_eq!(converted.converted.unwrap().minor_units(), 100);
+    assert_eq!(pair_attribution(usd, eur), ATTRIBUTION);
 }

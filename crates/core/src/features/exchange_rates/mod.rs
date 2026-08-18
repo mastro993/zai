@@ -18,11 +18,12 @@ mod request_tests;
 mod service_tests;
 
 pub use contract::{
-    APPROVED_ECB_CURRENCIES, ECB_HISTORY_START, ECB_HOST, PROVIDER_CONTRACT_ID, USER_AGENT,
-    approved_series_key, is_approved_ecb_currency,
+    APPROVED_ECB_CURRENCIES, ATTRIBUTION, ECB_HISTORY_START, ECB_HOST, PROVIDER_CONTRACT_ID,
+    USER_AGENT, ZAI_CROSS_ATTRIBUTION, approved_series_key, is_approved_ecb_currency,
 };
 pub use cross::{
-    RateSource, automatic_pair, eur_identity_observation, legs_for_pair, rate_source_for,
+    RateSource, automatic_pair, eur_identity_observation, legs_for_pair, pair_attribution,
+    rate_source_for,
 };
 pub use payload::{
     AcceptedObservation, AcceptedRateSet, FailureClass, ProviderPayload, parse_ecb_csv,

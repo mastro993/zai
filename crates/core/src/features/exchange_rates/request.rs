@@ -1,7 +1,7 @@
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
 
 use super::contract::{
-    ECB_DETAIL, ECB_FLOW, ECB_FORMAT, ECB_HOST, USER_AGENT, approved_series_key,
+    ECB_DETAIL, ECB_FLOW, ECB_FORMAT, ECB_HISTORY_START, ECB_HOST, USER_AGENT, approved_series_key,
 };
 use super::ports::SyncMetadata;
 
@@ -32,9 +32,13 @@ impl ProviderRequest {
 
 pub fn build_initial_requests(now: DateTime<Utc>) -> Vec<ProviderRequest> {
     let last_year = now.year();
-    (1999..=last_year)
+    (ECB_HISTORY_START.year()..=last_year)
         .map(|year| {
-            let start = NaiveDate::from_ymd_opt(year, 1, 1).expect("year start");
+            let start = if year == ECB_HISTORY_START.year() {
+                ECB_HISTORY_START
+            } else {
+                NaiveDate::from_ymd_opt(year, 1, 1).expect("year start")
+            };
             let end = NaiveDate::from_ymd_opt(year, 12, 31).expect("year end");
             data_request(&[
                 ("startPeriod", start.to_string()),

@@ -43,7 +43,7 @@ fn initial_requests_use_fixed_host_series_and_year_chunks() {
         vec![
             ("format".to_string(), "csvdata".to_string()),
             ("detail".to_string(), "dataonly".to_string()),
-            ("startPeriod".to_string(), "1999-01-01".to_string()),
+            ("startPeriod".to_string(), "1999-01-04".to_string()),
             ("endPeriod".to_string(), "1999-12-31".to_string()),
         ]
     );
