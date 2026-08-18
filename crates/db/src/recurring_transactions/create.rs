@@ -149,6 +149,7 @@ pub fn find_open_template_revision(
                     "Persisted money exceeds the JavaScript-safe wire maximum".to_string(),
                 )
             })?,
+            currency: row.currency,
             transaction_type: row.transaction_type,
             transaction_category_id: row.transaction_category_id,
             notes: row.notes,

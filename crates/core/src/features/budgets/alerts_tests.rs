@@ -30,6 +30,7 @@ fn sample_period(status: BudgetStatus) -> BudgetPeriod {
             BudgetStatus::Overspent => -2_000,
         },
         status,
+        complete: true,
     }
 }
 

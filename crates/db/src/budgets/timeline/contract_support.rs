@@ -2,6 +2,7 @@ use crate::budgets::models::{BudgetConfigurationRow, BudgetPeriodResultRow, Budg
 use crate::connection::run_migrations;
 use crate::schema::{budget_configurations, budget_period_results, budgets};
 use crate::test_utils::TempDb;
+use crate::transactions::models::TransactionRow;
 use chrono::{NaiveDate, NaiveDateTime};
 use diesel::prelude::*;
 use diesel::r2d2::{self, Pool};
@@ -78,20 +79,39 @@ pub(super) fn insert_budget_row(
         measurement_mode: BudgetMeasurementMode::Spending.to_string(),
         rollover_mode: rollover_mode.to_string(),
         warning_percentage: Some(80),
+        allowance_currency: crate::valuations::current_allowance_currency(conn)
+            .unwrap_or_else(|_| "EUR".to_string()),
     };
     diesel::insert_into(budget_configurations::table)
         .values(&configuration)
         .execute(conn)?;
+    let generation = crate::valuations::active_generation(conn).expect("active generation");
     diesel::insert_into(budget_period_results::table)
         .values(&BudgetPeriodResultRow {
             budget_id: id.to_string(),
             period_start,
             period_end,
             net_budget_spending: period.net_budget_spending,
-            effective_allowance: period.effective_allowance,
-            remaining_allowance: period.remaining_allowance,
-            status: super::calculate::status_string(period.status),
+            effective_allowance: Some(period.effective_allowance),
+            remaining_allowance: Some(period.remaining_allowance),
+            status: Some(super::calculate::status_string(period.status)),
+            generation_id: generation.id,
+            complete: period.complete,
         })
         .execute(conn)?;
+    Ok(())
+}
+
+pub(super) fn insert_valued_transaction(
+    conn: &mut SqliteConnection,
+    row: &TransactionRow,
+) -> crate::errors::Result<()> {
+    diesel::insert_into(crate::schema::transactions::table)
+        .values(row)
+        .execute(conn)?;
+    crate::currency::insert_identity_rate(conn, &row.id, row.transaction_date)
+        .map_err(crate::errors::StorageError::from)?;
+    crate::valuations::upsert_transaction_valuation(conn, row)
+        .map_err(crate::errors::StorageError::from)?;
     Ok(())
 }

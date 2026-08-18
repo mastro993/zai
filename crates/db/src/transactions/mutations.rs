@@ -44,6 +44,8 @@ pub(super) async fn create_transaction(
                     .filter(transactions::id.eq(&transaction_id))
                     .first::<TransactionRow>(conn)
                     .into_storage()?;
+                crate::valuations::upsert_transaction_valuation(conn, &inserted)
+                    .map_err(crate::errors::StorageError::from)?;
 
                 BudgetPeriodTimeline::reconcile(
                     conn,
@@ -106,6 +108,8 @@ pub(super) async fn update_transaction(
                     .filter(transactions::deleted_at.is_null())
                     .first::<TransactionRow>(conn)
                     .into_storage()?;
+                crate::valuations::upsert_transaction_valuation(conn, &persisted)
+                    .map_err(crate::errors::StorageError::from)?;
 
                 BudgetPeriodTimeline::reconcile(
                     conn,

@@ -94,6 +94,8 @@ not call currency core services directly.
 - `EXPLAIN QUERY PLAN` and statement-count tests cover provider/currency/
   value-date lookup, pending retry, generation/date, generation/converted
   value, and generation/completeness.
+  `valuations::explain_tests::explain_covers_required_valuation_lookups`,
+  `valuations::repository_tests::set_based_sum_is_one_statement`.
 
 ### Migration and upgrade
 

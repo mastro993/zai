@@ -1,5 +1,24 @@
 # Choices
 
+## 2026-08-18 — [Valuation generations and set-based budget results](https://github.com/mastro993/zai/issues/390)
+
+Seams from 374/377/390 (no re-grill):
+
+- `zai_core::features::valuations` public API: period completeness, authored-allowance restatement, projection convert
+- `crates/db` valuation repository: generation build/activate, cache upsert, set-based `SUM`/`COUNT`
+- Repository structural: indexes, immutability triggers, atomic head switch, statement counts, `EXPLAIN QUERY PLAN`
+
+Agent defaults:
+
+- One actual valuation generation head. Projection uses provider-rate head, not a second transaction cache
+- Cache rows denormalize `transaction_date` so generation/date `SUM` is set-based
+- Ready/superseded generation rows are immutable; building + active stay writable
+- Default-currency change: build complete inactive generation, then one writer tx switches heads
+- `BudgetPeriod.complete` added; wire status/allowance stay numbers until PR 6 nulls them. Incomplete persist as SQL NULL
+- Unknown rollover carry never becomes 0: dependent suffix is incomplete
+- Authored allowance restates at period-start rate of transaction-exchange-rate class
+- Migration `0012`. No new released fixture (0010 still upgrades)
+
 ## 2026-08-18 — [Private ECB provider cache with privacy canaries](https://github.com/mastro993/zai/issues/389)
 
 Seams from 373/377/389 (no re-grill):
@@ -43,6 +62,8 @@ Agent defaults:
 
 ## 2026-08-18
 
+- **Web E2E shard timeout is 15 minutes.** A 5-minute job timeout cancelled shard 2 during a cold Playwright Chromium install. Cache `~/.cache/ms-playwright` by lockfile; keep 15 minutes so a cache miss plus `zai-server` compile still finishes.
+- **Playwright CI install skips `--with-deps`.** Hosted `ubuntu-24.04` already has Chromium libs. `--with-deps` hung shard 2 on `apt-get` for the full job timeout while shard 1 passed.
 - **PR CI also targets `feat/**`.** `ci.yml` and `e2e.yml` run on PRs into `main` and `feat/**`. Long-lived feat stacks (e.g. `feat/multi-currency`) get the same gate as `main`. `feat/**` not `feat/*` so nested feat names still match. Benchmarks stay `push` to `main` only.
 
 ## 2026-08-17

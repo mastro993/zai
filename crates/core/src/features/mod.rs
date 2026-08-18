@@ -5,3 +5,4 @@ pub mod exchange_rates;
 pub mod recurring_transactions;
 pub mod transaction_categories;
 pub mod transactions;
+pub mod valuations;

@@ -119,6 +119,7 @@ describe("budgetSchema", () => {
         netBudgetSpending: 1000,
         remainingAllowance: 9000,
         status: "onTrack",
+        complete: true,
       },
     });
 

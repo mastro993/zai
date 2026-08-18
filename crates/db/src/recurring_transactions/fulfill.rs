@@ -186,6 +186,8 @@ fn fulfill_generated_occurrence(
         .into_storage()?;
     crate::currency::insert_identity_rate(conn, &transaction_id, scheduled_local)
         .map_err(StorageError::from)?;
+    crate::valuations::upsert_transaction_valuation(conn, &transaction_row)
+        .map_err(StorageError::from)?;
 
     #[cfg(any(test, feature = "failpoints"))]
     {

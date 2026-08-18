@@ -42,6 +42,7 @@ diesel::table! {
         measurement_mode -> Text,
         rollover_mode -> Text,
         warning_percentage -> Nullable<Integer>,
+        allowance_currency -> Text,
     }
 }
 
@@ -51,9 +52,11 @@ diesel::table! {
         period_start -> Timestamp,
         period_end -> Timestamp,
         net_budget_spending -> BigInt,
-        effective_allowance -> BigInt,
-        remaining_allowance -> BigInt,
-        status -> Text,
+        effective_allowance -> Nullable<BigInt>,
+        remaining_allowance -> Nullable<BigInt>,
+        status -> Nullable<Text>,
+        generation_id -> Text,
+        complete -> Bool,
     }
 }
 
@@ -211,6 +214,7 @@ diesel::table! {
         id -> Integer,
         default_currency -> Text,
         setup_completed_at -> Nullable<Timestamp>,
+        default_currency_revision -> Integer,
     }
 }
 
@@ -302,6 +306,44 @@ diesel::joinable!(provider_rate_observations -> provider_rate_sets (rate_set_id)
 diesel::joinable!(provider_heads -> provider_rate_sets (rate_set_id));
 diesel::joinable!(provider_refresh_state -> provider_contracts (provider_contract_id));
 
+diesel::table! {
+    valuation_generations (id) {
+        id -> Text,
+        kind -> Text,
+        target_currency -> Text,
+        prior_currency -> Nullable<Text>,
+        default_currency_revision -> Integer,
+        status -> Text,
+        created_at -> Timestamp,
+        activated_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    valuation_heads (kind) {
+        kind -> Text,
+        generation_id -> Text,
+        switched_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    transaction_valuations (generation_id, transaction_id) {
+        generation_id -> Text,
+        transaction_id -> Text,
+        transaction_date -> Timestamp,
+        converted_amount -> Nullable<BigInt>,
+        converted_currency -> Text,
+        complete -> Bool,
+        rate_revision_id -> Nullable<Text>,
+    }
+}
+
+diesel::joinable!(valuation_heads -> valuation_generations (generation_id));
+diesel::joinable!(transaction_valuations -> valuation_generations (generation_id));
+diesel::joinable!(transaction_valuations -> transactions (transaction_id));
+diesel::joinable!(budget_period_results -> valuation_generations (generation_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     transaction_categories,
     transactions,
@@ -324,4 +366,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     provider_rate_observations,
     provider_heads,
     provider_refresh_state,
+    valuation_generations,
+    valuation_heads,
+    transaction_valuations,
 );

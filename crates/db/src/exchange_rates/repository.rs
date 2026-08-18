@@ -111,6 +111,12 @@ impl ExchangeRateCache for ExchangeRateRepository {
     }
 }
 
+pub(crate) fn current_accepted_set(
+    connection: &mut SqliteConnection,
+) -> Result<Option<AcceptedRateSet>> {
+    load_current_set(connection)
+}
+
 fn load_current_set(connection: &mut SqliteConnection) -> Result<Option<AcceptedRateSet>> {
     let head = sql_query(
         "SELECT s.id, s.revision_identity, s.payload_digest \

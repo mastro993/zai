@@ -95,6 +95,13 @@ impl Database {
         ))
     }
 
+    pub fn valuations_repository(&self) -> Arc<crate::valuations::ValuationsRepository> {
+        Arc::new(crate::valuations::ValuationsRepository::new(
+            Arc::clone(&self.pool),
+            self.writer.clone(),
+        ))
+    }
+
     pub fn recurring_transactions_repository(&self) -> Arc<RecurringTransactionsRepository> {
         Arc::new(
             RecurringTransactionsRepository::new_with_clock_and_publisher(

@@ -84,6 +84,8 @@ pub(super) async fn import_transactions(
                 for row in &transactions_rows {
                     crate::currency::insert_identity_rate(conn, &row.id, row.transaction_date)
                         .map_err(crate::errors::StorageError::from)?;
+                    crate::valuations::upsert_transaction_valuation(conn, row)
+                        .map_err(crate::errors::StorageError::from)?;
                 }
 
                 let ids = transactions_rows
@@ -155,6 +157,8 @@ pub(super) async fn import_transactions_with_categories(
                         .into_storage()?;
                     for row in &transactions_rows {
                         crate::currency::insert_identity_rate(conn, &row.id, row.transaction_date)
+                            .map_err(crate::errors::StorageError::from)?;
+                        crate::valuations::upsert_transaction_valuation(conn, row)
                             .map_err(crate::errors::StorageError::from)?;
                     }
                 }
