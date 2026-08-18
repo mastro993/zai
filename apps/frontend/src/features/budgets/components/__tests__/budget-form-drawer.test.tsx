@@ -33,6 +33,7 @@ const sampleBudget = budgetSchema.parse({
     netBudgetSpending: 2500,
     remainingAllowance: 10000,
     status: "onTrack",
+    complete: true,
   },
 });
 

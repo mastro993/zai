@@ -357,6 +357,7 @@ test.describe("alerts ledger", () => {
             netBudgetSpending: 2500,
             remainingAllowance: 7500,
             status: "onTrack",
+            complete: true,
           },
         }),
       });
