@@ -86,6 +86,9 @@ add or keep green; the full list still ships only at the final merge.
 - Existing money commands fail closed until later PRs restore them.
 - E2E seed on this branch: silent EUR + confirmed EUR setup.
 - Gate: migration and upgrade family.
+- Landed in this stack PR. Tests: `cargo test -p zai-db --lib migration_`.
+  Families: `migration_currency_tests`, released-schema upgrade through
+  `v0010_multi_currency`, failpoint rollback, pre-currency fail-closed.
 
 ### 3. ECB service + provider cache + privacy canaries
 

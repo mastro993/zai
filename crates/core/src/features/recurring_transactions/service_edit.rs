@@ -20,6 +20,7 @@ impl RecurringTransactionsService {
         &self,
         input: UpdateRecurringTransaction,
     ) -> Result<RecurringMutationOutcome> {
+        self.require_money()?;
         self.update_inner(input).await
     }
 
@@ -182,6 +183,7 @@ impl RecurringTransactionsService {
     }
 
     pub async fn adopt(&self, input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {
+        self.require_money()?;
         self.adopt_inner(input).await
     }
 

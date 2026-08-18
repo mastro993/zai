@@ -95,7 +95,7 @@ pub(crate) fn find_existing_duplicate_keys(
         .map(|transaction| {
             duplicate_key(
                 transaction.transaction_date,
-                transaction.amount,
+                i32::try_from(transaction.amount).unwrap_or(i32::MAX),
                 transaction.description.as_deref(),
             )
         })
@@ -199,7 +199,7 @@ fn to_csv_row<'a>(
 ) -> CsvTransactionRow<'a> {
     CsvTransactionRow {
         transaction_date: row.transaction_date,
-        amount: row.amount,
+        amount: i32::try_from(row.amount).unwrap_or(i32::MAX),
         transaction_type: row.transaction_type.as_str(),
         description: row.description.as_deref(),
         notes: row.notes.as_deref(),

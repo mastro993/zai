@@ -98,6 +98,7 @@ async fn forward_recurring_processing_events<E>(
 
 fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     builder.invoke_handler(tauri::generate_handler![
+        commands::currency::complete_initial_currency_setup,
         commands::budgets::get_budgets,
         commands::budgets::get_budget,
         commands::budgets::get_budget_history,

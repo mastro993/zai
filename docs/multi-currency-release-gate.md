@@ -240,3 +240,8 @@ cargo test -p zai --lib native_currency_workflow_smoke
 The native smoke requires the workspace `dist/index.html` stub when run
 alone; `pnpm check:backend` creates it as part of the backend gate. Update
 the exact smoke test name here when it lands.
+
+PR 2 evidence: `migration_currency_tests::*`,
+`released_schema_fixtures_upgrade_to_head` through `v0010_multi_currency`,
+`destructive_down_migration_is_refused_after_activation`,
+`pre_currency_client_fails_closed_on_migrated_database`.

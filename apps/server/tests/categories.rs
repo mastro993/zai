@@ -47,6 +47,10 @@ impl CategoryTestApp {
         let context = Arc::new(
             initialize_context(app_data_dir.path()).expect("shared context should initialize"),
         );
+        context
+            .currency_service()
+            .complete_initial_setup("EUR")
+            .expect("confirm EUR setup");
         Self {
             _app_data_dir: app_data_dir,
             app: create_router(context),

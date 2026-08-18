@@ -18,6 +18,8 @@ pub enum ErrorCode {
     ClockRegression,
     CalculationOverflow,
     Forbidden,
+    SetupRequired,
+    IncompatibleApplicationFormat,
     Internal,
 }
 
@@ -93,6 +95,12 @@ pub enum Error {
 
     #[error("Unexpected error: {0}")]
     Unexpected(String),
+
+    #[error("Initial currency setup is required before money-bearing commands")]
+    SetupRequired,
+
+    #[error("Application format is incompatible with this client")]
+    IncompatibleApplicationFormat,
 }
 
 const INTERNAL_PUBLIC_MESSAGE: &str = "An internal error occurred";
@@ -146,6 +154,8 @@ impl Error {
             Self::Database(DatabaseError::UniqueViolation(_))
             | Self::Database(DatabaseError::ForeignKeyViolation(_)) => ErrorCode::Conflict,
             Self::Database(_) | Self::Repository(_) | Self::Unexpected(_) => ErrorCode::Internal,
+            Self::SetupRequired => ErrorCode::SetupRequired,
+            Self::IncompatibleApplicationFormat => ErrorCode::IncompatibleApplicationFormat,
         }
     }
 

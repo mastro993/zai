@@ -14,6 +14,7 @@ impl RecurringTransactionsService {
         &self,
         query: BudgetProjectionQuery,
     ) -> Result<BudgetProjectionResult> {
+        self.require_money()?;
         self.compute_projection(query).await
     }
 

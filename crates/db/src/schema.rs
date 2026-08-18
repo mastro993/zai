@@ -18,7 +18,8 @@ diesel::table! {
     transactions (id) {
         id -> Text,
         description -> Nullable<Text>,
-        amount -> Integer,
+        amount -> BigInt,
+        currency -> Text,
         transaction_date -> Timestamp,
         transaction_type -> Text,
         transaction_category_id -> Nullable<Text>,
@@ -130,7 +131,8 @@ diesel::table! {
         effective_from_local -> Timestamp,
         effective_until_local -> Nullable<Timestamp>,
         description -> Text,
-        amount -> Integer,
+        amount -> BigInt,
+        currency -> Text,
         transaction_type -> Text,
         transaction_category_id -> Nullable<Text>,
         notes -> Nullable<Text>,
@@ -196,6 +198,47 @@ diesel::joinable!(recurring_generation_failures -> recurring_schedule_revisions 
 diesel::joinable!(recurring_generation_failures -> domain_alerts (generation_failure_alert_id));
 diesel::joinable!(recurring_template_revisions -> transaction_categories (transaction_category_id));
 
+diesel::table! {
+    application_format (id) {
+        id -> Integer,
+        format -> Text,
+        activated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    currency_settings (id) {
+        id -> Integer,
+        default_currency -> Text,
+        setup_completed_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    enabled_currencies (code) {
+        code -> Text,
+        enabled_at -> Timestamp,
+        disabled_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    transaction_exchange_rate_revisions (id) {
+        id -> Text,
+        transaction_id -> Text,
+        sequence -> Integer,
+        variant -> Text,
+        rate_date -> Nullable<Timestamp>,
+        original_decimal -> Nullable<Text>,
+        coefficient -> Nullable<BigInt>,
+        scale -> Nullable<Integer>,
+        formula_version -> Integer,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::joinable!(transaction_exchange_rate_revisions -> transactions (transaction_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     transaction_categories,
     transactions,
@@ -209,4 +252,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     recurring_occurrence_heads,
     recurring_occurrences,
     recurring_generation_failures,
+    application_format,
+    currency_settings,
+    enabled_currencies,
+    transaction_exchange_rate_revisions,
 );

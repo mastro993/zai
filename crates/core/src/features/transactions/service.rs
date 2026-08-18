@@ -1,4 +1,5 @@
 use crate::errors::Result;
+use crate::features::currency::{AllowCurrencySetup, CurrencySetupGate};
 use crate::features::transaction_categories::models::{
     NewTransactionCategory, TransactionCategory,
 };
@@ -16,11 +17,20 @@ use uuid::Uuid;
 
 pub struct TransactionsService {
     repository: Arc<dyn TransactionsRepositoryTrait>,
+    currency_setup: Arc<dyn CurrencySetupGate>,
 }
 
 impl TransactionsService {
     pub fn new(repository: Arc<dyn TransactionsRepositoryTrait>) -> Self {
-        Self { repository }
+        Self {
+            repository,
+            currency_setup: Arc::new(AllowCurrencySetup),
+        }
+    }
+
+    pub fn with_currency_setup(mut self, currency_setup: Arc<dyn CurrencySetupGate>) -> Self {
+        self.currency_setup = currency_setup;
+        self
     }
 }
 
@@ -33,6 +43,7 @@ impl TransactionsServiceTrait for TransactionsService {
         filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<PaginatedData<Transaction>> {
+        self.currency_setup.require_setup()?;
         validate_list_paging(page, per_page)?;
         self.repository
             .get_transactions(page, per_page, filters, sort)
@@ -40,6 +51,7 @@ impl TransactionsServiceTrait for TransactionsService {
     }
 
     async fn get_transaction(&self, id: &str) -> Result<Transaction> {
+        self.currency_setup.require_setup()?;
         self.repository.get_transaction(id).await
     }
 
@@ -48,6 +60,7 @@ impl TransactionsServiceTrait for TransactionsService {
         filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<Vec<String>> {
+        self.currency_setup.require_setup()?;
         self.repository
             .get_filtered_transaction_ids(filters, sort)
             .await
@@ -58,6 +71,7 @@ impl TransactionsServiceTrait for TransactionsService {
         filters: Option<TransactionSearchFilters<'_>>,
         transaction_ids: Option<Vec<String>>,
     ) -> Result<String> {
+        self.currency_setup.require_setup()?;
         self.repository
             .export_transactions_csv(filters, transaction_ids)
             .await
@@ -67,12 +81,14 @@ impl TransactionsServiceTrait for TransactionsService {
         &self,
         candidates: Vec<DuplicateKeyCandidate>,
     ) -> Result<Vec<String>> {
+        self.currency_setup.require_setup()?;
         self.repository
             .find_existing_duplicate_keys(candidates)
             .await
     }
 
     async fn create_transaction(&self, mut new_transaction: NewTransaction) -> Result<Transaction> {
+        self.currency_setup.require_setup()?;
         new_transaction.validate()?;
         ensure_transaction_id(&mut new_transaction);
         self.repository.create_transaction(new_transaction).await
@@ -82,15 +98,18 @@ impl TransactionsServiceTrait for TransactionsService {
         &self,
         transaction_update: TransactionUpdate,
     ) -> Result<Transaction> {
+        self.currency_setup.require_setup()?;
         transaction_update.validate()?;
         self.repository.update_transaction(transaction_update).await
     }
 
     async fn delete_transaction(&self, id: &str) -> Result<Transaction> {
+        self.currency_setup.require_setup()?;
         self.repository.delete_transaction(id).await
     }
 
     async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<Transaction>> {
+        self.currency_setup.require_setup()?;
         self.repository.delete_transactions(ids).await
     }
 
@@ -98,6 +117,7 @@ impl TransactionsServiceTrait for TransactionsService {
         &self,
         mut transactions: Vec<NewTransaction>,
     ) -> Result<Vec<Transaction>> {
+        self.currency_setup.require_setup()?;
         if transactions.is_empty() {
             return Ok(Vec::new());
         }
@@ -115,6 +135,7 @@ impl TransactionsServiceTrait for TransactionsService {
         categories: Vec<NewTransactionCategory>,
         mut transactions: Vec<NewTransaction>,
     ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)> {
+        self.currency_setup.require_setup()?;
         let mut categories = normalize_import_categories(categories)?;
         for category in &mut categories {
             if category.id.as_deref().is_none_or(|id| id.trim().is_empty()) {
@@ -441,5 +462,24 @@ mod tests {
 
         assert_eq!(keys.len(), 1);
         assert_eq!(keys[0], "2026-01-15\u{0000}1250\u{0000}groceries");
+    }
+
+    struct RejectSetup;
+
+    impl CurrencySetupGate for RejectSetup {
+        fn require_setup(&self) -> crate::Result<()> {
+            Err(Error::SetupRequired)
+        }
+    }
+
+    #[tokio::test]
+    async fn money_commands_fail_setup_required_before_financial_read() {
+        let service = TransactionsService::new(Arc::new(FakeRepository::default()))
+            .with_currency_setup(Arc::new(RejectSetup));
+        let error = service
+            .get_transaction("txn-1")
+            .await
+            .expect_err("setup required");
+        assert_eq!(error.code(), crate::ErrorCode::SetupRequired);
     }
 }

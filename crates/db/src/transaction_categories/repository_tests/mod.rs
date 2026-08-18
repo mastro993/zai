@@ -52,7 +52,8 @@ fn insert_transaction_with_category(repo: &TransactionCategoriesRepository, cate
         .values((
             transactions::id.eq(transaction.id.unwrap()),
             transactions::description.eq(transaction.description),
-            transactions::amount.eq(transaction.amount),
+            transactions::amount.eq(i64::from(transaction.amount)),
+            transactions::currency.eq("EUR"),
             transactions::transaction_date.eq(transaction.transaction_date),
             transactions::transaction_type.eq(transaction.transaction_type),
             transactions::transaction_category_id.eq(transaction.transaction_category_id),
