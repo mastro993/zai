@@ -42,10 +42,12 @@ fn insert_transaction_with_category(repo: &TransactionCategoriesRepository, cate
         id: Some(Uuid::new_v4().to_string()),
         description: Some("Lunch".to_string()),
         amount: 1200,
+        currency: "EUR".to_string(),
         transaction_date: chrono::Utc::now().naive_utc(),
         transaction_type: "expense".to_string(),
         transaction_category_id: Some(category_id.to_string()),
         notes: None,
+        manual_exchange_rate: None,
     };
 
     diesel::insert_into(transactions::table)

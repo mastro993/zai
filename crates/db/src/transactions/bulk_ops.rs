@@ -96,6 +96,7 @@ pub(crate) fn find_existing_duplicate_keys(
             duplicate_key(
                 transaction.transaction_date,
                 i32::try_from(transaction.amount).unwrap_or(i32::MAX),
+                &transaction.currency,
                 transaction.description.as_deref(),
             )
         })
@@ -107,6 +108,7 @@ pub(crate) fn find_existing_duplicate_keys(
             let key = duplicate_key(
                 candidate.transaction_date,
                 candidate.amount,
+                &candidate.currency,
                 candidate.description.as_deref(),
             );
             existing_keys.contains(&key).then_some(key)

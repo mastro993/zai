@@ -73,6 +73,7 @@ async fn transaction_batch_child_inherits_existing_income_root_role() {
                 "id": "income-transaction",
                 "description": "Bonus payment",
                 "amount": 500,
+                "currency": "EUR",
                 "transactionDate": transaction_date,
                 "transactionType": "income",
                 "transactionCategoryId": "bonus-child"

@@ -62,6 +62,7 @@ async fn ready_generation_rows_are_immutable() {
             id: Some("tx-imm".to_string()),
             description: Some("Seed".to_string()),
             amount: 100,
+            currency: "EUR".to_string(),
             transaction_date: Utc
                 .with_ymd_and_hms(2026, 8, 10, 12, 0, 0)
                 .unwrap()
@@ -69,6 +70,7 @@ async fn ready_generation_rows_are_immutable() {
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("create");
@@ -97,6 +99,7 @@ async fn default_currency_change_switches_head_atomically() {
             id: Some("tx-usd".to_string()),
             description: Some("Coffee".to_string()),
             amount: 400,
+            currency: "EUR".to_string(),
             transaction_date: Utc
                 .with_ymd_and_hms(2026, 8, 10, 12, 0, 0)
                 .unwrap()
@@ -104,6 +107,7 @@ async fn default_currency_change_switches_head_atomically() {
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("create");
@@ -141,6 +145,7 @@ async fn pending_rate_marks_period_incomplete_and_adds_no_converted_value() {
             id: Some("tx-pending".to_string()),
             description: Some("Pending".to_string()),
             amount: 1_200,
+            currency: "EUR".to_string(),
             transaction_date: Utc
                 .with_ymd_and_hms(2026, 8, 10, 12, 0, 0)
                 .unwrap()
@@ -148,6 +153,7 @@ async fn pending_rate_marks_period_incomplete_and_adds_no_converted_value() {
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("create");
@@ -194,6 +200,7 @@ async fn set_based_sum_is_one_statement() {
                 id: Some(format!("tx-{index}")),
                 description: Some("Seed".to_string()),
                 amount: 100,
+                currency: "EUR".to_string(),
                 transaction_date: Utc
                     .with_ymd_and_hms(2026, 8, 10, 12, 0, 0)
                     .unwrap()
@@ -201,6 +208,7 @@ async fn set_based_sum_is_one_statement() {
                 transaction_type: "expense".to_string(),
                 transaction_category_id: None,
                 notes: None,
+                manual_exchange_rate: None,
             })
             .await
             .expect("create");

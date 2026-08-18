@@ -8,6 +8,9 @@ use zai_core::features::domain_alerts::{CommittedOutcome, publish_created_alerts
 use zai_core::features::transactions::models::{NewTransaction, Transaction, TransactionUpdate};
 
 use super::models::{TransactionRow, TransactionRowUpdate};
+use super::rate_revisions::{
+    apply_create_rate, apply_update_rate, require_selectable_currency, transaction_detail,
+};
 use super::repository::TransactionsRepository;
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budgets};
 use crate::budgets::timeline::{BudgetPeriodTimeline, SourceChange};
@@ -28,16 +31,17 @@ pub(super) async fn create_transaction(
             > {
                 let now = clock.sample();
                 let before = snapshot_active_budgets(conn, now)?;
-                let currency = crate::currency::default_currency(conn)?;
-                let transaction = TransactionRow::from_new(new_transaction, &currency);
+                require_selectable_currency(conn, &new_transaction.currency)
+                    .map_err(crate::errors::StorageError::from)?;
+                let manual_rate = new_transaction.manual_exchange_rate.clone();
+                let transaction = TransactionRow::from_new(new_transaction);
                 let transaction_id = transaction.id.clone();
-                let rate_date = transaction.transaction_date;
 
                 diesel::insert_into(transactions::table)
                     .values(&transaction)
                     .execute(conn)
                     .into_storage()?;
-                crate::currency::insert_identity_rate(conn, &transaction_id, rate_date)
+                apply_create_rate(conn, &transaction, manual_rate.as_deref())
                     .map_err(crate::errors::StorageError::from)?;
 
                 let inserted = transactions::table
@@ -63,8 +67,7 @@ pub(super) async fn create_transaction(
                     &after,
                 )?;
                 Ok(CommittedOutcome::with_alert_outcomes(
-                    inserted
-                        .into_domain()
+                    transaction_detail(conn, inserted)
                         .map_err(crate::errors::StorageError::from)?,
                     alerts,
                 ))
@@ -90,13 +93,17 @@ pub(super) async fn update_transaction(
                 let now = clock.sample();
                 let before = snapshot_active_budgets(conn, now)?;
                 let transaction_id = updated_transaction.id.clone();
-                let mut changeset: TransactionRowUpdate = updated_transaction.into();
+                let mut changeset: TransactionRowUpdate = updated_transaction.clone().into();
                 changeset.updated_at = now;
 
                 let existing = transactions::table
                     .find(&transaction_id)
                     .first::<TransactionRow>(conn)
                     .into_storage()?;
+                if existing.currency != updated_transaction.currency {
+                    require_selectable_currency(conn, &updated_transaction.currency)
+                        .map_err(crate::errors::StorageError::from)?;
+                }
 
                 diesel::update(transactions::table.find(&transaction_id))
                     .set(&changeset)
@@ -108,6 +115,8 @@ pub(super) async fn update_transaction(
                     .filter(transactions::deleted_at.is_null())
                     .first::<TransactionRow>(conn)
                     .into_storage()?;
+                apply_update_rate(conn, &existing, &updated_transaction, &persisted)
+                    .map_err(crate::errors::StorageError::from)?;
                 crate::valuations::upsert_transaction_valuation(conn, &persisted)
                     .map_err(crate::errors::StorageError::from)?;
 
@@ -127,8 +136,7 @@ pub(super) async fn update_transaction(
                     &after,
                 )?;
                 Ok(CommittedOutcome::with_alert_outcomes(
-                    persisted
-                        .into_domain()
+                    transaction_detail(conn, persisted)
                         .map_err(crate::errors::StorageError::from)?,
                     alerts,
                 ))

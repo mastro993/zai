@@ -22,13 +22,26 @@ export const combineDateTime = (date: string, time: string) => {
   return `${date}T${normalizedTime}`;
 };
 
-const partialAmountInputPattern = /^\d*[.,]?\d{0,2}$/;
-const completeAmountPattern = /^\d+(\.\d{1,2})?$/;
-
 export const MAX_TRANSACTION_AMOUNT_MINOR = 2_147_483_647;
 
-export const formatAmountFromMinor = (minorUnits: number) => {
-  return (minorUnits / 100).toFixed(2);
+const amountPattern = (fractionDigits: number) => {
+  if (fractionDigits === 0) {
+    return /^\d+$/;
+  }
+
+  return new RegExp(`^\\d+(\\.\\d{1,${fractionDigits}})?$`);
+};
+
+const partialAmountPattern = (fractionDigits: number) => {
+  if (fractionDigits === 0) {
+    return /^\d*$/;
+  }
+
+  return new RegExp(`^\\d*[.,]?\\d{0,${fractionDigits}}$`);
+};
+
+export const formatAmountFromMinor = (minorUnits: number, fractionDigits = 2) => {
+  return (minorUnits / 10 ** fractionDigits).toFixed(fractionDigits);
 };
 
 export const prepareAmountForValidation = (value: string) => {
@@ -45,26 +58,55 @@ export const prepareAmountForValidation = (value: string) => {
   return trimmed;
 };
 
-export const normalizeAmountInput = (value: string) => {
+export interface AmountParseSuccess {
+  ok: true;
+  minor: number;
+}
+
+export interface AmountParseFailure {
+  ok: false;
+  message: string;
+}
+
+export const parseAmountToMinor = (
+  value: string,
+  fractionDigits: number,
+): AmountParseSuccess | AmountParseFailure => {
   const prepared = prepareAmountForValidation(value);
 
   if (!prepared) {
-    return value.trim();
+    return { ok: false, message: "Amount is required" };
   }
 
-  if (!completeAmountPattern.test(prepared)) {
-    return value;
+  if (!amountPattern(fractionDigits).test(prepared)) {
+    return { ok: false, message: "Enter a valid amount" };
   }
 
   const parsed = Number(prepared);
 
   if (!Number.isFinite(parsed) || parsed < 0) {
+    return { ok: false, message: "Amount must be zero or greater" };
+  }
+
+  const minor = Math.round(parsed * 10 ** fractionDigits);
+
+  if (!Number.isSafeInteger(minor) || minor > MAX_TRANSACTION_AMOUNT_MINOR) {
+    return { ok: false, message: "Amount exceeds supported maximum" };
+  }
+
+  return { ok: true, minor };
+};
+
+export const normalizeAmountInput = (value: string, fractionDigits = 2) => {
+  const parsed = parseAmountToMinor(value, fractionDigits);
+
+  if (!parsed.ok) {
     return value;
   }
 
-  return parsed.toFixed(2);
+  return formatAmountFromMinor(parsed.minor, fractionDigits);
 };
 
-export const isPartialAmountInput = (value: string) => {
-  return partialAmountInputPattern.test(value);
+export const isPartialAmountInput = (value: string, fractionDigits = 2) => {
+  return partialAmountPattern(fractionDigits).test(value);
 };

@@ -12,6 +12,7 @@ use zai_core::features::transactions::models::{NewTransaction, Transaction};
 
 use super::import_dedup;
 use super::models::TransactionRow;
+use super::rate_revisions::{apply_create_rate, transaction_detail};
 use super::repository::TransactionsRepository;
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budgets};
 use crate::budgets::timeline::{BudgetPeriodTimeline, SourceChange};
@@ -41,11 +42,10 @@ fn load_existing_in_import_range(
 fn prepare_import_rows(
     candidates: Vec<NewTransaction>,
     existing_rows: &[TransactionRow],
-    currency: &str,
 ) -> Vec<TransactionRow> {
     import_dedup::filter_import_duplicates(candidates, existing_rows)
         .into_iter()
-        .map(|transaction| TransactionRow::from_new(transaction, currency))
+        .map(TransactionRow::from_new)
         .collect()
 }
 
@@ -66,9 +66,7 @@ pub(super) async fn import_transactions(
                 CommittedOutcome<Vec<Transaction>>,
             > {
                 let existing_rows = load_existing_in_import_range(conn, &new_transactions)?;
-                let currency = crate::currency::default_currency(conn)?;
-                let transactions_rows =
-                    prepare_import_rows(new_transactions, &existing_rows, &currency);
+                let transactions_rows = prepare_import_rows(new_transactions, &existing_rows);
 
                 if transactions_rows.is_empty() {
                     return Ok(CommittedOutcome::with_alert_outcomes(Vec::new(), vec![]));
@@ -82,7 +80,7 @@ pub(super) async fn import_transactions(
                     .execute(conn)
                     .into_storage()?;
                 for row in &transactions_rows {
-                    crate::currency::insert_identity_rate(conn, &row.id, row.transaction_date)
+                    apply_create_rate(conn, row, None)
                         .map_err(crate::errors::StorageError::from)?;
                     crate::valuations::upsert_transaction_valuation(conn, row)
                         .map_err(crate::errors::StorageError::from)?;
@@ -116,7 +114,7 @@ pub(super) async fn import_transactions(
                 Ok(CommittedOutcome::with_alert_outcomes(
                     inserted
                         .into_iter()
-                        .map(TransactionRow::into_domain)
+                        .map(|row| transaction_detail(conn, row))
                         .collect::<zai_core::Result<Vec<_>>>()
                         .map_err(crate::errors::StorageError::from)?,
                     alerts,
@@ -142,9 +140,7 @@ pub(super) async fn import_transactions_with_categories(
                 CommittedOutcome<(Vec<TransactionCategory>, Vec<Transaction>)>,
             > {
                 let existing_rows = load_existing_in_import_range(conn, &new_transactions)?;
-                let currency = crate::currency::default_currency(conn)?;
-                let transactions_rows =
-                    prepare_import_rows(new_transactions, &existing_rows, &currency);
+                let transactions_rows = prepare_import_rows(new_transactions, &existing_rows);
 
                 let now = clock.sample();
                 let before = snapshot_active_budgets(conn, now)?;
@@ -156,7 +152,7 @@ pub(super) async fn import_transactions_with_categories(
                         .execute(conn)
                         .into_storage()?;
                     for row in &transactions_rows {
-                        crate::currency::insert_identity_rate(conn, &row.id, row.transaction_date)
+                        apply_create_rate(conn, row, None)
                             .map_err(crate::errors::StorageError::from)?;
                         crate::valuations::upsert_transaction_valuation(conn, row)
                             .map_err(crate::errors::StorageError::from)?;
@@ -193,7 +189,7 @@ pub(super) async fn import_transactions_with_categories(
                         .load::<TransactionRow>(conn)
                         .into_storage()?
                         .into_iter()
-                        .map(TransactionRow::into_domain)
+                        .map(|row| transaction_detail(conn, row))
                         .collect::<zai_core::Result<Vec<_>>>()
                         .map_err(crate::errors::StorageError::from)?
                 };

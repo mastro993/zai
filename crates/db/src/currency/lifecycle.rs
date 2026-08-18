@@ -187,6 +187,17 @@ pub fn quote(
     let target = CurrencyCode::parse(target)?;
     let parsed_date = NaiveDate::parse_from_str(rate_date, "%Y-%m-%d")
         .map_err(|_| Error::InvalidData(format!("Invalid quote date: {rate_date}")))?;
+    let mut connection = get_connection(pool)?;
+    quote_on(&mut connection, source, target, parsed_date, rate_date)
+}
+
+pub fn quote_on(
+    connection: &mut SqliteConnection,
+    source: CurrencyCode,
+    target: CurrencyCode,
+    parsed_date: NaiveDate,
+    rate_date: &str,
+) -> Result<ExchangeRateQuote> {
     if source.as_str() == target.as_str() {
         return Ok(ExchangeRateQuote {
             source_currency: source.as_str().to_string(),
@@ -198,8 +209,7 @@ pub fn quote(
             complete: true,
         });
     }
-    let mut connection = get_connection(pool)?;
-    let Some(set) = current_accepted_set(&mut connection)? else {
+    let Some(set) = current_accepted_set(connection)? else {
         return Ok(pending_quote(source, target, rate_date));
     };
     match legs_for_pair(&set, source, target, parsed_date) {
@@ -223,6 +233,21 @@ pub fn quote(
         }
         Err(_) => Ok(pending_quote(source, target, rate_date)),
     }
+}
+
+pub fn require_enabled_currency(connection: &mut SqliteConnection, code: &str) -> Result<()> {
+    let count = sql_query(
+        "SELECT COUNT(*) AS count FROM enabled_currencies \
+         WHERE code = ? AND disabled_at IS NULL",
+    )
+    .bind::<Text, _>(code)
+    .get_result::<CountRow>(connection)
+    .into_core()?
+    .count;
+    if count == 0 {
+        return Err(Error::CurrencyNotEnabled(code.to_string()));
+    }
+    Ok(())
 }
 
 pub fn observation_bounds(

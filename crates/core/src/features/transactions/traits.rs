@@ -2,8 +2,8 @@ use crate::{
     errors::Result,
     features::transaction_categories::models::{NewTransactionCategory, TransactionCategory},
     features::transactions::models::{
-        DuplicateKeyCandidate, NewTransaction, Transaction, TransactionSearchFilters,
-        TransactionUpdate,
+        DuplicateKeyCandidate, NewTransaction, Transaction, TransactionListItem,
+        TransactionSearchFilters, TransactionUpdate,
     },
     query::{PaginatedData, Sort},
 };
@@ -17,7 +17,7 @@ pub trait TransactionsRepositoryTrait: Send + Sync {
         per_page: i64,
         filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
-    ) -> Result<PaginatedData<Transaction>>;
+    ) -> Result<PaginatedData<TransactionListItem>>;
     async fn get_transaction(&self, id: &str) -> Result<Transaction>;
     async fn get_filtered_transaction_ids(
         &self,
@@ -40,7 +40,7 @@ pub trait TransactionsRepositoryTrait: Send + Sync {
         updated_transaction: TransactionUpdate,
     ) -> Result<Transaction>;
     async fn delete_transaction(&self, id: &str) -> Result<Transaction>;
-    async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<Transaction>>;
+    async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<TransactionListItem>>;
 
     async fn import_transactions(
         &self,
@@ -62,7 +62,7 @@ pub trait TransactionsServiceTrait: Send + Sync {
         per_page: i64,
         filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
-    ) -> Result<PaginatedData<Transaction>>;
+    ) -> Result<PaginatedData<TransactionListItem>>;
     async fn get_transaction(&self, id: &str) -> Result<Transaction>;
     async fn get_filtered_transaction_ids(
         &self,
@@ -82,7 +82,7 @@ pub trait TransactionsServiceTrait: Send + Sync {
     async fn create_transaction(&self, new_category: NewTransaction) -> Result<Transaction>;
     async fn update_transaction(&self, category: TransactionUpdate) -> Result<Transaction>;
     async fn delete_transaction(&self, id: &str) -> Result<Transaction>;
-    async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<Transaction>>;
+    async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<TransactionListItem>>;
 
     async fn import_transactions(
         &self,

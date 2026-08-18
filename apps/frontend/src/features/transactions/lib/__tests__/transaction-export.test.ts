@@ -7,6 +7,7 @@ import {
   type TransactionImportPreviewOptions,
 } from "../transaction-import";
 import { getTransactionExportFilename, toTransactionExportCsv } from "../transaction-export";
+import { sampleTransaction } from "../../types/sample";
 import type { Transaction } from "../../types/model";
 import type { TransactionCategory } from "@/features/categories/types/model";
 
@@ -63,7 +64,7 @@ describe("transaction export", () => {
       parent: root,
     };
     const transactions: Array<Transaction> = [
-      {
+      sampleTransaction({
         id: "tx-1",
         description: 'Coffee, "special"',
         amount: 350,
@@ -71,8 +72,8 @@ describe("transaction export", () => {
         transactionType: "expense",
         transactionCategoryId: "child",
         notes: "Morning\nrun",
-      },
-      {
+      }),
+      sampleTransaction({
         id: "tx-2",
         description: "Salary",
         amount: 250000,
@@ -80,7 +81,7 @@ describe("transaction export", () => {
         transactionType: "income",
         transactionCategoryId: null,
         notes: null,
-      },
+      }),
     ];
 
     const csv = toTransactionExportCsv(transactions, [root, child]);
@@ -95,7 +96,7 @@ describe("transaction export", () => {
   });
 
   it("neutralizes spreadsheet formula prefixes", () => {
-    const transaction: Transaction = {
+    const transaction: Transaction = sampleTransaction({
       id: "tx-formula",
       description: "=1+1",
       amount: 100,
@@ -103,7 +104,7 @@ describe("transaction export", () => {
       transactionType: "expense",
       transactionCategoryId: null,
       notes: "@SUM(A1)",
-    };
+    });
 
     const csv = toTransactionExportCsv([transaction], []);
 
@@ -141,7 +142,7 @@ describe("transaction export", () => {
       parent: root,
     };
     const transactions: Array<Transaction> = [
-      {
+      sampleTransaction({
         id: "tx-1",
         description: "Weekly shop",
         amount: 1250,
@@ -149,7 +150,7 @@ describe("transaction export", () => {
         transactionType: "expense",
         transactionCategoryId: "child",
         notes: "Card payment",
-      },
+      }),
     ];
 
     const preview = buildPreview(toTransactionExportCsv(transactions, [root, child]), {
@@ -163,6 +164,7 @@ describe("transaction export", () => {
         id: "id-1",
         description: "Weekly shop",
         amount: 1250,
+        currency: "EUR",
         transactionDate: "2026-01-15T12:00:00",
         transactionType: "expense",
         transactionCategoryId: "child",

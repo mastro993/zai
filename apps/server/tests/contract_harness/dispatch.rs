@@ -244,6 +244,11 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                     .and_then(Value::as_str)
                     .map(str::to_string),
                 amount: body["amount"].as_i64().expect("amount") as i32,
+                currency: body
+                    .get("currency")
+                    .and_then(Value::as_str)
+                    .unwrap_or("EUR")
+                    .to_string(),
                 transaction_date: serde_json::from_value(body["transactionDate"].clone())
                     .expect("transaction date"),
                 transaction_type: body["transactionType"]
@@ -258,6 +263,18 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                     .get("notes")
                     .and_then(Value::as_str)
                     .map(str::to_string),
+                manual_exchange_rate: body
+                    .get("manualExchangeRate")
+                    .and_then(Value::as_str)
+                    .map(str::to_string),
+                confirm_manual_rate_replacement: body
+                    .get("confirmManualRateReplacement")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+                retry_rate_lookup: body
+                    .get("retryRateLookup")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
             };
             tauri_success(
                 context

@@ -24,40 +24,50 @@ import type { AlertsControllerValue } from "@/features/alerts/hooks/alerts-contr
 import { categorySchema, type TransactionCategory } from "@/features/categories/types/model";
 import * as transactionCategories from "@/features/categories/commands/transaction-categories";
 import * as recurringCommands from "@/features/recurring-transactions/commands/recurring-transactions";
+import * as currencyCommands from "@/features/currency/commands/currency";
+import * as currencyEvents from "@/features/currency/commands/currency-state-events";
+import { CurrencyBootstrapProvider } from "@/features/currency/hooks/use-currency-bootstrap";
 import * as breadcrumbs from "@/hooks/use-screen-breadcrumbs";
 
 import * as transactions from "../../commands/transactions";
-import { transactionSchema, type PaginatedTransactions, type Transaction } from "../../types/model";
+import { type PaginatedTransactions } from "../../types/model";
+import { sampleListItem, sampleTransaction } from "../../types/sample";
 import { TransactionScreen } from "../transaction-screen";
 
-const coffee = transactionSchema.parse({
+const coffee = sampleListItem({
   id: "tx-initial",
   description: "Initial coffee",
-  amount: 350,
   transactionDate: "2026-07-01T10:00:00",
   transactionType: "expense",
   transactionCategoryId: null,
   notes: null,
+  convertedAmount: 350,
+  convertedCurrency: "EUR",
+  complete: true,
 });
 
-const staleRent = transactionSchema.parse({
+const staleRent = sampleListItem({
   id: "tx-stale",
   description: "Stale rent",
-  amount: 120000,
   transactionDate: "2026-07-02T10:00:00",
   transactionType: "expense",
   transactionCategoryId: null,
   notes: null,
+  convertedAmount: 120000,
+  convertedCurrency: "EUR",
+  complete: true,
 });
 
-const freshSalary = transactionSchema.parse({
+const freshSalary = sampleListItem({
   id: "tx-current",
   description: "Fresh salary",
-  amount: 250000,
   transactionDate: "2026-07-03T10:00:00",
   transactionType: "income",
   transactionCategoryId: null,
   notes: null,
+  convertedAmount: 250000,
+  convertedCurrency: "EUR",
+  complete: true,
 });
 
 const food = categorySchema.parse({
@@ -70,7 +80,7 @@ const food = categorySchema.parse({
 });
 
 const page = (
-  data: Array<Transaction>,
+  data: Array<ReturnType<typeof sampleListItem>>,
   currentPage: number,
   totalPages: number,
 ): PaginatedTransactions => ({
@@ -228,7 +238,11 @@ async function renderScreen(
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    component: () => <TransactionScreen initialData={data} />,
+    component: () => (
+      <CurrencyBootstrapProvider>
+        <TransactionScreen initialData={data} />
+      </CurrencyBootstrapProvider>
+    ),
   });
   const categoriesRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -265,6 +279,37 @@ describe("transaction screen request guard", () => {
     transactionState.releaseStale = undefined;
     transactionState.releaseCurrent = undefined;
     stubWindowChrome();
+    vi.spyOn(currencyEvents, "createCurrencyStateEventTransport").mockImplementation(() => ({
+      subscribe: (_onEvent, _onReconnect) => ({
+        ready: Promise.resolve(Result.succeed(undefined)),
+        close: () => undefined,
+      }),
+    }));
+    vi.spyOn(currencyCommands, "getCurrencyBootstrap").mockResolvedValue(
+      Result.succeed({ setupComplete: true, defaultCurrency: "EUR" }),
+    );
+    vi.spyOn(currencyCommands, "getSupportedCurrencies").mockResolvedValue(
+      Result.succeed([{ code: "EUR", name: "Euro" }]),
+    );
+    vi.spyOn(currencyCommands, "getCurrencyStatus").mockResolvedValue(
+      Result.succeed({ job: null }),
+    );
+    vi.spyOn(currencyCommands, "getCurrencies").mockResolvedValue(
+      Result.succeed([
+        {
+          code: "EUR",
+          name: "Euro",
+          status: "enabled",
+          coverageFrom: null,
+          coverageTo: null,
+          lastRefresh: null,
+          refreshStatus: "idle",
+          missingPeriods: [],
+          usedByRecurring: false,
+          isDefault: true,
+        },
+      ]),
+    );
     vi.spyOn(breadcrumbs, "useScreenBreadcrumbs").mockReturnValue([{ label: "Transactions" }]);
     vi.spyOn(alertsController, "useAlertsController").mockReturnValue(idleAlertsController);
     vi.spyOn(toast, "success").mockReturnValue(1);
@@ -276,7 +321,7 @@ describe("transaction screen request guard", () => {
     );
     vi.spyOn(transactions, "createTransaction").mockResolvedValue(
       Result.succeed(
-        transactionSchema.parse({
+        sampleTransaction({
           id: "tx-new",
           description: null,
           amount: 0,
@@ -284,6 +329,17 @@ describe("transaction screen request guard", () => {
           transactionType: "expense",
           transactionCategoryId: null,
           notes: null,
+        }),
+      ),
+    );
+    vi.spyOn(transactions, "getTransaction").mockImplementation(async (transactionId) =>
+      Result.succeed(
+        sampleTransaction({
+          id: transactionId,
+          description: coffee.description,
+          amount: 350,
+          transactionDate: coffee.transactionDate,
+          transactionType: coffee.transactionType,
         }),
       ),
     );
@@ -440,10 +496,10 @@ describe("transaction screen request guard", () => {
     await renderScreen({
       transactions: page(
         [
-          transactionSchema.parse({
+          sampleListItem({
             id: "tx-no-description",
             description: null,
-            amount: 350,
+            convertedAmount: 350,
             transactionDate: "2026-07-01T10:00:00",
             transactionType: "expense",
             transactionCategoryId: null,
@@ -494,10 +550,10 @@ describe("transaction screen request guard", () => {
     await renderScreen({
       transactions: page(
         [
-          transactionSchema.parse({
+          sampleListItem({
             id: "tx-no-description",
             description: "   ",
-            amount: 350,
+            convertedAmount: 350,
             transactionDate: "2026-07-01T10:00:00",
             transactionType: "expense",
             transactionCategoryId: null,

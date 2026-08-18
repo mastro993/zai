@@ -27,6 +27,9 @@ import type {
 } from "./transaction-import-types";
 import type { TransactionType } from "../types/model";
 
+// ponytail: 396 owns import currency column. Stamp default until then so dedup keys match backend.
+const IMPORT_FALLBACK_CURRENCY = "EUR";
+
 const countRowsByStatus = (
   rows: Array<TransactionImportPreviewRow>,
   status: TransactionImportPreviewStatus,
@@ -212,7 +215,12 @@ export const buildTransactionImportPreview = (
     }
 
     previewRow.transactionType = transactionType;
-    const duplicateKey = transactionDuplicateKey(parsedDate.value, parsedAmount.cents, description);
+    const duplicateKey = transactionDuplicateKey(
+      parsedDate.value,
+      parsedAmount.cents,
+      IMPORT_FALLBACK_CURRENCY,
+      description,
+    );
     if (existingDuplicateKeys.has(duplicateKey) || importedDuplicateKeys.has(duplicateKey)) {
       previewRows.push({
         ...previewRow,
@@ -233,6 +241,7 @@ export const buildTransactionImportPreview = (
       id: createId(),
       description: description || null,
       amount: parsedAmount.cents,
+      currency: IMPORT_FALLBACK_CURRENCY,
       transactionDate: parsedDate.value,
       transactionType,
       transactionCategoryId: categoryId,
@@ -264,6 +273,7 @@ export const collectImportDuplicateCandidates = (
   return preview.transactions.map((transaction) => ({
     transactionDate: transaction.transactionDate,
     amount: transaction.amount,
+    currency: transaction.currency,
     description: transaction.description ?? null,
   }));
 };

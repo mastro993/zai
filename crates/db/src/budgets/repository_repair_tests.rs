@@ -87,10 +87,12 @@ async fn updating_transaction_repairs_historical_period_and_rollover_suffix() {
             id: Some("move-me".to_string()),
             description: None,
             amount: 50,
+            currency: "EUR".to_string(),
             transaction_date: january,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
@@ -106,10 +108,14 @@ async fn updating_transaction_repairs_historical_period_and_rollover_suffix() {
             id: "move-me".to_string(),
             description: None,
             amount: 50,
+            currency: "EUR".to_string(),
             transaction_date: february,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
+            confirm_manual_rate_replacement: false,
+            retry_rate_lookup: false,
         })
         .await
         .expect("move transaction");
@@ -167,10 +173,12 @@ async fn transaction_mutation_advances_stale_affected_budget_projection() {
             id: Some("stale-transaction".to_string()),
             description: None,
             amount: 250,
+            currency: "EUR".to_string(),
             transaction_date: march,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
@@ -221,10 +229,12 @@ async fn transaction_update_repairs_category_type_and_amount_changes() {
             id: Some("field-change".to_string()),
             description: None,
             amount: 200,
+            currency: "EUR".to_string(),
             transaction_date: now,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("uncategorized transaction");
@@ -243,10 +253,14 @@ async fn transaction_update_repairs_category_type_and_amount_changes() {
             id: "field-change".to_string(),
             description: None,
             amount: 300,
+            currency: "EUR".to_string(),
             transaction_date: now,
             transaction_type: "expense".to_string(),
             transaction_category_id: Some(category.id.clone()),
             notes: None,
+            manual_exchange_rate: None,
+            confirm_manual_rate_replacement: false,
+            retry_rate_lookup: false,
         })
         .await
         .expect("category change");
@@ -265,10 +279,14 @@ async fn transaction_update_repairs_category_type_and_amount_changes() {
             id: "field-change".to_string(),
             description: None,
             amount: 400,
+            currency: "EUR".to_string(),
             transaction_date: now,
             transaction_type: "income".to_string(),
             transaction_category_id: Some(category.id),
             notes: None,
+            manual_exchange_rate: None,
+            confirm_manual_rate_replacement: false,
+            retry_rate_lookup: false,
         })
         .await
         .expect("type and amount change");
@@ -296,6 +314,7 @@ async fn delete_bulk_delete_and_combined_import_repair_results() {
     for (id, amount) in [("delete-one", 100), ("delete-two", 200)] {
         transactions
             .create_transaction(NewTransaction {
+                currency: "EUR".to_string(),
                 id: Some(id.to_string()),
                 description: None,
                 amount,
@@ -303,6 +322,7 @@ async fn delete_bulk_delete_and_combined_import_repair_results() {
                 transaction_type: "expense".to_string(),
                 transaction_category_id: None,
                 notes: None,
+                manual_exchange_rate: None,
             })
             .await
             .expect("transaction");
@@ -330,10 +350,12 @@ async fn delete_bulk_delete_and_combined_import_repair_results() {
                 id: Some("imported-transaction".to_string()),
                 description: None,
                 amount: 500,
+                currency: "EUR".to_string(),
                 transaction_date: now,
                 transaction_type: "expense".to_string(),
                 transaction_category_id: Some("imported-category".to_string()),
                 notes: None,
+                manual_exchange_rate: None,
             }],
         )
         .await
@@ -367,10 +389,12 @@ async fn failed_projection_repair_rolls_back_transaction_insert() {
             id: Some("rolled-back".to_string()),
             description: None,
             amount: 100,
+            currency: "EUR".to_string(),
             transaction_date: crate::test_utils::fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect_err("repair should fail");

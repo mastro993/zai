@@ -101,10 +101,12 @@ pub(super) fn prepare_generated_occurrence(
         id: Some("validation".to_string()),
         description: Some(template.description.clone()),
         amount: template.amount,
+        currency: "EUR".to_string(),
         transaction_date: scheduled_local,
         transaction_type: template.transaction_type.clone(),
         transaction_category_id: template.transaction_category_id.clone(),
         notes: template.notes.clone(),
+        manual_exchange_rate: None,
     };
     if candidate.validate().is_err() {
         return failed(conn, head, now, "invalid_template", "template", None);

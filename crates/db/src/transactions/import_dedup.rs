@@ -58,6 +58,7 @@ pub(crate) fn filter_import_duplicates(
             duplicate_key(
                 transaction.transaction_date,
                 i32::try_from(transaction.amount).unwrap_or(i32::MAX),
+                &transaction.currency,
                 transaction.description.as_deref(),
             )
         })
@@ -68,6 +69,7 @@ pub(crate) fn filter_import_duplicates(
         let key = duplicate_key(
             candidate.transaction_date,
             candidate.amount,
+            &candidate.currency,
             candidate.description.as_deref(),
         );
 
@@ -90,6 +92,7 @@ mod tests {
 
     fn candidate(description: &str, amount: i32, value: &str) -> NewTransaction {
         NewTransaction {
+            currency: "EUR".to_string(),
             id: Some("candidate".to_string()),
             description: Some(description.to_string()),
             amount,
@@ -97,6 +100,7 @@ mod tests {
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         }
     }
 

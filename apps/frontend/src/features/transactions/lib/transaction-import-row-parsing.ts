@@ -53,8 +53,10 @@ export const resolveTypeFromColumn = (
 export const transactionDuplicateKey = (
   transactionDate: string,
   amount: number,
+  currency: string,
   description: string,
-) => `${transactionDate.slice(0, 10)}\u0000${amount}\u0000${description.trim().toLowerCase()}`;
+) =>
+  `${transactionDate.slice(0, 10)}\u0000${amount}\u0000${currency}\u0000${description.trim().toLowerCase()}`;
 
 export const formatCategoryDisplay = (parsed: ParsedCategoryPath | null) => {
   if (!parsed?.name) {

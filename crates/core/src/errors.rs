@@ -27,6 +27,7 @@ pub enum ErrorCode {
     DefaultCurrencyDisableForbidden,
     ProviderDisclosureRequired,
     IncompatibleApplicationFormat,
+    ManualRateReplacementRequired,
     Internal,
 }
 
@@ -129,6 +130,9 @@ pub enum Error {
 
     #[error("Application format is incompatible with this client")]
     IncompatibleApplicationFormat,
+
+    #[error("Replacing a manual exchange rate requires confirmation")]
+    ManualRateReplacementRequired { current_revision: serde_json::Value },
 }
 
 const INTERNAL_PUBLIC_MESSAGE: &str = "An internal error occurred";
@@ -191,6 +195,7 @@ impl Error {
             Self::DefaultCurrencyDisableForbidden => ErrorCode::DefaultCurrencyDisableForbidden,
             Self::ProviderDisclosureRequired => ErrorCode::ProviderDisclosureRequired,
             Self::IncompatibleApplicationFormat => ErrorCode::IncompatibleApplicationFormat,
+            Self::ManualRateReplacementRequired { .. } => ErrorCode::ManualRateReplacementRequired,
         }
     }
 
@@ -212,6 +217,9 @@ impl Error {
             })),
             Self::IncompleteCoverage { missing_periods } => {
                 Some(serde_json::json!({ "missingPeriods": missing_periods }))
+            }
+            Self::ManualRateReplacementRequired { current_revision } => {
+                Some(serde_json::json!({ "currentRevision": current_revision }))
             }
             _ => None,
         };

@@ -25,9 +25,8 @@ import {
   type PageCheckboxState,
 } from "../lib/transaction-selection";
 import { toDateTimeInputValue } from "../lib/transaction";
-import type { Transaction } from "../types/model";
+import type { TransactionListItem } from "../types/model";
 import type { TransactionCategory } from "@/features/categories/types/model";
-import type { TransactionFormMode } from "../types/transaction-types";
 import { CategoryBadge } from "@/features/categories/components/category-badge";
 import {
   TransactionTableHeadActions,
@@ -37,7 +36,7 @@ import {
 import { TransactionTypeBadge } from "./transaction-type-badge";
 
 type TransactionTableProps = {
-  transactions: Array<Transaction>;
+  transactions: Array<TransactionListItem>;
   categoryById: Map<string, TransactionCategory>;
   selectedIds: ReadonlySet<string>;
   pageCheckboxState: PageCheckboxState;
@@ -45,12 +44,12 @@ type TransactionTableProps = {
   page: number;
   perPage: number;
   totalPages: number;
-  onToggleRow: (transaction: Transaction, selected: boolean, shiftKey: boolean) => void;
+  onToggleRow: (transaction: TransactionListItem, selected: boolean, shiftKey: boolean) => void;
   onTogglePage: (selectAll: boolean) => void;
   onSelectAllMatching: () => void;
-  onEdit: (mode: TransactionFormMode) => void;
-  onAdopt: (transaction: Transaction, trigger: HTMLButtonElement | null) => void;
-  onDelete: (transaction: Transaction) => void;
+  onEdit: (transactionId: string) => void;
+  onAdopt: (transaction: TransactionListItem, trigger: HTMLButtonElement | null) => void;
+  onDelete: (transaction: TransactionListItem) => void;
 };
 
 function HeaderCheckbox({
@@ -208,7 +207,12 @@ function TransactionTable({
                   )}
                 </TableCell>
                 <TableCell className="whitespace-nowrap p-3 text-right tabular-nums">
-                  {formatCurrencyFromMinor(transaction.amount, "EUR")}
+                  {transaction.complete && transaction.convertedAmount !== null
+                    ? formatCurrencyFromMinor(
+                        transaction.convertedAmount,
+                        transaction.convertedCurrency,
+                      )
+                    : "Incomplete"}
                 </TableCell>
                 <TableCell className="max-w-0 p-3">
                   <span
@@ -238,7 +242,7 @@ function TransactionTable({
                     aria-label={`Edit ${transactionLabel}`}
                     title="Edit"
                     onClick={() => {
-                      onEdit({ type: "edit", transaction });
+                      onEdit(transaction.id);
                     }}
                   >
                     <HugeiconsIcon icon={PencilEdit02Icon} />

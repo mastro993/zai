@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Result } from "@praha/byethrow";
 
 import { resetCommandTransports, setCommandTransports } from "@/commands/shared";
-import { transactionSchema } from "@/features/transactions/types/model";
+import { sampleTransaction } from "@/features/transactions/types/sample";
 
 import type { RecurringFormValues } from "../../types/recurring-transaction";
 import { RECURRING_COMMANDS } from "../registry";
@@ -176,7 +176,7 @@ describe("recurring Tauri command adapter", () => {
 
   it("builds adoption template from source transaction", async () => {
     invokeMock.mockResolvedValue({});
-    const transaction = transactionSchema.parse({
+    const transaction = sampleTransaction({
       id: "transaction-1",
       description: " Rent ",
       amount: 120000,

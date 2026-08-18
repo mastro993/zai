@@ -23,6 +23,7 @@ async fn create_list_and_inspect_budget_round_trip() {
         Some(json!({
             "description": "Before budget",
             "amount": 1250,
+            "currency": "EUR",
             "transactionDate": transaction_date,
             "transactionType": "expense"
         })),

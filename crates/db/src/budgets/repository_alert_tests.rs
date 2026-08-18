@@ -77,10 +77,12 @@ async fn creating_budget_with_overspent_period_is_silent() {
             id: Some(Uuid::new_v4().to_string()),
             description: Some("Big spend".to_string()),
             amount: 15_000,
+            currency: "EUR".to_string(),
             transaction_date: fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
@@ -134,10 +136,12 @@ async fn transaction_transition_to_overspent_persists_and_publishes_critical_ale
             id: Some(Uuid::new_v4().to_string()),
             description: Some("Big spend".to_string()),
             amount: 15_000,
+            currency: "EUR".to_string(),
             transaction_date: fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
@@ -185,10 +189,12 @@ async fn duplicate_occurrence_preserves_first_alert_without_failing_mutation() {
         id: Some(Uuid::new_v4().to_string()),
         description: Some("Spend".to_string()),
         amount: 2_000,
+        currency: "EUR".to_string(),
         transaction_date: fixed_local(),
         transaction_type: "expense".to_string(),
         transaction_category_id: None,
         notes: None,
+        manual_exchange_rate: None,
     };
 
     transactions

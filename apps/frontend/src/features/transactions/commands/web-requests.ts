@@ -20,15 +20,20 @@ export interface TransactionSort {
 export interface TransactionPayload {
   description?: string | null;
   amount: number;
+  currency: string;
   transactionDate: string;
   transactionType: string;
   transactionCategoryId?: string | null;
   notes?: string | null;
+  manualExchangeRate?: string;
+  confirmManualRateReplacement?: boolean;
+  retryRateLookup?: boolean;
 }
 
 export interface DuplicateKeyCandidate {
   transactionDate: string;
   amount: number;
+  currency: string;
   description?: string | null;
 }
 

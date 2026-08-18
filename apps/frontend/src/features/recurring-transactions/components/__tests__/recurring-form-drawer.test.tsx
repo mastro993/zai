@@ -8,6 +8,7 @@ import { useRef, useState } from "react";
 import { Drawer } from "@/components/ui/drawer";
 import { CommandError } from "@/commands/errors";
 import type { Transaction } from "@/features/transactions/types/model";
+import { sampleTransaction } from "@/features/transactions/types/sample";
 
 import * as recurringCommands from "../../commands/recurring-transactions";
 import { RecurringFormDrawer } from "../recurring-form-drawer";
@@ -18,7 +19,7 @@ import type {
   RecurringTransactionDocument,
 } from "../../types/recurring-transaction";
 
-const adoptTransaction = {
+const adoptTransaction = sampleTransaction({
   id: "txn-adopt",
   description: "Rent",
   amount: 120_000,
@@ -26,7 +27,7 @@ const adoptTransaction = {
   transactionType: "expense",
   transactionCategoryId: null,
   notes: "Paid by bank transfer",
-} satisfies Transaction;
+});
 
 beforeEach(() => {
   vi.spyOn(recurringCommands, "previewRecurringAdoption").mockResolvedValue(

@@ -10,7 +10,8 @@ use zai_core::features::transaction_categories::models::{
     NewTransactionCategory, TransactionCategory,
 };
 use zai_core::features::transactions::models::{
-    DuplicateKeyCandidate, NewTransaction, Transaction, TransactionSearchFilters, TransactionUpdate,
+    DuplicateKeyCandidate, NewTransaction, Transaction, TransactionListItem,
+    TransactionSearchFilters, TransactionUpdate,
 };
 use zai_core::features::transactions::traits::TransactionsRepositoryTrait;
 use zai_core::query::{PaginatedData, Sort};
@@ -77,7 +78,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         per_page: i64,
         filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
-    ) -> Result<PaginatedData<Transaction>> {
+    ) -> Result<PaginatedData<TransactionListItem>> {
         read::get_transactions(self, page, per_page, filters, sort).await
     }
 
@@ -123,7 +124,7 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         delete::delete_transaction(self, id).await
     }
 
-    async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<Transaction>> {
+    async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<TransactionListItem>> {
         delete::delete_transactions(self, ids).await
     }
 

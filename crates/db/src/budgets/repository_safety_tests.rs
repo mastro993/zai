@@ -290,10 +290,12 @@ async fn failed_overflow_during_transaction_repair_rolls_back_insert() {
             id: Some("overflow-trigger".to_string()),
             description: None,
             amount: 10,
+            currency: "EUR".to_string(),
             transaction_date: february,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect_err("repair overflow");
@@ -323,10 +325,12 @@ async fn projection_rebuild_is_deterministic_and_idempotent_under_mutations() {
             id: Some("january-spend".to_string()),
             description: None,
             amount: 100,
+            currency: "EUR".to_string(),
             transaction_date: january,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("january transaction");
@@ -337,10 +341,12 @@ async fn projection_rebuild_is_deterministic_and_idempotent_under_mutations() {
             id: Some("march-spend".to_string()),
             description: None,
             amount: 250,
+            currency: "EUR".to_string(),
             transaction_date: march,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("march transaction");

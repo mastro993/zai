@@ -27,6 +27,7 @@ export type TransactionImportPayload = {
   id?: string;
   description?: string | null;
   amount: number;
+  currency: string;
   transactionDate: string;
   transactionType: string;
   transactionCategoryId?: string | null;
@@ -78,5 +79,6 @@ export type TransactionImportPreviewOptions = {
 export type ImportDuplicateCandidate = {
   transactionDate: string;
   amount: number;
+  currency: string;
   description: string | null;
 };

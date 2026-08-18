@@ -2,7 +2,11 @@ import { z } from "zod";
 
 import { createCommandDescriptor, type CommandDescriptor } from "@/commands/command-descriptor";
 
-import { paginatedTransactionsSchema, transactionSchema } from "../types/model";
+import {
+  paginatedTransactionsSchema,
+  transactionListItemSchema,
+  transactionSchema,
+} from "../types/model";
 import {
   buildCreateTransactionRequest,
   buildDeleteTransactionRequest,
@@ -18,6 +22,7 @@ import {
 } from "./web-requests";
 
 const transactionArraySchema = z.array(transactionSchema);
+const transactionListItemArraySchema = z.array(transactionListItemSchema);
 
 const backendCommand = <TArgs, T>(
   name: string,
@@ -64,7 +69,7 @@ export const TRANSACTION_COMMANDS = {
   ),
   delete_transactions: backendCommand(
     "delete_transactions",
-    transactionArraySchema,
+    transactionListItemArraySchema,
     buildDeleteTransactionsRequest,
   ),
   import_transactions: backendCommand(
