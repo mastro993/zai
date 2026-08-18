@@ -349,13 +349,11 @@ pub fn calculate_period_with_rollover(
             .base_allowance
             .checked_sub(previous.net_budget_spending)
             .ok_or_else(|| Error::CalculationOverflow("Budget calculation overflow".to_string()))?,
-        (BudgetRolloverMode::Cumulative, Some(previous)) => previous
-            .remaining_allowance
-            .ok_or_else(|| {
-                Error::InvalidData(
-                    "Incomplete predecessor cannot contribute rollover".to_string(),
-                )
-            })?,
+        (BudgetRolloverMode::Cumulative, Some(previous)) => {
+            previous.remaining_allowance.ok_or_else(|| {
+                Error::InvalidData("Incomplete predecessor cannot contribute rollover".to_string())
+            })?
+        }
     };
     let effective_allowance = base_allowance
         .checked_add(carry)

@@ -1,8 +1,9 @@
 use super::models::{BudgetConfigurationRow, BudgetPeriodResultRow};
-use super::timeline::period_from_rows;
+use super::timeline::period_from_rows_with_currency;
 use crate::errors::IntoCore;
 use crate::pagination::total_pages;
 use crate::schema::{budget_configurations, budget_period_results, budgets};
+use crate::valuations::current_allowance_currency;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use zai_core::Result;
@@ -45,9 +46,12 @@ pub(super) fn load_history(
         ))
         .load::<(BudgetPeriodResultRow, BudgetConfigurationRow)>(conn)
         .into_core()?;
+    let currency = current_allowance_currency(conn)?;
     let data = rows
         .into_iter()
-        .map(|(result, configuration)| period_from_rows(conn, configuration, result))
+        .map(|(result, configuration)| {
+            period_from_rows_with_currency(conn, configuration, result, &currency)
+        })
         .collect::<crate::errors::Result<Vec<_>>>()
         .into_core()?;
 

@@ -148,6 +148,7 @@ add or keep green; the full list still ships only at the final merge.
 - Alert rich data uses the active generation's target currency. Delete
   `BUDGET_STATUS_CURRENCY`.
 - Gate: existing command parity and contract harnesses on the new shapes.
+- Budget/alert DTO seams from #395: PR [#411](https://github.com/mastro993/zai/pull/411).
 
 ### 7. Bound import + full-fidelity export
 

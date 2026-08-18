@@ -105,7 +105,10 @@ async fn creating_budget_with_overspent_period_is_silent() {
         .list_budgets(BudgetListFilter::Active)
         .await
         .expect("list");
-    assert_eq!(listed[0].current_period.status, Some(BudgetStatus::Overspent));
+    assert_eq!(
+        listed[0].current_period.status,
+        Some(BudgetStatus::Overspent)
+    );
     assert!(publisher.events.lock().expect("lock").is_empty());
     assert_eq!(alerts.unread_count().await.expect("count"), 0);
 }
@@ -152,15 +155,10 @@ async fn transaction_transition_to_overspent_persists_and_publishes_critical_ale
     assert_eq!(alert.producer_key, BUDGET_STATUS_PRODUCER_KEY);
     assert_eq!(alert.severity, DomainAlertSeverity::Critical);
     assert!(alert.title.contains("Groceries"));
-    assert!(
-        alert
-            .data
-            .as_ref()
-            .is_some_and(|data| {
-                data.kind == "budget.status"
-                    && data.payload.get("currency") == Some(&serde_json::json!("EUR"))
-            })
-    );
+    assert!(alert.data.as_ref().is_some_and(|data| {
+        data.kind == "budget.status"
+            && data.payload.get("currency") == Some(&serde_json::json!("EUR"))
+    }));
 
     let events = publisher.events.lock().expect("lock");
     assert_eq!(events.len(), 1);

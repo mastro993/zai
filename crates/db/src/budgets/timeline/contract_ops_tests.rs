@@ -107,7 +107,10 @@ fn config_replacement_recalculates_current_period() {
     .expect("reconcile");
     assert_eq!(changes.len(), 1);
     assert_eq!(changes[0].resulting_current.base_allowance, 5_000);
-    assert_eq!(changes[0].resulting_current.effective_allowance, Some(5_000));
+    assert_eq!(
+        changes[0].resulting_current.effective_allowance,
+        Some(5_000)
+    );
 }
 
 #[test]
@@ -148,7 +151,10 @@ fn rollover_mode_carries_remaining_allowance_across_periods() {
         BudgetPeriodTimeline::ensure_current(&mut conn, &["rollover".to_string()], february)
             .expect("advance");
     assert_eq!(changes.len(), 1);
-    assert_eq!(changes[0].resulting_current.effective_allowance, Some(18_000));
+    assert_eq!(
+        changes[0].resulting_current.effective_allowance,
+        Some(18_000)
+    );
 }
 
 #[test]

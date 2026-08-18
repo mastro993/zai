@@ -13,8 +13,9 @@ use zai_core::features::budgets::models::{
     Budget, BudgetCadence, BudgetListFilter, current_period,
 };
 
-use super::calculate::displayed_allowance_and_currency;
+use super::calculate::displayed_allowance;
 use super::{TimelineInspect, TimelineInspectEntry, TimelineSelection};
+use crate::valuations::current_allowance_currency;
 
 pub(super) fn inspect(
     conn: &mut SqliteConnection,
@@ -56,6 +57,7 @@ pub(super) fn inspect(
             .push(result);
     }
 
+    let currency = current_allowance_currency(conn).map_err(StorageError::from)?;
     let mut entries = Vec::with_capacity(budget_rows.len());
     for budget in budget_rows {
         let id = budget.id.clone();
@@ -79,6 +81,7 @@ pub(super) fn inspect(
             results.len() as i64,
             result,
             now,
+            &currency,
         )? {
             InspectState::Current(budget) => {
                 entries.push(TimelineInspectEntry::Current(budget));
@@ -127,6 +130,7 @@ pub(super) fn inspect_budget(
         .first::<BudgetPeriodResultRow>(conn)
         .optional()
         .into_storage()?;
+    let currency = current_allowance_currency(conn).map_err(StorageError::from)?;
     decide_state(
         conn,
         budget,
@@ -135,9 +139,11 @@ pub(super) fn inspect_budget(
         result_count,
         result,
         now,
+        &currency,
     )
 }
 
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum InspectState {
     Current(Budget),
     Stale,
@@ -176,6 +182,7 @@ fn load_budget_rows(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn decide_state(
     conn: &mut SqliteConnection,
     budget: BudgetRow,
@@ -184,6 +191,7 @@ fn decide_state(
     result_count: i64,
     result: Option<BudgetPeriodResultRow>,
     now: NaiveDateTime,
+    currency: &str,
 ) -> crate::errors::Result<InspectState> {
     let cadence = budget.cadence.parse::<BudgetCadence>().map_err(|_| {
         StorageError::CoreError(Error::Repository("Invalid budget cadence".to_string()))
@@ -206,9 +214,14 @@ fn decide_state(
     if configuration.period_start != current_start {
         return Ok(InspectState::Stale);
     }
-    let (displayed_base, currency) =
-        displayed_allowance_and_currency(conn, &configuration, result.complete)?;
-    build_budget(budget, configuration, result, displayed_base, currency)
-        .map(InspectState::Current)
-        .map_err(StorageError::CoreError)
+    let displayed_base = displayed_allowance(conn, &configuration, result.complete, currency)?;
+    build_budget(
+        budget,
+        configuration,
+        result,
+        displayed_base,
+        currency.to_string(),
+    )
+    .map(InspectState::Current)
+    .map_err(StorageError::CoreError)
 }

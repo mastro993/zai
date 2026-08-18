@@ -362,11 +362,7 @@ fn forecast_budget_periods(
             forecast_net_budget_spending: forecast_net,
             effective_allowance: computed.effective_allowance,
             remaining_allowance: computed.remaining_allowance,
-            status: if emit_status {
-                computed.status
-            } else {
-                None
-            },
+            status: if emit_status { computed.status } else { None },
             partial,
             covered_until,
             attribution,

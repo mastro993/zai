@@ -1,13 +1,13 @@
 use super::calculate::{
-    calculate_configuration, count_missing_periods, displayed_allowance_and_currency,
-    invalid_budget, load_category_hierarchy, next_period, parse_cadence, status_string,
-    validate_period_boundaries,
+    calculate_configuration, count_missing_periods, displayed_allowance, invalid_budget,
+    load_category_hierarchy, next_period, parse_cadence, status_string, validate_period_boundaries,
 };
 use crate::budgets::models::{
     BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget, map_period,
 };
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{budget_configurations, budget_period_results, budgets};
+use crate::valuations::current_allowance_currency;
 use chrono::NaiveDateTime;
 use diesel::OptionalExtension;
 use diesel::prelude::*;
@@ -64,6 +64,16 @@ pub(crate) fn period_from_rows(
     configuration: BudgetConfigurationRow,
     result: BudgetPeriodResultRow,
 ) -> crate::errors::Result<BudgetPeriod> {
+    let currency = current_allowance_currency(conn).map_err(StorageError::from)?;
+    period_from_rows_with_currency(conn, configuration, result, &currency)
+}
+
+pub(crate) fn period_from_rows_with_currency(
+    conn: &mut SqliteConnection,
+    configuration: BudgetConfigurationRow,
+    result: BudgetPeriodResultRow,
+    currency: &str,
+) -> crate::errors::Result<BudgetPeriod> {
     if configuration.period_start >= configuration.period_end
         || result.period_start >= result.period_end
         || configuration.period_start != result.period_start
@@ -73,9 +83,8 @@ pub(crate) fn period_from_rows(
             "Invalid budget period boundaries".to_string(),
         )));
     }
-    let (displayed_base, currency) =
-        displayed_allowance_and_currency(conn, &configuration, result.complete)?;
-    map_period(&result, displayed_base, currency).map_err(StorageError::CoreError)
+    let displayed_base = displayed_allowance(conn, &configuration, result.complete, currency)?;
+    map_period(&result, displayed_base, currency.to_string()).map_err(StorageError::CoreError)
 }
 
 fn assemble_budget(
@@ -84,8 +93,8 @@ fn assemble_budget(
     configuration: BudgetConfigurationRow,
     result: BudgetPeriodResultRow,
 ) -> crate::errors::Result<Budget> {
-    let (displayed_base, currency) =
-        displayed_allowance_and_currency(conn, &configuration, result.complete)?;
+    let currency = current_allowance_currency(conn).map_err(StorageError::from)?;
+    let displayed_base = displayed_allowance(conn, &configuration, result.complete, &currency)?;
     build_budget(budget, configuration, result, displayed_base, currency)
         .map_err(StorageError::CoreError)
 }

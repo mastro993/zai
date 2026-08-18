@@ -125,9 +125,7 @@ pub(crate) fn sum_spending_buckets(
         .bind::<Timestamp, _>(end)
         .load::<SpendingBucketRow>(conn)
         .into_storage()?;
-    rows.into_iter()
-        .map(|row| parse_bucket_row(row))
-        .collect()
+    rows.into_iter().map(parse_bucket_row).collect()
 }
 
 fn spending_binds(

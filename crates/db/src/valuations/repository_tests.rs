@@ -1,6 +1,6 @@
 use super::{
-    INITIAL_ACTUAL_GENERATION_ID, ValuationsRepository, active_generation, sum_period_spending,
-    sum_spending_buckets, SpendingBucketGrain,
+    INITIAL_ACTUAL_GENERATION_ID, SpendingBucketGrain, ValuationsRepository, active_generation,
+    sum_period_spending, sum_spending_buckets,
 };
 use crate::connection::{create_pool, run_migrations};
 use crate::sql_statement_counter::ConnectionStatementCounter;

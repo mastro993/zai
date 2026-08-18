@@ -40,7 +40,8 @@ pub(super) fn calculate_configuration(
         measurement_mode,
         &scope_ids,
     )?;
-    let (converted_allowance, currency) = restate_configuration_allowance(conn, configuration)?;
+    let currency = current_allowance_currency(conn).map_err(StorageError::from)?;
+    let converted_allowance = restate_configuration_allowance(conn, configuration, &currency)?;
 
     let mut period = calculate_period_with_completeness(PeriodCalculation {
         start: configuration.period_start,
@@ -61,23 +62,21 @@ pub(super) fn calculate_configuration(
     Ok(period)
 }
 
-pub(crate) fn displayed_allowance_and_currency(
+pub(crate) fn displayed_allowance(
     conn: &mut SqliteConnection,
     configuration: &BudgetConfigurationRow,
     complete: bool,
-) -> crate::errors::Result<(i64, String)> {
-    let (restated, currency) = restate_configuration_allowance(conn, configuration)?;
-    let base = match (complete, restated) {
-        (true, Some(value)) => value,
-        (true, None) => {
-            return Err(invalid_budget(
-                "Complete period missing converted allowance",
-            ));
-        }
-        (false, Some(value)) => value,
-        (false, None) => configuration.base_allowance,
-    };
-    Ok((base, currency))
+    target_currency: &str,
+) -> crate::errors::Result<i64> {
+    let restated = restate_configuration_allowance(conn, configuration, target_currency)?;
+    match (complete, restated) {
+        (true, Some(value)) => Ok(value),
+        (true, None) => Err(invalid_budget(
+            "Complete period missing converted allowance",
+        )),
+        (false, Some(value)) => Ok(value),
+        (false, None) => Ok(configuration.base_allowance),
+    }
 }
 
 pub(crate) fn calculate_spending(
@@ -103,13 +102,13 @@ pub(crate) fn calculate_spending_aggregate(
 fn restate_configuration_allowance(
     conn: &mut SqliteConnection,
     configuration: &BudgetConfigurationRow,
-) -> crate::errors::Result<(Option<i64>, String)> {
-    let target = current_allowance_currency(conn).map_err(StorageError::from)?;
+    target: &str,
+) -> crate::errors::Result<Option<i64>> {
     let authored =
         CurrencyCode::parse(&configuration.allowance_currency).map_err(StorageError::from)?;
-    let target_code = CurrencyCode::parse(&target).map_err(StorageError::from)?;
+    let target_code = CurrencyCode::parse(target).map_err(StorageError::from)?;
     if authored == target_code {
-        return Ok((Some(configuration.base_allowance), target));
+        return Ok(Some(configuration.base_allowance));
     }
     let money = Money::new(configuration.base_allowance, authored).map_err(StorageError::from)?;
     let rate = period_start_rate(
@@ -121,7 +120,7 @@ fn restate_configuration_allowance(
     let restated =
         zai_core::features::valuations::restate_authored_allowance(money, target_code, &rate)
             .map_err(StorageError::from)?;
-    Ok((restated.converted.map(|value| value.minor_units()), target))
+    Ok(restated.converted.map(|value| value.minor_units()))
 }
 
 fn period_start_rate(

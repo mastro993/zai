@@ -284,5 +284,8 @@ fn rich_data_uses_supplied_generation_currency() {
     )
     .expect("policy evaluation");
     let data = alerts[0].data.as_ref().expect("rich data");
-    assert_eq!(data.payload.get("currency"), Some(&serde_json::json!("USD")));
+    assert_eq!(
+        data.payload.get("currency"),
+        Some(&serde_json::json!("USD"))
+    );
 }
