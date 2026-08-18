@@ -82,8 +82,13 @@ async fn list_transactions_filters_by_single_category() {
     let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
-    let (status, body) =
-        request_json(&app, "GET", "/api/transactions?categoryId=food-cat", None).await;
+    let (status, body) = request_json(
+        &app,
+        "GET",
+        "/api/transactions?categoryId=11111111-1111-1111-1111-111111111111",
+        None,
+    )
+    .await;
 
     assert_eq!(status, StatusCode::OK);
     let descriptions = transaction_descriptions(&body);
@@ -100,7 +105,7 @@ async fn list_transactions_filters_by_multiple_categories() {
     let (status, body) = request_json(
         &app,
         "GET",
-        "/api/transactions?categoryId=food-cat&categoryId=travel-cat",
+        "/api/transactions?categoryId=11111111-1111-1111-1111-111111111111&categoryId=22222222-2222-2222-2222-222222222222",
         None,
     )
     .await;

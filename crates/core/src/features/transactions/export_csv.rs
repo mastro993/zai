@@ -221,7 +221,7 @@ mod tests {
             [
                 HEADERS,
                 "1,2026-01-15T08:30:00,350,3.50,EUR,expense,\"Coffee, \"\"special\"\"\",\"Morning\nrun\",Food,Groceries,identity,complete,2026-01-15,,EUR,EUR,1,0,1,1,supplied",
-                "1,2026-01-01T00:00:00,250000,2500.00,EUR,income,Salary,,,identity,complete,2026-01-01,,EUR,EUR,1,0,1,1,supplied",
+                "1,2026-01-01T00:00:00,250000,2500.00,EUR,income,Salary,,,,identity,complete,2026-01-01,,EUR,EUR,1,0,1,1,supplied",
             ]
             .join("\n")
         );

@@ -7,8 +7,8 @@ pub async fn seed_filter_test_transactions(app: &axum::Router) {
     let (status, _) = import_categories(
         app,
         json!([
-            { "id": "food-cat", "name": "Food", "color": "#FF0000" },
-            { "id": "travel-cat", "name": "Travel", "color": "#00FF00" }
+            { "id": "11111111-1111-1111-1111-111111111111", "name": "Food", "color": "#FF0000" },
+            { "id": "22222222-2222-2222-2222-222222222222", "name": "Travel", "color": "#00FF00" }
         ]),
     )
     .await;
@@ -21,7 +21,7 @@ pub async fn seed_filter_test_transactions(app: &axum::Router) {
             "currency": "EUR",
             "transactionDate": "2026-07-05T08:00:00",
             "transactionType": "expense",
-            "transactionCategoryId": "food-cat",
+            "transactionCategoryId": "11111111-1111-1111-1111-111111111111",
             "notes": "cafe"
         }),
         json!({
@@ -38,7 +38,7 @@ pub async fn seed_filter_test_transactions(app: &axum::Router) {
             "currency": "EUR",
             "transactionDate": "2026-07-15T14:30:00",
             "transactionType": "expense",
-            "transactionCategoryId": "travel-cat"
+            "transactionCategoryId": "22222222-2222-2222-2222-222222222222"
         }),
         json!({
             "description": "Coffee beans",
@@ -46,7 +46,7 @@ pub async fn seed_filter_test_transactions(app: &axum::Router) {
             "currency": "EUR",
             "transactionDate": "2026-07-20T10:00:00",
             "transactionType": "expense",
-            "transactionCategoryId": "food-cat"
+            "transactionCategoryId": "11111111-1111-1111-1111-111111111111"
         }),
         json!({
             "description": "Freelance gig",

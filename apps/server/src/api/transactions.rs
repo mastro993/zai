@@ -5,7 +5,7 @@ use axum::{
     extract::rejection::JsonRejection,
     extract::{FromRequest, Path, Query, Request, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::{any, get, post},
 };
 use chrono::NaiveDateTime;
 use serde::Deserialize;
@@ -309,6 +309,8 @@ pub fn router() -> Router<Arc<ServiceContext>> {
             get(get_transaction_import_preview),
         )
         .route("/import/commit", post(commit_transaction_import))
+        .route("/import", any(removed_public_import_route))
+        .route("/import-batch", any(removed_public_import_route))
         .route(
             "/{transaction_id}",
             get(get_transaction)
@@ -484,6 +486,10 @@ async fn bulk_delete_transactions(
         .await
         .map(Json)
         .map_err(|error| command_error("Failed to delete transactions", error))
+}
+
+async fn removed_public_import_route() -> StatusCode {
+    StatusCode::NOT_FOUND
 }
 
 async fn preview_transaction_import(

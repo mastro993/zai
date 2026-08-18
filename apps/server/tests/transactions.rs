@@ -99,7 +99,7 @@ async fn create_transaction_with_category_succeeds() {
 
     let (batch_status, _) = import_categories(
         &app,
-        json!([{ "id": "food-cat", "name": "Food", "color": "#FF0000" }]),
+        json!([{ "id": "11111111-1111-1111-1111-111111111111", "name": "Food", "color": "#FF0000" }]),
     )
     .await;
     assert_eq!(batch_status, StatusCode::OK);
@@ -114,13 +114,16 @@ async fn create_transaction_with_category_succeeds() {
             "currency": "EUR",
             "transactionDate": "2026-07-10T19:00:00",
             "transactionType": "expense",
-            "transactionCategoryId": "food-cat"
+            "transactionCategoryId": "11111111-1111-1111-1111-111111111111"
         })),
     )
     .await;
 
     assert_eq!(status, StatusCode::CREATED);
-    assert_eq!(created["transactionCategoryId"], "food-cat");
+    assert_eq!(
+        created["transactionCategoryId"],
+        "11111111-1111-1111-1111-111111111111"
+    );
 }
 
 #[tokio::test]

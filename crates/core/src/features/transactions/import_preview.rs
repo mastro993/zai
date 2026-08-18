@@ -717,6 +717,22 @@ mod tests {
     }
 
     #[test]
+    fn mapped_external_rate_default_to_transaction_inverts() {
+        let mut mapped = row(Some("USD"));
+        mapped.mapped_rate = Some(MappedExternalRate {
+            rate: "2".to_string(),
+            direction: RateDirection::DefaultToTransaction,
+            rate_date: None,
+        });
+        let classified = classify_import(&request(true, None, vec![mapped]), &HashSet::new())
+            .expect("classified");
+        match &classified.commit.rows[0].rate_plan {
+            ImportRatePlan::Manual { decimal, .. } => assert_eq!(decimal, "0.5"),
+            other => panic!("expected manual rate, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn newer_native_export_version_is_rejected() {
         let mut mapped = row(Some("EUR"));
         mapped.native = Some(NativeRateFields {

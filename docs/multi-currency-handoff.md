@@ -162,6 +162,15 @@ add or keep green; the full list still ships only at the final merge.
   replaces those source values.
 - Gate: import/export family, including semantic round trip and stale-preview
   rejection.
+- PR: [#412](https://github.com/mastro993/zai/pull/412).
+  Tests: `cargo test -p zai-core --lib transactions::`;
+  `cargo test -p zai-core --lib canonical_rate_inverse`;
+  `cargo test -p zai-db --lib bulk_ops`;
+  `cargo test -p zai-server --test transactions --test transaction_import_safety --test transactions_list_filters`;
+  frontend vitest `transaction-import`, `transaction-export`, `parse-import-amount`, `web-request`.
+  Families: `features::transactions::import_preview`,
+  `features::transactions::import_service`,
+  `features::transactions::export_csv`.
 
 ### 8. Frontend + e2e + native smoke + benchmark
 
