@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import type { RecurringFeedFilters } from "../types/recurring-transaction";
+import { RECURRING_LIFECYCLES, type RecurringFeedFilters } from "../types/recurring-transaction";
 
 export function RecurringFeedFiltersBar({
   filters,
@@ -39,15 +39,17 @@ export function RecurringFeedFiltersBar({
         <Select
           value={filters.lifecycle ?? "all"}
           disabled={disabled}
-          onValueChange={(value) =>
-            onChange({
-              ...filters,
-              lifecycle:
-                value === "all"
-                  ? undefined
-                  : (value as NonNullable<RecurringFeedFilters["lifecycle"]>),
-            })
-          }
+          onValueChange={(value) => {
+            const encoded = String(value);
+            if (encoded === "all") {
+              onChange({ ...filters, lifecycle: undefined });
+              return;
+            }
+            const lifecycle = RECURRING_LIFECYCLES.find((candidate) => candidate === encoded);
+            if (lifecycle) {
+              onChange({ ...filters, lifecycle });
+            }
+          }}
         >
           <SelectTrigger aria-label="Filter by lifecycle">
             <SelectValue />

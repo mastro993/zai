@@ -5,22 +5,24 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Drawer } from "@/components/ui/drawer";
 
-import type { TransactionCategory } from "../../types/model";
+import { categorySchema } from "../../types/model";
 import { CategoryFormDrawer } from "../category-form-drawer";
 
-const food = {
+const food = categorySchema.parse({
   id: "food",
   parentId: null,
   name: "Food",
   role: "spending",
-} as TransactionCategory;
+  color: "#C32828",
+});
 
-const salary = {
+const salary = categorySchema.parse({
   id: "salary",
   parentId: null,
   name: "Salary",
   role: "income",
-} as TransactionCategory;
+  color: "#28C34E",
+});
 
 describe("CategoryFormDrawer", () => {
   afterEach(() => cleanup());

@@ -1,11 +1,13 @@
 import { Result } from "@praha/byethrow";
 
 import { parseCommandBuildTarget, type CommandBuildTarget } from "@/commands/build-target";
+import { resolveAlertsEventUrl } from "@/commands/web-api";
+import { hasEventSource } from "@/lib/runtime-globals";
+import { asWireString } from "@/lib/wire";
 
 import { DOMAIN_ALERT_EVENT_NAME } from "../types/domain-alert-event";
-import { resolveAlertsEventUrl } from "@/commands/web-api";
 
-export type AlertEventHandler = (value: unknown) => void;
+export type AlertEventHandler = (payload: string) => void;
 export type AlertEventReconnectHandler = () => void;
 
 export interface AlertEventSubscription {
@@ -20,7 +22,20 @@ export interface AlertEventTransport {
   ) => AlertEventSubscription;
 }
 
-export type AlertEventTransportMap = Record<CommandBuildTarget, AlertEventTransport>;
+export interface AlertEventTransportMap {
+  tauri: AlertEventTransport;
+  web: AlertEventTransport;
+}
+
+const payloadFromMessageEvent = (event: Event): string | undefined => {
+  if (event instanceof MessageEvent) {
+    return asWireString(event.data);
+  }
+  if ("data" in event) {
+    return asWireString(event.data);
+  }
+  return undefined;
+};
 
 const noOpSubscription = (): AlertEventSubscription => ({
   ready: Promise.resolve(),
@@ -60,13 +75,18 @@ export const createTauriAlertEventTransport = (): AlertEventTransport => ({
 
 export const createWebAlertEventTransport = (): AlertEventTransport => ({
   subscribe: (onEvent, onReconnect) => {
-    if (typeof EventSource === "undefined") {
+    if (!hasEventSource()) {
       return noOpSubscription();
     }
 
     const source = new EventSource(resolveAlertsEventUrl());
     let hasOpened = false;
-    const handleMessage = (event: Event) => onEvent((event as MessageEvent<string>).data);
+    const handleMessage = (event: Event) => {
+      const payload = payloadFromMessageEvent(event);
+      if (payload !== undefined) {
+        onEvent(payload);
+      }
+    };
     const handleOpen = () => {
       if (hasOpened) {
         onReconnect();
@@ -106,10 +126,10 @@ const noOpSubscriptionTransport: AlertEventTransport = {
   subscribe: () => noOpSubscription(),
 };
 
-const alertEventTransports: AlertEventTransportMap = {
+const alertEventTransports = {
   tauri: createTauriAlertEventTransport(),
   web: createWebAlertEventTransport(),
-};
+} satisfies AlertEventTransportMap;
 
 export const createAlertEventTransport = (): AlertEventTransport =>
   resolveAlertEventTransport(import.meta.env.VITE_ZAI_BUILD_TARGET, alertEventTransports);

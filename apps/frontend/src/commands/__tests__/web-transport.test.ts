@@ -13,6 +13,15 @@ import { TRANSACTION_COMMANDS } from "@/features/transactions/commands/registry"
 
 const fetchMock = vi.hoisted(() => vi.fn());
 
+const lastFetch = () => {
+  const call = fetchMock.mock.calls[0];
+  const url = call?.[0];
+  // SAFETY: vi.fn fetch is stubbed with (url, RequestInit) in these tests.
+  const init = call?.[1] as RequestInit | undefined;
+  const headers = new Headers(init?.headers);
+  return { url, init, headers };
+};
+
 describe("web request URL helpers", () => {
   it("builds an absolute URL from a request path and query", () => {
     expect(
@@ -75,11 +84,12 @@ describe("web command transport", () => {
       parentId: null,
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:3000/api/categories", {
-      method: "GET",
-      headers: { "x-zai-app": "zai" },
-      body: undefined,
-    });
+    const request = lastFetch();
+    expect(request.url).toBe("http://127.0.0.1:3000/api/categories");
+    expect(request.init?.method).toBe("GET");
+    expect(request.init?.body).toBeUndefined();
+    expect(request.headers.get("x-zai-app")).toBe("zai");
+    expect(request.headers.get("Content-Type")).toBeNull();
     expect(result).toEqual(payload);
   });
 
@@ -96,16 +106,19 @@ describe("web command transport", () => {
       newCategory: { name: "Food", parentId: null, description: null, color: "#C55B26" },
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:3000/api/categories", {
-      method: "POST",
-      headers: { "x-zai-app": "zai", "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const request = lastFetch();
+    expect(request.url).toBe("http://127.0.0.1:3000/api/categories");
+    expect(request.init?.method).toBe("POST");
+    expect(request.init?.body).toBe(
+      JSON.stringify({
         name: "Food",
         parentId: null,
         description: null,
         color: "#C55B26",
       }),
-    });
+    );
+    expect(request.headers.get("x-zai-app")).toBe("zai");
+    expect(request.headers.get("Content-Type")).toBe("application/json");
   });
 
   it("sends the app header on bodyless DELETE requests", async () => {
@@ -119,11 +132,12 @@ describe("web command transport", () => {
     const transport = createWebCommandTransport();
     await transport.invoke(TRANSACTION_COMMANDS.delete_transaction, { transactionId: "txn-1" });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:3000/api/transactions/txn-1", {
-      method: "DELETE",
-      headers: { "x-zai-app": "zai" },
-      body: undefined,
-    });
+    const request = lastFetch();
+    expect(request.url).toBe("http://127.0.0.1:3000/api/transactions/txn-1");
+    expect(request.init?.method).toBe("DELETE");
+    expect(request.init?.body).toBeUndefined();
+    expect(request.headers.get("x-zai-app")).toBe("zai");
+    expect(request.headers.get("Content-Type")).toBeNull();
   });
 
   it("returns undefined for 204 No Content responses", async () => {
@@ -143,13 +157,13 @@ describe("web command transport", () => {
 
     await expect(
       transport.invoke(CATEGORY_COMMANDS.create_transaction_category, {
-        newCategory: "malformed" as never,
+        newCategory: { name: "" },
       }),
     ).rejects.toMatchObject({ name: "CommandError" });
     await expect(
       transport.invoke(BUDGET_COMMANDS.delete_budget, {
-        budgetId: "budget-1",
-        expectedRevision: "invalid" as never,
+        budgetId: "",
+        expectedRevision: 2,
       }),
     ).rejects.toMatchObject({ name: "CommandError" });
     expect(fetchMock).not.toHaveBeenCalled();

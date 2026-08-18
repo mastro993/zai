@@ -4,9 +4,9 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { BudgetDeleteConfirmationDialog } from "../budget-delete-confirmation-dialog";
-import type { Budget } from "../../types/budget";
+import { budgetSchema } from "../../types/budget";
 
-const budget = {
+const budget = budgetSchema.parse({
   id: "budget-1",
   name: "Monthly spending",
   revision: 2,
@@ -26,7 +26,7 @@ const budget = {
     remainingAllowance: 10_000,
     status: "onTrack",
   },
-} as Budget;
+});
 
 describe("BudgetDeleteConfirmationDialog", () => {
   afterEach(() => {

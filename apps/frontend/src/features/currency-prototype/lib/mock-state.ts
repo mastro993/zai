@@ -61,14 +61,14 @@ export interface PrototypeState {
   lastAction: string;
 }
 
-const RATES_TO_EUR: Record<string, number> = {
-  EUR: 1,
-  USD: 0.9214,
-  GBP: 1.1742,
-  JPY: 0.00613,
-  CHF: 1.0518,
-  CAD: 0.6721,
-};
+const RATES_TO_EUR = new Map<string, number>([
+  ["EUR", 1],
+  ["USD", 0.9214],
+  ["GBP", 1.1742],
+  ["JPY", 0.00613],
+  ["CHF", 1.0518],
+  ["CAD", 0.6721],
+]);
 
 export const CATALOG: CatalogCurrency[] = [
   { code: "EUR", name: "Euro" },
@@ -163,8 +163,8 @@ export const formatMoney = (amount: string, code: string) => {
 
 export const convertToDefault = (amount: string, from: string, to: string) => {
   const value = Number(amount);
-  const fromRate = RATES_TO_EUR[from];
-  const toRate = RATES_TO_EUR[to];
+  const fromRate = RATES_TO_EUR.get(from);
+  const toRate = RATES_TO_EUR.get(to);
   if (!Number.isFinite(value) || fromRate === undefined || toRate === undefined) {
     return null;
   }
@@ -174,8 +174,8 @@ export const convertToDefault = (amount: string, from: string, to: string) => {
 };
 
 export const rateFor = (code: string, defaultCurrency: string) => {
-  const fromRate = RATES_TO_EUR[code];
-  const toRate = RATES_TO_EUR[defaultCurrency];
+  const fromRate = RATES_TO_EUR.get(code);
+  const toRate = RATES_TO_EUR.get(defaultCurrency);
   if (fromRate === undefined || toRate === undefined) {
     return null;
   }

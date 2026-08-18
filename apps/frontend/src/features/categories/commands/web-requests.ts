@@ -47,25 +47,36 @@ export interface ImportCategoriesArgs {
   categories: Array<CategoryBackendImportPayload>;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+interface CategoryDeleteBody {
+  categoryIds: Array<string>;
+  childrenStrategy?: CategoryChildrenDeleteStrategy;
+  confirmBudgetImpact?: boolean;
+}
 
-const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === "string" && value.length > 0;
+const isNonEmptyString = (value: string): boolean => value.length > 0;
 
-const validCategoryIds = (value: unknown): value is Array<string> =>
-  Array.isArray(value) && value.length > 0 && value.every(isNonEmptyString);
+const validCategoryIds = (value: Array<string>): boolean =>
+  value.length > 0 && value.every(isNonEmptyString);
 
-const validStrategy = (value: unknown): value is CategoryChildrenDeleteStrategy =>
-  value === undefined || value === "block" || value === "promote" || value === "delete";
+const buildDeleteBody = (
+  categoryIds: Array<string>,
+  childrenStrategy?: CategoryChildrenDeleteStrategy,
+  confirmBudgetImpact?: boolean,
+): CategoryDeleteBody => {
+  const body: CategoryDeleteBody = { categoryIds };
+  if (childrenStrategy) {
+    body.childrenStrategy = childrenStrategy;
+  }
+  if (confirmBudgetImpact) {
+    body.confirmBudgetImpact = true;
+  }
+  return body;
+};
 
 export const buildGetCategoriesRequest = (
   args: GetCategoriesArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (
-    !isRecord(args) ||
-    (args.parentId !== undefined && args.parentId !== null && !isNonEmptyString(args.parentId))
-  ) {
+  if (args.parentId !== undefined && args.parentId !== null && !isNonEmptyString(args.parentId)) {
     return Result.fail(new CommandError("Category parent id must be a string or null"));
   }
   return Result.succeed({
@@ -78,7 +89,7 @@ export const buildGetCategoriesRequest = (
 export const buildGetCategoryRequest = (
   args: CategoryIdentifierArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !isNonEmptyString(args.categoryId)) {
+  if (!isNonEmptyString(args.categoryId)) {
     return Result.fail(new CommandError("Category id must be a non-empty string"));
   }
   return Result.succeed({
@@ -87,17 +98,10 @@ export const buildGetCategoryRequest = (
   });
 };
 
-const validCategoryPayload = (value: unknown): value is CategoryPayload =>
-  isRecord(value) &&
-  isNonEmptyString(value.name) &&
-  (value.color === undefined ||
-    value.color === null ||
-    (typeof value.color === "string" && /^#[0-9a-f]{6}$/i.test(value.color)));
-
 export const buildCreateCategoryRequest = (
   args: CreateCategoryArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !validCategoryPayload(args.newCategory)) {
+  if (!isNonEmptyString(args.newCategory.name)) {
     return Result.fail(new CommandError("Category payload must be a valid record"));
   }
   return Result.succeed({
@@ -110,11 +114,7 @@ export const buildCreateCategoryRequest = (
 export const buildUpdateCategoryRequest = (
   args: UpdateCategoryArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (
-    !isRecord(args) ||
-    !validCategoryPayload(args.updatedCategory) ||
-    !isNonEmptyString(args.updatedCategory.id)
-  ) {
+  if (!isNonEmptyString(args.updatedCategory.name) || !isNonEmptyString(args.updatedCategory.id)) {
     return Result.fail(new CommandError("Category update requires a valid id and payload"));
   }
   const { id: _id, ...body } = args.updatedCategory;
@@ -128,53 +128,34 @@ export const buildUpdateCategoryRequest = (
 export const buildDeleteCategoriesRequest = (
   args: DeleteCategoriesArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (
-    !isRecord(args) ||
-    !validCategoryIds(args.categoryIds) ||
-    !validStrategy(args.childrenStrategy)
-  ) {
+  if (!validCategoryIds(args.categoryIds)) {
     return Result.fail(new CommandError("Category deletion requires valid ids and strategy"));
   }
   return Result.succeed({
     method: "POST",
     path: "/categories/bulk-delete",
-    body: {
-      categoryIds: args.categoryIds,
-      ...(args.childrenStrategy ? { childrenStrategy: args.childrenStrategy } : {}),
-      ...(args.confirmBudgetImpact ? { confirmBudgetImpact: true } : {}),
-    },
+    body: buildDeleteBody(args.categoryIds, args.childrenStrategy, args.confirmBudgetImpact),
   });
 };
 
 export const buildPreviewDeleteCategoriesRequest = (
   args: PreviewDeleteCategoriesArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (
-    !isRecord(args) ||
-    !validCategoryIds(args.categoryIds) ||
-    !validStrategy(args.childrenStrategy)
-  ) {
+  if (!validCategoryIds(args.categoryIds)) {
     return Result.fail(new CommandError("Category preview requires valid ids and strategy"));
   }
   return Result.succeed({
     method: "POST",
     path: "/categories/bulk-delete/preview",
-    body: {
-      categoryIds: args.categoryIds,
-      ...(args.childrenStrategy ? { childrenStrategy: args.childrenStrategy } : {}),
-    },
+    body: buildDeleteBody(args.categoryIds, args.childrenStrategy),
   });
 };
 
 export const buildImportCategoriesRequest = (
   args: ImportCategoriesArgs,
-): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !Array.isArray(args.categories)) {
-    return Result.fail(new CommandError("Category import requires categories"));
-  }
-  return Result.succeed({
+): Result.Result<WebRequestSpec, CommandError> =>
+  Result.succeed({
     method: "POST",
     path: "/categories/import",
     body: { categories: args.categories },
   });
-};

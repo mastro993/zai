@@ -2,23 +2,50 @@
 
 import { Result } from "@praha/byethrow";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Drawer } from "@/components/ui/drawer";
 import { CommandError } from "@/commands/errors";
+import { categorySchema, type TransactionCategory } from "@/features/categories/types/model";
 
-import type { Budget } from "../../types/budget";
-import type { TransactionCategory } from "@/features/categories/types/model";
 import { budgetMeasurementDescription, budgetRolloverDescription } from "../../lib/budget";
+import { budgetSchema, type Budget, type BudgetFormValues } from "../../types/budget";
 import { BudgetFormDrawer } from "../budget-form-drawer";
 
-vi.mock("sonner", () => ({ toast: { success: vi.fn() } }));
+type BudgetSubmit = (values: BudgetFormValues) => Promise<Result.Result<Budget, CommandError>>;
 
-type BudgetFormDrawerProps = ComponentProps<typeof BudgetFormDrawer>;
+const sampleBudget = budgetSchema.parse({
+  id: "budget-1",
+  name: "Weekly groceries",
+  revision: 3,
+  paused: false,
+  categoryIds: ["groceries"],
+  cadence: "week",
+  measurementMode: "spending",
+  baseAllowance: 12500,
+  rolloverMode: "off",
+  warningPercentage: 65,
+  currentPeriod: {
+    start: "2026-07-06T00:00:00",
+    end: "2026-07-13T00:00:00",
+    baseAllowance: 12500,
+    effectiveAllowance: 12500,
+    netBudgetSpending: 2500,
+    remainingAllowance: 10000,
+    status: "onTrack",
+  },
+});
 
 const createSubmitMock = () =>
-  vi.fn<BudgetFormDrawerProps["onSubmit"]>().mockResolvedValue(Result.succeed({} as Budget));
+  vi.fn<BudgetSubmit>().mockResolvedValue(Result.succeed(sampleBudget));
+
+interface RenderBudgetFormOptions {
+  onOpenChange?: (open: boolean) => void;
+  onSubmit?: BudgetSubmit;
+  categories?: Array<TransactionCategory>;
+  budget?: Budget;
+  mode?: "create" | "edit";
+}
 
 const renderBudgetForm = ({
   onOpenChange = vi.fn(),
@@ -26,13 +53,7 @@ const renderBudgetForm = ({
   categories = [],
   budget,
   mode = "create",
-}: {
-  onOpenChange?: (open: boolean) => void;
-  onSubmit?: BudgetFormDrawerProps["onSubmit"];
-  categories?: Array<TransactionCategory>;
-  budget?: Budget;
-  mode?: "create" | "edit";
-} = {}) =>
+}: RenderBudgetFormOptions = {}) =>
   render(
     <Drawer open swipeDirection="right">
       <BudgetFormDrawer
@@ -163,27 +184,30 @@ describe("BudgetFormDrawer", () => {
   });
 
   it("filters and canonicalizes category selections", async () => {
-    const food = {
+    const food = categorySchema.parse({
       id: "food",
       parentId: null,
       name: "Food",
       role: "spending",
-    } as TransactionCategory;
+      color: "#C32828",
+    });
     const categories = [
       food,
-      {
+      categorySchema.parse({
         id: "rent",
         parentId: "food",
         name: "Rent",
         role: "spending",
         parent: food,
-      } as TransactionCategory,
-      {
+        color: "#C32828",
+      }),
+      categorySchema.parse({
         id: "income",
         parentId: null,
         name: "Income",
         role: "income",
-      } as TransactionCategory,
+        color: "#28C34E",
+      }),
     ];
     const onSubmit = createSubmitMock();
     renderBudgetForm({ categories, onSubmit });
@@ -207,27 +231,29 @@ describe("BudgetFormDrawer", () => {
   });
 
   it("selects descendants with a root and keeps the saved scope canonical", async () => {
-    const food = {
+    const food = categorySchema.parse({
       id: "food",
       parentId: null,
       name: "Food",
       color: "#26C55B",
       role: "spending",
-    } as TransactionCategory;
-    const groceries = {
+    });
+    const groceries = categorySchema.parse({
       id: "groceries",
       parentId: "food",
       name: "Groceries",
       role: "spending",
       parent: food,
-    } as TransactionCategory;
-    const restaurants = {
+      color: "#26C55B",
+    });
+    const restaurants = categorySchema.parse({
       id: "restaurants",
       parentId: "food",
       name: "Restaurants",
       role: "spending",
       parent: food,
-    } as TransactionCategory;
+      color: "#26C55B",
+    });
     const onSubmit = createSubmitMock();
     renderBudgetForm({ categories: [food, groceries, restaurants], onSubmit });
 
@@ -292,34 +318,21 @@ describe("BudgetFormDrawer", () => {
   });
 
   it("loads edit values and keeps cadence read-only", () => {
-    const budget = {
-      id: "budget-1",
-      name: "Weekly groceries",
-      revision: 3,
-      paused: false,
-      categoryIds: ["groceries"],
-      cadence: "week",
-      measurementMode: "spending",
-      baseAllowance: 12500,
-      rolloverMode: "off",
-      warningPercentage: 65,
-      currentPeriod: {
-        start: "2026-07-06T00:00:00",
-        end: "2026-07-13T00:00:00",
-        baseAllowance: 12500,
-        effectiveAllowance: 12500,
-        netBudgetSpending: 2500,
-        remainingAllowance: 10000,
-        status: "onTrack",
-      },
-    } as Budget;
-    renderBudgetForm({ budget, mode: "edit" });
+    renderBudgetForm({ budget: sampleBudget, mode: "edit" });
 
     expect(screen.getByRole("heading", { name: "Edit budget" })).toBeTruthy();
-    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("Weekly groceries");
-    expect((screen.getByLabelText("Allowance") as HTMLInputElement).value).toBe("125.00");
+    const name = screen.getByLabelText("Name");
+    expect(name).toBeInstanceOf(HTMLInputElement);
+    if (!(name instanceof HTMLInputElement)) return;
+    expect(name.value).toBe("Weekly groceries");
+    const allowance = screen.getByLabelText("Allowance");
+    expect(allowance).toBeInstanceOf(HTMLInputElement);
+    if (!(allowance instanceof HTMLInputElement)) return;
+    expect(allowance.value).toBe("125.00");
     const cadence = screen.getByRole("combobox", { name: "Budget cadence" });
-    expect((cadence as HTMLButtonElement).disabled).toBe(true);
+    expect(cadence).toBeInstanceOf(HTMLButtonElement);
+    if (!(cadence instanceof HTMLButtonElement)) return;
+    expect(cadence.disabled).toBe(true);
     expect(cadence.textContent).toContain("Week");
     expect(screen.getByRole("button", { name: "Save budget" })).toBeTruthy();
   });

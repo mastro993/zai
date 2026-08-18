@@ -3,11 +3,7 @@ import { Result } from "@praha/byethrow";
 import { CommandError } from "@/commands/errors";
 import type { WebRequestSpec } from "@/commands/web-request-spec";
 
-import type {
-  DomainAlertReadState,
-  DomainAlertSeverity,
-  ListDomainAlertsQuery,
-} from "../types/domain-alert";
+import type { ListDomainAlertsQuery } from "../types/domain-alert";
 
 export interface ListAlertsArgs {
   query?: ListDomainAlertsQuery | null;
@@ -17,55 +13,26 @@ export interface MarkAlertArgs {
   alertId: string;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+const isNonEmptyString = (value: string): boolean => value.length > 0;
 
-const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === "string" && value.length > 0;
+const isPositiveInteger = (value: number): boolean => Number.isInteger(value) && value > 0;
 
-const isReadState = (value: unknown): value is DomainAlertReadState =>
-  value === "all" || value === "read" || value === "unread";
-
-const isSeverity = (value: unknown): value is DomainAlertSeverity =>
-  value === "info" || value === "warning" || value === "critical";
-
-const validateListArgs = (args: unknown): Result.Result<ListAlertsArgs, CommandError> => {
-  if (!isRecord(args)) {
-    return Result.fail(new CommandError("Alert list arguments must be a record"));
-  }
-
+const validateListArgs = (args: ListAlertsArgs): Result.Result<ListAlertsArgs, CommandError> => {
   const query = args.query;
   if (query === undefined || query === null) {
     return Result.succeed({});
   }
-  if (!isRecord(query)) {
-    return Result.fail(new CommandError("Alert list query must be a record"));
-  }
   if (query.cursor !== undefined && !isNonEmptyString(query.cursor)) {
     return Result.fail(new CommandError("Alert cursor must be a non-empty string"));
   }
-  if (
-    query.limit !== undefined &&
-    (typeof query.limit !== "number" || !Number.isInteger(query.limit) || query.limit < 1)
-  ) {
+  if (query.limit !== undefined && !isPositiveInteger(query.limit)) {
     return Result.fail(new CommandError("Alert limit must be a positive integer"));
   }
-  if (query.readState !== undefined && !isReadState(query.readState)) {
-    return Result.fail(new CommandError("Alert read state is invalid"));
-  }
-  if (
-    query.severities !== undefined &&
-    (!Array.isArray(query.severities) || query.severities.some((severity) => !isSeverity(severity)))
-  ) {
-    return Result.fail(new CommandError("Alert severities must be an array of valid values"));
-  }
 
-  return Result.succeed({ query: query as ListDomainAlertsQuery });
+  return Result.succeed({ query });
 };
 
-const buildAlertListQuery = (
-  query: ListDomainAlertsQuery | null | undefined,
-): Record<string, string | Array<string>> => {
+const buildAlertListQuery = (query: ListDomainAlertsQuery | null | undefined) => {
   const params: Record<string, string | Array<string>> = {};
   if (!query) {
     return params;
@@ -114,7 +81,7 @@ const buildMarkAlertRequest = (
   args: MarkAlertArgs,
   action: "read" | "unread",
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !isNonEmptyString(args.alertId)) {
+  if (!isNonEmptyString(args.alertId)) {
     return Result.fail(new CommandError("Alert id must be a non-empty string"));
   }
   return Result.succeed({

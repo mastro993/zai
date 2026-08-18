@@ -1,104 +1,67 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { downloadTextFile } from "../download-text-file";
+import { selectCsvImportFile } from "../select-csv-import-file";
 import { tauriDownloadTextFile } from "../tauri-download-text-file";
 import { tauriSelectCsvImportFile } from "../tauri-select-csv-import-file";
 
-const openMock = vi.hoisted(() => vi.fn());
-const saveMock = vi.hoisted(() => vi.fn());
-const readTextFileMock = vi.hoisted(() => vi.fn());
-const writeTextFileMock = vi.hoisted(() => vi.fn());
-const documentDirMock = vi.hoisted(() => vi.fn());
-
-vi.mock("@tauri-apps/plugin-dialog", () => ({
-  open: openMock,
-  save: saveMock,
-}));
-
-vi.mock("@tauri-apps/plugin-fs", () => ({
-  readTextFile: readTextFileMock,
-  writeTextFile: writeTextFileMock,
-}));
-
-vi.mock("@tauri-apps/api/path", () => ({
-  documentDir: documentDirMock,
-}));
-
 describe("tauri category file capabilities", () => {
-  beforeEach(() => {
-    openMock.mockReset();
-    saveMock.mockReset();
-    readTextFileMock.mockReset();
-    writeTextFileMock.mockReset();
-    documentDirMock.mockReset();
-    documentDirMock.mockResolvedValue("/Users/me/Documents");
-  });
-
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
-  it("wraps the Tauri dialog and filesystem APIs for CSV import", async () => {
-    openMock.mockResolvedValue("/Users/me/Documents/categories.csv");
-    readTextFileMock.mockResolvedValue("name,parent_name\nFood,,");
-
-    const result = await tauriSelectCsvImportFile({ title: "Import categories" });
-
-    expect(openMock).toHaveBeenCalledWith({
-      title: "Import categories",
-      multiple: false,
-      filters: [{ name: "CSV", extensions: ["csv"] }],
+  it("routes desktop CSV import through the injected tauri adapter", async () => {
+    vi.stubEnv("VITE_ZAI_BUILD_TARGET", "tauri");
+    const tauri = vi.fn().mockResolvedValue({
+      name: "categories.csv",
+      content: "name,parent_name\nFood,,",
     });
-    expect(readTextFileMock).toHaveBeenCalledWith("/Users/me/Documents/categories.csv");
+    const web = vi.fn();
+
+    const result = await selectCsvImportFile({ title: "Import categories" }, { web, tauri });
+
+    expect(web).not.toHaveBeenCalled();
+    expect(tauri).toHaveBeenCalledWith({ title: "Import categories" });
     expect(result).toEqual({
       name: "categories.csv",
       content: "name,parent_name\nFood,,",
     });
   });
 
-  it("returns null when the desktop file picker is canceled", async () => {
-    openMock.mockResolvedValue(null);
+  it("routes desktop CSV export through the injected tauri adapter", async () => {
+    vi.stubEnv("VITE_ZAI_BUILD_TARGET", "tauri");
+    const tauri = vi.fn().mockResolvedValue("zai_transaction_categories_20260706_162830.csv");
+    const web = vi.fn();
 
-    const result = await tauriSelectCsvImportFile({ title: "Import categories" });
-
-    expect(result).toBeNull();
-    expect(readTextFileMock).not.toHaveBeenCalled();
-  });
-
-  it("writes category CSV content through the desktop save dialog", async () => {
-    saveMock.mockResolvedValue(
-      "/Users/me/Documents/zai_transaction_categories_20260706_162830.csv",
+    const result = await downloadTextFile(
+      {
+        title: "Export categories",
+        filename: "zai_transaction_categories_20260706_162830.csv",
+        content: "name,parent_name,color,description",
+      },
+      { web, tauri },
     );
-    writeTextFileMock.mockResolvedValue(undefined);
 
-    const result = await tauriDownloadTextFile({
+    expect(web).not.toHaveBeenCalled();
+    expect(tauri).toHaveBeenCalledWith({
       title: "Export categories",
       filename: "zai_transaction_categories_20260706_162830.csv",
       content: "name,parent_name,color,description",
     });
-
-    expect(documentDirMock).toHaveBeenCalled();
-    expect(saveMock).toHaveBeenCalledWith({
-      title: "Export categories",
-      defaultPath: "/Users/me/Documents/zai_transaction_categories_20260706_162830.csv",
-      filters: [{ name: "CSV", extensions: ["csv"] }],
-    });
-    expect(writeTextFileMock).toHaveBeenCalledWith(
-      "/Users/me/Documents/zai_transaction_categories_20260706_162830.csv",
-      "name,parent_name,color,description",
-    );
     expect(result).toBe("zai_transaction_categories_20260706_162830.csv");
   });
 
-  it("returns null when the desktop save dialog is canceled", async () => {
-    saveMock.mockResolvedValue(null);
+  it("fails closed when native import APIs are unavailable", async () => {
+    await expect(tauriSelectCsvImportFile({ title: "Import categories" })).rejects.toBeTruthy();
+  });
 
-    const result = await tauriDownloadTextFile({
-      title: "Export categories",
-      filename: "zai_transaction_categories_20260706_162830.csv",
-      content: "name,parent_name,color,description",
-    });
-
-    expect(result).toBeNull();
-    expect(writeTextFileMock).not.toHaveBeenCalled();
+  it("fails closed when native export APIs are unavailable", async () => {
+    await expect(
+      tauriDownloadTextFile({
+        title: "Export categories",
+        filename: "zai_transaction_categories_20260706_162830.csv",
+        content: "name,parent_name,color,description",
+      }),
+    ).rejects.toBeTruthy();
   });
 });

@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
 import { Result } from "@praha/byethrow";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { useMemo, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CommandError } from "@/commands/errors";
-
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
-}));
 
 import * as alertsCommands from "../commands/alerts";
 import { AlertsControllerProvider, useAlertsController } from "../hooks/use-alerts-controller";
@@ -48,6 +51,26 @@ const pageTwo: DomainAlertListPage = {
   nextCursor: null,
 };
 
+let hookChildren: ReactNode = null;
+
+function AlertsRouterRoot() {
+  return <AlertsControllerProvider>{hookChildren}</AlertsControllerProvider>;
+}
+
+function AlertsHookWrapper({ children }: { children: ReactNode }) {
+  hookChildren = children;
+  const router = useMemo(
+    () =>
+      createRouter({
+        routeTree: createRootRoute({ component: AlertsRouterRoot }),
+        history: createMemoryHistory({ initialEntries: ["/"] }),
+      }),
+    [],
+  );
+
+  return <RouterProvider router={router} />;
+}
+
 describe("alerts controller filters and pagination", () => {
   beforeEach(() => {
     setAlertSessionFilters({ readState: "all", severity: "all" });
@@ -65,7 +88,7 @@ describe("alerts controller filters and pagination", () => {
 
   it("loads the first page on mount and exposes next cursor", async () => {
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
 
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
@@ -76,7 +99,7 @@ describe("alerts controller filters and pagination", () => {
 
   it("refetches when read-state filter changes", async () => {
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
@@ -96,7 +119,7 @@ describe("alerts controller filters and pagination", () => {
       .mockResolvedValueOnce(Result.succeed(pageTwo));
 
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
@@ -115,7 +138,7 @@ describe("alerts controller filters and pagination", () => {
       .mockResolvedValueOnce(Result.fail(new CommandError("network down")));
 
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
@@ -152,7 +175,7 @@ describe("alerts controller filters and pagination", () => {
     });
 
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
@@ -186,7 +209,7 @@ describe("alerts controller filters and pagination", () => {
       .mockResolvedValueOnce(Result.succeed(0));
 
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
@@ -213,7 +236,7 @@ describe("alerts controller filters and pagination", () => {
       .mockResolvedValueOnce(Result.succeed(0));
 
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
@@ -236,7 +259,7 @@ describe("alerts controller filters and pagination", () => {
       .mockResolvedValueOnce(Result.fail(new CommandError("count down")));
 
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
@@ -256,7 +279,7 @@ describe("alerts controller filters and pagination", () => {
     );
 
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
@@ -295,7 +318,7 @@ describe("alerts controller filters and pagination", () => {
       .mockResolvedValueOnce(Result.succeed(0));
 
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
@@ -327,7 +350,7 @@ describe("alerts controller filters and pagination", () => {
       .mockResolvedValueOnce(Result.succeed(0));
 
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
@@ -353,7 +376,7 @@ describe("alerts controller filters and pagination", () => {
       .mockResolvedValueOnce(Result.succeed(1));
 
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
@@ -375,7 +398,7 @@ describe("alerts controller filters and pagination", () => {
       .mockResolvedValueOnce(Result.succeed(0));
 
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
@@ -398,7 +421,7 @@ describe("alerts controller filters and pagination", () => {
       .mockResolvedValueOnce(Result.succeed(1));
 
     const { result } = renderHook(() => useAlertsController(), {
-      wrapper: AlertsControllerProvider,
+      wrapper: AlertsHookWrapper,
     });
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 

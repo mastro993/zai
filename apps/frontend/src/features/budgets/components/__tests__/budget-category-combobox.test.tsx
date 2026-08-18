@@ -3,41 +3,41 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { TransactionCategory } from "@/features/categories/types/model";
+import { categorySchema } from "@/features/categories/types/model";
 
 import { BudgetCategoryCombobox } from "../budget-category-combobox";
 
-const food = {
+const food = categorySchema.parse({
   id: "food",
   parentId: null,
   name: "Food",
   role: "spending",
   color: "#C32828",
-} as TransactionCategory;
+});
 
-const groceries = {
+const groceries = categorySchema.parse({
   id: "groceries",
   parentId: "food",
   name: "Groceries",
   role: "spending",
   parent: food,
-} as TransactionCategory;
+});
 
-const restaurants = {
+const restaurants = categorySchema.parse({
   id: "restaurants",
   parentId: "food",
   name: "Restaurants",
   role: "spending",
   parent: food,
-} as TransactionCategory;
+});
 
-const income = {
+const income = categorySchema.parse({
   id: "income",
   parentId: null,
   name: "Income",
   role: "income",
   color: "#28C34E",
-} as TransactionCategory;
+});
 
 const renderSelector = (
   overrides: Partial<React.ComponentProps<typeof BudgetCategoryCombobox>> = {},

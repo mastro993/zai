@@ -30,11 +30,12 @@ const createWebWindowChromeAdapter = (): WindowChromeAdapter => ({
 });
 
 const detectWindowChromePlatform: DetectWindowChromePlatform = () => {
-  if (typeof navigator === "undefined") {
+  if (globalThis.navigator === undefined) {
     return "unknown";
   }
 
-  const platform = `${navigator.platform} ${navigator.userAgent}`.toLowerCase();
+  const platform =
+    `${globalThis.navigator.platform} ${globalThis.navigator.userAgent}`.toLowerCase();
   if (platform.includes("mac")) {
     return "macos";
   }

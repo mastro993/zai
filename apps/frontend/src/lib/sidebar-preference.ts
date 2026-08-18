@@ -1,6 +1,8 @@
 import { Result } from "@praha/byethrow";
 import { z } from "zod";
 
+import { hasDocument, hasWindow } from "@/lib/runtime-globals";
+
 export const SIDEBAR_PREFERENCE_STORAGE_KEY = "zai-sidebar-preference";
 export const SIDEBAR_PREFERENCE_VERSION = 1 as const;
 const SIDEBAR_STATE_COOKIE_NAME = "sidebar_state";
@@ -10,13 +12,18 @@ export interface SidebarPreferenceStorage {
   setItem(key: string, value: string): void;
 }
 
+interface SidebarPreference {
+  version: typeof SIDEBAR_PREFERENCE_VERSION;
+  open: boolean;
+}
+
 const sidebarPreferenceSchema = z.strictObject({
   version: z.literal(SIDEBAR_PREFERENCE_VERSION),
   open: z.boolean(),
 });
 
 const getDefaultStorage = (): SidebarPreferenceStorage | null => {
-  if (typeof window === "undefined") {
+  if (!hasWindow()) {
     return null;
   }
 
@@ -28,10 +35,10 @@ const getDefaultStorage = (): SidebarPreferenceStorage | null => {
   return Result.isSuccess(result) ? result.value : null;
 };
 
-const readStoredValue = (storage: SidebarPreferenceStorage): unknown => {
+const readStoredPreference = (storage: SidebarPreferenceStorage): SidebarPreference | null => {
   const valueResult = Result.try({
-    try: () => storage.getItem(SIDEBAR_PREFERENCE_STORAGE_KEY),
-    catch: () => null,
+    try: (): string | null => storage.getItem(SIDEBAR_PREFERENCE_STORAGE_KEY),
+    catch: (): string | null => null,
   });
 
   if (Result.isFailure(valueResult)) {
@@ -43,12 +50,16 @@ const readStoredValue = (storage: SidebarPreferenceStorage): unknown => {
     return null;
   }
 
-  const jsonResult = Result.try({
-    try: () => JSON.parse(storedValue) as unknown,
-    catch: () => null,
+  const parsedResult = Result.try({
+    try: () => sidebarPreferenceSchema.safeParse(JSON.parse(storedValue)),
+    catch: () => sidebarPreferenceSchema.safeParse(null),
   });
 
-  return Result.isSuccess(jsonResult) ? jsonResult.value : null;
+  if (Result.isFailure(parsedResult) || !parsedResult.value.success) {
+    return null;
+  }
+
+  return parsedResult.value.data;
 };
 
 export const readSidebarOpen = (storage?: SidebarPreferenceStorage): boolean => {
@@ -57,8 +68,8 @@ export const readSidebarOpen = (storage?: SidebarPreferenceStorage): boolean => 
     return true;
   }
 
-  const parsed = sidebarPreferenceSchema.safeParse(readStoredValue(resolvedStorage));
-  return parsed.success ? parsed.data.open : true;
+  const parsed = readStoredPreference(resolvedStorage);
+  return parsed ? parsed.open : true;
 };
 
 export const writeSidebarOpen = (open: boolean, storage?: SidebarPreferenceStorage): void => {
@@ -80,7 +91,7 @@ export const writeSidebarOpen = (open: boolean, storage?: SidebarPreferenceStora
 };
 
 export const clearSidebarStateCookie = (): void => {
-  if (typeof document === "undefined") {
+  if (!hasDocument()) {
     return;
   }
 

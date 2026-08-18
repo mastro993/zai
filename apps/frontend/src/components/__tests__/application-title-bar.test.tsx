@@ -10,25 +10,12 @@ import {
   ApplicationTitleBarProvider,
 } from "../application-title-bar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import * as alertsBell from "@/features/alerts/components/alerts-bell";
+import * as screenBreadcrumbs from "@/hooks/use-screen-breadcrumbs";
+import * as windowChrome from "@/lib/window-chrome";
 
 const startDragging = vi.fn();
 const toggleMaximize = vi.fn();
-
-vi.mock("@/features/alerts/components/alerts-bell", () => ({
-  AlertsBell: () => <button type="button">Alerts</button>,
-}));
-
-vi.mock("@/hooks/use-screen-breadcrumbs", () => ({
-  useScreenBreadcrumbs: () => [{ label: "Dashboard" }],
-}));
-
-vi.mock("@/lib/window-chrome", () => ({
-  createWindowChromeAdapter: () => ({
-    supportsNativeWindowChrome: true,
-    startDragging,
-    toggleMaximize,
-  }),
-}));
 
 const renderTitleBar = (buildTarget: "tauri" | "web", actions?: ReactNode) =>
   render(
@@ -53,10 +40,20 @@ describe("ApplicationTitleBar", () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1024 });
     startDragging.mockReset();
     toggleMaximize.mockReset();
+    vi.spyOn(alertsBell, "AlertsBell").mockImplementation(() => (
+      <button type="button">Alerts</button>
+    ));
+    vi.spyOn(screenBreadcrumbs, "useScreenBreadcrumbs").mockReturnValue([{ label: "Dashboard" }]);
+    vi.spyOn(windowChrome, "createWindowChromeAdapter").mockReturnValue({
+      supportsNativeWindowChrome: true,
+      startDragging,
+      toggleMaximize,
+    });
   });
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 

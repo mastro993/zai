@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { asWireString } from "@/lib/wire";
 import {
   Table,
   TableBody,
@@ -81,8 +82,9 @@ export function VariantA({ scene, state, actions }: CurrencyPrototypeVariantProp
               }))}
               value={setupCode}
               onValueChange={(value) => {
-                if (typeof value === "string") {
-                  setSetupCode(value);
+                const code = asWireString(value);
+                if (code !== undefined) {
+                  setSetupCode(code);
                 }
               }}
             >
@@ -115,8 +117,9 @@ export function VariantA({ scene, state, actions }: CurrencyPrototypeVariantProp
                 items={catalogItems}
                 value={confirms.addCode}
                 onValueChange={(value) => {
-                  if (typeof value === "string") {
-                    confirms.setAddCode(value);
+                  const code = asWireString(value);
+                  if (code !== undefined) {
+                    confirms.setAddCode(code);
                   }
                 }}
               >
@@ -250,8 +253,9 @@ export function VariantA({ scene, state, actions }: CurrencyPrototypeVariantProp
                   items={selectItems}
                   value={state.transaction.currency}
                   onValueChange={(value) => {
-                    if (typeof value === "string") {
-                      actions.setTransactionCurrency(value);
+                    const code = asWireString(value);
+                    if (code !== undefined) {
+                      actions.setTransactionCurrency(code);
                     }
                   }}
                 >

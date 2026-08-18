@@ -15,10 +15,10 @@ const CATEGORY_ROLE_ICONS = {
   income: MoneyReceive01Icon,
 } as const;
 
-const CATEGORY_ROLE_DESCRIPTIONS: Record<CategoryRole, string> = {
+const CATEGORY_ROLE_DESCRIPTIONS = {
   spending: "Tracks outflows and can include refunds.",
   income: "Identifies genuine income only.",
-};
+} satisfies Record<CategoryRole, string>;
 
 export const CATEGORY_ROLE_OPTIONS: Array<CategoryRoleOption> = CATEGORY_ROLES.map((role) => ({
   value: role,

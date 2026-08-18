@@ -1,52 +1,75 @@
 // @vitest-environment jsdom
 
-import type { ReactNode } from "react";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { TransactionCategory } from "@/features/categories/types/model";
+import { categorySchema } from "@/features/categories/types/model";
 
 import { TransactionCategoryCombobox } from "../transaction-category-combobox";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, className, to }: { children: ReactNode; className?: string; to?: string }) => (
-    <a href={to} className={className}>
-      {children}
-    </a>
-  ),
-}));
-
-const food = {
+const food = categorySchema.parse({
   id: "food",
   parentId: null,
   name: "Food",
   role: "spending",
   color: "#C32828",
-} as TransactionCategory;
+});
 
-const groceries = {
+const groceries = categorySchema.parse({
   id: "groceries",
   parentId: "food",
   name: "Groceries",
   role: "spending",
   parent: food,
-} as TransactionCategory;
+  color: "#C32828",
+});
 
-const salary = {
+const salary = categorySchema.parse({
   id: "salary",
   parentId: null,
   name: "Salary",
   role: "income",
   color: "#28C34E",
-} as TransactionCategory;
+});
+
+async function renderWithRouter(ui: ReactNode) {
+  const rootRoute = createRootRoute({
+    component: () => <Outlet />,
+  });
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => ui,
+  });
+  const categoriesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/categories",
+    component: () => <div>Categories</div>,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, categoriesRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  await router.load();
+  return render(<RouterProvider router={router} />);
+}
 
 describe("TransactionCategoryCombobox", () => {
   afterEach(() => cleanup());
 
-  it("searches categories and renders matching items as badges", () => {
+  it("searches categories and renders matching items as badges", async () => {
     const onChange = vi.fn();
 
-    render(
+    await renderWithRouter(
       <TransactionCategoryCombobox
         id="transaction-category-trigger"
         categories={[food, groceries, salary]}
@@ -74,8 +97,8 @@ describe("TransactionCategoryCombobox", () => {
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("places child categories directly after their parents", () => {
-    render(
+  it("places child categories directly after their parents", async () => {
+    await renderWithRouter(
       <TransactionCategoryCombobox
         id="transaction-category-trigger"
         categories={[food, salary, groceries]}
@@ -95,10 +118,10 @@ describe("TransactionCategoryCombobox", () => {
     ]);
   });
 
-  it("clears the category through the uncategorized option", () => {
+  it("clears the category through the uncategorized option", async () => {
     const onChange = vi.fn();
 
-    render(
+    await renderWithRouter(
       <TransactionCategoryCombobox
         id="transaction-category-trigger"
         categories={[food]}
@@ -115,8 +138,8 @@ describe("TransactionCategoryCombobox", () => {
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
-  it("keeps category recovery available when no categories exist", () => {
-    render(
+  it("keeps category recovery available when no categories exist", async () => {
+    await renderWithRouter(
       <TransactionCategoryCombobox
         id="transaction-category-trigger"
         categories={[]}

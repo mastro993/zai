@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 
 import type { RecurringBulkAction, RecurringBulkPreflight } from "../types/recurring-bulk";
 
-const ACTION_COPY: Record<
-  RecurringBulkAction,
-  { title: string; irreversible?: boolean; extra?: string }
-> = {
+interface BulkActionCopy {
+  title: string;
+  irreversible?: boolean;
+  extra?: string;
+}
+
+const ACTION_COPY = {
   pause: {
     title: "Pause selected recurring transactions?",
     extra: "Due occurrences catch up first. Occurrences due while paused are skipped permanently.",
@@ -32,7 +35,7 @@ const ACTION_COPY: Record<
     title: "Retry selected generation failures?",
     extra: "Repair-required sources stay unchanged and open focused repair.",
   },
-};
+} satisfies Record<RecurringBulkAction, BulkActionCopy>;
 
 export function RecurringBulkReviewDialog({
   open,
@@ -53,7 +56,7 @@ export function RecurringBulkReviewDialog({
     return null;
   }
 
-  const copy = ACTION_COPY[action];
+  const copy: BulkActionCopy = ACTION_COPY[action];
   const summary = [
     `${preflight.selected} selected · ${preflight.eligible} affected · ${preflight.unchanged} unchanged.`,
     `Lifecycle: ${preflight.lifecycle.active} active, ${preflight.lifecycle.paused} paused, ${preflight.lifecycle.stopped} stopped, ${preflight.lifecycle.completed} completed, ${preflight.lifecycle.needsAttention} needing attention.`,

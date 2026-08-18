@@ -1,19 +1,18 @@
 import type { TransactionImportDateFormat } from "./transaction-import-types";
 
 const ISO_DATETIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
-const DATE_FORMAT_PATTERNS: Record<
-  Exclude<TransactionImportDateFormat, "ISO">,
-  {
-    pattern: RegExp;
-    order: ["year", "month", "day"] | ["day", "month", "year"] | ["month", "day", "year"];
-  }
-> = {
+interface DateFormatPattern {
+  pattern: RegExp;
+  order: ["year", "month", "day"] | ["day", "month", "year"] | ["month", "day", "year"];
+}
+
+const DATE_FORMAT_PATTERNS = {
   "YYYY-MM-DD": { pattern: /^(\d{4})-(\d{1,2})-(\d{1,2})$/, order: ["year", "month", "day"] },
   "DD/MM/YYYY": { pattern: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, order: ["day", "month", "year"] },
   "MM/DD/YYYY": { pattern: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, order: ["month", "day", "year"] },
   "DD-MM-YYYY": { pattern: /^(\d{1,2})-(\d{1,2})-(\d{4})$/, order: ["day", "month", "year"] },
   "DD.MM.YYYY": { pattern: /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/, order: ["day", "month", "year"] },
-};
+} satisfies Record<Exclude<TransactionImportDateFormat, "ISO">, DateFormatPattern>;
 
 const padDatePart = (value: string) => value.padStart(2, "0");
 const isLeapYear = (year: number) => year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);

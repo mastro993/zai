@@ -30,6 +30,7 @@
     "test:e2e:web": "playwright test"
   },
   "devDependencies": {
+    "@oxlint/plugins": "1.78.0",
     "@playwright/test": "^1.55.0",
     "@praha/byethrow-docs": "^0.12.0",
     "@praha/byethrow-oxlint": "^0.12.0",

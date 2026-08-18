@@ -1,5 +1,7 @@
 import { Result } from "@praha/byethrow";
 
+import { isCallable } from "@/lib/wire";
+
 import { CommandError } from "./errors";
 import type { CommandTransport } from "./types";
 
@@ -47,7 +49,7 @@ export const resolveCommandTransport = (
   }
 
   const transport = selectCommandTransport(targetResult.value, transports);
-  if (typeof transport?.invoke !== "function") {
+  if (!isCallable(transport.invoke)) {
     return Result.fail(
       new CommandError(`Command transport is unavailable for target "${targetResult.value}".`),
     );

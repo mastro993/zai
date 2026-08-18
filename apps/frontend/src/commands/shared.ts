@@ -17,6 +17,14 @@ const getCommandTransports = (): CommandTransportMap => {
   return commandTransports;
 };
 
+export const setCommandTransports = (transports: CommandTransportMap): void => {
+  commandTransports = transports;
+};
+
+export const resetCommandTransports = (): void => {
+  commandTransports = undefined;
+};
+
 const invokeTransport = <TArgs, TResult>(
   descriptor: CommandDescriptor<TArgs, TResult>,
   args: TArgs,
@@ -60,13 +68,21 @@ export async function invokeDecodedCommand<TArgs, TResult>(
   descriptor: CommandDescriptor<TArgs, TResult>,
   args?: TArgs,
 ): CommandResult<TResult> {
+  // SAFETY: overload requires args only when TArgs is not void; the matching
+  // public signatures enforce that callers pass the descriptor's argument type.
   const raw = await invokeTransport(descriptor, args as TArgs);
   if (Result.isFailure(raw)) {
     return raw;
   }
 
   const { decodeCommandValue } = await import("./decode-command-result");
-  return decodeCommandValue(descriptor.name, raw.value, descriptor.resultSchema);
+  if (descriptor.resultSchema === "void") {
+    // SAFETY: void descriptors have no payload; TResult is void for those commands.
+    return Promise.resolve(
+      decodeCommandValue(descriptor.name, null, "void"),
+    ) as CommandResult<TResult>;
+  }
+  return Promise.resolve(decodeCommandValue(descriptor.name, raw.value, descriptor.resultSchema));
 }
 
 export { CommandError, toCommandError };

@@ -9,7 +9,11 @@ import {
   resolveSelection,
   type DateRangeSelection,
 } from "../lib/date-range";
-import { type TransactionRowsPerPage } from "../lib/pagination";
+import {
+  DEFAULT_TRANSACTION_ROWS_PER_PAGE,
+  TRANSACTION_ROWS_PER_PAGE_OPTIONS,
+  type TransactionRowsPerPage,
+} from "../lib/pagination";
 import {
   DEFAULT_CATEGORY_FILTER_SELECTION,
   expandCategoryIdsForApi,
@@ -67,9 +71,12 @@ const buildTransactionFilters = (
 export function useTransactionListController(initialData: TransactionScreenInitialData) {
   const [transactions, setTransactions] = useState(initialData.transactions.data);
   const [page, setPage] = useState(initialData.transactions.page);
-  const [perPage, setPerPage] = useState<TransactionRowsPerPage>(
-    initialData.transactions.perPage as TransactionRowsPerPage,
-  );
+  const [perPage, setPerPage] = useState<TransactionRowsPerPage>(() => {
+    const selected = TRANSACTION_ROWS_PER_PAGE_OPTIONS.find(
+      (option) => option === initialData.transactions.perPage,
+    );
+    return selected ?? DEFAULT_TRANSACTION_ROWS_PER_PAGE;
+  });
   const [totalPages, setTotalPages] = useState(Math.max(initialData.transactions.totalPages, 1));
   const [categories, setCategories] = useState(initialData.categories);
   const [query, setQuery] = useState("");

@@ -67,221 +67,201 @@ const bulkRequest = {
   items: [{ recurringTransactionId, expectedRevision: 7 }],
 };
 
-type Builder = (args: never) => Result.Result<WebRequestSpec, CommandError>;
-const requestCases: Array<{
-  name: string;
-  build: Builder;
-  args: never;
-  expected: Partial<WebRequestSpec>;
-}> = [
-  {
-    name: "feed",
-    build: buildGetRecurringTransactionsRequest as Builder,
-    args: {
-      limit: 25,
-      cursor: "feed-cursor",
-      filters: { search: "rent", lifecycle: "paused", needsAttention: true },
-    } as never,
-    expected: {
-      method: "GET",
-      path: "/recurring-transactions",
-      query: {
-        limit: "25",
-        cursor: "feed-cursor",
-        search: "rent",
-        lifecycle: "paused",
-        needsAttention: "true",
-      },
-    },
-  },
-  {
-    name: "detail",
-    build: buildGetRecurringTransactionRequest as Builder,
-    args: { recurringTransactionId } as never,
-    expected: { method: "GET", path: `/recurring-transactions/${recurringTransactionId}` },
-  },
-  {
-    name: "occurrences",
-    build: buildGetRecurringOccurrencesRequest as Builder,
-    args: { recurringTransactionId, limit: 10, cursor: "occurrence-cursor" } as never,
-    expected: {
-      method: "GET",
-      path: `/recurring-transactions/${recurringTransactionId}/occurrences`,
-      query: { limit: "10", cursor: "occurrence-cursor" },
-    },
-  },
-  {
-    name: "projections",
-    build: buildGetRecurringProjectionsRequest as Builder,
-    args: {
-      horizonMonths: 6,
-      includePausedBudgets: true,
-      focusRecurringTransactionId: recurringTransactionId,
-    } as never,
-    expected: {
-      method: "GET",
-      path: "/recurring-transactions/budget-projections",
-      query: {
-        horizonMonths: "6",
-        includePausedBudgets: "true",
-        focusRecurringTransactionId: recurringTransactionId,
-      },
-    },
-  },
-  {
-    name: "processing status",
-    build: buildGetRecurringProcessingStatusRequest as Builder,
-    args: undefined as never,
-    expected: { method: "GET", path: "/recurring-processing/status" },
-  },
-  {
-    name: "provenance",
-    build: buildGetTransactionProvenanceRequest as Builder,
-    args: { transactionId } as never,
-    expected: { method: "GET", path: `/recurring-transactions/provenance/${transactionId}` },
-  },
-  {
-    name: "create",
-    build: buildCreateRecurringTransactionRequest as Builder,
-    args: { newRecurringTransaction } as never,
-    expected: { method: "POST", path: "/recurring-transactions", body: newRecurringTransaction },
-  },
-  {
-    name: "update",
-    build: buildUpdateRecurringTransactionRequest as Builder,
-    args: {
-      input: {
-        recurringTransactionId,
-        expectedRevision: 7,
-        schedule: { type: "interval", every: 1, unit: "week" },
-        nextScheduledLocal: "2026-08-22T09:30:00",
-        totalOccurrences: null,
-        template,
-      },
-    } as never,
-    expected: {
-      method: "POST",
-      path: `/recurring-transactions/${recurringTransactionId}`,
-      body: {
-        recurringTransactionId,
-        expectedRevision: 7,
-        schedule: { type: "interval", every: 1, unit: "week" },
-        nextScheduledLocal: "2026-08-22T09:30:00",
-        totalOccurrences: null,
-        template,
-      },
-    },
-  },
-  {
-    name: "adopt",
-    build: buildAdoptRecurringTransactionRequest as Builder,
-    args: { request: adoptionRequest } as never,
-    expected: { method: "POST", path: "/recurring-transactions/adopt", body: adoptionRequest },
-  },
-  {
-    name: "adoption preview",
-    build: buildPreviewRecurringAdoptionRequest as Builder,
-    args: { request: adoptionPreviewRequest } as never,
-    expected: {
-      method: "POST",
-      path: "/recurring-transactions/adoption-preview",
-      body: adoptionPreviewRequest,
-    },
-  },
-  ...(["pause", "resume", "stop", "delete"] as const).map((action) => ({
-    name: action,
-    build: {
-      pause: buildPauseRecurringTransactionRequest,
-      resume: buildResumeRecurringTransactionRequest,
-      stop: buildStopRecurringTransactionRequest,
-      delete: buildDeleteRecurringTransactionRequest,
-    }[action] as Builder,
-    args: { recurringTransactionId, expectedRevision: 7 } as never,
-    expected: {
-      method: "POST" as const,
-      path: `/recurring-transactions/${recurringTransactionId}/${action}`,
-      body: { expectedRevision: 7 },
-    },
-  })),
-  {
-    name: "failure history",
-    build: buildGetRecurringFailureHistoryRequest as Builder,
-    args: { recurringTransactionId, limit: 15, cursor: "failure-cursor" } as never,
-    expected: {
-      method: "GET",
-      path: `/recurring-transactions/${recurringTransactionId}/failures`,
-      query: { limit: "15", cursor: "failure-cursor" },
-    },
-  },
-  {
-    name: "diagnostics",
-    build: buildGetRecurringDiagnosticsRequest as Builder,
-    args: { recurringTransactionId } as never,
-    expected: {
-      method: "GET",
-      path: `/recurring-transactions/${recurringTransactionId}/diagnostics`,
-    },
-  },
-  {
-    name: "repair preview",
-    build: buildPreviewRecurringRepairRequest as Builder,
-    args: { request: repairRequest } as never,
-    expected: {
-      method: "POST",
-      path: `/recurring-transactions/${recurringTransactionId}/repair/preview`,
-      body: repairRequest,
-    },
-  },
-  {
-    name: "repair",
-    build: buildRepairRecurringFailureRequest as Builder,
-    args: { input: repairRequest } as never,
-    expected: {
-      method: "POST",
-      path: `/recurring-transactions/${recurringTransactionId}/repair`,
-      body: repairRequest,
-    },
-  },
-  {
-    name: "retry",
-    build: buildRetryRecurringFailureRequest as Builder,
-    args: { input: { recurringTransactionId, expectedRevision: 7 } } as never,
-    expected: {
-      method: "POST",
-      path: `/recurring-transactions/${recurringTransactionId}/retry`,
-      body: { expectedRevision: 7 },
-    },
-  },
-  {
-    name: "matching ids",
-    build: buildMatchingRecurringIdsRequest as Builder,
-    args: { filters: { search: "rent", lifecycle: "active", needsAttention: false } } as never,
-    expected: {
-      method: "GET",
-      path: "/recurring-transactions/ids",
-      query: { search: "rent", lifecycle: "active", needsAttention: "false" },
-    },
-  },
-  {
-    name: "bulk preflight",
-    build: buildPreflightRecurringBulkRequest as Builder,
-    args: { request: bulkRequest } as never,
-    expected: { method: "POST", path: "/recurring-transactions/bulk/preflight", body: bulkRequest },
-  },
-  {
-    name: "bulk execute",
-    build: buildExecuteRecurringBulkRequest as Builder,
-    args: { request: bulkRequest } as never,
-    expected: { method: "POST", path: "/recurring-transactions/bulk/execute", body: bulkRequest },
-  },
-];
+const check = <T>(
+  build: (args: T) => Result.Result<WebRequestSpec, CommandError>,
+  args: T,
+  expected: Partial<WebRequestSpec>,
+) => {
+  const result = build(args);
+  expect(Result.isSuccess(result)).toBe(true);
+  if (Result.isFailure(result)) return;
+  expect(result.value).toMatchObject(expected);
+};
 
 describe("recurring web requests", () => {
-  it.each(requestCases)("maps $name", ({ build, args, expected }) => {
-    const result = build(args);
-    expect(Result.isSuccess(result)).toBe(true);
-    if (Result.isFailure(result)) return;
-    expect(result.value).toMatchObject({ ...expected });
+  it("maps request builders to HTTP contracts", () => {
+    check(
+      buildGetRecurringTransactionsRequest,
+      {
+        limit: 25,
+        cursor: "feed-cursor",
+        filters: { search: "rent", lifecycle: "paused", needsAttention: true },
+      },
+      {
+        method: "GET",
+        path: "/recurring-transactions",
+        query: {
+          limit: "25",
+          cursor: "feed-cursor",
+          search: "rent",
+          lifecycle: "paused",
+          needsAttention: "true",
+        },
+      },
+    );
+    check(
+      buildGetRecurringTransactionRequest,
+      { recurringTransactionId },
+      { method: "GET", path: `/recurring-transactions/${recurringTransactionId}` },
+    );
+    check(
+      buildGetRecurringOccurrencesRequest,
+      { recurringTransactionId, limit: 10, cursor: "occurrence-cursor" },
+      {
+        method: "GET",
+        path: `/recurring-transactions/${recurringTransactionId}/occurrences`,
+        query: { limit: "10", cursor: "occurrence-cursor" },
+      },
+    );
+    check(
+      buildGetRecurringProjectionsRequest,
+      {
+        horizonMonths: 6,
+        includePausedBudgets: true,
+        focusRecurringTransactionId: recurringTransactionId,
+      },
+      {
+        method: "GET",
+        path: "/recurring-transactions/budget-projections",
+        query: {
+          horizonMonths: "6",
+          includePausedBudgets: "true",
+          focusRecurringTransactionId: recurringTransactionId,
+        },
+      },
+    );
+    check(buildGetRecurringProcessingStatusRequest, undefined, {
+      method: "GET",
+      path: "/recurring-processing/status",
+    });
+    check(
+      buildGetTransactionProvenanceRequest,
+      { transactionId },
+      { method: "GET", path: `/recurring-transactions/provenance/${transactionId}` },
+    );
+    check(
+      buildCreateRecurringTransactionRequest,
+      { newRecurringTransaction },
+      { method: "POST", path: "/recurring-transactions", body: newRecurringTransaction },
+    );
+    check(
+      buildUpdateRecurringTransactionRequest,
+      {
+        input: {
+          recurringTransactionId,
+          expectedRevision: 7,
+          schedule: { type: "interval", every: 1, unit: "week" },
+          nextScheduledLocal: "2026-08-22T09:30:00",
+          totalOccurrences: null,
+          template,
+        },
+      },
+      {
+        method: "POST",
+        path: `/recurring-transactions/${recurringTransactionId}`,
+        body: {
+          recurringTransactionId,
+          expectedRevision: 7,
+          schedule: { type: "interval", every: 1, unit: "week" },
+          nextScheduledLocal: "2026-08-22T09:30:00",
+          totalOccurrences: null,
+          template,
+        },
+      },
+    );
+    check(
+      buildAdoptRecurringTransactionRequest,
+      { request: adoptionRequest },
+      { method: "POST", path: "/recurring-transactions/adopt", body: adoptionRequest },
+    );
+    check(
+      buildPreviewRecurringAdoptionRequest,
+      { request: adoptionPreviewRequest },
+      {
+        method: "POST",
+        path: "/recurring-transactions/adoption-preview",
+        body: adoptionPreviewRequest,
+      },
+    );
+    for (const [action, build] of [
+      ["pause", buildPauseRecurringTransactionRequest],
+      ["resume", buildResumeRecurringTransactionRequest],
+      ["stop", buildStopRecurringTransactionRequest],
+      ["delete", buildDeleteRecurringTransactionRequest],
+    ] as const) {
+      check(
+        build,
+        { recurringTransactionId, expectedRevision: 7 },
+        {
+          method: "POST",
+          path: `/recurring-transactions/${recurringTransactionId}/${action}`,
+          body: { expectedRevision: 7 },
+        },
+      );
+    }
+    check(
+      buildGetRecurringFailureHistoryRequest,
+      { recurringTransactionId, limit: 15, cursor: "failure-cursor" },
+      {
+        method: "GET",
+        path: `/recurring-transactions/${recurringTransactionId}/failures`,
+        query: { limit: "15", cursor: "failure-cursor" },
+      },
+    );
+    check(
+      buildGetRecurringDiagnosticsRequest,
+      { recurringTransactionId },
+      {
+        method: "GET",
+        path: `/recurring-transactions/${recurringTransactionId}/diagnostics`,
+      },
+    );
+    check(
+      buildPreviewRecurringRepairRequest,
+      { request: repairRequest },
+      {
+        method: "POST",
+        path: `/recurring-transactions/${recurringTransactionId}/repair/preview`,
+        body: repairRequest,
+      },
+    );
+    check(
+      buildRepairRecurringFailureRequest,
+      { input: repairRequest },
+      {
+        method: "POST",
+        path: `/recurring-transactions/${recurringTransactionId}/repair`,
+        body: repairRequest,
+      },
+    );
+    check(
+      buildRetryRecurringFailureRequest,
+      { input: { recurringTransactionId, expectedRevision: 7 } },
+      {
+        method: "POST",
+        path: `/recurring-transactions/${recurringTransactionId}/retry`,
+        body: { expectedRevision: 7 },
+      },
+    );
+    check(
+      buildMatchingRecurringIdsRequest,
+      { filters: { search: "rent", lifecycle: "active", needsAttention: false } },
+      {
+        method: "GET",
+        path: "/recurring-transactions/ids",
+        query: { search: "rent", lifecycle: "active", needsAttention: "false" },
+      },
+    );
+    check(
+      buildPreflightRecurringBulkRequest,
+      { request: bulkRequest },
+      { method: "POST", path: "/recurring-transactions/bulk/preflight", body: bulkRequest },
+    );
+    check(
+      buildExecuteRecurringBulkRequest,
+      { request: bulkRequest },
+      { method: "POST", path: "/recurring-transactions/bulk/execute", body: bulkRequest },
+    );
   });
 
   it("uses backend defaults when optional values are omitted", () => {
@@ -297,8 +277,9 @@ describe("recurring web requests", () => {
   });
 
   it("keeps adoption preview bodies separate from adoption templates", () => {
+    const requestWithTemplate = { ...adoptionPreviewRequest, template };
     const result = buildPreviewRecurringAdoptionRequest({
-      request: { ...adoptionPreviewRequest, template } as never,
+      request: requestWithTemplate,
     });
     expect(Result.isSuccess(result)).toBe(true);
     if (Result.isFailure(result)) return;
@@ -325,20 +306,11 @@ describe("recurring web requests", () => {
     ).toBe(true);
     expect(
       Result.isFailure(
-        buildExecuteRecurringBulkRequest({ request: { action: "pause", items: "bad" as never } }),
-      ),
-    ).toBe(true);
-    expect(
-      Result.isFailure(
-        buildPreviewRecurringRepairRequest({
-          request: { ...repairRequest, repairFieldKey: "template" as never },
-        }),
-      ),
-    ).toBe(true);
-    expect(
-      Result.isFailure(
-        buildRepairRecurringFailureRequest({
-          input: { ...repairRequest, repairFieldKey: "transaction_category_id" as never },
+        buildExecuteRecurringBulkRequest({
+          request: {
+            action: "pause",
+            items: [{ recurringTransactionId: "", expectedRevision: 7 }],
+          },
         }),
       ),
     ).toBe(true);

@@ -2,30 +2,34 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Result } from "@praha/byethrow";
 
-import { CommandError, getAffectedBudgets } from "../errors";
-import { invokeDecodedCommand } from "../shared";
 import { CATEGORY_COMMANDS } from "@/features/categories/commands/registry";
 
-const invokeMock = vi.hoisted(() => vi.fn());
-const isTauriMock = vi.hoisted(() => vi.fn());
+import type { CommandTransport } from "../types";
+import { CommandError, getAffectedBudgets } from "../errors";
+import { invokeDecodedCommand, resetCommandTransports, setCommandTransports } from "../shared";
 
-vi.mock("@tauri-apps/api/core", () => ({
+const invokeMock = vi.fn();
+
+const fakeTransport = (): CommandTransport => ({
   invoke: invokeMock,
-  isTauri: isTauriMock,
-}));
+});
 
 describe("desktop command transport", () => {
   beforeEach(() => {
     invokeMock.mockReset();
-    isTauriMock.mockReset().mockReturnValue(true);
-    vi.stubGlobal("window", {});
+    setCommandTransports({
+      tauri: fakeTransport(),
+      web: fakeTransport(),
+    });
+    vi.stubEnv("VITE_ZAI_BUILD_TARGET", "tauri");
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    resetCommandTransports();
+    vi.unstubAllEnvs();
   });
 
-  it("delegates desktop commands to Tauri IPC", async () => {
+  it("delegates desktop commands to the injected transport", async () => {
     const value: Array<never> = [];
     invokeMock.mockResolvedValue(value);
 
@@ -33,7 +37,7 @@ describe("desktop command transport", () => {
       parentId: null,
     });
 
-    expect(invokeMock).toHaveBeenCalledWith("get_transaction_categories", {
+    expect(invokeMock).toHaveBeenCalledWith(CATEGORY_COMMANDS.get_transaction_categories, {
       parentId: null,
     });
     expect(Result.isSuccess(result)).toBe(true);
@@ -44,7 +48,7 @@ describe("desktop command transport", () => {
   });
 
   it("rejects desktop commands when Tauri IPC is unavailable", async () => {
-    isTauriMock.mockReturnValue(false);
+    resetCommandTransports();
 
     const result = await invokeDecodedCommand(CATEGORY_COMMANDS.get_transaction_categories, {
       parentId: null,
@@ -54,7 +58,9 @@ describe("desktop command transport", () => {
     if (Result.isSuccess(result)) {
       return;
     }
-    expect(result.error).toEqual(new CommandError("Tauri IPC is not available in this runtime"));
+    expect(result.error).toEqual(
+      new CommandError("Desktop commands are only available in the client"),
+    );
     expect(invokeMock).not.toHaveBeenCalled();
   });
 

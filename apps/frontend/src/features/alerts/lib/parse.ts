@@ -1,3 +1,5 @@
+import { asWireNumber, asWireObject, asWireString } from "@/lib/wire";
+
 import {
   domainAlertListPageSchema,
   domainAlertSchema,
@@ -7,12 +9,12 @@ import {
 } from "../types/domain-alert";
 import { parseDomainAlertEvent as parseEvent } from "../types/domain-alert-event";
 
-export const parseDomainAlert = (value: unknown): DomainAlert | null => {
+export const parseDomainAlert = <TRaw>(value: TRaw): DomainAlert | null => {
   const parsed = domainAlertSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
 };
 
-export const parseDomainAlertListPage = (value: unknown): DomainAlertListPage | null => {
+export const parseDomainAlertListPage = <TRaw>(value: TRaw): DomainAlertListPage | null => {
   const parsed = domainAlertListPageSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
 };
@@ -25,27 +27,26 @@ export const isNavigableAlertDestination = (
   destination: DomainAlert["destination"],
 ): destination is NonNullable<DomainAlert["destination"]> => destination?.type === "budget";
 
-export const parseAlertRichData = (value: unknown): DomainAlertRichData | null => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+export const parseAlertRichData = <TRaw>(value: TRaw): DomainAlertRichData | null => {
+  const record = asWireObject(value);
+  if (!record) {
     return null;
   }
-  const record = value as Record<string, unknown>;
-  if (typeof record.kind !== "string" || record.kind.trim().length === 0) {
+  const kind = asWireString(record.kind);
+  const version = asWireNumber(record.version);
+  const payload = asWireObject(record.payload);
+  if (kind === undefined || kind.trim().length === 0) {
     return null;
   }
-  if (
-    typeof record.version !== "number" ||
-    !Number.isInteger(record.version) ||
-    record.version <= 0
-  ) {
+  if (version === undefined || !Number.isInteger(version) || version <= 0) {
     return null;
   }
-  if (!record.payload || typeof record.payload !== "object" || Array.isArray(record.payload)) {
+  if (!payload) {
     return null;
   }
   return {
-    kind: record.kind,
-    version: record.version,
-    payload: record.payload as Record<string, unknown>,
+    kind,
+    version,
+    payload: { ...payload },
   };
 };

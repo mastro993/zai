@@ -14,10 +14,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_CATEGORY_FILTER_SELECTION } from "../../lib/transaction-category-filter";
 import { TransactionCategoryFilter } from "../transaction-category-filter";
 
-vi.mock("@hugeicons/react", () => ({
-  HugeiconsIcon: () => <span data-testid="icon" />,
-}));
-
 async function renderTransactionCategoryFilter() {
   const rootRoute = createRootRoute({
     component: () => <Outlet />,
@@ -33,7 +29,12 @@ async function renderTransactionCategoryFilter() {
       />
     ),
   });
-  const routeTree = rootRoute.addChildren([indexRoute]);
+  const categoriesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/categories",
+    component: () => <div>Categories</div>,
+  });
+  const routeTree = rootRoute.addChildren([indexRoute, categoriesRoute]);
   const router = createRouter({
     routeTree,
     history: createMemoryHistory({ initialEntries: ["/"] }),
@@ -44,31 +45,31 @@ async function renderTransactionCategoryFilter() {
 }
 
 describe("TransactionCategoryFilter link semantics", () => {
-  let consoleError: ReturnType<typeof vi.spyOn>;
+  let consoleError: { mock: { calls: Array<Array<string>> } };
 
   beforeEach(() => {
     consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     Object.defineProperty(window, "scrollTo", {
       configurable: true,
-      value: vi.fn(),
+      value: () => undefined,
     });
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
-      value: vi.fn(() => ({
-        addEventListener: vi.fn(),
-        addListener: vi.fn(),
-        dispatchEvent: vi.fn(),
+      value: (query: string) => ({
+        addEventListener: () => undefined,
+        addListener: () => undefined,
+        dispatchEvent: () => false,
         matches: false,
-        media: "",
+        media: query,
         onchange: null,
-        removeEventListener: vi.fn(),
-        removeListener: vi.fn(),
-      })),
+        removeEventListener: () => undefined,
+        removeListener: () => undefined,
+      }),
     });
   });
 
   afterEach(() => {
-    consoleError.mockRestore();
+    vi.restoreAllMocks();
     cleanup();
   });
 
@@ -82,7 +83,7 @@ describe("TransactionCategoryFilter link semantics", () => {
     expect(control.tagName).toBe("A");
     expect(control.getAttribute("href")).toMatch(/\/cash-flow\/categories\/?$/);
     expect(
-      consoleError.mock.calls.some((call: Array<unknown>) =>
+      consoleError.mock.calls.some((call) =>
         String(call[0]).includes("expected a native <button>"),
       ),
     ).toBe(false);

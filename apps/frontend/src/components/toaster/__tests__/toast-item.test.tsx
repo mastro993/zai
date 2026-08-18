@@ -2,16 +2,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@hugeicons/react", () => ({
-  HugeiconsIcon: () => <span data-testid="icon" />,
-}));
-
-vi.mock("sonner", () => ({
-  toast: {
-    dismiss: vi.fn(),
-  },
-}));
-
 import { ToastItem } from "../toast-item";
 
 afterEach(() => {

@@ -41,7 +41,7 @@ export {
   type RecurringRepairPreview,
 } from "./recurring-failure";
 
-const privilegedForbiddenShape = {
+const privilegedForbiddenFields = {
   zone: z.never().optional(),
   offset: z.never().optional(),
   cutoff: z.never().optional(),
@@ -51,10 +51,12 @@ const privilegedForbiddenShape = {
   observedLocal: z.never().optional(),
 } as const;
 
-const withPrivilegedRejection = <T extends z.ZodRawShape>(shape: T) =>
+type ObjectSchemaFields = { readonly [key: string]: z.ZodType };
+
+const withPrivilegedRejection = <T extends ObjectSchemaFields>(fields: T) =>
   z.object({
-    ...shape,
-    ...privilegedForbiddenShape,
+    ...fields,
+    ...privilegedForbiddenFields,
   });
 
 const amountInputSchema = z

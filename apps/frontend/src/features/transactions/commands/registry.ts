@@ -79,6 +79,4 @@ export const TRANSACTION_COMMANDS = {
   ),
 } as const;
 
-export const TRANSACTION_BACKEND_COMMANDS = Object.values(
-  TRANSACTION_COMMANDS,
-) as unknown as Array<CommandDescriptor>;
+export const TRANSACTION_BACKEND_COMMANDS = Object.values(TRANSACTION_COMMANDS);

@@ -12,6 +12,7 @@ import { toast as sonnerToast, type Action } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { isCallable } from "@/lib/wire";
 
 export type ToastVariant = "default" | "success" | "info" | "warning" | "error" | "loading";
 
@@ -30,39 +31,40 @@ interface ToastItemProps {
   closeButton?: boolean;
 }
 
-const VARIANT_ICON: Record<ToastVariant, HugeIcon | null> = {
+const VARIANT_ICON = {
   default: null,
   success: CheckmarkCircle02Icon,
   info: InformationCircleIcon,
   warning: Alert02Icon,
   error: MultiplicationSignCircleIcon,
   loading: Loading03Icon,
-};
+} satisfies Record<ToastVariant, HugeIcon | null>;
 
-const VARIANT_ICON_CLASS: Record<ToastVariant, string> = {
+const VARIANT_ICON_CLASS = {
   default: "text-muted-foreground",
   success: "text-primary",
   info: "text-foreground",
   warning: "text-amber-600 dark:text-amber-500",
   error: "text-destructive",
   loading: "text-muted-foreground",
-};
+} satisfies Record<ToastVariant, string>;
+
+function isNodeFactory(value: ToastNode): value is () => ReactNode {
+  return isCallable(value);
+}
 
 function resolveNode(value: ToastNode | undefined): ReactNode {
-  if (typeof value === "function") {
+  if (value !== undefined && isNodeFactory(value)) {
     return value();
   }
   return value;
 }
 
 function isAction(value: Action | ReactNode): value is Action {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "label" in value &&
-    "onClick" in value &&
-    typeof value.onClick === "function"
-  );
+  if (value === null || value === undefined || !(value instanceof Object) || Array.isArray(value)) {
+    return false;
+  }
+  return "label" in value && "onClick" in value && isCallable(value.onClick);
 }
 
 function ToastActionButton({

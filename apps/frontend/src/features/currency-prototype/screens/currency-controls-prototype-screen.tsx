@@ -11,11 +11,11 @@ import { VariantB } from "../components/variant-b-inspector";
 import { VariantC } from "../components/variant-c-workspace";
 import { useCurrencyPrototypeState } from "../hooks/use-currency-prototype-state";
 import {
+  parsePrototypeVariant,
   PROTOTYPE_VARIANTS,
   VARIANT_NAMES,
   type CurrencyPrototypeSearch,
   type PrototypeScene,
-  type PrototypeVariant,
 } from "../lib/prototype-search";
 
 const VARIANT_ITEMS = PROTOTYPE_VARIANTS.map((key) => ({
@@ -42,7 +42,10 @@ export function CurrencyControlsPrototypeScreen({ search }: { search: CurrencyPr
 
   const onVariantChange = useCallback(
     (key: string) => {
-      setSearch({ variant: key as PrototypeVariant });
+      const variant = parsePrototypeVariant(key);
+      if (variant) {
+        setSearch({ variant });
+      }
     },
     [setSearch],
   );

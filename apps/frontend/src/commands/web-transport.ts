@@ -1,11 +1,8 @@
 import { Result } from "@praha/byethrow";
 
-import {
-  CommandError,
-  commandErrorFromEnvelope,
-  toCommandError,
-  type CommandErrorEnvelope,
-} from "./errors";
+import { asWireObject, asWireString } from "@/lib/wire";
+
+import { CommandError, commandErrorFromEnvelope, toCommandError } from "./errors";
 import type { CommandDescriptor } from "./command-descriptor";
 import type { CommandTransport } from "./types";
 import { resolveWebApiBaseUrl } from "./web-api";
@@ -36,13 +33,13 @@ const parseApiError = async (response: Response): Promise<CommandError> => {
   });
 
   if (Result.isSuccess(bodyResult)) {
-    const body = bodyResult.value as Partial<CommandErrorEnvelope>;
-    const envelopeError = commandErrorFromEnvelope(body);
+    const envelopeError = commandErrorFromEnvelope(bodyResult.value);
     if (envelopeError) {
       return envelopeError;
     }
-    if (typeof body.message === "string" && body.message.length > 0) {
-      return new CommandError(body.message);
+    const message = asWireString(asWireObject(bodyResult.value)?.message);
+    if (message !== undefined && message.length > 0) {
+      return new CommandError(message);
     }
   }
 
@@ -51,22 +48,27 @@ const parseApiError = async (response: Response): Promise<CommandError> => {
 
 const parseJsonResponse = async <T>(response: Response): Promise<T> => {
   const result = await Result.try({
-    try: () => response.json() as Promise<T>,
+    try: () => response.json(),
     catch: toCommandError,
   });
 
-  return Result.isSuccess(result) ? result.value : Promise.reject(result.error);
+  if (Result.isFailure(result)) {
+    return Promise.reject(result.error);
+  }
+
+  // SAFETY: CommandTransport.invoke is untyped wire until decodeCommandValue
+  // runs the descriptor's Zod result schema.
+  return result.value as T;
 };
 
 const ZAI_APP_HEADER = "x-zai-app";
 const ZAI_APP_HEADER_VALUE = "zai";
 
-const buildWebRequestHeaders = (hasBody: boolean): Record<string, string> => {
-  const headers: Record<string, string> = {
-    [ZAI_APP_HEADER]: ZAI_APP_HEADER_VALUE,
-  };
+const buildWebRequestHeaders = (hasBody: boolean): Headers => {
+  const headers = new Headers();
+  headers.set(ZAI_APP_HEADER, ZAI_APP_HEADER_VALUE);
   if (hasBody) {
-    headers["Content-Type"] = "application/json";
+    headers.set("Content-Type", "application/json");
   }
   return headers;
 };
@@ -90,6 +92,7 @@ export const createWebCommandTransport = (): CommandTransport => ({
     }
 
     if (response.status === 204) {
+      // SAFETY: 204 has no body; void commands are the only callers of this branch.
       return undefined as TResult;
     }
 

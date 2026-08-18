@@ -18,40 +18,45 @@ import type {
   RecurringFeedArgs,
   RecurringIdentifierArgs,
   RepairArgs,
+  RepairRequest,
   RetryArgs,
   UpdateRecurringArgs,
 } from "./web-request-validation";
 import {
   filterQuery,
-  isNonEmptyString,
-  isRecord,
   isRevision,
   parseCursor,
   parseLimit,
-  validateFilters,
   validateIdentifier,
   validateLifecycle,
 } from "./web-request-validation";
 
+const isNonEmptyString = (value: string): boolean => value.length > 0;
+
+const listQuery = (
+  limit: number,
+  cursor: string | undefined,
+  extra?: RecurringFeedArgs["filters"],
+) => {
+  const query = filterQuery(extra);
+  query.limit = String(limit);
+  if (cursor) {
+    query.cursor = cursor;
+  }
+  return query;
+};
+
 export const buildGetRecurringTransactionsRequest = (
   args: RecurringFeedArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args))
-    return Result.fail(new CommandError("Recurring feed arguments must be a record"));
   const limit = parseLimit(args.limit, 50);
   if (Result.isFailure(limit)) return limit;
   const cursor = parseCursor(args.cursor);
   if (Result.isFailure(cursor)) return cursor;
-  const filters = validateFilters(args.filters);
-  if (Result.isFailure(filters)) return filters;
   return Result.succeed({
     method: "GET",
     path: "/recurring-transactions",
-    query: {
-      limit: String(limit.value),
-      ...(cursor.value ? { cursor: cursor.value } : {}),
-      ...filterQuery(filters.value),
-    },
+    query: listQuery(limit.value, cursor.value, args.filters),
   });
 };
 
@@ -72,8 +77,6 @@ export const buildGetRecurringOccurrencesRequest = (
 ): Result.Result<WebRequestSpec, CommandError> => {
   const identifier = validateIdentifier(args);
   if (Result.isFailure(identifier)) return identifier;
-  if (!isRecord(args))
-    return Result.fail(new CommandError("Recurring occurrence arguments must be a record"));
   const limit = parseLimit(args.limit, 50);
   if (Result.isFailure(limit)) return limit;
   const cursor = parseCursor(args.cursor);
@@ -81,36 +84,31 @@ export const buildGetRecurringOccurrencesRequest = (
   return Result.succeed({
     method: "GET",
     path: `/recurring-transactions/${identifier.value.recurringTransactionId}/occurrences`,
-    query: { limit: String(limit.value), ...(cursor.value ? { cursor: cursor.value } : {}) },
+    query: listQuery(limit.value, cursor.value),
   });
 };
 
 export const buildGetRecurringProjectionsRequest = (
   args: ProjectionArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args))
-    return Result.fail(new CommandError("Recurring projection arguments must be a record"));
   const horizon = parseLimit(args.horizonMonths, 3);
   if (Result.isFailure(horizon)) return horizon;
-  if (args.includePausedBudgets !== undefined && typeof args.includePausedBudgets !== "boolean") {
-    return Result.fail(new CommandError("Paused budget option must be boolean"));
-  }
   if (
     args.focusRecurringTransactionId !== undefined &&
     !isNonEmptyString(args.focusRecurringTransactionId)
   ) {
     return Result.fail(new CommandError("Projection focus id must be a non-empty string"));
   }
+  const query: Record<string, string> = {};
+  query.horizonMonths = String(horizon.value);
+  query.includePausedBudgets = String(args.includePausedBudgets === true);
+  if (args.focusRecurringTransactionId) {
+    query.focusRecurringTransactionId = args.focusRecurringTransactionId;
+  }
   return Result.succeed({
     method: "GET",
     path: "/recurring-transactions/budget-projections",
-    query: {
-      horizonMonths: String(horizon.value),
-      includePausedBudgets: String(args.includePausedBudgets === true),
-      ...(args.focusRecurringTransactionId
-        ? { focusRecurringTransactionId: args.focusRecurringTransactionId }
-        : {}),
-    },
+    query,
   });
 };
 
@@ -122,7 +120,7 @@ export const buildGetRecurringProcessingStatusRequest = (
 export const buildGetTransactionProvenanceRequest = (
   args: ProvenanceArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !isNonEmptyString(args.transactionId)) {
+  if (!isNonEmptyString(args.transactionId)) {
     return Result.fail(new CommandError("Transaction id must be a non-empty string"));
   }
   return Result.succeed({
@@ -133,82 +131,52 @@ export const buildGetTransactionProvenanceRequest = (
 
 export const buildCreateRecurringTransactionRequest = (
   args: CreateRecurringArgs,
-): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !isRecord(args.newRecurringTransaction)) {
-    return Result.fail(new CommandError("Recurring transaction payload must be a record"));
-  }
-  return Result.succeed({
+): Result.Result<WebRequestSpec, CommandError> =>
+  Result.succeed({
     method: "POST",
     path: "/recurring-transactions",
     body: args.newRecurringTransaction,
   });
-};
-
-const validateRequestRecord = (
-  value: unknown,
-  message: string,
-): Result.Result<Record<string, unknown>, CommandError> =>
-  isRecord(value) ? Result.succeed(value) : Result.fail(new CommandError(message));
 
 export const buildUpdateRecurringTransactionRequest = (
   args: UpdateRecurringArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  const valid = validateRequestRecord(args, "Recurring update requires a request record");
-  if (Result.isFailure(valid) || !isRecord(valid.value.input)) {
-    return Result.isFailure(valid)
-      ? valid
-      : Result.fail(new CommandError("Recurring update requires input"));
-  }
   if (
-    !isNonEmptyString(valid.value.input.recurringTransactionId) ||
-    !isRevision(valid.value.input.expectedRevision)
+    !isNonEmptyString(args.input.recurringTransactionId) ||
+    !isRevision(args.input.expectedRevision)
   ) {
     return Result.fail(new CommandError("Recurring update requires id and revision"));
   }
   return Result.succeed({
     method: "POST",
-    path: `/recurring-transactions/${valid.value.input.recurringTransactionId}`,
-    body: valid.value.input,
+    path: `/recurring-transactions/${args.input.recurringTransactionId}`,
+    body: args.input,
   });
-};
-
-const buildAdoptionRequest = (
-  args: AdoptionArgs,
-  path: string,
-): Result.Result<WebRequestSpec, CommandError> => {
-  const valid = validateRequestRecord(args, "Recurring adoption requires a request record");
-  if (Result.isFailure(valid) || !isRecord(valid.value.request)) {
-    return Result.isFailure(valid)
-      ? valid
-      : Result.fail(new CommandError("Recurring adoption requires request"));
-  }
-  if (!isNonEmptyString(valid.value.request.transactionId)) {
-    return Result.fail(new CommandError("Adoption transaction id must be a non-empty string"));
-  }
-  if (!isNonEmptyString(valid.value.request.expectedTransactionDate)) {
-    return Result.fail(new CommandError("Adoption expected transaction date must be provided"));
-  }
-  return Result.succeed({ method: "POST", path, body: valid.value.request });
 };
 
 export const buildAdoptRecurringTransactionRequest = (
   args: AdoptionArgs,
-): Result.Result<WebRequestSpec, CommandError> =>
-  buildAdoptionRequest(args, "/recurring-transactions/adopt");
+): Result.Result<WebRequestSpec, CommandError> => {
+  if (!isNonEmptyString(args.request.transactionId)) {
+    return Result.fail(new CommandError("Adoption transaction id must be a non-empty string"));
+  }
+  if (!isNonEmptyString(args.request.expectedTransactionDate)) {
+    return Result.fail(new CommandError("Adoption expected transaction date must be provided"));
+  }
+  return Result.succeed({
+    method: "POST",
+    path: "/recurring-transactions/adopt",
+    body: args.request,
+  });
+};
 
 export const buildPreviewRecurringAdoptionRequest = (
   args: AdoptionPreviewArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  const valid = validateRequestRecord(args, "Recurring adoption preview requires a request record");
-  if (Result.isFailure(valid) || !isRecord(valid.value.request)) {
-    return Result.isFailure(valid)
-      ? valid
-      : Result.fail(new CommandError("Recurring adoption preview requires request"));
-  }
-  if (!isNonEmptyString(valid.value.request.transactionId)) {
+  if (!isNonEmptyString(args.request.transactionId)) {
     return Result.fail(new CommandError("Adoption transaction id must be a non-empty string"));
   }
-  const { transactionId, schedule, totalOccurrences } = valid.value.request;
+  const { transactionId, schedule, totalOccurrences } = args.request;
   return Result.succeed({
     method: "POST",
     path: "/recurring-transactions/adoption-preview",
@@ -247,8 +215,6 @@ export const buildGetRecurringFailureHistoryRequest = (
 ): Result.Result<WebRequestSpec, CommandError> => {
   const identifier = validateIdentifier(args);
   if (Result.isFailure(identifier)) return identifier;
-  if (!isRecord(args))
-    return Result.fail(new CommandError("Recurring failure arguments must be a record"));
   const limit = parseLimit(args.limit, 20);
   if (Result.isFailure(limit)) return limit;
   const cursor = parseCursor(args.cursor);
@@ -256,7 +222,7 @@ export const buildGetRecurringFailureHistoryRequest = (
   return Result.succeed({
     method: "GET",
     path: `/recurring-transactions/${identifier.value.recurringTransactionId}/failures`,
-    query: { limit: String(limit.value), ...(cursor.value ? { cursor: cursor.value } : {}) },
+    query: listQuery(limit.value, cursor.value),
   });
 };
 
@@ -278,18 +244,18 @@ export const buildGetRecurringDiagnosticsRequest = (
 ): Result.Result<WebRequestSpec, CommandError> =>
   buildRecurringIdentifierRequest(args, "diagnostics");
 
-const validateRepair = (value: unknown): value is Record<string, unknown> =>
-  isRecord(value) &&
-  isNonEmptyString(value.recurringTransactionId) &&
-  isRevision(value.expectedRevision) &&
-  (value.repairFieldKey === "amount" || value.repairFieldKey === "transactionCategoryId") &&
-  isRecord(value.template);
+const validateRepair = (value: RepairRequest): Result.Result<RepairRequest, CommandError> => {
+  if (!isNonEmptyString(value.recurringTransactionId) || !isRevision(value.expectedRevision)) {
+    return Result.fail(new CommandError("Recurring repair requires id, revision, and template"));
+  }
+  return Result.succeed(value);
+};
 
 export const buildPreviewRecurringRepairRequest = (
   args: PreviewRepairArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !validateRepair(args.request))
-    return Result.fail(new CommandError("Recurring repair requires id, revision, and template"));
+  const valid = validateRepair(args.request);
+  if (Result.isFailure(valid)) return valid;
   return Result.succeed({
     method: "POST",
     path: `/recurring-transactions/${args.request.recurringTransactionId}/repair/preview`,
@@ -300,8 +266,8 @@ export const buildPreviewRecurringRepairRequest = (
 export const buildRepairRecurringFailureRequest = (
   args: RepairArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !validateRepair(args.input))
-    return Result.fail(new CommandError("Recurring repair requires id, revision, and template"));
+  const valid = validateRepair(args.input);
+  if (Result.isFailure(valid)) return valid;
   return Result.succeed({
     method: "POST",
     path: `/recurring-transactions/${args.input.recurringTransactionId}/repair`,
@@ -313,8 +279,6 @@ export const buildRetryRecurringFailureRequest = (
   args: RetryArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
   if (
-    !isRecord(args) ||
-    !isRecord(args.input) ||
     !isNonEmptyString(args.input.recurringTransactionId) ||
     !isRevision(args.input.expectedRevision)
   ) {
@@ -329,33 +293,21 @@ export const buildRetryRecurringFailureRequest = (
 
 export const buildMatchingRecurringIdsRequest = (
   args: MatchingIdsArgs,
-): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args))
-    return Result.fail(new CommandError("Recurring matching arguments must be a record"));
-  const filters = validateFilters(args.filters);
-  return Result.isFailure(filters)
-    ? filters
-    : Result.succeed({
-        method: "GET",
-        path: "/recurring-transactions/ids",
-        query: filterQuery(filters.value),
-      });
-};
+): Result.Result<WebRequestSpec, CommandError> =>
+  Result.succeed({
+    method: "GET",
+    path: "/recurring-transactions/ids",
+    query: filterQuery(args.filters),
+  });
 
 const buildRecurringBulkRequest = (
   args: BulkArgs,
   path: string,
 ): Result.Result<WebRequestSpec, CommandError> => {
   if (
-    !isRecord(args) ||
-    !isRecord(args.request) ||
-    !["pause", "resume", "stop", "delete", "retryNow"].includes(String(args.request.action)) ||
-    !Array.isArray(args.request.items) ||
     args.request.items.some(
       (item) =>
-        !isRecord(item) ||
-        !isNonEmptyString(item.recurringTransactionId) ||
-        !isRevision(item.expectedRevision),
+        !isNonEmptyString(item.recurringTransactionId) || !isRevision(item.expectedRevision),
     )
   ) {
     return Result.fail(new CommandError("Recurring bulk requires an action and valid items"));

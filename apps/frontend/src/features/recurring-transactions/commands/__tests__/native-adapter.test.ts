@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Result } from "@praha/byethrow";
 
+import { resetCommandTransports, setCommandTransports } from "@/commands/shared";
+import { transactionSchema } from "@/features/transactions/types/model";
+
+import type { RecurringFormValues } from "../../types/recurring-transaction";
+import { RECURRING_COMMANDS } from "../registry";
 import {
   adoptRecurringTransaction,
   createRecurringTransaction,
@@ -13,28 +18,22 @@ import {
   resumeRecurringTransaction,
   stopRecurringTransaction,
 } from "../recurring-transactions";
-import type { RecurringFormValues } from "../../types/recurring-transaction";
-import type { Transaction } from "@/features/transactions/types/model";
 
-const invokeMock = vi.hoisted(() => vi.fn());
-const isTauriMock = vi.hoisted(() => vi.fn());
-
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: invokeMock,
-  isTauri: isTauriMock,
-}));
+const invokeMock = vi.fn();
 
 describe("recurring Tauri command adapter", () => {
   beforeEach(() => {
     vi.stubEnv("VITE_ZAI_BUILD_TARGET", "tauri");
-    vi.stubGlobal("window", {});
     invokeMock.mockReset();
-    isTauriMock.mockReset().mockReturnValue(true);
+    setCommandTransports({
+      tauri: { invoke: invokeMock },
+      web: { invoke: invokeMock },
+    });
   });
 
   afterEach(() => {
+    resetCommandTransports();
     vi.unstubAllEnvs();
-    vi.unstubAllGlobals();
   });
 
   it("invokes native processing status and decodes its response", async () => {
@@ -42,7 +41,10 @@ describe("recurring Tauri command adapter", () => {
 
     const result = await getRecurringProcessingStatus();
 
-    expect(invokeMock).toHaveBeenCalledWith("get_recurring_processing_status");
+    expect(invokeMock).toHaveBeenCalledWith(
+      RECURRING_COMMANDS.get_recurring_processing_status,
+      undefined,
+    );
     expect(Result.isSuccess(result)).toBe(true);
     if (Result.isFailure(result)) {
       return;
@@ -58,11 +60,14 @@ describe("recurring Tauri command adapter", () => {
 
     const result = await getRecurringTransactionFailureHistory("native-source", 20, "cursor-1");
 
-    expect(invokeMock).toHaveBeenCalledWith("get_recurring_transaction_failure_history", {
-      recurringTransactionId: "native-source",
-      limit: 20,
-      cursor: "cursor-1",
-    });
+    expect(invokeMock).toHaveBeenCalledWith(
+      RECURRING_COMMANDS.get_recurring_transaction_failure_history,
+      {
+        recurringTransactionId: "native-source",
+        limit: 20,
+        cursor: "cursor-1",
+      },
+    );
     expect(Result.isFailure(result)).toBe(true);
     if (Result.isSuccess(result)) {
       return;
@@ -97,7 +102,7 @@ describe("recurring Tauri command adapter", () => {
     await resumeRecurringTransaction("source-1", 2);
     await stopRecurringTransaction("source-1", 3);
 
-    expect(invokeMock).toHaveBeenNthCalledWith(1, "create_recurring_transaction", {
+    expect(invokeMock).toHaveBeenNthCalledWith(1, RECURRING_COMMANDS.create_recurring_transaction, {
       newRecurringTransaction: {
         schedule: { type: "interval", every: 1, unit: "day" },
         firstScheduledLocal: "2026-01-10T09:00:00",
@@ -111,25 +116,33 @@ describe("recurring Tauri command adapter", () => {
         },
       },
     });
-    expect(invokeMock).toHaveBeenNthCalledWith(2, "get_recurring_transaction", {
+    expect(invokeMock).toHaveBeenNthCalledWith(2, RECURRING_COMMANDS.get_recurring_transaction, {
       recurringTransactionId: "source-1",
     });
-    expect(invokeMock).toHaveBeenNthCalledWith(3, "get_recurring_transaction_occurrences", {
-      recurringTransactionId: "source-1",
-      limit: 50,
-    });
-    expect(invokeMock).toHaveBeenNthCalledWith(4, "get_transaction_recurring_provenance", {
-      transactionId: "transaction-1",
-    });
-    expect(invokeMock).toHaveBeenNthCalledWith(5, "pause_recurring_transaction", {
+    expect(invokeMock).toHaveBeenNthCalledWith(
+      3,
+      RECURRING_COMMANDS.get_recurring_transaction_occurrences,
+      {
+        recurringTransactionId: "source-1",
+        limit: 50,
+      },
+    );
+    expect(invokeMock).toHaveBeenNthCalledWith(
+      4,
+      RECURRING_COMMANDS.get_transaction_recurring_provenance,
+      {
+        transactionId: "transaction-1",
+      },
+    );
+    expect(invokeMock).toHaveBeenNthCalledWith(5, RECURRING_COMMANDS.pause_recurring_transaction, {
       recurringTransactionId: "source-1",
       expectedRevision: 1,
     });
-    expect(invokeMock).toHaveBeenNthCalledWith(6, "resume_recurring_transaction", {
+    expect(invokeMock).toHaveBeenNthCalledWith(6, RECURRING_COMMANDS.resume_recurring_transaction, {
       recurringTransactionId: "source-1",
       expectedRevision: 2,
     });
-    expect(invokeMock).toHaveBeenNthCalledWith(7, "stop_recurring_transaction", {
+    expect(invokeMock).toHaveBeenNthCalledWith(7, RECURRING_COMMANDS.stop_recurring_transaction, {
       recurringTransactionId: "source-1",
       expectedRevision: 3,
     });
@@ -154,7 +167,7 @@ describe("recurring Tauri command adapter", () => {
 
     await createRecurringTransaction(values);
 
-    expect(invokeMock).toHaveBeenCalledWith("create_recurring_transaction", {
+    expect(invokeMock).toHaveBeenCalledWith(RECURRING_COMMANDS.create_recurring_transaction, {
       newRecurringTransaction: expect.objectContaining({
         totalOccurrences: null,
       }),
@@ -163,7 +176,7 @@ describe("recurring Tauri command adapter", () => {
 
   it("builds adoption template from source transaction", async () => {
     invokeMock.mockResolvedValue({});
-    const transaction: Transaction = {
+    const transaction = transactionSchema.parse({
       id: "transaction-1",
       description: " Rent ",
       amount: 120000,
@@ -171,7 +184,7 @@ describe("recurring Tauri command adapter", () => {
       transactionType: "income",
       transactionCategoryId: "housing",
       notes: " Paid by bank transfer ",
-    };
+    });
     const values: RecurringFormValues = {
       scheduleKind: "interval",
       intervalEvery: "2",
@@ -188,7 +201,7 @@ describe("recurring Tauri command adapter", () => {
 
     await adoptRecurringTransaction(transaction, values);
 
-    expect(invokeMock).toHaveBeenCalledWith("adopt_recurring_transaction", {
+    expect(invokeMock).toHaveBeenCalledWith(RECURRING_COMMANDS.adopt_recurring_transaction, {
       request: {
         transactionId: "transaction-1",
         expectedTransactionDate: "2026-01-10T09:00:00",

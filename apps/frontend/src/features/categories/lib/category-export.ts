@@ -3,8 +3,12 @@ import { escapeCsvValue } from "@/lib/csv";
 
 const CATEGORY_EXPORT_HEADERS = ["name", "parent_name", "color", "description"] as const;
 
-type CategoryExportHeader = (typeof CATEGORY_EXPORT_HEADERS)[number];
-type CategoryExportRow = Record<CategoryExportHeader, string>;
+interface CategoryExportRow {
+  name: string;
+  parent_name: string;
+  color: string;
+  description: string;
+}
 
 const padDatePart = (value: number) => value.toString().padStart(2, "0");
 

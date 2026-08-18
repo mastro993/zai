@@ -5,12 +5,27 @@
     {
       "name": "byethrow",
       "specifier": "@praha/byethrow-oxlint"
+    },
+    {
+      "name": "anti-slop",
+      "specifier": "./tools/oxlint/anti-slop/index.ts"
     }
   ],
   "ignorePatterns": [
     "scripts/**",
-    ".claude",
-    ".agents",
+    ".agent/**",
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".continue/**",
+    ".copilot/**",
+    ".cursor/**",
+    ".gemini/**",
+    ".opencode/**",
+    ".pi/**",
+    ".roo/**",
+    ".windsurf/**",
+    "tools/oxlint/anti-slop/**",
     "apps/frontend/src/components/ui/**",
     "apps/frontend/src/routeTree.gen.ts"
   ],
@@ -62,7 +77,24 @@
 
     // Byethrow
     "byethrow/consistent-namespace": "error",
-    "byethrow/no-ambiguous-error-type": "error"
+    "byethrow/no-ambiguous-error-type": "error",
+
+    // Anti-slop
+    "anti-slop/no-chained-type-assertions": "error",
+    "anti-slop/no-conditional-empty-object-spread": "error",
+    "anti-slop/no-known-value-widening": "error",
+    "anti-slop/no-module-mocking": "error",
+    "anti-slop/no-object-parameters": "error",
+    "anti-slop/no-reflect-apply": "error",
+    "anti-slop/no-reflect-get": "error",
+    "anti-slop/no-runtime-typeof": "error",
+    "anti-slop/no-shape-in-symbol-names": "error",
+    "anti-slop/no-unknown-parameters": "error",
+    "anti-slop/no-unknown-returns": "error",
+    "anti-slop/no-unknown-type-aliases": "error",
+    "anti-slop/no-unsafe-dictionary-type": "error",
+    "anti-slop/no-widen-then-assert": "error",
+    "anti-slop/require-safety-comment-for-type-assertion": "error"
   },
   "env": {
     "builtin": true,

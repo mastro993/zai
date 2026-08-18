@@ -44,17 +44,17 @@ export const budgetRolloverDescription = {
     "Unused allowance and overspend accumulate across periods until you change this rule.",
 } as const;
 
-export const budgetStatusLabel: Record<BudgetStatus, string> = {
+export const budgetStatusLabel = {
   onTrack: "On track",
   warning: "Warning",
   overspent: "Overspent",
-};
+} satisfies Record<BudgetStatus, string>;
 
-export const budgetListFilterLabel: Record<BudgetListFilter, string> = {
+export const budgetListFilterLabel = {
   active: "Active",
   paused: "Paused",
   all: "All",
-};
+} satisfies Record<BudgetListFilter, string>;
 
 export const budgetStatusVariant = (status: BudgetStatus) => {
   if (status === "overspent") return "destructive" as const;

@@ -13,8 +13,15 @@ const TRANSACTION_EXPORT_HEADERS = [
   "category",
 ] as const;
 
-type TransactionExportHeader = (typeof TRANSACTION_EXPORT_HEADERS)[number];
-type TransactionExportRow = Record<TransactionExportHeader, string>;
+interface TransactionExportRow {
+  date: string;
+  amount: string;
+  type: string;
+  description: string;
+  notes: string;
+  parent_category: string;
+  category: string;
+}
 
 const padDatePart = (value: number) => value.toString().padStart(2, "0");
 

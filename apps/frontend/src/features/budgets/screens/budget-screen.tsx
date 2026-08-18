@@ -122,16 +122,10 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
 
   const changeFilter = async (values: Array<string>) => {
     const nextFilter = values.at(-1);
-    if (
-      !nextFilter ||
-      !BUDGET_LIST_FILTERS.includes(nextFilter as BudgetListFilter) ||
-      nextFilter === filter ||
-      isListLoading
-    ) {
+    const typedFilter = BUDGET_LIST_FILTERS.find((candidate) => candidate === nextFilter);
+    if (!typedFilter || typedFilter === filter || isListLoading) {
       return;
     }
-
-    const typedFilter = nextFilter as BudgetListFilter;
     setIsListLoading(true);
     setListError(undefined);
     const result = await getBudgets(typedFilter);

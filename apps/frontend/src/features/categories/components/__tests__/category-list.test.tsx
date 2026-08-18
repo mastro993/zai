@@ -3,14 +3,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { TransactionCategory } from "../../types/model";
+import { categorySchema } from "../../types/model";
 import { CategoryList } from "../category-list";
 
-vi.mock("@hugeicons/react", () => ({
-  HugeiconsIcon: () => <span data-testid="icon" />,
-}));
-
-const food = {
+const food = categorySchema.parse({
   id: "food",
   parentId: null,
   name: "Food",
@@ -18,9 +14,9 @@ const food = {
   color: "#C32828",
   role: "spending",
   parent: null,
-} as TransactionCategory;
+});
 
-const groceries = {
+const groceries = categorySchema.parse({
   id: "groceries",
   parentId: "food",
   name: "Groceries",
@@ -28,9 +24,9 @@ const groceries = {
   color: null,
   role: "spending",
   parent: food,
-} as TransactionCategory;
+});
 
-const salary = {
+const salary = categorySchema.parse({
   id: "salary",
   parentId: null,
   name: "Salary",
@@ -38,7 +34,7 @@ const salary = {
   color: "#28C34E",
   role: "income",
   parent: null,
-} as TransactionCategory;
+});
 
 describe("CategoryList", () => {
   afterEach(() => cleanup());

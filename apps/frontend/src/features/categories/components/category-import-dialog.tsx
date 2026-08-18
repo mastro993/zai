@@ -19,7 +19,7 @@ import {
 import { CategoryImportReviewStep } from "./category-import-review-step";
 import { CategoryImportSourceStep } from "./category-import-source-step";
 import { ImportWizardDialog } from "@/components/import-wizard-dialog";
-import type { ImportStep } from "@/components/import-stepper";
+import { previousImportStep, type ImportStep } from "@/components/import-stepper";
 
 interface CategoryImportDialogProps {
   open: boolean;
@@ -139,7 +139,7 @@ function CategoryImportDialog({
   };
 
   const goBack = () => {
-    setStep((current) => (current > 0 ? ((current - 1) as ImportStep) : current));
+    setStep((current) => previousImportStep(current));
   };
 
   const goToStep = (target: ImportStep) => {

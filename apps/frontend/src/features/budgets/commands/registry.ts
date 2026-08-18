@@ -42,6 +42,4 @@ export const BUDGET_COMMANDS = {
   resume_budget: backendCommand("resume_budget", budgetSchema, buildResumeBudgetRequest),
 } as const;
 
-export const BUDGET_BACKEND_COMMANDS = Object.values(
-  BUDGET_COMMANDS,
-) as unknown as Array<CommandDescriptor>;
+export const BUDGET_BACKEND_COMMANDS = Object.values(BUDGET_COMMANDS);

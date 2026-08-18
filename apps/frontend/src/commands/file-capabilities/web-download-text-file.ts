@@ -1,25 +1,23 @@
+import { Result } from "@praha/byethrow";
+
+import { toCommandError } from "../errors";
 import type { DownloadTextFileOptions } from "./types";
 
-type SaveFilePickerWindow = Window & {
-  showSaveFilePicker?: (options: {
-    suggestedName?: string;
-    types?: Array<{
-      description?: string;
-      accept: Record<string, Array<string>>;
-    }>;
-  }) => Promise<{
-    name: string;
-    createWritable: () => Promise<{
-      write: (data: string) => Promise<void>;
-      close: () => Promise<void>;
-    }>;
+interface SaveFilePickerHandle {
+  name: string;
+  createWritable: () => Promise<{
+    write: (data: string) => Promise<void>;
+    close: () => Promise<void>;
   }>;
-};
+}
 
-const isAbortError = (error: unknown) =>
-  error instanceof DOMException
-    ? error.name === "AbortError"
-    : error instanceof Error && error.name === "AbortError";
+interface SaveFilePickerOptions {
+  suggestedName?: string;
+  types?: Array<{
+    description?: string;
+    accept: { readonly [mimeType: string]: ReadonlyArray<string> };
+  }>;
+}
 
 const downloadViaAnchor = (options: DownloadTextFileOptions): string => {
   const blob = new Blob([options.content], { type: "text/csv;charset=utf-8" });
@@ -35,35 +33,59 @@ const downloadViaAnchor = (options: DownloadTextFileOptions): string => {
   return options.filename;
 };
 
+const isAbortError = (cause: unknown): boolean =>
+  cause instanceof DOMException
+    ? cause.name === "AbortError"
+    : cause instanceof Error && cause.name === "AbortError";
+
+interface SaveFilePickerWindow extends Window {
+  showSaveFilePicker?: (options: SaveFilePickerOptions) => Promise<SaveFilePickerHandle>;
+}
+
+const pickerFromWindow = (
+  target: Window,
+): ((options: SaveFilePickerOptions) => Promise<SaveFilePickerHandle>) | undefined => {
+  const pickerWindow: SaveFilePickerWindow = target;
+  const picker = pickerWindow.showSaveFilePicker;
+  if (picker === undefined) {
+    return undefined;
+  }
+  return (options: SaveFilePickerOptions) => picker(options);
+};
+
 export const webDownloadTextFile = async (
   options: DownloadTextFileOptions,
 ): Promise<string | null> => {
-  const showSaveFilePicker = (window as SaveFilePickerWindow).showSaveFilePicker;
+  const showSaveFilePicker = pickerFromWindow(window);
 
-  if (typeof showSaveFilePicker !== "function") {
+  if (showSaveFilePicker === undefined) {
     return downloadViaAnchor(options);
   }
 
-  try {
-    const handle = await showSaveFilePicker({
-      suggestedName: options.filename,
-      types: [
-        {
-          description: "CSV",
-          accept: { "text/csv": [".csv"] },
-        },
-      ],
-    });
-    const writable = await handle.createWritable();
-    await writable.write(options.content);
-    await writable.close();
+  const result = await Result.try({
+    try: async () => {
+      const handle = await showSaveFilePicker({
+        suggestedName: options.filename,
+        types: [
+          {
+            description: "CSV",
+            accept: { "text/csv": [".csv"] },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(options.content);
+      await writable.close();
+      return handle.name || options.filename;
+    },
+    catch: toCommandError,
+  });
 
-    return handle.name || options.filename;
-  } catch (error) {
-    if (isAbortError(error)) {
-      return null;
-    }
-
-    throw error;
+  if (Result.isSuccess(result)) {
+    return result.value;
   }
+  if (isAbortError(result.error.cause) || isAbortError(result.error)) {
+    return null;
+  }
+  return Promise.reject(result.error);
 };

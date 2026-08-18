@@ -18,7 +18,7 @@ import {
 } from "../lib/transaction-import";
 import type { TransactionCategory } from "@/features/categories/types/model";
 import { ImportWizardDialog } from "@/components/import-wizard-dialog";
-import type { ImportStep } from "@/components/import-stepper";
+import { previousImportStep, type ImportStep } from "@/components/import-stepper";
 import { TransactionImportMappingStep, type ImportConfig } from "./transaction-import-mapping-step";
 import { TransactionImportReviewStep } from "./transaction-import-review-step";
 import { TransactionImportSourceStep } from "./transaction-import-source-step";
@@ -209,7 +209,7 @@ function TransactionImportDialog({
   };
 
   const goBack = () => {
-    setStep((current) => (current > 0 ? ((current - 1) as ImportStep) : current));
+    setStep((current) => previousImportStep(current));
   };
 
   const goToStep = (target: ImportStep) => {

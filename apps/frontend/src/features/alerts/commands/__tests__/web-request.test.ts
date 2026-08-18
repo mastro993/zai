@@ -1,6 +1,7 @@
 import { Result } from "@praha/byethrow";
 import { describe, expect, it } from "vitest";
 
+import type { CommandError } from "@/commands/errors";
 import { resolveWebApiBaseUrl } from "@/commands/web-api";
 
 import {
@@ -11,9 +12,9 @@ import {
   buildMarkAllAlertsReadRequest,
 } from "../web-requests";
 
-const unwrap = <T>(result: ReturnType<typeof buildListAlertsRequest>): T | undefined => {
+const unwrap = <T>(result: Result.Result<T, CommandError>): T | undefined => {
   expect(Result.isSuccess(result)).toBe(true);
-  return Result.isSuccess(result) ? (result.value as T) : undefined;
+  return Result.isSuccess(result) ? result.value : undefined;
 };
 
 describe("alerts web requests", () => {
