@@ -36,6 +36,7 @@ pub struct BudgetConfigurationRow {
     pub measurement_mode: String,
     pub rollover_mode: String,
     pub warning_percentage: Option<i32>,
+    pub allowance_currency: String,
 }
 
 #[derive(Queryable, Insertable, Debug, Clone)]
@@ -47,9 +48,11 @@ pub struct BudgetPeriodResultRow {
     pub period_start: NaiveDateTime,
     pub period_end: NaiveDateTime,
     pub net_budget_spending: i64,
-    pub effective_allowance: i64,
-    pub remaining_allowance: i64,
-    pub status: String,
+    pub effective_allowance: Option<i64>,
+    pub remaining_allowance: Option<i64>,
+    pub status: Option<String>,
+    pub generation_id: String,
+    pub complete: bool,
 }
 
 pub fn build_budget(
@@ -78,15 +81,26 @@ pub fn build_budget(
         .rollover_mode
         .parse::<BudgetRolloverMode>()
         .map_err(|_| zai_core::Error::Repository("Invalid budget rollover mode".to_string()))?;
-    let status = match result.status.as_str() {
-        "onTrack" => BudgetStatus::OnTrack,
-        "warning" => BudgetStatus::Warning,
-        "overspent" => BudgetStatus::Overspent,
-        _ => {
-            return Err(zai_core::Error::Repository(
-                "Invalid budget status".to_string(),
-            ));
-        }
+    let (status, effective_allowance, remaining_allowance) = if result.complete {
+        let status = match result.status.as_deref() {
+            Some("onTrack") => BudgetStatus::OnTrack,
+            Some("warning") => BudgetStatus::Warning,
+            Some("overspent") => BudgetStatus::Overspent,
+            _ => {
+                return Err(zai_core::Error::Repository(
+                    "Invalid budget status".to_string(),
+                ));
+            }
+        };
+        let effective = result.effective_allowance.ok_or_else(|| {
+            zai_core::Error::Repository("Complete period missing effective allowance".to_string())
+        })?;
+        let remaining = result.remaining_allowance.ok_or_else(|| {
+            zai_core::Error::Repository("Complete period missing remaining allowance".to_string())
+        })?;
+        (status, effective, remaining)
+    } else {
+        (BudgetStatus::OnTrack, 0, 0)
     };
     let category_ids = serde_json::from_str(&configuration.category_ids)
         .map_err(|_| zai_core::Error::Repository("Invalid budget category scope".to_string()))?;
@@ -106,10 +120,11 @@ pub fn build_budget(
             start: result.period_start,
             end: result.period_end,
             base_allowance: configuration.base_allowance,
-            effective_allowance: result.effective_allowance,
+            effective_allowance,
             net_budget_spending: result.net_budget_spending,
-            remaining_allowance: result.remaining_allowance,
+            remaining_allowance,
             status,
+            complete: result.complete,
         },
     })
 }

@@ -1,5 +1,24 @@
 # Choices
 
+## 2026-08-18 — [Valuation generations and set-based budget results](https://github.com/mastro993/zai/issues/390)
+
+Seams from 374/377/390 (no re-grill):
+
+- `zai_core::features::valuations` public API: period completeness, authored-allowance restatement, projection convert
+- `crates/db` valuation repository: generation build/activate, cache upsert, set-based `SUM`/`COUNT`
+- Repository structural: indexes, immutability triggers, atomic head switch, statement counts, `EXPLAIN QUERY PLAN`
+
+Agent defaults:
+
+- One actual valuation generation head. Projection uses provider-rate head, not a second transaction cache
+- Cache rows denormalize `transaction_date` so generation/date `SUM` is set-based
+- Ready/superseded generation rows are immutable; building + active stay writable
+- Default-currency change: build complete inactive generation, then one writer tx switches heads
+- `BudgetPeriod.complete` added; wire status/allowance stay numbers until PR 6 nulls them. Incomplete persist as SQL NULL
+- Unknown rollover carry never becomes 0: dependent suffix is incomplete
+- Authored allowance restates at period-start rate of transaction-exchange-rate class
+- Migration `0012`. No new released fixture (0010 still upgrades)
+
 ## 2026-08-18 — [Private ECB provider cache with privacy canaries](https://github.com/mastro993/zai/issues/389)
 
 Seams from 373/377/389 (no re-grill):

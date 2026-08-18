@@ -369,6 +369,7 @@ fn seed_previous_for_current(budget: &Budget) -> Result<BudgetPeriod> {
             net_budget_spending: 0,
             remaining_allowance: 0,
             status: budget.current_period.status,
+            complete: budget.current_period.complete,
         }),
         BudgetRolloverMode::PreviousPeriodOnly => {
             // previous.base - previous.net = carry
@@ -380,6 +381,7 @@ fn seed_previous_for_current(budget: &Budget) -> Result<BudgetPeriod> {
                 net_budget_spending: 0,
                 remaining_allowance: carry,
                 status: budget.current_period.status,
+                complete: budget.current_period.complete,
             })
         }
         BudgetRolloverMode::Cumulative => Ok(BudgetPeriod {
@@ -390,6 +392,7 @@ fn seed_previous_for_current(budget: &Budget) -> Result<BudgetPeriod> {
             net_budget_spending: 0,
             remaining_allowance: carry,
             status: budget.current_period.status,
+            complete: budget.current_period.complete,
         }),
     }
 }

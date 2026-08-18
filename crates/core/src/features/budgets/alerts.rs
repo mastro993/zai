@@ -78,7 +78,7 @@ pub fn alerts_for_scenario(
     budget_name: &str,
     period: &BudgetPeriod,
 ) -> Result<Vec<NewDomainAlert>> {
-    if mode == BudgetAlertMode::Silent {
+    if mode == BudgetAlertMode::Silent || !period.complete {
         return Ok(Vec::new());
     }
 

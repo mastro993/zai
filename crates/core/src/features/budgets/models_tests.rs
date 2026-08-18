@@ -75,6 +75,7 @@ fn rollover_modes_carry_signed_previous_results() {
         net_budget_spending: 1_250,
         remaining_allowance: -1_500,
         status: BudgetStatus::Overspent,
+        complete: true,
     };
 
     let previous_only = calculate_period_with_rollover(
@@ -113,6 +114,7 @@ fn rollover_status_uses_signed_effective_allowance() {
         net_budget_spending: 1,
         remaining_allowance: -1,
         status: BudgetStatus::Overspent,
+        complete: true,
     };
 
     let period = calculate_period_with_rollover(
@@ -202,6 +204,7 @@ fn checked_arithmetic_overflow_returns_structured_error() {
         net_budget_spending: 1,
         remaining_allowance: i64::MAX - 1,
         status: BudgetStatus::Overspent,
+        complete: true,
     };
 
     let error = calculate_period_with_rollover(

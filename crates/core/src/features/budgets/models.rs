@@ -167,6 +167,10 @@ impl FromStr for BudgetListFilter {
     }
 }
 
+fn default_period_complete() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BudgetPeriod {
@@ -177,6 +181,8 @@ pub struct BudgetPeriod {
     pub net_budget_spending: i64,
     pub remaining_allowance: i64,
     pub status: BudgetStatus,
+    #[serde(default = "default_period_complete")]
+    pub complete: bool,
 }
 
 pub type BudgetPeriodHistory = PaginatedData<BudgetPeriod>;
@@ -389,6 +395,7 @@ pub fn calculate_period_with_rollover(
         net_budget_spending,
         remaining_allowance,
         status,
+        complete: true,
     })
 }
 

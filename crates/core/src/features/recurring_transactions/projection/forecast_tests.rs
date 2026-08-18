@@ -34,6 +34,7 @@ fn budget(id: &str, name: &str) -> Budget {
             net_budget_spending: 1_000,
             remaining_allowance: 9_000,
             status: BudgetStatus::OnTrack,
+            complete: true,
         },
     }
 }

@@ -118,6 +118,8 @@ add or keep green; the full list still ships only at the final merge.
 - Projections use the projection-rate head, not a transaction exchange rate.
 - Gate: repository valuation family; statement-count and `EXPLAIN QUERY PLAN`
   tests listed in the release gate.
+- Landed tests: `cargo test -p zai-core --lib features::valuations`,
+  `cargo test -p zai-db --lib valuations`.
 
 ### 5. Currency lifecycle API
 

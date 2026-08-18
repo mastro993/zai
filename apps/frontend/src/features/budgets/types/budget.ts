@@ -53,6 +53,7 @@ const budgetPeriodSchema = z.object({
   netBudgetSpending: z.number().int(),
   remainingAllowance: z.number().int(),
   status: z.enum(BUDGET_STATUSES),
+  complete: z.boolean().default(true),
 });
 
 export const budgetSchema = z.object({

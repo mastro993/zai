@@ -17,6 +17,7 @@
 
 ## 2026-08-18
 
+- Implementing [Valuation generations and set-based budget results](https://github.com/mastro993/zai/issues/390) on `feat/multi-currency` after merging ECB cache (#402). Seams: core valuation units + repository set-based SUM/COUNT, generation head switch, EXPLAIN/statement-count. No currency lifecycle API this PR.
 - Implementing [Private ECB provider cache with privacy canaries](https://github.com/mastro993/zai/issues/389) on `feat/multi-currency` after merging Money + schema (399/401). Seams: core request/validate/refresh, cache publish, privacy canaries. No auto-refresh this PR.
 - Implementing [Currency schema, silent EUR migration, and fail-closed money commands](https://github.com/mastro993/zai/issues/388) on `feat/multi-currency`. Base includes Money PR 399. Migration 0010 + backup + setupRequired gate + e2e `ZAI_CONFIRM_DEFAULT_CURRENCY=EUR`.
 - CI/E2E PR filters include `feat/**` so merges into long-lived feat branches run the same checks as `main`.

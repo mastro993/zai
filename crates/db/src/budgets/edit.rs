@@ -137,6 +137,8 @@ fn replace_current_configuration_row(
         measurement_mode: update.measurement_mode.to_string(),
         rollover_mode: update.rollover_mode.to_string(),
         warning_percentage: update.warning_percentage,
+        allowance_currency: crate::valuations::current_allowance_currency(conn)
+            .map_err(StorageError::from)?,
     };
     diesel::update(
         budget_configurations::table

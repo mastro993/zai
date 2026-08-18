@@ -37,6 +37,7 @@ fn budget_input() -> ProjectionBudgetInput {
                 net_budget_spending: 0,
                 remaining_allowance: 10_000,
                 status: BudgetStatus::OnTrack,
+                complete: true,
             },
         },
         scope_category_ids: Vec::new(),

@@ -162,6 +162,7 @@ fn placeholder_stale_budget(
             net_budget_spending: 0,
             remaining_allowance: 0,
             status: zai_core::features::budgets::models::BudgetStatus::OnTrack,
+            complete: true,
         },
     })
 }
