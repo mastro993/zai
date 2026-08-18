@@ -17,6 +17,7 @@
 
 ## 2026-08-18
 
+- Implementing [Private ECB provider cache with privacy canaries](https://github.com/mastro993/zai/issues/389) on `feat/multi-currency` after merging Money + schema (399/401). Seams: core request/validate/refresh, cache publish, privacy canaries. No auto-refresh this PR.
 - Implementing [Currency schema, silent EUR migration, and fail-closed money commands](https://github.com/mastro993/zai/issues/388) on `feat/multi-currency`. Base includes Money PR 399. Migration 0010 + backup + setupRequired gate + e2e `ZAI_CONFIRM_DEFAULT_CURRENCY=EUR`.
 - CI/E2E PR filters include `feat/**` so merges into long-lived feat branches run the same checks as `main`.
 - Installed anti-slop Oxlint plugin. Copied to `tools/oxlint/anti-slop/`. Wired in `.oxlintrc.json` + `.oxfmtrc.json`. Bumped frontend `oxlint` to 1.78.0. Added root `@oxlint/plugins@1.78.0`. Migrated 444 findings so `pnpm check:frontend` is green (397 tests).

@@ -56,7 +56,7 @@ fn fresh_database_applies_squashed_budget_migration_with_current_schema() {
     .get_result::<SqlRow>(&mut connection)
     .expect("budget table");
 
-    assert_eq!(migration_count.count, 11);
+    assert_eq!(migration_count.count, 12);
     assert_eq!(table_count.count, 5);
     assert_eq!(role_column_count.count, 1);
     assert_eq!(index_count.count, 8);

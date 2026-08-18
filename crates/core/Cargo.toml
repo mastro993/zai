@@ -17,6 +17,7 @@ async-trait = { workspace = true }
 uuid = { workspace = true }
 tokio = { workspace = true }
 num-bigint = "0.4.8"
+sha2 = "0.10"
 
 [dev-dependencies]
 tokio = { workspace = true }

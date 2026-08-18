@@ -1,5 +1,27 @@
 # Choices
 
+## 2026-08-18 — [Private ECB provider cache with privacy canaries](https://github.com/mastro993/zai/issues/389)
+
+Seams from 373/377/389 (no re-grill):
+
+- `zai_core::features::exchange_rates` public API: request plan, payload validate, refresh service
+- `ExchangeRateCache` repository publish/read
+- Privacy canaries + public-surface inventory (same shape as recurring)
+
+Agent defaults:
+
+- Host allow-list is only `data-api.ecb.europa.eu`
+- User-Agent is `Zai/{CARGO_PKG_VERSION}`
+- Approved series = 29 ECB daily FX currencies in manifest v1 (RUB suspended; BGN omitted, not in v1)
+- History boundary `1999-01-04`; initial load = calendar-year chunks
+- Refresh uses `updatedAfter` then merges into last-known-good before validate
+- Persist ECB-vs-EUR legs only; EUR cross rates computed locally
+- No supervisor auto-start this PR (no request without later consent)
+- Publication deadline approximated as 15:00 UTC (CET winter)
+- Refresh `updatedAfter` is the last successful sync RFC3339, not HTTP Last-Modified
+- Refresh sends stored ETag as `If-None-Match`
+- Same payload digest after merge is `NotModified` (no second insert)
+
 ## 2026-08-18 — [Currency schema, silent EUR migration, and fail-closed money commands](https://github.com/mastro993/zai/issues/388)
 
 Seams reused from 377/388 (no re-grill):
