@@ -7,9 +7,15 @@ import { useRef, useState } from "react";
 
 import { Drawer } from "@/components/ui/drawer";
 import { CommandError } from "@/commands/errors";
+import * as currencyCommands from "@/features/currency/commands/currency";
+import * as currencyEvents from "@/features/currency/commands/currency-state-events";
+import { CurrencyBootstrapProvider } from "@/features/currency/hooks/use-currency-bootstrap";
 import type { Transaction } from "@/features/transactions/types/model";
 import { sampleTransaction } from "@/features/transactions/types/sample";
-import { resetLastUsedTransactionCurrency } from "@/features/transactions/lib/last-used-currency";
+import {
+  resetLastUsedTransactionCurrency,
+  setLastUsedTransactionCurrency,
+} from "@/features/transactions/lib/last-used-currency";
 
 import * as recurringCommands from "../../commands/recurring-transactions";
 import { RecurringFormDrawer } from "../recurring-form-drawer";
@@ -30,7 +36,55 @@ const adoptTransaction = sampleTransaction({
   notes: "Paid by bank transfer",
 });
 
+const currencies = [
+  {
+    code: "EUR",
+    name: "Euro",
+    status: "enabled" as const,
+    coverageFrom: null,
+    coverageTo: null,
+    lastRefresh: null,
+    refreshStatus: "idle" as const,
+    missingPeriods: [],
+    usedByRecurring: false,
+    isDefault: true,
+  },
+  {
+    code: "USD",
+    name: "US Dollar",
+    status: "enabled" as const,
+    coverageFrom: null,
+    coverageTo: null,
+    lastRefresh: null,
+    refreshStatus: "idle" as const,
+    missingPeriods: [],
+    usedByRecurring: false,
+    isDefault: false,
+  },
+];
+
+const stubCurrencyBootstrap = () => {
+  vi.spyOn(currencyEvents, "createCurrencyStateEventTransport").mockImplementation(() => ({
+    subscribe: (_onEvent, _onReconnect) => ({
+      ready: Promise.resolve(Result.succeed(undefined)),
+      close: () => undefined,
+    }),
+  }));
+  vi.spyOn(currencyCommands, "getCurrencyBootstrap").mockResolvedValue(
+    Result.succeed({ setupComplete: true, defaultCurrency: "EUR" }),
+  );
+  vi.spyOn(currencyCommands, "getSupportedCurrencies").mockResolvedValue(
+    Result.succeed([
+      { code: "EUR", name: "Euro" },
+      { code: "USD", name: "US Dollar" },
+    ]),
+  );
+  vi.spyOn(currencyCommands, "getCurrencyStatus").mockResolvedValue(Result.succeed({ job: null }));
+  vi.spyOn(currencyCommands, "getCurrencies").mockResolvedValue(Result.succeed(currencies));
+};
+
 beforeEach(() => {
+  stubCurrencyBootstrap();
   vi.spyOn(recurringCommands, "previewRecurringAdoption").mockResolvedValue(
     Result.succeed({
       transactionId: adoptTransaction.id,
@@ -57,7 +111,7 @@ function Harness({
   const [open, setOpen] = useState(true);
 
   return (
-    <>
+    <CurrencyBootstrapProvider>
       <button ref={buttonRef} type="button" onClick={() => setOpen(true)}>
         New recurring
       </button>
@@ -71,7 +125,7 @@ function Harness({
           returnFocusRef={buttonRef}
         />
       </Drawer>
-    </>
+    </CurrencyBootstrapProvider>
   );
 }
 
@@ -87,15 +141,17 @@ function AdoptHarness({
   const [open, setOpen] = useState(true);
 
   return (
-    <Drawer open={open} onOpenChange={setOpen} swipeDirection="right">
-      <RecurringFormDrawer
-        mode={{ type: "adopt", transaction }}
-        open={open}
-        onOpenChange={setOpen}
-        onSubmit={onSubmit}
-        categories={[]}
-      />
-    </Drawer>
+    <CurrencyBootstrapProvider>
+      <Drawer open={open} onOpenChange={setOpen} swipeDirection="right">
+        <RecurringFormDrawer
+          mode={{ type: "adopt", transaction }}
+          open={open}
+          onOpenChange={setOpen}
+          onSubmit={onSubmit}
+          categories={[]}
+        />
+      </Drawer>
+    </CurrencyBootstrapProvider>
   );
 }
 
@@ -146,6 +202,8 @@ describe("RecurringFormDrawer", () => {
     );
     expect(screen.getByLabelText("Amount")).toHaveProperty("disabled", true);
     expect(screen.getByLabelText("Amount")).toHaveProperty("value", "1200.00");
+    expect(screen.getByLabelText("Transaction currency")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Transaction currency").textContent).toContain("EUR");
     expect(screen.getByLabelText("Category")).toHaveProperty("disabled", true);
     expect(screen.getByLabelText("Category")).toHaveProperty("value", "Uncategorized");
     expect(screen.getByLabelText("Description")).toHaveProperty("disabled", true);
@@ -550,15 +608,17 @@ describe("RecurringFormDrawer", () => {
     });
 
     render(
-      <Drawer open swipeDirection="right">
-        <RecurringFormDrawer
-          mode={{ type: "edit", document }}
-          open
-          onOpenChange={() => undefined}
-          onSubmit={onSubmit}
-          categories={[]}
-        />
-      </Drawer>,
+      <CurrencyBootstrapProvider>
+        <Drawer open swipeDirection="right">
+          <RecurringFormDrawer
+            mode={{ type: "edit", document }}
+            open
+            onOpenChange={() => undefined}
+            onSubmit={onSubmit}
+            categories={[]}
+          />
+        </Drawer>
+      </CurrencyBootstrapProvider>,
     );
 
     expect(screen.getByRole("heading", { name: "Edit recurring transaction" })).toBeTruthy();
@@ -571,6 +631,40 @@ describe("RecurringFormDrawer", () => {
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("shows a currency picker and never a template rate", async () => {
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Transaction currency")).toBeTruthy();
+    });
+    expect(screen.getByLabelText("Transaction currency").textContent).toContain("EUR");
+    expect(screen.queryByRole("button", { name: "Adjust rate" })).toBeNull();
+    expect(screen.queryByLabelText("Manual exchange rate")).toBeNull();
+  });
+
+  it("preselects last-used currency on create", async () => {
+    setLastUsedTransactionCurrency("USD");
+    const onSubmit =
+      vi.fn<
+        (
+          values: RecurringFormValues,
+        ) => Promise<Result.Result<RecurringCreateOutcome, CommandError>>
+      >();
+
+    render(<Harness onSubmit={onSubmit} />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Transaction currency").textContent).toContain("USD");
     });
   });
 });

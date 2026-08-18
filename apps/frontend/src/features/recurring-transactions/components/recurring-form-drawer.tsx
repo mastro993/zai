@@ -10,7 +10,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
 import { format, parseISO } from "date-fns";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -36,12 +36,7 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from "@/components/ui/input-group";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -55,8 +50,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { CommandError } from "@/commands/errors";
 import type { TransactionCategory } from "@/features/categories/types/model";
+import { useCurrencyBootstrap } from "@/features/currency/hooks/use-currency-bootstrap";
+import type { CurrencySettingsRow } from "@/features/currency/types/currency";
 import { TransactionCategoryCombobox } from "@/features/transactions/components/transaction-category-combobox";
 import { isoFractionDigits } from "@/lib/currency";
+import { asWireString } from "@/lib/wire";
 import {
   combineDateTime,
   isPartialAmountInput,
@@ -98,6 +96,14 @@ const MONTHLY_DAY_OPTIONS = Array.from({ length: 31 }, (_, index) => {
   const value = index + 1;
   return { value: String(value), label: formatRecurringOrdinal(value) };
 });
+
+const selectableCodes = (currencies: Array<CurrencySettingsRow>, current: string | undefined) => {
+  const enabled = currencies.filter((row) => row.status === "enabled").map((row) => row.code);
+  if (current && !enabled.includes(current)) {
+    return [current, ...enabled];
+  }
+  return enabled;
+};
 
 const formatDateLabel = (dateValue: string) => {
   if (!dateValue) {
@@ -152,22 +158,35 @@ export function RecurringFormDrawer({
       "Category unavailable")
     : "Uncategorized";
   const adoptTransactionId = mode.type === "adopt" ? mode.transaction.id : undefined;
+  const { defaultCurrency, currencies } = useCurrencyBootstrap();
+  const resolvedDefault = defaultCurrency ?? "EUR";
+  const enabledCodes = useMemo(
+    () => currencies.filter((row) => row.status === "enabled").map((row) => row.code),
+    [currencies],
+  );
   const {
     control,
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<RecurringFormInput, unknown, RecurringFormValues>({
     resolver: zodResolver(recurringFormSchema),
-    defaultValues: getRecurringFormDefaults(mode),
+    defaultValues: getRecurringFormDefaults(mode, resolvedDefault, enabledCodes),
   });
   const scheduleKind = useWatch({ control, name: "scheduleKind" });
   const intervalEvery = useWatch({ control, name: "intervalEvery" });
   const intervalUnit = useWatch({ control, name: "intervalUnit" });
   const monthlyDay = useWatch({ control, name: "monthlyDay" });
   const totalOccurrences = useWatch({ control, name: "totalOccurrences" });
-  const currency = useWatch({ control, name: "currency" }) ?? "EUR";
+  const currency =
+    useWatch({ control, name: "currency", defaultValue: resolvedDefault }) ?? resolvedDefault;
+  const currencyItems = useMemo(() => {
+    const keepCurrent = mode.type === "create" ? enabledCodes.includes(currency) : true;
+    const codes = selectableCodes(currencies, keepCurrent ? currency : undefined);
+    return codes.map((code) => ({ value: code, label: code }));
+  }, [currencies, currency, enabledCodes, mode.type]);
   const fractionDigits = isoFractionDigits(currency);
   const amountErrorId = "recurring-amount-error";
   const dateErrorId = "recurring-first-error";
@@ -178,6 +197,15 @@ export function RecurringFormDrawer({
   const intervalUnitItems = getScheduleIntervalUnitItems(intervalEvery);
   const [laterDueCount, setLaterDueCount] = useState<number | null>(null);
   const [previewError, setPreviewError] = useState<string>();
+
+  useEffect(() => {
+    if (mode.type !== "create" || enabledCodes.length === 0) {
+      return;
+    }
+    if (!enabledCodes.includes(currency)) {
+      setValue("currency", resolvedDefault);
+    }
+  }, [currency, enabledCodes, mode.type, resolvedDefault, setValue]);
 
   useEffect(() => {
     if (!open || !adoptTransactionId) {
@@ -253,7 +281,7 @@ export function RecurringFormDrawer({
     }
     if (mode.type === "create") {
       setLastUsedTransactionCurrency(values.currency);
-      reset(createRecurringFormDefaults());
+      reset(createRecurringFormDefaults(resolvedDefault, enabledCodes));
     }
     onOpenChange(false);
   });
@@ -268,7 +296,6 @@ export function RecurringFormDrawer({
         <DrawerDescription>{copy.description}</DrawerDescription>
       </DrawerHeader>
       <form className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 pt-4 pb-4" onSubmit={submit}>
-        <input type="hidden" {...register("currency")} />
         <FieldSet>
           <FieldGroup>
             {configLocked ? (
@@ -359,7 +386,41 @@ export function RecurringFormDrawer({
                       }}
                     />
                     <InputGroupAddon align="inline-end">
-                      <InputGroupText>{currency}</InputGroupText>
+                      <Controller
+                        control={control}
+                        name="currency"
+                        render={({ field: currencyField }) => (
+                          <Select
+                            items={currencyItems}
+                            value={currencyField.value}
+                            disabled={templateLocked}
+                            onValueChange={(value) => {
+                              const code = asWireString(value);
+                              if (code !== undefined) {
+                                currencyField.onChange(code);
+                              }
+                            }}
+                          >
+                            <SelectTrigger
+                              size="sm"
+                              className="border-0 bg-transparent shadow-none"
+                              aria-label="Transaction currency"
+                              disabled={templateLocked}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {currencyItems.map((item) => (
+                                  <SelectItem key={item.value} value={item.value}>
+                                    {item.value}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
                     </InputGroupAddon>
                   </InputGroup>
                 )}

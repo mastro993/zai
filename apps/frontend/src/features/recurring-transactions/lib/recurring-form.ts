@@ -38,20 +38,30 @@ export const formatRecurringOrdinal = (value: number) => {
   return `${value}${suffix}`;
 };
 
-export const createRecurringFormDefaults = (): RecurringFormInput => ({
-  scheduleKind: "interval",
-  intervalEvery: "1",
-  intervalUnit: "month",
-  monthlyDay: "1",
-  firstScheduledLocal: defaultFirstScheduledLocal(),
-  totalOccurrences: "",
-  description: "",
-  amount: "",
-  currency: getLastUsedTransactionCurrency() ?? "EUR",
-  transactionType: "expense",
-  transactionCategoryId: undefined,
-  notes: "",
-});
+export const createRecurringFormDefaults = (
+  defaultCurrency = "EUR",
+  enabledCodes: Array<string> = [],
+): RecurringFormInput => {
+  const lastUsed = getLastUsedTransactionCurrency();
+  const currency =
+    lastUsed && (enabledCodes.length === 0 || enabledCodes.includes(lastUsed))
+      ? lastUsed
+      : defaultCurrency;
+  return {
+    scheduleKind: "interval",
+    intervalEvery: "1",
+    intervalUnit: "month",
+    monthlyDay: "1",
+    firstScheduledLocal: defaultFirstScheduledLocal(),
+    totalOccurrences: "",
+    description: "",
+    amount: "",
+    currency,
+    transactionType: "expense",
+    transactionCategoryId: undefined,
+    notes: "",
+  };
+};
 
 export const defaultsFromTransaction = (transaction: Transaction): RecurringFormInput => ({
   scheduleKind: "interval",
@@ -94,14 +104,18 @@ export const defaultsFromDocument = (
   };
 };
 
-export const getRecurringFormDefaults = (mode: RecurringFormMode): RecurringFormInput => {
+export const getRecurringFormDefaults = (
+  mode: RecurringFormMode,
+  defaultCurrency = "EUR",
+  enabledCodes: Array<string> = [],
+): RecurringFormInput => {
   if (mode.type === "edit") {
     return defaultsFromDocument(mode.document);
   }
   if (mode.type === "adopt") {
     return defaultsFromTransaction(mode.transaction);
   }
-  return createRecurringFormDefaults();
+  return createRecurringFormDefaults(defaultCurrency, enabledCodes);
 };
 
 export const getRecurringFormCopy = (mode: RecurringFormMode) => {

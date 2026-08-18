@@ -176,6 +176,7 @@ export const recurringTemplateRevisionSchema = z.object({
   transactionType: z.enum(TRANSACTION_TYPES),
   transactionCategoryId: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  exchangeRate: z.never().optional(),
 });
 
 export const recurringOccurrenceHeadSchema = z.object({
@@ -327,6 +328,7 @@ export const newRecurringTransactionSchema = withPrivilegedRejection({
     transactionType: z.enum(TRANSACTION_TYPES),
     transactionCategoryId: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
+    exchangeRate: z.never().optional(),
   }),
 });
 
