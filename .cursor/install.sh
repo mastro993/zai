@@ -24,9 +24,23 @@ persist_node_options "${HOME}/.profile"
 persist_node_options "${HOME}/.bashrc"
 
 if sudo -n true 2>/dev/null; then
-  if ! sudo grep -q 'experimental-strip-types' /etc/environment 2>/dev/null; then
-    printf 'NODE_OPTIONS=%s\n' "${NODE_OPTIONS_VALUE}" | sudo tee -a /etc/environment >/dev/null
+  if sudo grep -q '^NODE_OPTIONS=--experimental-strip-types --no-warnings$' /etc/environment 2>/dev/null; then
+    sudo sed -i 's/^NODE_OPTIONS=--experimental-strip-types --no-warnings$/NODE_OPTIONS="--experimental-strip-types --no-warnings"/' /etc/environment
+  elif ! sudo grep -q 'experimental-strip-types' /etc/environment 2>/dev/null; then
+    # Quote the value: /etc/environment is sourced as a shell script by
+    # update-info-dir. Unquoted spaces make `--no-warnings` a command.
+    printf 'NODE_OPTIONS="%s"\n' "${NODE_OPTIONS_VALUE}" | sudo tee -a /etc/environment >/dev/null
   fi
+
+  sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    -o Dpkg::Options::="--force-confold" \
+    libwebkit2gtk-4.1-dev \
+    libgtk-3-dev \
+    libappindicator3-dev \
+    librsvg2-dev \
+    patchelf \
+    pkg-config
 fi
 
 if [[ -s "${HOME}/.nvm/nvm.sh" ]]; then
