@@ -100,6 +100,10 @@ add or keep green; the full list still ships only at the final merge.
   contain no amounts, descriptions, categories, notes, or identifiers.
 - Gate: privacy canaries; provider-cache unit and repository tests that do
   not yet require valuation heads.
+- Landed in this stack PR. Tests: `cargo test -p zai-core --lib exchange_rates`,
+  `cargo test -p zai-db --lib exchange_rates`,
+  `cargo test -p zai-app --lib ecb`,
+  `cargo test -p zai-server --test currency_privacy_canaries --test currency_privacy_inventory`.
 
 ### 4. Valuation generations
 

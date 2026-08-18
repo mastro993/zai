@@ -239,6 +239,69 @@ diesel::table! {
 
 diesel::joinable!(transaction_exchange_rate_revisions -> transactions (transaction_id));
 
+diesel::table! {
+    provider_contracts (id) {
+        id -> Text,
+        provider -> Text,
+        version -> Integer,
+        base_currency -> Text,
+        series_identity -> Text,
+        value_date_time_zone -> Text,
+        formula_version -> Integer,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    provider_rate_sets (id) {
+        id -> Text,
+        provider_contract_id -> Text,
+        revision_identity -> Text,
+        payload_digest -> Text,
+        accepted_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    provider_rate_observations (id) {
+        id -> Text,
+        rate_set_id -> Text,
+        currency -> Text,
+        series_id -> Text,
+        value_date -> Text,
+        original_decimal -> Text,
+        coefficient -> BigInt,
+        scale -> Integer,
+        attribution -> Text,
+    }
+}
+
+diesel::table! {
+    provider_heads (id) {
+        id -> Integer,
+        rate_set_id -> Text,
+        switched_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    provider_refresh_state (id) {
+        id -> Integer,
+        provider_contract_id -> Text,
+        last_attempt_at -> Nullable<Timestamp>,
+        last_success_at -> Nullable<Timestamp>,
+        failure_class -> Nullable<Text>,
+        retry_count -> Integer,
+        last_etag -> Nullable<Text>,
+        last_updated_after -> Nullable<Text>,
+    }
+}
+
+diesel::joinable!(provider_rate_sets -> provider_contracts (provider_contract_id));
+diesel::joinable!(provider_rate_observations -> provider_rate_sets (rate_set_id));
+diesel::joinable!(provider_heads -> provider_rate_sets (rate_set_id));
+diesel::joinable!(provider_refresh_state -> provider_contracts (provider_contract_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     transaction_categories,
     transactions,
@@ -256,4 +319,9 @@ diesel::allow_tables_to_appear_in_same_query!(
     currency_settings,
     enabled_currencies,
     transaction_exchange_rate_revisions,
+    provider_contracts,
+    provider_rate_sets,
+    provider_rate_observations,
+    provider_heads,
+    provider_refresh_state,
 );

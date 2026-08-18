@@ -124,6 +124,9 @@ not call currency core services directly.
 - Canaries prove amounts, descriptions, categories, notes, and identifiers
   are absent from request URL, headers, body, logs, `currency-state` events,
   job DTOs, and error envelopes.
+- Landed names: `provider_requests_omit_financial_and_identity_canaries`,
+  `logs_alerts_and_error_envelopes_omit_payloads_and_canaries`,
+  `frontend_and_public_transports_never_contact_a_provider`.
 - Logs record stable failure class and timing only.
 - The frontend never contacts a provider.
 

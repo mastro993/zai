@@ -88,6 +88,13 @@ impl Database {
         ))
     }
 
+    pub fn exchange_rate_repository(&self) -> Arc<crate::exchange_rates::ExchangeRateRepository> {
+        Arc::new(crate::exchange_rates::ExchangeRateRepository::new(
+            Arc::clone(&self.pool),
+            self.writer.clone(),
+        ))
+    }
+
     pub fn recurring_transactions_repository(&self) -> Arc<RecurringTransactionsRepository> {
         Arc::new(
             RecurringTransactionsRepository::new_with_clock_and_publisher(

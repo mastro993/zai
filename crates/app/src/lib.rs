@@ -16,12 +16,16 @@ use zai_core::features::{
     transactions::{service::TransactionsService, traits::TransactionsServiceTrait},
 };
 
+mod ecb;
 mod recurring_supervisor;
+use ecb::EcbHttpAdapter;
 use recurring_supervisor::{ProcessDelayAlertPort, RepositorySupervisorHeads};
+use zai_core::features::exchange_rates::{ExchangeRateService, SystemUtcClock};
 
 pub struct ServiceContext {
     pub budgets_service: Arc<dyn BudgetsServiceTrait>,
     pub currency_service: Arc<CurrencyService>,
+    pub exchange_rate_service: Arc<ExchangeRateService>,
     pub domain_alerts_service: Arc<dyn DomainAlertsServiceTrait>,
     pub recurring_transactions_service: Arc<RecurringTransactionsService>,
     pub transaction_categories_service: Arc<dyn TransactionCategoriesServiceTrait>,
@@ -38,6 +42,10 @@ impl ServiceContext {
 
     pub fn currency_service(&self) -> Arc<CurrencyService> {
         Arc::clone(&self.currency_service)
+    }
+
+    pub fn exchange_rate_service(&self) -> Arc<ExchangeRateService> {
+        Arc::clone(&self.exchange_rate_service)
     }
 
     pub fn domain_alerts_service(&self) -> Arc<dyn DomainAlertsServiceTrait> {
@@ -144,6 +152,11 @@ pub fn bootstrap_context_with_buses_and_clock(
     let currency_service = Arc::new(CurrencyService::new(
         database.currency_settings_repository(),
     ));
+    let exchange_rate_service = Arc::new(ExchangeRateService::new(
+        Arc::new(EcbHttpAdapter::production()?),
+        database.exchange_rate_repository(),
+        Arc::new(SystemUtcClock),
+    ));
     let transaction_categories_repository = database.transaction_categories_repository();
     let transactions_repository = database.transactions_repository();
     let budgets_repository = database.budgets_repository();
@@ -178,6 +191,7 @@ pub fn bootstrap_context_with_buses_and_clock(
                     .with_currency_setup(currency_service.clone()),
             ),
             currency_service: currency_service.clone(),
+            exchange_rate_service,
             domain_alerts_service: Arc::new(DomainAlertsService::new(domain_alerts_repository)),
             recurring_transactions_service,
             transaction_categories_service: Arc::new(TransactionCategoriesService::new(
@@ -266,5 +280,13 @@ mod tests {
         assert!(transactions.data.is_empty());
         assert!(budgets.is_empty());
         assert!(recurring.items.is_empty());
+        assert!(
+            context
+                .exchange_rate_service()
+                .current_set()
+                .await
+                .expect("cache read")
+                .is_none()
+        );
     }
 }
