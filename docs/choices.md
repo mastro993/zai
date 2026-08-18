@@ -62,6 +62,7 @@ Agent defaults:
 
 ## 2026-08-18
 
+- **Web E2E shard timeout is 15 minutes.** A 5-minute job timeout cancelled shard 2 during a cold Playwright Chromium install. Cache `~/.cache/ms-playwright` by lockfile; keep 15 minutes so a cache miss plus `zai-server` compile still finishes.
 - **PR CI also targets `feat/**`.** `ci.yml` and `e2e.yml` run on PRs into `main` and `feat/**`. Long-lived feat stacks (e.g. `feat/multi-currency`) get the same gate as `main`. `feat/**` not `feat/*` so nested feat names still match. Benchmarks stay `push` to `main` only.
 
 ## 2026-08-17
