@@ -1,3 +1,4 @@
 {
-  "install": "pnpm install --frozen-lockfile --ignore-scripts"
+  "install": "sudo DEBIAN_FRONTEND=noninteractive apt-get update\nsudo DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=\"--force-confold\" libsqlite3-dev libssl-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf pkg-config\nrustup toolchain install stable --component rustfmt,clippy\nrustup default stable\npnpm install --frozen-lockfile --ignore-scripts\ncargo build -p zai-server",
+  "start": "test -f .env.web || cp .env.web.example .env.web\npnpm dev:web"
 }
