@@ -54,8 +54,19 @@ export const currencyStatusViewSchema = z.object({
   job: currencyJobSchema.nullable(),
 });
 
+export const exchangeRateQuoteSchema = z.object({
+  sourceCurrency: z.string().length(3),
+  targetCurrency: z.string().length(3),
+  rateDate: z.string().min(1),
+  variant: z.enum(["identity", "automatic", "pending"]),
+  rate: z.string().nullable(),
+  attribution: z.string().nullable(),
+  complete: z.boolean(),
+});
+
 export type CurrencyBootstrap = z.infer<typeof currencyBootstrapSchema>;
 export type SupportedCurrency = z.infer<typeof supportedCurrencySchema>;
 export type CurrencySettingsRow = z.infer<typeof currencySettingsRowSchema>;
 export type CurrencyJob = z.infer<typeof currencyJobSchema>;
 export type CurrencyStatusView = z.infer<typeof currencyStatusViewSchema>;
+export type ExchangeRateQuote = z.infer<typeof exchangeRateQuoteSchema>;

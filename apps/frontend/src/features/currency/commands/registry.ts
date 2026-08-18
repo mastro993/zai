@@ -5,16 +5,23 @@ import {
   currencyJobSchema,
   currencySettingsRowSchema,
   currencyStatusViewSchema,
+  exchangeRateQuoteSchema,
   supportedCurrencySchema,
 } from "../types/currency";
 import {
+  buildCancelCurrencyJobRequest,
   buildCompleteInitialCurrencySetupRequest,
+  buildDisableCurrencyRequest,
   buildGetCurrenciesRequest,
   buildGetCurrencyBootstrapRequest,
   buildGetCurrencyJobRequest,
   buildGetCurrencyRequest,
   buildGetCurrencyStatusRequest,
   buildGetSupportedCurrenciesRequest,
+  buildGetTransactionExchangeRateQuoteRequest,
+  buildRetryExchangeRateRefreshRequest,
+  buildStartCurrencyAdditionRequest,
+  buildStartDefaultCurrencyChangeRequest,
 } from "./web-requests";
 
 export const CURRENCY_COMMANDS = {
@@ -52,6 +59,36 @@ export const CURRENCY_COMMANDS = {
     "get_currency_status",
     currencyStatusViewSchema,
     buildGetCurrencyStatusRequest,
+  ),
+  start_currency_addition: createCommandDescriptor(
+    "start_currency_addition",
+    currencyJobSchema,
+    buildStartCurrencyAdditionRequest,
+  ),
+  disable_currency: createCommandDescriptor(
+    "disable_currency",
+    currencySettingsRowSchema,
+    buildDisableCurrencyRequest,
+  ),
+  start_default_currency_change: createCommandDescriptor(
+    "start_default_currency_change",
+    currencyJobSchema,
+    buildStartDefaultCurrencyChangeRequest,
+  ),
+  cancel_currency_job: createCommandDescriptor(
+    "cancel_currency_job",
+    currencyJobSchema,
+    buildCancelCurrencyJobRequest,
+  ),
+  get_transaction_exchange_rate_quote: createCommandDescriptor(
+    "get_transaction_exchange_rate_quote",
+    exchangeRateQuoteSchema,
+    buildGetTransactionExchangeRateQuoteRequest,
+  ),
+  retry_exchange_rate_refresh: createCommandDescriptor(
+    "retry_exchange_rate_refresh",
+    "void",
+    buildRetryExchangeRateRefreshRequest,
   ),
 };
 

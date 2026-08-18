@@ -11,7 +11,8 @@ pub(crate) use cache::upsert_transaction_valuation;
 #[cfg(test)]
 pub(crate) use generation::INITIAL_ACTUAL_GENERATION_ID;
 pub(crate) use generation::{
-    active_generation, change_default_currency, current_allowance_currency,
+    activate_generation, active_generation, build_actual_generation, change_default_currency,
+    current_allowance_currency,
 };
 pub(crate) use spending::{SpendingAggregate, sum_period_spending};
 

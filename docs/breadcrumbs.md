@@ -17,6 +17,7 @@
 
 ## 2026-08-18
 
+- Implementing [Currency addition, disable, default-currency change, and Currency settings](https://github.com/mastro993/zai/issues/392) stacked on #391. Seams: CurrencyService lifecycle, transport parity, Ledger settings Vitest, refresh-failure Warning.
 - Implementing [Initial currency setup and currency-state](https://github.com/mastro993/zai/issues/391) on `feat/multi-currency`, stacked on [Valuation generations and set-based budget results](https://github.com/mastro993/zai/issues/390). Fast-forwarded this worktree from `main` onto that tip.
 - #391: bootstrap/catalog/settings/setup + `currency-state` v1 + Inspector first-use gate. Leftover running setup job for the same code is adopted.
 

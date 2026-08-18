@@ -58,6 +58,15 @@ export function useAlertDestination({
         return;
       }
 
+      if (current.destination.type === "currencySettings") {
+        closeLedger();
+        await navigate({
+          to: "/settings",
+          search: { focus: "rates" },
+        });
+        return;
+      }
+
       const budgetResult = await getBudget(current.destination.budgetId);
       if (Result.isFailure(budgetResult)) {
         setDestinationFeedback({

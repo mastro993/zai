@@ -5,13 +5,19 @@ import type { CommandError } from "@/commands/errors";
 import type { WebRequestSpec } from "@/commands/web-request-spec";
 
 import {
+  buildCancelCurrencyJobRequest,
   buildCompleteInitialCurrencySetupRequest,
+  buildDisableCurrencyRequest,
   buildGetCurrenciesRequest,
   buildGetCurrencyBootstrapRequest,
   buildGetCurrencyJobRequest,
   buildGetCurrencyRequest,
   buildGetCurrencyStatusRequest,
   buildGetSupportedCurrenciesRequest,
+  buildGetTransactionExchangeRateQuoteRequest,
+  buildRetryExchangeRateRefreshRequest,
+  buildStartCurrencyAdditionRequest,
+  buildStartDefaultCurrencyChangeRequest,
 } from "../web-requests";
 
 const check = <T>(
@@ -68,5 +74,51 @@ describe("currency web requests", () => {
         body: { defaultCurrency: "EUR" },
       },
     );
+    check(
+      buildStartCurrencyAdditionRequest,
+      { code: "usd", confirmProviderDisclosure: true },
+      {
+        method: "POST",
+        path: "/currencies/USD/add",
+        body: { confirmProviderDisclosure: true },
+      },
+    );
+    check(
+      buildDisableCurrencyRequest,
+      { code: "usd" },
+      {
+        method: "POST",
+        path: "/currencies/USD/disable",
+      },
+    );
+    check(
+      buildStartDefaultCurrencyChangeRequest,
+      { code: "usd" },
+      {
+        method: "POST",
+        path: "/currencies/default",
+        body: { code: "USD" },
+      },
+    );
+    check(
+      buildCancelCurrencyJobRequest,
+      { jobId: "job-1" },
+      {
+        method: "POST",
+        path: "/currencies/jobs/job-1/cancel",
+      },
+    );
+    check(
+      buildGetTransactionExchangeRateQuoteRequest,
+      { source: "usd", target: "eur", date: "2026-08-18" },
+      {
+        method: "GET",
+        path: "/exchange-rates/quote?source=USD&target=EUR&date=2026-08-18",
+      },
+    );
+    check(buildRetryExchangeRateRefreshRequest, undefined, {
+      method: "POST",
+      path: "/exchange-rates/refresh",
+    });
   });
 });

@@ -58,4 +58,49 @@ impl CurrencySettingsPort for CurrencySettingsRepository {
     fn latest_job(&self) -> Result<Option<CurrencyJobRecord>> {
         latest_job(&self.pool)
     }
+
+    fn enable_currency(&self, currency_code: &str) -> Result<()> {
+        super::lifecycle::enable_currency(&self.pool, currency_code)
+    }
+
+    fn disable_currency(&self, currency_code: &str) -> Result<()> {
+        super::lifecycle::disable_currency(&self.pool, currency_code)
+    }
+
+    fn prove_coverage(&self, currency_code: &str) -> Result<()> {
+        super::lifecycle::prove_coverage(&self.pool, currency_code)
+    }
+
+    fn provider_disclosure_accepted(&self) -> Result<bool> {
+        super::lifecycle::provider_disclosure_accepted(&self.pool)
+    }
+
+    fn accept_provider_disclosure(&self) -> Result<()> {
+        super::lifecycle::accept_provider_disclosure(&self.pool)
+    }
+
+    fn has_ecb_retained_data(&self) -> Result<bool> {
+        super::lifecycle::has_ecb_retained_data(&self.pool)
+    }
+
+    fn begin_default_generation(&self, currency_code: &str) -> Result<String> {
+        super::lifecycle::begin_default_generation(&self.pool, currency_code)
+    }
+
+    fn activate_default_generation(&self, generation_id: &str, currency_code: &str) -> Result<()> {
+        super::lifecycle::activate_default_generation(&self.pool, generation_id, currency_code)
+    }
+
+    fn attach_generation(&self, job_id: &str, generation_id: &str) -> Result<()> {
+        super::lifecycle::attach_generation(&self.pool, job_id, generation_id)
+    }
+
+    fn quote(
+        &self,
+        source: &str,
+        target: &str,
+        rate_date: &str,
+    ) -> Result<zai_core::features::currency::ExchangeRateQuote> {
+        super::lifecycle::quote(&self.pool, source, target, rate_date)
+    }
 }

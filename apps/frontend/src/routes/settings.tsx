@@ -11,6 +11,7 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { CurrencySettingsScreen } from "@/features/currency/screens/currency-settings-screen";
 import { CurrencyControlsPrototypeScreen } from "@/features/currency-prototype/screens/currency-controls-prototype-screen";
 import { parseSettingsPrototypeSearch } from "@/features/currency-prototype/lib/prototype-search";
 
@@ -52,6 +53,16 @@ function SettingsPage() {
     <ScreenBase>
       <FieldGroup className="max-w-3xl gap-3">
         <ThemeModeSetting />
+        <Field className="border border-border p-4">
+          <FieldContent>
+            <FieldTitle>Currencies</FieldTitle>
+            <FieldDescription>
+              Default radio, coverage, and refresh live in this table. Add above. Disable,
+              re-enable, and set-as-default stay in the row menu.
+            </FieldDescription>
+          </FieldContent>
+          <CurrencySettingsScreen focusRates={search.focus === "rates"} />
+        </Field>
       </FieldGroup>
     </ScreenBase>
   );

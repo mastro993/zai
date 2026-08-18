@@ -3,6 +3,7 @@ mod activation;
 pub mod failpoints;
 mod format;
 mod jobs;
+mod lifecycle;
 mod settings;
 mod settings_port;
 mod setup;

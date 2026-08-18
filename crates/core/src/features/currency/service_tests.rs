@@ -1,8 +1,11 @@
 use super::events::{CurrencyStateEvent, CurrencyStateEventBus};
-use super::models::{CurrencyJobStatus, CurrencyJobType};
+use super::models::{
+    CurrencyJobStatus, CurrencyJobType, CurrencyRefreshStatus, ExchangeRateQuote, QuoteVariant,
+};
 use super::service::{CurrencyService, CurrencySettingsPort, CurrencySetupState};
 use crate::features::currency::models::{CurrencyJob, CurrencyJobRecord, PersistedCurrency};
 use crate::{Error, ErrorCode, Result};
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
@@ -11,6 +14,12 @@ struct MemorySettings {
     setup_completed: bool,
     persisted: Vec<PersistedCurrency>,
     jobs: Vec<CurrencyJob>,
+    disclosure_accepted: bool,
+    coverage_ok: HashSet<String>,
+    missing_periods: HashMap<String, Vec<String>>,
+    generation_ids: HashMap<String, String>,
+    active_generation: Option<String>,
+    default_activated: Option<String>,
 }
 
 impl MemorySettings {
@@ -18,12 +27,14 @@ impl MemorySettings {
         Self {
             default_currency: "EUR".to_string(),
             setup_completed: false,
-            persisted: vec![PersistedCurrency {
-                code: "EUR".to_string(),
-                disabled: false,
-                used_by_recurring: false,
-            }],
+            persisted: vec![eur_row()],
             jobs: Vec::new(),
+            disclosure_accepted: false,
+            coverage_ok: HashSet::from(["EUR".to_string()]),
+            missing_periods: HashMap::new(),
+            generation_ids: HashMap::new(),
+            active_generation: None,
+            default_activated: None,
         }
     }
 }
@@ -39,11 +50,7 @@ impl CurrencySettingsPort for Mutex<MemorySettings> {
         inner.default_currency = currency_code.to_string();
         inner.setup_completed = true;
         if !inner.persisted.iter().any(|row| row.code == currency_code) {
-            inner.persisted.push(PersistedCurrency {
-                code: currency_code.to_string(),
-                disabled: false,
-                used_by_recurring: false,
-            });
+            inner.persisted.push(enabled_row(currency_code));
         }
         Ok(())
     }
@@ -94,35 +101,153 @@ impl CurrencySettingsPort for Mutex<MemorySettings> {
     }
 
     fn get_job(&self, job_id: &str) -> Result<Option<CurrencyJobRecord>> {
-        Ok(self
-            .lock()
-            .expect("lock")
+        let inner = self.lock().expect("lock");
+        Ok(inner
             .jobs
             .iter()
             .find(|job| job.job_id == job_id)
             .cloned()
-            .map(|job| CurrencyJobRecord { job }))
+            .map(|job| {
+                let generation_id = inner.generation_ids.get(&job.job_id).cloned();
+                CurrencyJobRecord { job, generation_id }
+            }))
     }
 
     fn running_job(&self) -> Result<Option<CurrencyJobRecord>> {
-        Ok(self
-            .lock()
-            .expect("lock")
+        let inner = self.lock().expect("lock");
+        Ok(inner
             .jobs
             .iter()
             .find(|job| job.status == CurrencyJobStatus::Running)
             .cloned()
-            .map(|job| CurrencyJobRecord { job }))
+            .map(|job| {
+                let generation_id = inner.generation_ids.get(&job.job_id).cloned();
+                CurrencyJobRecord { job, generation_id }
+            }))
     }
 
     fn latest_job(&self) -> Result<Option<CurrencyJobRecord>> {
-        Ok(self
-            .lock()
+        let inner = self.lock().expect("lock");
+        Ok(inner.jobs.last().cloned().map(|job| {
+            let generation_id = inner.generation_ids.get(&job.job_id).cloned();
+            CurrencyJobRecord { job, generation_id }
+        }))
+    }
+
+    fn enable_currency(&self, currency_code: &str) -> Result<()> {
+        let mut inner = self.lock().expect("lock");
+        if let Some(row) = inner
+            .persisted
+            .iter_mut()
+            .find(|row| row.code == currency_code)
+        {
+            row.disabled = false;
+        } else {
+            inner.persisted.push(enabled_row(currency_code));
+        }
+        Ok(())
+    }
+
+    fn disable_currency(&self, currency_code: &str) -> Result<()> {
+        let mut inner = self.lock().expect("lock");
+        if let Some(row) = inner
+            .persisted
+            .iter_mut()
+            .find(|row| row.code == currency_code)
+        {
+            row.disabled = true;
+            return Ok(());
+        }
+        Err(Error::NotFound(format!("Currency {currency_code}")))
+    }
+
+    fn prove_coverage(&self, currency_code: &str) -> Result<()> {
+        let inner = self.lock().expect("lock");
+        if let Some(missing) = inner.missing_periods.get(currency_code) {
+            return Err(Error::IncompleteCoverage {
+                missing_periods: missing.clone(),
+            });
+        }
+        if inner.coverage_ok.contains(currency_code) || currency_code == "EUR" {
+            return Ok(());
+        }
+        Err(Error::IncompleteCoverage {
+            missing_periods: vec!["historical coverage".to_string()],
+        })
+    }
+
+    fn provider_disclosure_accepted(&self) -> Result<bool> {
+        Ok(self.lock().expect("lock").disclosure_accepted)
+    }
+
+    fn accept_provider_disclosure(&self) -> Result<()> {
+        self.lock().expect("lock").disclosure_accepted = true;
+        Ok(())
+    }
+
+    fn has_ecb_retained_data(&self) -> Result<bool> {
+        Ok(self.lock().expect("lock").disclosure_accepted)
+    }
+
+    fn begin_default_generation(&self, currency_code: &str) -> Result<String> {
+        let id = format!("gen-{currency_code}");
+        self.lock().expect("lock").active_generation = Some(id.clone());
+        Ok(id)
+    }
+
+    fn activate_default_generation(&self, generation_id: &str, currency_code: &str) -> Result<()> {
+        let mut inner = self.lock().expect("lock");
+        inner.default_currency = currency_code.to_string();
+        inner.default_activated = Some(generation_id.to_string());
+        Ok(())
+    }
+
+    fn attach_generation(&self, job_id: &str, generation_id: &str) -> Result<()> {
+        self.lock()
             .expect("lock")
-            .jobs
-            .last()
-            .cloned()
-            .map(|job| CurrencyJobRecord { job }))
+            .generation_ids
+            .insert(job_id.to_string(), generation_id.to_string());
+        Ok(())
+    }
+
+    fn quote(&self, source: &str, target: &str, rate_date: &str) -> Result<ExchangeRateQuote> {
+        if source == target {
+            return Ok(ExchangeRateQuote {
+                source_currency: source.to_string(),
+                target_currency: target.to_string(),
+                rate_date: rate_date.to_string(),
+                variant: QuoteVariant::Identity,
+                rate: Some("1".to_string()),
+                attribution: None,
+                complete: true,
+            });
+        }
+        Ok(ExchangeRateQuote {
+            source_currency: source.to_string(),
+            target_currency: target.to_string(),
+            rate_date: rate_date.to_string(),
+            variant: QuoteVariant::Pending,
+            rate: None,
+            attribution: None,
+            complete: false,
+        })
+    }
+}
+
+fn eur_row() -> PersistedCurrency {
+    enabled_row("EUR")
+}
+
+fn enabled_row(code: &str) -> PersistedCurrency {
+    PersistedCurrency {
+        code: code.to_string(),
+        disabled: false,
+        used_by_recurring: false,
+        coverage_from: None,
+        coverage_to: None,
+        last_refresh: None,
+        refresh_status: CurrencyRefreshStatus::Idle,
+        missing_periods: Vec::new(),
     }
 }
 

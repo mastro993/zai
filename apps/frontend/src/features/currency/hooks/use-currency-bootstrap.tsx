@@ -4,11 +4,16 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import type { CommandError } from "@/commands/errors";
 
 import {
+  cancelCurrencyJob,
   completeInitialCurrencySetup,
+  disableCurrency as disableCurrencyCommand,
   getCurrencies,
   getCurrencyBootstrap,
   getCurrencyStatus,
   getSupportedCurrencies,
+  retryExchangeRateRefresh,
+  startCurrencyAddition,
+  startDefaultCurrencyChange,
 } from "../commands/currency";
 import { deviceLocaleTag, localeSuggestedCurrency } from "../lib/locale-suggested-currency";
 import type {
@@ -32,6 +37,14 @@ interface CurrencyBootstrapContextValue {
   suggestedCurrency: string;
   errorMessage: string | null;
   confirmSetup: (code: string) => Result.ResultAsync<CurrencyJob, CommandError>;
+  addCurrency: (
+    code: string,
+    confirmProviderDisclosure: boolean,
+  ) => Result.ResultAsync<CurrencyJob, CommandError>;
+  disableCurrency: (code: string) => Result.ResultAsync<CurrencySettingsRow, CommandError>;
+  changeDefault: (code: string) => Result.ResultAsync<CurrencyJob, CommandError>;
+  cancelJob: (jobId: string) => Result.ResultAsync<CurrencyJob, CommandError>;
+  retryRefresh: () => Result.ResultAsync<void, CommandError>;
 }
 
 const CurrencyBootstrapContext = createContext<CurrencyBootstrapContextValue | null>(null);
@@ -113,6 +126,48 @@ export function CurrencyBootstrapProvider({ children }: { children: ReactNode })
     [reconcile],
   );
 
+  const afterMutation = useCallback(
+    async <T,>(result: Result.Result<T, CommandError>) => {
+      if (Result.isSuccess(result)) {
+        await reconcile();
+      }
+      return result;
+    },
+    [reconcile],
+  );
+
+  const addCurrency = useCallback(
+    async (code: string, confirmProviderDisclosure: boolean) => {
+      return afterMutation(await startCurrencyAddition(code, confirmProviderDisclosure));
+    },
+    [afterMutation],
+  );
+
+  const disableCurrency = useCallback(
+    async (code: string) => {
+      return afterMutation(await disableCurrencyCommand(code));
+    },
+    [afterMutation],
+  );
+
+  const changeDefault = useCallback(
+    async (code: string) => {
+      return afterMutation(await startDefaultCurrencyChange(code));
+    },
+    [afterMutation],
+  );
+
+  const cancelJob = useCallback(
+    async (jobId: string) => {
+      return afterMutation(await cancelCurrencyJob(jobId));
+    },
+    [afterMutation],
+  );
+
+  const retryRefresh = useCallback(async () => {
+    return afterMutation(await retryExchangeRateRefresh());
+  }, [afterMutation]);
+
   const suggestedCurrency = useMemo(() => {
     const supported = new Set(catalog.map((item) => item.code));
     if (supported.size === 0) {
@@ -132,16 +187,26 @@ export function CurrencyBootstrapProvider({ children }: { children: ReactNode })
       suggestedCurrency,
       errorMessage,
       confirmSetup,
+      addCurrency,
+      disableCurrency,
+      changeDefault,
+      cancelJob,
+      retryRefresh,
     }),
     [
+      addCurrency,
       bootstrap.defaultCurrency,
       bootstrap.setupComplete,
+      cancelJob,
       catalog,
+      changeDefault,
       confirmSetup,
       currencies,
       currentJob,
+      disableCurrency,
       errorMessage,
       ready,
+      retryRefresh,
       suggestedCurrency,
     ],
   );

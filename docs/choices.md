@@ -1,5 +1,23 @@
 # Choices
 
+## 2026-08-18 — [Currency addition, disable, default-currency change, and Currency settings](https://github.com/mastro993/zai/issues/392)
+
+Seams from the ticket (no re-grill):
+
+- `CurrencyService` public add/disable/change-default/cancel/quote/drive
+- Command-contract-parity + server contract harness
+- Zod decode of new command results
+- Vitest for Ledger Currency settings
+
+Agent defaults:
+
+- Stack on #391. Do not land on `main`.
+- Add and default-change return the started running job; `drive_running_job` completes it. Cancel before activate leaves the old default.
+- First ECB enable without `confirmProviderDisclosure` fails `providerDisclosureRequired`. Frontend shows the disclosure then retries.
+- Re-enable is `start_currency_addition` on a disabled/failed row.
+- Live refresh is supervisor-owned (process start + 15m + Tauri `Resumed`). Not a job. Retry now calls the same refresh mutex.
+- Persistent refresh failure that leaves enabled non-EUR rows failed/incomplete is one Warning episode. Recovery resolves it. A failed refresh that still has coverage is settings status only.
+
 ## 2026-08-18 — [Initial currency setup and currency-state](https://github.com/mastro993/zai/issues/391)
 
 Seams from the ticket (no re-grill):

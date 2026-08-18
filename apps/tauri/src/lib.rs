@@ -148,6 +148,12 @@ fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R
         commands::currency::complete_initial_currency_setup,
         commands::currency::get_currency_job,
         commands::currency::get_currency_status,
+        commands::currency::start_currency_addition,
+        commands::currency::disable_currency,
+        commands::currency::start_default_currency_change,
+        commands::currency::cancel_currency_job,
+        commands::currency::get_transaction_exchange_rate_quote,
+        commands::currency::retry_exchange_rate_refresh,
         commands::budgets::get_budgets,
         commands::budgets::get_budget,
         commands::budgets::get_budget_history,
@@ -231,9 +237,13 @@ pub fn run() {
                     let processing_bus = bootstrapped.context.recurring_processing_event_bus();
                     let currency_bus = bootstrapped.context.currency_state_event_bus();
                     let supervisor_handle = bootstrapped.context.recurring_processing_supervisor();
+                    let currency_refresh_handle =
+                        bootstrapped.context.currency_refresh_supervisor();
                     handle.manage(Arc::new(bootstrapped.context));
                     handle.manage(supervisor_handle);
+                    handle.manage(currency_refresh_handle);
                     let _ = bootstrapped.supervisor.spawn();
+                    std::mem::drop(bootstrapped.currency_refresh.spawn());
                     start_alert_event_forwarder(handle.clone(), alert_bus);
                     start_recurring_processing_forwarder(handle.clone(), processing_bus);
                     start_currency_state_forwarder(handle.clone(), currency_bus);
@@ -266,10 +276,14 @@ pub fn run() {
         {
             handle.request_shutdown();
         }
-        if let RunEvent::Resumed = event
-            && let Some(handle) = app_handle.try_state::<zai_core::features::recurring_transactions::RecurringProcessingSupervisorHandle>()
-        {
-            handle.request_wake();
+        if let RunEvent::Resumed = event {
+            if let Some(handle) = app_handle.try_state::<zai_core::features::recurring_transactions::RecurringProcessingSupervisorHandle>()
+            {
+                handle.request_wake();
+            }
+            if let Some(handle) = app_handle.try_state::<zai_app::CurrencyRefreshHandle>() {
+                handle.request_wake();
+            }
         }
     });
 }

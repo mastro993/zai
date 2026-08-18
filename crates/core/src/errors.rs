@@ -24,6 +24,8 @@ pub enum ErrorCode {
     IncompleteCoverage,
     CurrencyJobConflict,
     CurrencyJobNotFound,
+    DefaultCurrencyDisableForbidden,
+    ProviderDisclosureRequired,
     IncompatibleApplicationFormat,
     Internal,
 }
@@ -119,6 +121,12 @@ pub enum Error {
     #[error("Currency job not found: {0}")]
     CurrencyJobNotFound(String),
 
+    #[error("The default currency cannot be disabled")]
+    DefaultCurrencyDisableForbidden,
+
+    #[error("Confirm the exchange-rate provider before the first ECB-backed enable")]
+    ProviderDisclosureRequired,
+
     #[error("Application format is incompatible with this client")]
     IncompatibleApplicationFormat,
 }
@@ -180,6 +188,8 @@ impl Error {
             Self::IncompleteCoverage { .. } => ErrorCode::IncompleteCoverage,
             Self::CurrencyJobConflict => ErrorCode::CurrencyJobConflict,
             Self::CurrencyJobNotFound(_) => ErrorCode::CurrencyJobNotFound,
+            Self::DefaultCurrencyDisableForbidden => ErrorCode::DefaultCurrencyDisableForbidden,
+            Self::ProviderDisclosureRequired => ErrorCode::ProviderDisclosureRequired,
             Self::IncompatibleApplicationFormat => ErrorCode::IncompatibleApplicationFormat,
         }
     }

@@ -60,6 +60,7 @@ export const parsePrototypeScene = <TRaw>(value: TRaw): PrototypeScene | null =>
 export interface SettingsPrototypeSearch {
   variant?: PrototypeVariant;
   scene?: PrototypeScene;
+  focus?: "rates";
 }
 
 export const parseSettingsPrototypeSearch = <TRaw>(search: TRaw): SettingsPrototypeSearch => {
@@ -69,12 +70,14 @@ export const parseSettingsPrototypeSearch = <TRaw>(search: TRaw): SettingsProtot
   }
 
   const variant = parsePrototypeVariant(record.variant);
+  const focus = record.focus === "rates" ? "rates" : undefined;
   if (!variant) {
-    return {};
+    return { focus };
   }
 
   return {
     variant,
     scene: parsePrototypeScene(record.scene) ?? "settings",
+    focus,
   };
 };

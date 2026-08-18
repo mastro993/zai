@@ -3,7 +3,7 @@ use super::events::{CurrencyStateEvent, CurrencyStateEventPublisher};
 use super::models::{
     CurrencyBootstrap, CurrencyJob, CurrencyJobFinishState, CurrencyJobRecord, CurrencyJobType,
     CurrencyLifecycleStatus, CurrencyRefreshStatus, CurrencySettingsRow, CurrencyStatusView,
-    PersistedCurrency, SupportedCurrency,
+    ExchangeRateQuote, PersistedCurrency, SupportedCurrency,
 };
 use crate::money::{CURRENT_MANIFEST, CurrencyCode};
 use crate::{Error, ErrorEnvelope, Result};
@@ -26,11 +26,21 @@ pub trait CurrencySettingsPort: Send + Sync {
     fn get_job(&self, job_id: &str) -> Result<Option<CurrencyJobRecord>>;
     fn running_job(&self) -> Result<Option<CurrencyJobRecord>>;
     fn latest_job(&self) -> Result<Option<CurrencyJobRecord>>;
+    fn enable_currency(&self, currency_code: &str) -> Result<()>;
+    fn disable_currency(&self, currency_code: &str) -> Result<()>;
+    fn prove_coverage(&self, currency_code: &str) -> Result<()>;
+    fn provider_disclosure_accepted(&self) -> Result<bool>;
+    fn accept_provider_disclosure(&self) -> Result<()>;
+    fn has_ecb_retained_data(&self) -> Result<bool>;
+    fn begin_default_generation(&self, currency_code: &str) -> Result<String>;
+    fn activate_default_generation(&self, generation_id: &str, currency_code: &str) -> Result<()>;
+    fn attach_generation(&self, job_id: &str, generation_id: &str) -> Result<()>;
+    fn quote(&self, source: &str, target: &str, rate_date: &str) -> Result<ExchangeRateQuote>;
 }
 
 pub struct CurrencyService {
-    settings: Arc<dyn CurrencySettingsPort>,
-    events: Arc<dyn CurrencyStateEventPublisher>,
+    pub(crate) settings: Arc<dyn CurrencySettingsPort>,
+    pub(crate) events: Arc<dyn CurrencyStateEventPublisher>,
 }
 
 impl CurrencyService {
@@ -72,12 +82,18 @@ impl CurrencyService {
     pub fn list_settings(&self) -> Result<Vec<CurrencySettingsRow>> {
         self.settings.require_setup()?;
         let state = self.settings.setup_state()?;
-        Ok(self
-            .settings
-            .list_persisted()?
-            .into_iter()
-            .map(|row| settings_row(&row, &state.default_currency))
-            .collect())
+        Ok(assemble_settings_rows(
+            self.settings.list_persisted()?,
+            &state.default_currency,
+            self.settings
+                .running_job()?
+                .as_ref()
+                .map(|record| &record.job),
+            self.settings
+                .latest_job()?
+                .as_ref()
+                .map(|record| &record.job),
+        ))
     }
 
     pub fn get_currency(&self, code: &str) -> Result<CurrencySettingsRow> {
@@ -120,7 +136,7 @@ impl CurrencyService {
         self.run_setup_job(job, code)
     }
 
-    fn run_setup_job(&self, job: CurrencyJob, code: &str) -> Result<CurrencyJob> {
+    pub(crate) fn run_setup_job(&self, job: CurrencyJob, code: &str) -> Result<CurrencyJob> {
         match self.settings.complete_initial_setup(code) {
             Ok(()) => self.mark_job_succeeded(job),
             Err(error) => {
@@ -132,7 +148,7 @@ impl CurrencyService {
         }
     }
 
-    fn mark_job_succeeded(&self, job: CurrencyJob) -> Result<CurrencyJob> {
+    pub(crate) fn mark_job_succeeded(&self, job: CurrencyJob) -> Result<CurrencyJob> {
         let finished = job.finish_succeeded();
         self.settings.update_job(&finished)?;
         self.publish_finished(&finished, CurrencyJobFinishState::Succeeded);
@@ -156,11 +172,11 @@ impl CurrencyService {
         })
     }
 
-    fn publish(&self, event: &CurrencyStateEvent) {
+    pub(crate) fn publish(&self, event: &CurrencyStateEvent) {
         let _ = self.events.publish(event);
     }
 
-    fn publish_finished(&self, job: &CurrencyJob, state: CurrencyJobFinishState) {
+    pub(crate) fn publish_finished(&self, job: &CurrencyJob, state: CurrencyJobFinishState) {
         self.publish(&CurrencyStateEvent::Finished {
             job_id: job.job_id.clone(),
             job_type: job.job_type,
@@ -184,7 +200,7 @@ impl CurrencySetupGate for Arc<CurrencyService> {
     }
 }
 
-fn require_supported(raw: &str) -> Result<CurrencyCode> {
+pub(crate) fn require_supported(raw: &str) -> Result<CurrencyCode> {
     match CurrencyCode::parse(raw) {
         Ok(code) => Ok(code),
         Err(Error::InvalidData(message)) if message.starts_with("Unsupported currency code") => {
@@ -195,6 +211,14 @@ fn require_supported(raw: &str) -> Result<CurrencyCode> {
 }
 
 fn setup_job_error_envelope(error: &Error) -> ErrorEnvelope {
+    job_error_envelope_with_prefix(error, "Initial currency setup failed")
+}
+
+pub(crate) fn job_error_envelope(error: &Error) -> ErrorEnvelope {
+    job_error_envelope_with_prefix(error, "Currency job failed")
+}
+
+fn job_error_envelope_with_prefix(error: &Error, prefix: &str) -> ErrorEnvelope {
     let details = match error {
         Error::IncompleteCoverage { missing_periods } => {
             Some(serde_json::json!({ "missingPeriods": missing_periods }))
@@ -203,29 +227,130 @@ fn setup_job_error_envelope(error: &Error) -> ErrorEnvelope {
     };
     ErrorEnvelope {
         code: error.code(),
-        message: format!("Initial currency setup failed: {}", error.public_message()),
+        message: format!("{prefix}: {}", error.public_message()),
         details,
     }
 }
 
-fn settings_row(row: &PersistedCurrency, default_currency: &str) -> CurrencySettingsRow {
+pub fn needs_provider(code: &str) -> bool {
+    code != "EUR" && crate::features::exchange_rates::APPROVED_ECB_CURRENCIES.contains(&code)
+}
+
+fn assemble_settings_rows(
+    persisted: Vec<PersistedCurrency>,
+    default_currency: &str,
+    running: Option<&CurrencyJob>,
+    latest: Option<&CurrencyJob>,
+) -> Vec<CurrencySettingsRow> {
+    let mut rows: Vec<CurrencySettingsRow> = persisted
+        .iter()
+        .map(|row| settings_row(row, default_currency, running, latest))
+        .collect();
+    if let Some(job) = running.filter(|job| job.job_type == CurrencyJobType::AddCurrency)
+        && let Some(code) = job.currency_code.as_deref()
+        && !rows.iter().any(|row| row.code == code)
+    {
+        rows.push(synthetic_adding_row(code, default_currency));
+    }
+    if let Some(job) = latest.filter(|job| {
+        job.job_type == CurrencyJobType::AddCurrency
+            && job.status == super::models::CurrencyJobStatus::Failed
+    }) && let Some(code) = job.currency_code.as_deref()
+        && !rows.iter().any(|row| row.code == code)
+        && running.is_none()
+    {
+        rows.push(synthetic_failed_row(code, default_currency, job));
+    }
+    rows
+}
+
+fn missing_periods_for(code: &str, latest: Option<&CurrencyJob>) -> Option<Vec<String>> {
+    let job = latest?;
+    if job.currency_code.as_deref() != Some(code) {
+        return None;
+    }
+    missing_periods_from_job(job)
+}
+
+fn missing_periods_from_job(job: &CurrencyJob) -> Option<Vec<String>> {
+    let details = job.error.as_ref()?.details.as_ref()?;
+    let periods = details.get("missingPeriods")?.as_array()?;
+    Some(
+        periods
+            .iter()
+            .filter_map(|value| value.as_str().map(ToOwned::to_owned))
+            .collect(),
+    )
+}
+
+fn settings_row(
+    row: &PersistedCurrency,
+    default_currency: &str,
+    running: Option<&CurrencyJob>,
+    latest: Option<&CurrencyJob>,
+) -> CurrencySettingsRow {
     let record = CURRENT_MANIFEST.get(&row.code);
+    let adding = running.is_some_and(|job| {
+        job.job_type == CurrencyJobType::AddCurrency
+            && job.currency_code.as_deref() == Some(&row.code)
+    });
+    let failed = !adding
+        && latest.is_some_and(|job| {
+            job.job_type == CurrencyJobType::AddCurrency
+                && job.status == super::models::CurrencyJobStatus::Failed
+                && job.currency_code.as_deref() == Some(&row.code)
+                && row.disabled
+        });
     CurrencySettingsRow {
         code: row.code.clone(),
         name: record
             .map(|item| item.name.to_string())
             .unwrap_or_else(|| row.code.clone()),
-        status: if row.disabled {
+        status: if adding {
+            CurrencyLifecycleStatus::Adding
+        } else if failed {
+            CurrencyLifecycleStatus::Failed
+        } else if row.disabled {
             CurrencyLifecycleStatus::Disabled
         } else {
             CurrencyLifecycleStatus::Enabled
         },
+        coverage_from: row.coverage_from.clone(),
+        coverage_to: row.coverage_to.clone(),
+        last_refresh: row.last_refresh.clone(),
+        refresh_status: row.refresh_status,
+        missing_periods: missing_periods_for(&row.code, latest)
+            .unwrap_or_else(|| row.missing_periods.clone()),
+        used_by_recurring: row.used_by_recurring,
+        is_default: row.code == default_currency,
+    }
+}
+
+fn synthetic_failed_row(
+    code: &str,
+    default_currency: &str,
+    job: &CurrencyJob,
+) -> CurrencySettingsRow {
+    let mut row = synthetic_adding_row(code, default_currency);
+    row.status = CurrencyLifecycleStatus::Failed;
+    row.missing_periods = missing_periods_from_job(job).unwrap_or_default();
+    row
+}
+
+fn synthetic_adding_row(code: &str, default_currency: &str) -> CurrencySettingsRow {
+    let record = CURRENT_MANIFEST.get(code);
+    CurrencySettingsRow {
+        code: code.to_string(),
+        name: record
+            .map(|item| item.name.to_string())
+            .unwrap_or_else(|| code.to_string()),
+        status: CurrencyLifecycleStatus::Adding,
         coverage_from: None,
         coverage_to: None,
         last_refresh: None,
         refresh_status: CurrencyRefreshStatus::Idle,
         missing_periods: Vec::new(),
-        used_by_recurring: row.used_by_recurring,
-        is_default: row.code == default_currency,
+        used_by_recurring: false,
+        is_default: code == default_currency,
     }
 }

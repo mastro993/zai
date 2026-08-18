@@ -100,21 +100,44 @@ pub struct PersistedCurrency {
     pub code: String,
     pub disabled: bool,
     pub used_by_recurring: bool,
+    pub coverage_from: Option<String>,
+    pub coverage_to: Option<String>,
+    pub last_refresh: Option<String>,
+    pub refresh_status: CurrencyRefreshStatus,
+    pub missing_periods: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CurrencyJobRecord {
     pub job: CurrencyJob,
+    pub generation_id: Option<String>,
 }
 
 impl CurrencyJob {
     pub fn setup(job_id: impl Into<String>, currency_code: &str) -> Self {
+        Self::running(job_id, CurrencyJobType::Setup, currency_code, 1)
+    }
+
+    pub fn add_currency(job_id: impl Into<String>, currency_code: &str) -> Self {
+        Self::running(job_id, CurrencyJobType::AddCurrency, currency_code, 2)
+    }
+
+    pub fn change_default(job_id: impl Into<String>, currency_code: &str) -> Self {
+        Self::running(job_id, CurrencyJobType::ChangeDefault, currency_code, 2)
+    }
+
+    fn running(
+        job_id: impl Into<String>,
+        job_type: CurrencyJobType,
+        currency_code: &str,
+        stage_total: u32,
+    ) -> Self {
         Self {
             job_id: job_id.into(),
-            job_type: CurrencyJobType::Setup,
+            job_type,
             status: CurrencyJobStatus::Running,
             stage_current: 0,
-            stage_total: 1,
+            stage_total,
             currency_code: Some(currency_code.to_string()),
             error: None,
         }
@@ -132,4 +155,30 @@ impl CurrencyJob {
         self.error = Some(error);
         self
     }
+
+    pub fn finish_cancelled(mut self) -> Self {
+        self.status = CurrencyJobStatus::Cancelled;
+        self.error = None;
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExchangeRateQuote {
+    pub source_currency: String,
+    pub target_currency: String,
+    pub rate_date: String,
+    pub variant: QuoteVariant,
+    pub rate: Option<String>,
+    pub attribution: Option<String>,
+    pub complete: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum QuoteVariant {
+    Identity,
+    Automatic,
+    Pending,
 }

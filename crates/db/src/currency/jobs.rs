@@ -28,17 +28,21 @@ struct JobRow {
     error_code: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     error_message: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    generation_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    error_details: Option<String>,
 }
 
 pub fn insert_job(pool: &DbPool, job: &CurrencyJob) -> Result<()> {
     let mut connection = get_connection(pool)?;
     let now = Utc::now().naive_utc();
-    let (error_code, error_message) = job_error_columns(job);
+    let (error_code, error_message, error_details) = job_error_columns(job);
     sql_query(
         "INSERT INTO currency_jobs (\
             id, job_type, status, currency_code, stage_current, stage_total, \
-            error_code, error_message, created_at, updated_at\
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            error_code, error_message, error_details, created_at, updated_at\
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind::<Text, _>(&job.job_id)
     .bind::<Text, _>(job_type_wire(job.job_type))
@@ -48,6 +52,7 @@ pub fn insert_job(pool: &DbPool, job: &CurrencyJob) -> Result<()> {
     .bind::<Integer, _>(i32::try_from(job.stage_total).unwrap_or(0))
     .bind::<Nullable<Text>, _>(error_code)
     .bind::<Nullable<Text>, _>(error_message)
+    .bind::<Nullable<Text>, _>(error_details)
     .bind::<Timestamp, _>(now)
     .bind::<Timestamp, _>(now)
     .execute(&mut connection)
@@ -64,10 +69,10 @@ pub fn insert_job(pool: &DbPool, job: &CurrencyJob) -> Result<()> {
 pub fn update_job(pool: &DbPool, job: &CurrencyJob) -> Result<()> {
     let mut connection = get_connection(pool)?;
     let now = Utc::now().naive_utc();
-    let (error_code, error_message) = job_error_columns(job);
+    let (error_code, error_message, error_details) = job_error_columns(job);
     sql_query(
         "UPDATE currency_jobs SET status = ?, stage_current = ?, stage_total = ?, \
-         currency_code = ?, error_code = ?, error_message = ?, updated_at = ? \
+         currency_code = ?, error_code = ?, error_message = ?, error_details = ?, updated_at = ? \
          WHERE id = ?",
     )
     .bind::<Text, _>(job_status_wire(job.status))
@@ -76,6 +81,7 @@ pub fn update_job(pool: &DbPool, job: &CurrencyJob) -> Result<()> {
     .bind::<Nullable<Text>, _>(job.currency_code.as_deref())
     .bind::<Nullable<Text>, _>(error_code)
     .bind::<Nullable<Text>, _>(error_message)
+    .bind::<Nullable<Text>, _>(error_details)
     .bind::<Timestamp, _>(now)
     .bind::<Text, _>(&job.job_id)
     .execute(&mut connection)
@@ -87,7 +93,7 @@ pub fn get_job(pool: &DbPool, job_id: &str) -> Result<Option<CurrencyJobRecord>>
     let mut connection = get_connection(pool)?;
     let rows = sql_query(
         "SELECT id, job_type, status, currency_code, stage_current, stage_total, \
-         error_code, error_message FROM currency_jobs WHERE id = ?",
+         error_code, error_message, error_details, generation_id FROM currency_jobs WHERE id = ?",
     )
     .bind::<Text, _>(job_id)
     .load::<JobRow>(&mut connection)
@@ -99,7 +105,7 @@ pub fn running_job(pool: &DbPool) -> Result<Option<CurrencyJobRecord>> {
     let mut connection = get_connection(pool)?;
     let rows = sql_query(
         "SELECT id, job_type, status, currency_code, stage_current, stage_total, \
-         error_code, error_message FROM currency_jobs WHERE status = 'running' LIMIT 1",
+         error_code, error_message, error_details, generation_id FROM currency_jobs WHERE status = 'running' LIMIT 1",
     )
     .load::<JobRow>(&mut connection)
     .into_core()?;
@@ -110,7 +116,7 @@ pub fn latest_job(pool: &DbPool) -> Result<Option<CurrencyJobRecord>> {
     let mut connection = get_connection(pool)?;
     let rows = sql_query(
         "SELECT id, job_type, status, currency_code, stage_current, stage_total, \
-         error_code, error_message FROM currency_jobs ORDER BY created_at DESC, id DESC LIMIT 1",
+         error_code, error_message, error_details, generation_id FROM currency_jobs ORDER BY created_at DESC, id DESC LIMIT 1",
     )
     .load::<JobRow>(&mut connection)
     .into_core()?;
@@ -119,6 +125,7 @@ pub fn latest_job(pool: &DbPool) -> Result<Option<CurrencyJobRecord>> {
 
 fn job_from_row(row: JobRow) -> Result<CurrencyJobRecord> {
     Ok(CurrencyJobRecord {
+        generation_id: row.generation_id,
         job: CurrencyJob {
             job_id: row.id,
             job_type: parse_job_type(&row.job_type)?,
@@ -130,7 +137,9 @@ fn job_from_row(row: JobRow) -> Result<CurrencyJobRecord> {
                 (Some(code), Some(message)) => Some(ErrorEnvelope {
                     code: parse_error_code(&code),
                     message,
-                    details: None,
+                    details: row
+                        .error_details
+                        .and_then(|raw| serde_json::from_str(&raw).ok()),
                 }),
                 _ => None,
             },
@@ -138,16 +147,20 @@ fn job_from_row(row: JobRow) -> Result<CurrencyJobRecord> {
     })
 }
 
-fn job_error_columns(job: &CurrencyJob) -> (Option<String>, Option<String>) {
+fn job_error_columns(job: &CurrencyJob) -> (Option<String>, Option<String>, Option<String>) {
     job.error
         .as_ref()
         .map(|error| {
             (
                 Some(error_code_wire(error.code)),
                 Some(error.message.clone()),
+                error
+                    .details
+                    .as_ref()
+                    .and_then(|value| serde_json::to_string(value).ok()),
             )
         })
-        .unwrap_or((None, None))
+        .unwrap_or((None, None, None))
 }
 
 fn job_type_wire(job_type: CurrencyJobType) -> &'static str {
