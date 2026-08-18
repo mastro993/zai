@@ -100,6 +100,7 @@ fn transaction_matches_review(
     transaction.transaction_date == input.expected_transaction_date
         && description == Some(input.template.description.as_str())
         && transaction.amount == i64::from(input.template.amount)
+        && transaction.currency == input.template.currency
         && transaction.transaction_type == input.template.transaction_type
         && transaction.transaction_category_id == input.template.transaction_category_id
         && notes == input.template.notes.as_deref()

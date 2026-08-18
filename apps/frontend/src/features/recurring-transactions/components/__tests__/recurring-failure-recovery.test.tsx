@@ -71,6 +71,7 @@ function documentWithFailure(): RecurringTransactionDocument {
       effectiveFromLocal: "2026-07-01T10:00:00",
       description: "Monthly rent",
       amount: 120000,
+      currency: "EUR",
       transactionType: "expense",
     },
     occurrenceSummary: {

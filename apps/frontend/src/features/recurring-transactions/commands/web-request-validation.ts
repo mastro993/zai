@@ -32,6 +32,7 @@ export interface ProvenanceArgs {
 export interface RecurringTemplate {
   description: string;
   amount: number;
+  currency: string;
   transactionType: string;
   transactionCategoryId?: string | null;
   notes?: string | null;

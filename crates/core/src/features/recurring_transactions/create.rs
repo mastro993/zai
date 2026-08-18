@@ -1,14 +1,31 @@
 use super::models::ScheduleRule;
 use super::schedule::validate_schedule_rule;
+use crate::money::CurrencyCode;
 use crate::{Error, Result};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
+
+fn default_template_currency() -> String {
+    "EUR".to_string()
+}
+
+fn validate_currency(code: &str) -> Result<()> {
+    match CurrencyCode::parse(code) {
+        Ok(_) => Ok(()),
+        Err(Error::InvalidData(message)) if message.starts_with("Unsupported currency code") => {
+            Err(Error::UnsupportedCurrency(code.trim().to_ascii_uppercase()))
+        }
+        Err(error) => Err(error),
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecurringTemplateInput {
     pub description: String,
     pub amount: i32,
+    #[serde(default = "default_template_currency")]
+    pub currency: String,
     pub transaction_type: String,
     pub transaction_category_id: Option<String>,
     pub notes: Option<String>,
@@ -53,6 +70,7 @@ impl RecurringTemplateInput {
                 "Template amount cannot be negative".to_string(),
             ));
         }
+        validate_currency(&self.currency)?;
         match self.transaction_type.as_str() {
             "expense" | "income" => Ok(()),
             _ => Err(Error::InvalidData(format!(
@@ -92,6 +110,7 @@ mod tests {
             template: RecurringTemplateInput {
                 description: "  Rent  ".to_string(),
                 amount: 120_000,
+                currency: "EUR".to_string(),
                 transaction_type: "expense".to_string(),
                 transaction_category_id: None,
                 notes: None,
@@ -120,5 +139,23 @@ mod tests {
         input = valid_new();
         input.total_occurrences = Some(0);
         assert!(input.validate().is_err());
+    }
+
+    #[test]
+    fn rejects_unsupported_template_currency() {
+        let mut input = valid_new();
+        input.template.currency = "XXX".to_string();
+        assert!(matches!(
+            input.validate(),
+            Err(Error::UnsupportedCurrency(code)) if code == "XXX"
+        ));
+    }
+
+    #[test]
+    fn template_json_carries_money_and_omits_a_rate() {
+        let value = serde_json::to_value(&valid_new().template).expect("json");
+        assert_eq!(value["amount"], 120_000);
+        assert_eq!(value["currency"], "EUR");
+        assert!(value.get("exchangeRate").is_none());
     }
 }

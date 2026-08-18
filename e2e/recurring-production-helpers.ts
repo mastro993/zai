@@ -18,6 +18,7 @@ export interface RecurringDocument {
   template: {
     description: string;
     amount: number;
+    currency: string;
     transactionType: string;
     transactionCategoryId: string | null;
     notes: string | null;
@@ -137,6 +138,7 @@ export async function createApiRecurring(
       template: {
         description: input.description,
         amount: input.amount ?? 12000,
+        currency: "EUR",
         transactionType: "expense",
         transactionCategoryId: input.transactionCategoryId ?? null,
         notes: null,
@@ -292,6 +294,7 @@ export async function updateApiRecurringDescription(
       template: {
         description,
         amount: document.template.amount,
+        currency: document.template.currency,
         transactionType: document.template.transactionType,
         transactionCategoryId: document.template.transactionCategoryId,
         notes: document.template.notes,

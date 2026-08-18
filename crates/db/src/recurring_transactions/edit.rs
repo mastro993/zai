@@ -139,6 +139,11 @@ fn apply_template_change(
             ))
         })?;
 
+    if template.currency != open.currency {
+        crate::transactions::rate_revisions::require_selectable_currency(conn, &template.currency)
+            .map_err(StorageError::from)?;
+    }
+
     if effective_from_local <= open.effective_from_local {
         diesel::update(
             recurring_template_revisions::table
@@ -147,6 +152,7 @@ fn apply_template_change(
         .set((
             recurring_template_revisions::description.eq(&template.description),
             recurring_template_revisions::amount.eq(i64::from(template.amount)),
+            recurring_template_revisions::currency.eq(&template.currency),
             recurring_template_revisions::transaction_type.eq(&template.transaction_type),
             recurring_template_revisions::transaction_category_id
                 .eq(&template.transaction_category_id),
@@ -170,7 +176,7 @@ fn apply_template_change(
             open.sequence + 1,
             effective_from_local,
             template,
-            &crate::currency::default_currency(conn)?,
+            &template.currency,
         ))
         .execute(conn)
         .into_storage()?;

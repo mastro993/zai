@@ -22,6 +22,7 @@ fn template_from(amount: i32) -> RecurringTemplateInput {
     RecurringTemplateInput {
         description: "Rent".into(),
         amount,
+        currency: "EUR".into(),
         transaction_type: "expense".into(),
         transaction_category_id: None,
         notes: Some("keep".into()),

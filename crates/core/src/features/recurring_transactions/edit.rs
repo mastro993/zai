@@ -120,6 +120,7 @@ mod tests {
             template: RecurringTemplateInput {
                 description: "Rent".into(),
                 amount: 1000,
+                currency: "EUR".into(),
                 transaction_type: "expense".into(),
                 transaction_category_id: None,
                 notes: None,

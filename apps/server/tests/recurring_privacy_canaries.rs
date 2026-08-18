@@ -210,6 +210,7 @@ async fn bulk_preflight_feedback_omits_template_description_and_amount() {
         "template": {
             "description": CANARY_DESCRIPTION,
             "amount": CANARY_AMOUNT,
+            "currency": "EUR",
             "transactionType": "expense",
             "transactionCategoryId": null,
             "notes": null
@@ -260,6 +261,7 @@ async fn seeded_source_surfaces_omit_canaries_from_status_errors_history_and_ale
         "template": {
             "description": format!("{CANARY_NAME} {CANARY_DESCRIPTION}"),
             "amount": CANARY_AMOUNT,
+            "currency": "EUR",
             "transactionType": "expense",
             "transactionCategoryId": category_id,
             "notes": format!("{CANARY_ACCOUNT} {CANARY_NOTE}")
