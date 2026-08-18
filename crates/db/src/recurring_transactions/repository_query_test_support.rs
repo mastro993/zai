@@ -78,8 +78,8 @@ pub(crate) fn seed_retained_history(
         let scheduled_local = scheduled_local.format("%Y-%m-%d %H:%M:%S").to_string();
         let transaction_id = format!("{recurring_transaction_id}-txn-{ordinal}");
         diesel::sql_query(format!(
-            "INSERT INTO transactions (id, description, amount, transaction_date, transaction_type, created_at, updated_at) \
-             VALUES ('{transaction_id}', 'Retained history', 100, '{scheduled_local}', 'expense', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO transactions (id, description, amount, currency, transaction_date, transaction_type, created_at, updated_at) \
+             VALUES ('{transaction_id}', 'Retained history', 100, 'EUR', '{scheduled_local}', 'expense', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
         ))
         .execute(conn)
         .expect("transaction history");

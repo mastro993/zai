@@ -1,12 +1,11 @@
 use crate::connection::{create_pool, run_migrations};
-use crate::migration_fixture_support::{CountRow, TEST_MIGRATIONS};
+use crate::migration_fixture_support::{CountRow, load_released_schema_fixture};
 use crate::test_utils::TempDb;
 use diesel::Connection;
 use diesel::RunQueryDsl;
 use diesel::connection::SimpleConnection;
 use diesel::prelude::QueryableByName;
 use diesel::sqlite::SqliteConnection;
-use diesel_migrations::MigrationHarness;
 
 #[derive(QueryableByName)]
 struct TextRow {
@@ -79,10 +78,10 @@ fn recurring_schema_uses_final_description_contract() {
     .expect("recurring transactions");
     diesel::sql_query(
         "INSERT INTO recurring_template_revisions (
-            id, recurring_transaction_id, sequence, effective_from_local, description, amount, transaction_type
+            id, recurring_transaction_id, sequence, effective_from_local, description, amount, currency, transaction_type
          ) VALUES
-            ('tmpl-description-a', 'rt-description-a', 1, CURRENT_TIMESTAMP, 'Shared description', 100, 'expense'),
-            ('tmpl-description-b', 'rt-description-b', 1, CURRENT_TIMESTAMP, 'Shared description', 100, 'expense')",
+            ('tmpl-description-a', 'rt-description-a', 1, CURRENT_TIMESTAMP, 'Shared description', 100, 'EUR', 'expense'),
+            ('tmpl-description-b', 'rt-description-b', 1, CURRENT_TIMESTAMP, 'Shared description', 100, 'EUR', 'expense')",
     )
     .execute(&mut connection)
     .expect("duplicate descriptions are allowed");
@@ -96,9 +95,9 @@ fn recurring_schema_uses_final_description_contract() {
 
     let blank_description = diesel::sql_query(
         "INSERT INTO recurring_template_revisions (
-            id, recurring_transaction_id, sequence, effective_from_local, description, amount, transaction_type
+            id, recurring_transaction_id, sequence, effective_from_local, description, amount, currency, transaction_type
          ) VALUES (
-            'tmpl-description-blank', 'rt-description-a', 2, CURRENT_TIMESTAMP, '   ', 100, 'expense'
+            'tmpl-description-blank', 'rt-description-a', 2, CURRENT_TIMESTAMP, '   ', 100, 'EUR', 'expense'
          )",
     )
     .execute(&mut connection);
@@ -113,10 +112,7 @@ fn recurring_migration_failure_during_alert_rebuild_restores_previous_schema() {
     let temp_db = TempDb::new();
     let mut connection = SqliteConnection::establish(temp_db.path()).expect("connect");
     let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
-    run_migrations(&pool).expect("migrations");
-    connection
-        .revert_last_migration(TEST_MIGRATIONS)
-        .expect("revert recurring migration");
+    load_released_schema_fixture(&mut connection, "v0008_domain_alerts");
 
     connection
         .batch_execute(
@@ -152,10 +148,7 @@ fn recurring_migration_failure_after_schema_build_restores_previous_schema() {
     let temp_db = TempDb::new();
     let mut connection = SqliteConnection::establish(temp_db.path()).expect("connect");
     let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
-    run_migrations(&pool).expect("migrations");
-    connection
-        .revert_last_migration(TEST_MIGRATIONS)
-        .expect("revert recurring migration");
+    load_released_schema_fixture(&mut connection, "v0008_domain_alerts");
 
     connection
         .batch_execute(

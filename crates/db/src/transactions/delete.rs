@@ -64,7 +64,12 @@ pub(super) async fn delete_transaction(
                     &before,
                     &after,
                 )?;
-                Ok(CommittedOutcome::with_alert_outcomes(deleted.into(), alerts))
+                Ok(CommittedOutcome::with_alert_outcomes(
+                    deleted
+                        .into_domain()
+                        .map_err(crate::errors::StorageError::from)?,
+                    alerts,
+                ))
             },
         )
         .await?;
@@ -106,8 +111,12 @@ pub(super) async fn delete_transactions(
                     .load::<TransactionRow>(conn)
                     .into_storage()?;
 
-                let deleted_transactions: Vec<Transaction> =
-                    deleted.iter().cloned().map(Transaction::from).collect();
+                let deleted_transactions: Vec<Transaction> = deleted
+                    .iter()
+                    .cloned()
+                    .map(TransactionRow::into_domain)
+                    .collect::<zai_core::Result<Vec<_>>>()
+                    .map_err(crate::errors::StorageError::from)?;
                 BudgetPeriodTimeline::reconcile(
                     conn,
                     SourceChange::Transactions {

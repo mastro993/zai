@@ -66,6 +66,10 @@ add or keep green; the full list still ships only at the final merge.
 - No schema. No commands. No UI.
 - Gate: deterministic unit family for Money, conversion, and coverage
   completeness rules that do not need persistence.
+- Landed on `zai_core::money`. PR: [#399](https://github.com/mastro993/zai/pull/399).
+  Tests: `cargo test -p zai-core --lib money`.
+  Families: `money::amount_tests`, `money::manifest_tests`,
+  `money::convert_tests`, `money::coverage_tests`.
 
 ### 2. Schema + silent EUR + fixtures
 
@@ -82,6 +86,9 @@ add or keep green; the full list still ships only at the final merge.
 - Existing money commands fail closed until later PRs restore them.
 - E2E seed on this branch: silent EUR + confirmed EUR setup.
 - Gate: migration and upgrade family.
+- Landed in this stack PR. Tests: `cargo test -p zai-db --lib migration_`.
+  Families: `migration_currency_tests`, released-schema upgrade through
+  `v0010_multi_currency`, failpoint rollback, pre-currency fail-closed.
 
 ### 3. ECB service + provider cache + privacy canaries
 

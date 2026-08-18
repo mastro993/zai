@@ -35,8 +35,8 @@ async fn stale_head_with_existing_occurrence_heals_as_already_fulfilled() {
     writer
         .exec(move |conn| {
             diesel::sql_query(
-                "INSERT INTO transactions (id, amount, transaction_date, transaction_type, created_at, updated_at) \
-                 VALUES ('txn-stale', 100, '2026-01-01 09:00:00', 'expense', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                "INSERT INTO transactions (id, amount, currency, transaction_date, transaction_type, created_at, updated_at) \
+                 VALUES ('txn-stale', 100, 'EUR', '2026-01-01 09:00:00', 'expense', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
             )
             .execute(conn)
             .map_err(crate::errors::StorageError::from)?;

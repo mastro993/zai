@@ -41,10 +41,11 @@ fn load_existing_in_import_range(
 fn prepare_import_rows(
     candidates: Vec<NewTransaction>,
     existing_rows: &[TransactionRow],
+    currency: &str,
 ) -> Vec<TransactionRow> {
     import_dedup::filter_import_duplicates(candidates, existing_rows)
         .into_iter()
-        .map(Into::into)
+        .map(|transaction| TransactionRow::from_new(transaction, currency))
         .collect()
 }
 
@@ -65,8 +66,9 @@ pub(super) async fn import_transactions(
                 CommittedOutcome<Vec<Transaction>>,
             > {
                 let existing_rows = load_existing_in_import_range(conn, &new_transactions)?;
+                let currency = crate::currency::default_currency(conn)?;
                 let transactions_rows =
-                    prepare_import_rows(new_transactions, &existing_rows);
+                    prepare_import_rows(new_transactions, &existing_rows, &currency);
 
                 if transactions_rows.is_empty() {
                     return Ok(CommittedOutcome::with_alert_outcomes(Vec::new(), vec![]));
@@ -79,6 +81,10 @@ pub(super) async fn import_transactions(
                     .values(&transactions_rows)
                     .execute(conn)
                     .into_storage()?;
+                for row in &transactions_rows {
+                    crate::currency::insert_identity_rate(conn, &row.id, row.transaction_date)
+                        .map_err(crate::errors::StorageError::from)?;
+                }
 
                 let ids = transactions_rows
                     .iter()
@@ -106,7 +112,11 @@ pub(super) async fn import_transactions(
                     &after,
                 )?;
                 Ok(CommittedOutcome::with_alert_outcomes(
-                    inserted.into_iter().map(Transaction::from).collect(),
+                    inserted
+                        .into_iter()
+                        .map(TransactionRow::into_domain)
+                        .collect::<zai_core::Result<Vec<_>>>()
+                        .map_err(crate::errors::StorageError::from)?,
                     alerts,
                 ))
             },
@@ -130,7 +140,9 @@ pub(super) async fn import_transactions_with_categories(
                 CommittedOutcome<(Vec<TransactionCategory>, Vec<Transaction>)>,
             > {
                 let existing_rows = load_existing_in_import_range(conn, &new_transactions)?;
-                let transactions_rows = prepare_import_rows(new_transactions, &existing_rows);
+                let currency = crate::currency::default_currency(conn)?;
+                let transactions_rows =
+                    prepare_import_rows(new_transactions, &existing_rows, &currency);
 
                 let now = clock.sample();
                 let before = snapshot_active_budgets(conn, now)?;
@@ -141,6 +153,10 @@ pub(super) async fn import_transactions_with_categories(
                         .values(&transactions_rows)
                         .execute(conn)
                         .into_storage()?;
+                    for row in &transactions_rows {
+                        crate::currency::insert_identity_rate(conn, &row.id, row.transaction_date)
+                            .map_err(crate::errors::StorageError::from)?;
+                    }
                 }
 
                 let inserted_categories = if categories_rows.is_empty() {
@@ -173,8 +189,9 @@ pub(super) async fn import_transactions_with_categories(
                         .load::<TransactionRow>(conn)
                         .into_storage()?
                         .into_iter()
-                        .map(Transaction::from)
-                        .collect()
+                        .map(TransactionRow::into_domain)
+                        .collect::<zai_core::Result<Vec<_>>>()
+                        .map_err(crate::errors::StorageError::from)?
                 };
 
                 if !transactions_rows.is_empty() {

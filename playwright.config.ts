@@ -34,6 +34,7 @@ export default defineConfig({
       url: "http://127.0.0.1:3000/health",
       env: {
         ZAI_DATA_DIR: dataDir,
+        ZAI_CONFIRM_DEFAULT_CURRENCY: "EUR",
       },
       reuseExistingServer: false,
       timeout: 180_000,

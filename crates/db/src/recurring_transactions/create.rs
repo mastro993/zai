@@ -71,7 +71,8 @@ pub fn create_recurring_transaction(
             effective_from_local: first_scheduled_local,
             effective_until_local: None,
             description: input.template.description,
-            amount: input.template.amount,
+            amount: i64::from(input.template.amount),
+            currency: crate::currency::default_currency(conn).map_err(StorageError::from)?,
             transaction_type: input.template.transaction_type,
             transaction_category_id: input.template.transaction_category_id,
             notes: input.template.notes,
@@ -135,18 +136,25 @@ pub fn find_open_template_revision(
         .map_err(StorageError::from)
         .map_err(Error::from)?;
 
-    Ok(row.map(|row| RecurringTemplateRevision {
-        id: row.id,
-        recurring_transaction_id: row.recurring_transaction_id,
-        sequence: row.sequence,
-        effective_from_local: row.effective_from_local,
-        effective_until_local: row.effective_until_local,
-        description: row.description,
-        amount: row.amount,
-        transaction_type: row.transaction_type,
-        transaction_category_id: row.transaction_category_id,
-        notes: row.notes,
-    }))
+    row.map(|row| {
+        Ok(RecurringTemplateRevision {
+            id: row.id,
+            recurring_transaction_id: row.recurring_transaction_id,
+            sequence: row.sequence,
+            effective_from_local: row.effective_from_local,
+            effective_until_local: row.effective_until_local,
+            description: row.description,
+            amount: i32::try_from(row.amount).map_err(|_| {
+                Error::InvalidData(
+                    "Persisted money exceeds the JavaScript-safe wire maximum".to_string(),
+                )
+            })?,
+            transaction_type: row.transaction_type,
+            transaction_category_id: row.transaction_category_id,
+            notes: row.notes,
+        })
+    })
+    .transpose()
 }
 
 fn schedule_columns(rule: &ScheduleRule) -> (Option<i32>, Option<String>, Option<i32>) {
