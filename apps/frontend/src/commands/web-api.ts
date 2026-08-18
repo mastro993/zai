@@ -28,3 +28,6 @@ export const resolveAlertsEventUrl = (): string =>
 
 export const resolveRecurringProcessingEventUrl = (): string =>
   joinWebApiUrl(resolveWebApiBaseUrl(), "recurring-processing/events");
+
+export const resolveCurrencyStateEventUrl = (): string =>
+  joinWebApiUrl(resolveWebApiBaseUrl(), "currencies/events");

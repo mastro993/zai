@@ -1,0 +1,29 @@
+[
+  {
+    "version": 1,
+    "type": "started",
+    "jobId": "job-1",
+    "jobType": "setup"
+  },
+  {
+    "version": 1,
+    "type": "progress",
+    "jobId": "job-1",
+    "jobType": "setup",
+    "stageCurrent": 1,
+    "stageTotal": 1
+  },
+  {
+    "version": 1,
+    "type": "finished",
+    "jobId": "job-1",
+    "jobType": "setup",
+    "stageCurrent": 1,
+    "stageTotal": 1,
+    "state": "succeeded"
+  },
+  {
+    "version": 1,
+    "type": "stateChanged"
+  }
+]

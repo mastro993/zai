@@ -8,7 +8,7 @@ use zai_core::features::recurring_transactions::{
 };
 use zai_core::features::{
     budgets::{service::BudgetsService, traits::BudgetsServiceTrait},
-    currency::CurrencyService,
+    currency::{CurrencyService, CurrencyStateEventBus},
     domain_alerts::{DomainAlertsService, DomainAlertsServiceTrait},
     transaction_categories::{
         service::TransactionCategoriesService, traits::TransactionCategoriesServiceTrait,
@@ -32,6 +32,7 @@ pub struct ServiceContext {
     pub transactions_service: Arc<dyn TransactionsServiceTrait>,
     pub domain_alert_event_bus: Arc<DomainAlertEventBus>,
     pub recurring_processing_event_bus: Arc<RecurringProcessingEventBus>,
+    pub currency_state_event_bus: Arc<CurrencyStateEventBus>,
     pub recurring_processing_supervisor: RecurringProcessingSupervisorHandle,
 }
 
@@ -72,6 +73,10 @@ impl ServiceContext {
         Arc::clone(&self.recurring_processing_event_bus)
     }
 
+    pub fn currency_state_event_bus(&self) -> Arc<CurrencyStateEventBus> {
+        Arc::clone(&self.currency_state_event_bus)
+    }
+
     pub fn recurring_processing_supervisor(&self) -> RecurringProcessingSupervisorHandle {
         self.recurring_processing_supervisor.clone()
     }
@@ -96,10 +101,12 @@ pub fn bootstrap_context_with_clock(
 ) -> zai_core::Result<BootstrappedApp> {
     let domain_alert_event_bus = DomainAlertEventBus::new();
     let recurring_processing_event_bus = RecurringProcessingEventBus::new();
+    let currency_state_event_bus = CurrencyStateEventBus::new();
     bootstrap_context_with_buses_and_clock(
         app_data_dir,
         domain_alert_event_bus,
         recurring_processing_event_bus,
+        currency_state_event_bus,
         clock,
     )
 }
@@ -119,6 +126,7 @@ pub fn initialize_context_with_event_bus(
         app_data_dir,
         domain_alert_event_bus,
         RecurringProcessingEventBus::new(),
+        CurrencyStateEventBus::new(),
     )?
     .context)
 }
@@ -127,11 +135,13 @@ pub fn bootstrap_context_with_buses(
     app_data_dir: impl AsRef<Path>,
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
     recurring_processing_event_bus: Arc<RecurringProcessingEventBus>,
+    currency_state_event_bus: Arc<CurrencyStateEventBus>,
 ) -> zai_core::Result<BootstrappedApp> {
     bootstrap_context_with_buses_and_clock(
         app_data_dir,
         domain_alert_event_bus,
         recurring_processing_event_bus,
+        currency_state_event_bus,
         Arc::new(LocalCalendarClock),
     )
 }
@@ -140,6 +150,7 @@ pub fn bootstrap_context_with_buses_and_clock(
     app_data_dir: impl AsRef<Path>,
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
     recurring_processing_event_bus: Arc<RecurringProcessingEventBus>,
+    currency_state_event_bus: Arc<CurrencyStateEventBus>,
     clock: Arc<dyn CalendarClock>,
 ) -> zai_core::Result<BootstrappedApp> {
     let database = zai_db::connect_with_event_bus_and_clock(
@@ -151,6 +162,7 @@ pub fn bootstrap_context_with_buses_and_clock(
 
     let currency_service = Arc::new(CurrencyService::new(
         database.currency_settings_repository(),
+        currency_state_event_bus.clone(),
     ));
     let exchange_rate_service = Arc::new(ExchangeRateService::new(
         Arc::new(EcbHttpAdapter::production()?),
@@ -203,6 +215,7 @@ pub fn bootstrap_context_with_buses_and_clock(
             ),
             domain_alert_event_bus,
             recurring_processing_event_bus,
+            currency_state_event_bus,
             recurring_processing_supervisor: handle,
         },
         supervisor,

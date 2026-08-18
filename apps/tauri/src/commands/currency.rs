@@ -1,36 +1,79 @@
 use std::sync::Arc;
 
-use serde::Serialize;
 use tauri::State;
 use zai_app::ServiceContext;
-use zai_core::features::currency::CurrencySetupState;
+use zai_core::features::currency::{
+    CurrencyBootstrap, CurrencyJob, CurrencySettingsRow, CurrencyStatusView, SupportedCurrency,
+};
 
 use super::{CommandResult, command_error};
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CurrencySetupStateDto {
-    pub default_currency: String,
-    pub setup_completed: bool,
+#[tauri::command]
+pub async fn get_currency_bootstrap(
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<CurrencyBootstrap> {
+    state
+        .currency_service()
+        .bootstrap()
+        .map_err(|error| command_error("Failed to load currency bootstrap", error))
 }
 
-impl From<CurrencySetupState> for CurrencySetupStateDto {
-    fn from(value: CurrencySetupState) -> Self {
-        Self {
-            default_currency: value.default_currency,
-            setup_completed: value.setup_completed,
-        }
-    }
+#[tauri::command]
+pub async fn get_currencies(
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<Vec<CurrencySettingsRow>> {
+    state
+        .currency_service()
+        .list_settings()
+        .map_err(|error| command_error("Failed to load currencies", error))
+}
+
+#[tauri::command]
+pub async fn get_supported_currencies(
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<Vec<SupportedCurrency>> {
+    Ok(state.currency_service().supported_catalog())
+}
+
+#[tauri::command]
+pub async fn get_currency(
+    code: String,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<CurrencySettingsRow> {
+    state
+        .currency_service()
+        .get_currency(&code)
+        .map_err(|error| command_error("Failed to load currency", error))
 }
 
 #[tauri::command]
 pub async fn complete_initial_currency_setup(
     default_currency: String,
     state: State<'_, Arc<ServiceContext>>,
-) -> CommandResult<CurrencySetupStateDto> {
+) -> CommandResult<CurrencyJob> {
     state
         .currency_service()
-        .complete_initial_setup(&default_currency)
-        .map(CurrencySetupStateDto::from)
+        .start_initial_setup(&default_currency)
         .map_err(|error| command_error("Failed to complete initial currency setup", error))
+}
+
+#[tauri::command]
+pub async fn get_currency_job(
+    job_id: String,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<CurrencyJob> {
+    state
+        .currency_service()
+        .get_job(&job_id)
+        .map_err(|error| command_error("Failed to load currency job", error))
+}
+
+#[tauri::command]
+pub async fn get_currency_status(
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<CurrencyStatusView> {
+    state
+        .currency_service()
+        .status()
+        .map_err(|error| command_error("Failed to load currency status", error))
 }

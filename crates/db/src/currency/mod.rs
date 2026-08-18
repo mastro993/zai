@@ -2,6 +2,8 @@ mod activation;
 #[cfg(any(test, feature = "failpoints"))]
 pub mod failpoints;
 mod format;
+mod jobs;
+mod settings;
 mod settings_port;
 mod setup;
 

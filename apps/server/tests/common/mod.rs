@@ -68,6 +68,18 @@ pub async fn setup_app(
     (create_router(Arc::clone(&context)), context, app_data_dir)
 }
 
+#[allow(dead_code)]
+pub async fn setup_app_without_currency_setup(
+    prefix: &str,
+) -> (axum::Router, Arc<zai_app::ServiceContext>, TempAppDataDir) {
+    let app_data_dir = TempAppDataDir::new(prefix);
+    let context = Arc::new(
+        initialize_context_with_clock(app_data_dir.path(), Arc::new(FixedCalendarClock))
+            .expect("shared context should initialize"),
+    );
+    (create_router(Arc::clone(&context)), context, app_data_dir)
+}
+
 pub async fn request_json(
     app: &axum::Router,
     method: &str,

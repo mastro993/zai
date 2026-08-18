@@ -6,6 +6,10 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, Runtime};
 use tauri_plugin_log::log::error;
 use zai_app::bootstrap_context;
+use zai_core::features::currency::{
+    CURRENCY_STATE_EVENT_NAME, CurrencyStateEvent, CurrencyStateEventBus,
+    serialize_currency_state_event,
+};
 use zai_core::features::domain_alerts::{
     DOMAIN_ALERT_EVENT_NAME, DomainAlertEvent, DomainAlertEventBus, serialize_domain_alert_event,
 };
@@ -33,6 +37,13 @@ fn start_recurring_processing_forwarder<R>(
     ));
 }
 
+fn start_currency_state_forwarder<R>(handle: AppHandle<R>, event_bus: Arc<CurrencyStateEventBus>)
+where
+    R: Runtime,
+{
+    tauri::async_runtime::spawn(forward_currency_state_events(handle, event_bus.subscribe()));
+}
+
 trait AlertEventEmitter: Send + 'static {
     fn emit_alert_event(&self, payload: String);
 }
@@ -50,6 +61,16 @@ trait RecurringProcessingEmitter: Send + 'static {
 impl<R: Runtime> RecurringProcessingEmitter for AppHandle<R> {
     fn emit_recurring_processing_event(&self, payload: String) {
         let _ = self.emit(RECURRING_PROCESSING_EVENT_NAME, payload);
+    }
+}
+
+trait CurrencyStateEmitter: Send + 'static {
+    fn emit_currency_state_event(&self, payload: String);
+}
+
+impl<R: Runtime> CurrencyStateEmitter for AppHandle<R> {
+    fn emit_currency_state_event(&self, payload: String) {
+        let _ = self.emit(CURRENCY_STATE_EVENT_NAME, payload);
     }
 }
 
@@ -96,9 +117,37 @@ async fn forward_recurring_processing_events<E>(
     }
 }
 
+async fn forward_currency_state_events<E>(
+    emitter: E,
+    mut receiver: tokio::sync::broadcast::Receiver<String>,
+) where
+    E: CurrencyStateEmitter,
+{
+    loop {
+        let payload = match receiver.recv().await {
+            Ok(payload) => payload,
+            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                match serialize_currency_state_event(&CurrencyStateEvent::StateChanged) {
+                    Ok(payload) => payload,
+                    Err(_) => continue,
+                }
+            }
+            Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+        };
+
+        emitter.emit_currency_state_event(payload);
+    }
+}
+
 fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     builder.invoke_handler(tauri::generate_handler![
+        commands::currency::get_currency_bootstrap,
+        commands::currency::get_currencies,
+        commands::currency::get_supported_currencies,
+        commands::currency::get_currency,
         commands::currency::complete_initial_currency_setup,
+        commands::currency::get_currency_job,
+        commands::currency::get_currency_status,
         commands::budgets::get_budgets,
         commands::budgets::get_budget,
         commands::budgets::get_budget_history,
@@ -180,12 +229,14 @@ pub fn run() {
 
                     let alert_bus = bootstrapped.context.domain_alert_event_bus();
                     let processing_bus = bootstrapped.context.recurring_processing_event_bus();
+                    let currency_bus = bootstrapped.context.currency_state_event_bus();
                     let supervisor_handle = bootstrapped.context.recurring_processing_supervisor();
                     handle.manage(Arc::new(bootstrapped.context));
                     handle.manage(supervisor_handle);
                     let _ = bootstrapped.supervisor.spawn();
                     start_alert_event_forwarder(handle.clone(), alert_bus);
                     start_recurring_processing_forwarder(handle.clone(), processing_bus);
+                    start_currency_state_forwarder(handle.clone(), currency_bus);
 
                     Ok(())
                 })

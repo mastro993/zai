@@ -19,6 +19,11 @@ pub enum ErrorCode {
     CalculationOverflow,
     Forbidden,
     SetupRequired,
+    UnsupportedCurrency,
+    CurrencyNotEnabled,
+    IncompleteCoverage,
+    CurrencyJobConflict,
+    CurrencyJobNotFound,
     IncompatibleApplicationFormat,
     Internal,
 }
@@ -99,6 +104,21 @@ pub enum Error {
     #[error("Initial currency setup is required before money-bearing commands")]
     SetupRequired,
 
+    #[error("Unsupported currency: {0}")]
+    UnsupportedCurrency(String),
+
+    #[error("Currency is not enabled: {0}")]
+    CurrencyNotEnabled(String),
+
+    #[error("Complete historical exchange-rate coverage is missing")]
+    IncompleteCoverage { missing_periods: Vec<String> },
+
+    #[error("Another currency job is already running")]
+    CurrencyJobConflict,
+
+    #[error("Currency job not found: {0}")]
+    CurrencyJobNotFound(String),
+
     #[error("Application format is incompatible with this client")]
     IncompatibleApplicationFormat,
 }
@@ -155,6 +175,11 @@ impl Error {
             | Self::Database(DatabaseError::ForeignKeyViolation(_)) => ErrorCode::Conflict,
             Self::Database(_) | Self::Repository(_) | Self::Unexpected(_) => ErrorCode::Internal,
             Self::SetupRequired => ErrorCode::SetupRequired,
+            Self::UnsupportedCurrency(_) => ErrorCode::UnsupportedCurrency,
+            Self::CurrencyNotEnabled(_) => ErrorCode::CurrencyNotEnabled,
+            Self::IncompleteCoverage { .. } => ErrorCode::IncompleteCoverage,
+            Self::CurrencyJobConflict => ErrorCode::CurrencyJobConflict,
+            Self::CurrencyJobNotFound(_) => ErrorCode::CurrencyJobNotFound,
             Self::IncompatibleApplicationFormat => ErrorCode::IncompatibleApplicationFormat,
         }
     }
@@ -175,6 +200,9 @@ impl Error {
                 "categoryIds": category_ids,
                 "affectedBudgets": affected_budgets,
             })),
+            Self::IncompleteCoverage { missing_periods } => {
+                Some(serde_json::json!({ "missingPeriods": missing_periods }))
+            }
             _ => None,
         };
         let context = context.into();

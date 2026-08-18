@@ -108,10 +108,12 @@ impl NativeHarness {
         let data_dir = TempDataDir::new();
         let processing_bus = RecurringProcessingEventBus::new();
         let alert_bus = DomainAlertEventBus::new();
+        let currency_bus = zai_core::features::currency::CurrencyStateEventBus::new();
         let bootstrapped = bootstrap_context_with_buses_and_clock(
             data_dir.path(),
             Arc::clone(&alert_bus),
             Arc::clone(&processing_bus),
+            Arc::clone(&currency_bus),
             Arc::new(FixedClock::new(fixed_now())),
         )
         .expect("native context should boot");

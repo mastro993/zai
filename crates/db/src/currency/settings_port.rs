@@ -1,8 +1,12 @@
+use super::jobs::{get_job, insert_job, latest_job, running_job, update_job};
+use super::settings::list_persisted;
 use super::{complete_initial_setup, require_setup, setup_state};
 use crate::connection::DbPool;
 use std::sync::Arc;
 use zai_core::Result;
-use zai_core::features::currency::{CurrencySettingsPort, CurrencySetupState};
+use zai_core::features::currency::{
+    CurrencyJob, CurrencyJobRecord, CurrencySettingsPort, CurrencySetupState, PersistedCurrency,
+};
 
 pub struct CurrencySettingsRepository {
     pool: Arc<DbPool>,
@@ -29,5 +33,29 @@ impl CurrencySettingsPort for CurrencySettingsRepository {
 
     fn require_setup(&self) -> Result<()> {
         require_setup(&self.pool)
+    }
+
+    fn list_persisted(&self) -> Result<Vec<PersistedCurrency>> {
+        list_persisted(&self.pool)
+    }
+
+    fn insert_job(&self, job: &CurrencyJob) -> Result<()> {
+        insert_job(&self.pool, job)
+    }
+
+    fn update_job(&self, job: &CurrencyJob) -> Result<()> {
+        update_job(&self.pool, job)
+    }
+
+    fn get_job(&self, job_id: &str) -> Result<Option<CurrencyJobRecord>> {
+        get_job(&self.pool, job_id)
+    }
+
+    fn running_job(&self) -> Result<Option<CurrencyJobRecord>> {
+        running_job(&self.pool)
+    }
+
+    fn latest_job(&self) -> Result<Option<CurrencyJobRecord>> {
+        latest_job(&self.pool)
     }
 }
