@@ -66,6 +66,10 @@ not call currency core services directly.
   rate may convert with stale status.
 - Coverage is complete only for exact, approved carry-forward, and
   not-yet-due dates. Expected gaps fail closed.
+- PR 1 evidence: `cargo test -p zai-core --lib money` (`amount_tests`,
+  `manifest_tests`, `convert_tests`, `coverage_tests`). Revision history,
+  `manualRateReplacementRequired`, authored-allowance restatement,
+  projection heads, and setup gating wait for later stack PRs.
 - Initial currency setup gates every money-bearing write and every read that
   requires a default currency. Hardcoded `EUR` in alert rich data is
   forbidden.

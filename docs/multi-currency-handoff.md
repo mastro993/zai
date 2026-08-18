@@ -66,6 +66,9 @@ add or keep green; the full list still ships only at the final merge.
 - No schema. No commands. No UI.
 - Gate: deterministic unit family for Money, conversion, and coverage
   completeness rules that do not need persistence.
+- Landed on `zai_core::money`. Tests: `cargo test -p zai-core --lib money`.
+  Families: `money::amount_tests`, `money::manifest_tests`,
+  `money::convert_tests`, `money::coverage_tests`.
 
 ### 2. Schema + silent EUR + fixtures
 

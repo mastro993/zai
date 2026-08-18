@@ -57,3 +57,14 @@ Agent defaults (no re-grill; contracts already accepted):
 - **Anti-slop migration shipped with the install.** Stop hook requires `pnpm check`. Findings were fixed, not suppressed: `satisfies` / named contracts, zod + `asWire*` instead of `typeof`/`unknown`, `setCommandTransports` + file-capability adapters instead of `vi.mock`, `schema.parse` fixtures instead of `as T`.
 - **Tauri plugin ESM exports are not spyable** (`configurable: false`). File-capability tests inject `{ web, tauri }` adapters; real `tauriSelectCsvImportFile` / `tauriDownloadTextFile` / Tauri `listen` are called only to assert fail-closed outside Tauri.
 - **Table-driven web-request `as never` replaced with `check<T>(build, args, expected)`.** Dropped type-lie cases (`items: "bad"`, invalid enum keys). Kept empty id / revision 0.
+
+## 2026-08-18 — [Exact Money, ISO manifest, and checked conversion](https://github.com/mastro993/zai/issues/387)
+
+Seams (from the ticket + 370/372): `zai_core::money` public API only. No schema, commands, UI.
+
+- **Manifest v1** pins SIX List One `2026-01-01` and CLDR 48.2. 155 fiat candidates. Generator: `scripts/generate-currency-manifest.py`.
+- **VED `valid_from` = 2021-10-01** from ISO 4217 Amendment 170. CLDR 48.2 lists VED as `tender=false` with no `from`.
+- **Wire/authored cap** is `i32::MAX` via `Money::from_authored` / `try_to_wire_minor_units`. Persist constructor accepts `i64`.
+- **`num-bigint` 0.4.8** for conversion intermediates. Round half-even once at the target ISO digits. No `f64`.
+- **Automatic legs share a `rate_set_id`.** Same value date is not enough; unexplained cross rates stay forbidden.
+- **CLDR pin URL is the raw `supplementalData.xml`** that matches `CLDR_SHA256`, not the GitHub HTML blob page.
