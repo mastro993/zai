@@ -1,11 +1,13 @@
 import { invokeDecodedCommand } from "@/commands/shared";
 import type { CommandResult } from "@/commands/shared";
 
-import {
-  toCategoryBackendImportPayload,
-  type CategoryImportPayload,
-} from "@/features/categories/lib/category-import";
 import { toBackendDateTime } from "../lib/transaction";
+import type {
+  BoundImportPreview,
+  CommitTransactionImportRequest,
+  CommitTransactionImportResponse,
+  PreviewTransactionImportRequest,
+} from "../types/import";
 import type {
   PaginatedTransactions,
   Transaction,
@@ -155,20 +157,24 @@ export const deleteTransactions = (
   });
 };
 
-export const importTransactions = (
-  transactions: Array<TransactionPayload & { id?: string }>,
-): CommandResult<Array<Transaction>> => {
-  return invokeDecodedCommand(TRANSACTION_COMMANDS.import_transactions, {
-    transactions,
+export const previewTransactionImport = (
+  request: PreviewTransactionImportRequest,
+): CommandResult<BoundImportPreview> => {
+  return invokeDecodedCommand(TRANSACTION_COMMANDS.preview_transaction_import, {
+    request,
   });
 };
 
-export const importTransactionBatch = (
-  categories: Array<CategoryImportPayload>,
-  transactions: Array<TransactionPayload & { id?: string }>,
-): CommandResult<Array<Transaction>> => {
-  return invokeDecodedCommand(TRANSACTION_COMMANDS.import_transaction_batch, {
-    categories: categories.map(toCategoryBackendImportPayload),
-    transactions,
+export const getTransactionImportPreview = (token: string): CommandResult<BoundImportPreview> => {
+  return invokeDecodedCommand(TRANSACTION_COMMANDS.get_transaction_import_preview, {
+    token,
+  });
+};
+
+export const commitTransactionImport = (
+  request: CommitTransactionImportRequest,
+): CommandResult<CommitTransactionImportResponse> => {
+  return invokeDecodedCommand(TRANSACTION_COMMANDS.commit_transaction_import, {
+    request,
   });
 };

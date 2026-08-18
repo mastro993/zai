@@ -126,6 +126,18 @@ impl CurrencyJob {
         Self::running(job_id, CurrencyJobType::ChangeDefault, currency_code, 2)
     }
 
+    pub fn import_preview(job_id: impl Into<String>) -> Self {
+        Self {
+            job_id: job_id.into(),
+            job_type: CurrencyJobType::ImportPreview,
+            status: CurrencyJobStatus::Running,
+            stage_current: 0,
+            stage_total: 1,
+            currency_code: None,
+            error: None,
+        }
+    }
+
     fn running(
         job_id: impl Into<String>,
         job_type: CurrencyJobType,

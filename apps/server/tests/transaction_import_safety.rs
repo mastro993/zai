@@ -1,7 +1,7 @@
 mod common;
 
 use axum::http::StatusCode;
-use common::{request_json, setup_app, test_now};
+use common::{preview_and_commit_import, request_json, setup_app, test_now};
 use serde_json::{Value, json};
 
 async fn create_category(
@@ -25,26 +25,25 @@ async fn create_category(
 }
 
 #[tokio::test]
-async fn transaction_batch_rejects_blank_category_without_persisting_it() {
+async fn bound_import_skips_blank_category_names_without_persisting_them() {
     let (app, _context, _dir) = setup_app("zai-transaction-import-invalid-category").await;
 
-    let (status, body) = request_json(
+    let (status, _) = preview_and_commit_import(
         &app,
-        "POST",
-        "/api/transactions/import-batch",
-        Some(json!({
-            "categories": [{
-                "id": "blank-category",
-                "name": "   ",
-                "color": "#FF0000"
-            }],
-            "transactions": []
-        })),
+        "digest-blank-category",
+        false,
+        Some("EUR"),
+        json!([{
+            "rowNumber": 2,
+            "date": "2026-07-09T12:30:00",
+            "amountMinor": 500,
+            "transactionType": "expense",
+            "description": "No category",
+            "category": "   "
+        }]),
     )
     .await;
-
-    assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert_eq!(body["code"], "validation");
+    assert_eq!(status, StatusCode::OK);
 
     let (status, categories) = request_json(&app, "GET", "/api/categories", None).await;
     assert_eq!(status, StatusCode::OK);
@@ -52,40 +51,37 @@ async fn transaction_batch_rejects_blank_category_without_persisting_it() {
 }
 
 #[tokio::test]
-async fn transaction_batch_child_inherits_existing_income_root_role() {
+async fn bound_import_child_inherits_existing_income_root_role() {
     let (app, _context, _dir) = setup_app("zai-transaction-import-inherited-role").await;
     let root = create_category(&app, "Income", None, Some("income")).await;
-    let root_id = root["id"].as_str().expect("root id");
     let transaction_date = test_now().format("%Y-%m-%dT%H:%M:%S").to_string();
 
-    let (status, _) = request_json(
+    let (status, imported) = preview_and_commit_import(
         &app,
-        "POST",
-        "/api/transactions/import-batch",
-        Some(json!({
-            "categories": [{
-                "id": "bonus-child",
-                "parentId": root_id,
-                "name": "Bonus",
-                "color": null
-            }],
-            "transactions": [{
-                "id": "income-transaction",
-                "description": "Bonus payment",
-                "amount": 500,
-                "currency": "EUR",
-                "transactionDate": transaction_date,
-                "transactionType": "income",
-                "transactionCategoryId": "bonus-child"
-            }]
-        })),
+        "digest-bonus",
+        false,
+        Some("EUR"),
+        json!([{
+            "rowNumber": 2,
+            "date": transaction_date,
+            "amountMinor": 500,
+            "transactionType": "income",
+            "description": "Bonus payment",
+            "parentCategory": "Income",
+            "category": "Bonus"
+        }]),
     )
     .await;
     assert_eq!(status, StatusCode::OK);
+    let child_id = imported["transactions"][0]["transactionCategoryId"]
+        .as_str()
+        .expect("child id");
 
-    let (status, child) = request_json(&app, "GET", "/api/categories/bonus-child", None).await;
+    let (status, child) =
+        request_json(&app, "GET", &format!("/api/categories/{child_id}"), None).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(child["role"], "income");
+    assert_eq!(child["parentId"], root["id"]);
 
     let (status, budget) = request_json(
         &app,
@@ -94,7 +90,7 @@ async fn transaction_batch_child_inherits_existing_income_root_role() {
         Some(json!({
             "name": "Income-only spending budget",
             "baseAllowance": 1000,
-            "categoryIds": ["bonus-child"],
+            "categoryIds": [child_id],
             "measurementMode": "spending"
         })),
     )
@@ -104,7 +100,7 @@ async fn transaction_batch_child_inherits_existing_income_root_role() {
 }
 
 #[tokio::test]
-async fn transaction_batch_rejects_third_category_level_without_mutation() {
+async fn category_api_still_rejects_third_level_without_mutation() {
     let (app, _context, _dir) = setup_app("zai-transaction-import-depth").await;
     let root = create_category(&app, "Food", None, Some("spending")).await;
     let root_id = root["id"].as_str().expect("root id");
@@ -114,23 +110,15 @@ async fn transaction_batch_rejects_third_category_level_without_mutation() {
     let (status, body) = request_json(
         &app,
         "POST",
-        "/api/transactions/import-batch",
+        "/api/categories",
         Some(json!({
-            "categories": [{
-                "id": "forbidden-third-level",
-                "parentId": child_id,
-                "name": "Fresh",
-                "color": null
-            }],
-            "transactions": []
+            "parentId": child_id,
+            "name": "Fresh",
+            "color": null
         })),
     )
     .await;
 
     assert_eq!(status, StatusCode::CONFLICT);
     assert_eq!(body["code"], "conflict");
-
-    let (status, _) =
-        request_json(&app, "GET", "/api/categories/forbidden-third-level", None).await;
-    assert_eq!(status, StatusCode::NOT_FOUND);
 }

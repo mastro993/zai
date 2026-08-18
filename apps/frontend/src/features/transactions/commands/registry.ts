@@ -2,26 +2,27 @@ import { z } from "zod";
 
 import { createCommandDescriptor, type CommandDescriptor } from "@/commands/command-descriptor";
 
+import { boundImportPreviewSchema, commitTransactionImportResponseSchema } from "../types/import";
 import {
   paginatedTransactionsSchema,
   transactionListItemSchema,
   transactionSchema,
 } from "../types/model";
 import {
+  buildCommitTransactionImportRequest,
   buildCreateTransactionRequest,
   buildDeleteTransactionRequest,
   buildDeleteTransactionsRequest,
   buildExportTransactionsRequest,
   buildFindDuplicateKeysRequest,
   buildGetFilteredTransactionIdsRequest,
+  buildGetTransactionImportPreviewRequest,
   buildGetTransactionRequest,
   buildGetTransactionsRequest,
-  buildImportTransactionBatchRequest,
-  buildImportTransactionsRequest,
+  buildPreviewTransactionImportRequest,
   buildUpdateTransactionRequest,
 } from "./web-requests";
 
-const transactionArraySchema = z.array(transactionSchema);
 const transactionListItemArraySchema = z.array(transactionListItemSchema);
 
 const backendCommand = <TArgs, T>(
@@ -72,15 +73,20 @@ export const TRANSACTION_COMMANDS = {
     transactionListItemArraySchema,
     buildDeleteTransactionsRequest,
   ),
-  import_transactions: backendCommand(
-    "import_transactions",
-    transactionArraySchema,
-    buildImportTransactionsRequest,
+  preview_transaction_import: backendCommand(
+    "preview_transaction_import",
+    boundImportPreviewSchema,
+    buildPreviewTransactionImportRequest,
   ),
-  import_transaction_batch: backendCommand(
-    "import_transaction_batch",
-    transactionArraySchema,
-    buildImportTransactionBatchRequest,
+  get_transaction_import_preview: backendCommand(
+    "get_transaction_import_preview",
+    boundImportPreviewSchema,
+    buildGetTransactionImportPreviewRequest,
+  ),
+  commit_transaction_import: backendCommand(
+    "commit_transaction_import",
+    commitTransactionImportResponseSchema,
+    buildCommitTransactionImportRequest,
   ),
 } as const;
 

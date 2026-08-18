@@ -10,10 +10,13 @@ use axum::{
 use chrono::NaiveDateTime;
 use serde::Deserialize;
 use zai_app::ServiceContext;
-use zai_core::features::transaction_categories::models::NewTransactionCategory;
 use zai_core::features::transactions::models::{
     DuplicateKeyCandidate, NewTransaction, Transaction, TransactionCsvExportResponse,
     TransactionListItem, TransactionSearchFilters, TransactionUpdate,
+};
+use zai_core::features::transactions::{
+    BoundImportPreview, CommitTransactionImportRequest, CommitTransactionImportResponse,
+    PreviewTransactionImportRequest,
 };
 use zai_core::query::{PaginatedData, Sort};
 
@@ -145,19 +148,6 @@ struct TransactionPayload {
 #[serde(rename_all = "camelCase")]
 struct BulkDeleteBody {
     transaction_ids: Vec<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ImportTransactionsBody {
-    transactions: Vec<NewTransaction>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ImportBatchBody {
-    categories: Vec<NewTransactionCategory>,
-    transactions: Vec<NewTransaction>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -313,8 +303,12 @@ pub fn router() -> Router<Arc<ServiceContext>> {
         .route("/export", post(export_transactions_csv))
         .route("/duplicate-keys", post(find_existing_duplicate_keys))
         .route("/bulk-delete", post(bulk_delete_transactions))
-        .route("/import", post(import_transactions))
-        .route("/import-batch", post(import_transaction_batch))
+        .route("/import/preview", post(preview_transaction_import))
+        .route(
+            "/import/previews/{token}",
+            get(get_transaction_import_preview),
+        )
+        .route("/import/commit", post(commit_transaction_import))
         .route(
             "/{transaction_id}",
             get(get_transaction)
@@ -492,30 +486,42 @@ async fn bulk_delete_transactions(
         .map_err(|error| command_error("Failed to delete transactions", error))
 }
 
-async fn import_transactions(
+async fn preview_transaction_import(
     State(context): State<Arc<ServiceContext>>,
-    body: Result<Json<ImportTransactionsBody>, JsonRejection>,
-) -> TransactionResult<Json<Vec<Transaction>>> {
+    body: Result<Json<PreviewTransactionImportRequest>, JsonRejection>,
+) -> TransactionResult<Json<BoundImportPreview>> {
     let Json(payload) = parse_json(body)?;
-
-    context
-        .transactions_service()
-        .import_transactions(payload.transactions)
+    let preview = context
+        .transaction_import_service()
+        .preview(payload)
         .await
-        .map(Json)
-        .map_err(|error| command_error("Failed to import transactions", error))
+        .map_err(|error| command_error("Failed to preview import", error))?;
+    if preview.job.status == zai_core::features::currency::CurrencyJobStatus::Running {
+        context.spawn_currency_job_drive();
+    }
+    Ok(Json(preview))
 }
 
-async fn import_transaction_batch(
+async fn get_transaction_import_preview(
     State(context): State<Arc<ServiceContext>>,
-    body: Result<Json<ImportBatchBody>, JsonRejection>,
-) -> TransactionResult<Json<Vec<Transaction>>> {
-    let Json(payload) = parse_json(body)?;
-
+    Path(token): Path<String>,
+) -> TransactionResult<Json<BoundImportPreview>> {
     context
-        .transactions_service()
-        .import_transactions_with_categories(payload.categories, payload.transactions)
+        .transaction_import_service()
+        .get_preview(&token)
+        .map(Json)
+        .map_err(|error| command_error("Failed to load import preview", error))
+}
+
+async fn commit_transaction_import(
+    State(context): State<Arc<ServiceContext>>,
+    body: Result<Json<CommitTransactionImportRequest>, JsonRejection>,
+) -> TransactionResult<Json<CommitTransactionImportResponse>> {
+    let Json(payload) = parse_json(body)?;
+    context
+        .transaction_import_service()
+        .commit(payload)
         .await
-        .map(|(_, transactions)| Json(transactions))
-        .map_err(|error| command_error("Failed to import transaction batch", error))
+        .map(Json)
+        .map_err(|error| command_error("Failed to commit import", error))
 }

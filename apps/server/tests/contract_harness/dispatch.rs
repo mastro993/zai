@@ -7,6 +7,9 @@ use zai_core::features::transaction_categories::models::{
     CategoryChildrenDeleteStrategy, NewTransactionCategory, TransactionCategoryUpdate,
 };
 use zai_core::features::transactions::models::{NewTransaction, TransactionUpdate};
+use zai_core::features::transactions::{
+    CommitTransactionImportRequest, PreviewTransactionImportRequest,
+};
 
 use super::HttpCall;
 use super::helpers::{
@@ -310,31 +313,37 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                 "Failed to delete transactions",
             )
         }
-        ("POST", "/api/transactions/import") => {
+        ("POST", "/api/transactions/import/preview") => {
             let body = call.body.clone().unwrap_or(Value::Null);
-            let transactions: Vec<NewTransaction> =
-                serde_json::from_value(body["transactions"].clone()).expect("transactions");
+            let request: PreviewTransactionImportRequest =
+                serde_json::from_value(body).expect("preview request");
+            let preview = match context.transaction_import_service().preview(request).await {
+                Ok(preview) => {
+                    if preview.job.status
+                        == zai_core::features::currency::CurrencyJobStatus::Running
+                    {
+                        context.spawn_currency_job_drive();
+                    }
+                    Ok(preview)
+                }
+                Err(error) => Err(error),
+            };
+            tauri_success(preview, "Failed to preview import")
+        }
+        ("GET", path) if path.starts_with("/api/transactions/import/previews/") => {
+            let token = extract_suffix_id(path, "/api/transactions/import/previews/", "");
             tauri_success(
-                context
-                    .transactions_service()
-                    .import_transactions(transactions)
-                    .await,
-                "Failed to import transactions",
+                context.transaction_import_service().get_preview(&token),
+                "Failed to load import preview",
             )
         }
-        ("POST", "/api/transactions/import-batch") => {
+        ("POST", "/api/transactions/import/commit") => {
             let body = call.body.clone().unwrap_or(Value::Null);
-            let categories: Vec<NewTransactionCategory> =
-                serde_json::from_value(body["categories"].clone()).expect("categories");
-            let transactions: Vec<NewTransaction> =
-                serde_json::from_value(body["transactions"].clone()).expect("transactions");
+            let request: CommitTransactionImportRequest =
+                serde_json::from_value(body).expect("commit request");
             tauri_success(
-                context
-                    .transactions_service()
-                    .import_transactions_with_categories(categories, transactions)
-                    .await
-                    .map(|(_, transactions)| transactions),
-                "Failed to import transaction batch",
+                context.transaction_import_service().commit(request).await,
+                "Failed to commit import",
             )
         }
         ("GET", "/api/alerts") => {

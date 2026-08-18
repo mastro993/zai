@@ -1,26 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildTransactionImportPreview,
   getDefaultTransactionImportMapping,
+  mapTransactionImportRows,
   parseImportAmount,
   parseImportDate,
   parseTransactionCsv,
+  type MapTransactionImportOptions,
   type TransactionImportDateFormat,
-  type TransactionImportPreviewOptions,
 } from "../transaction-import";
 import type { TransactionCategory } from "@/features/categories/types/model";
 
-const makeIdFactory = () => {
-  let nextId = 1;
-
-  return () => `id-${nextId++}`;
-};
-
-const buildPreview = (content: string, options: Partial<TransactionImportPreviewOptions> = {}) => {
+const mapRows = (content: string, options: Partial<MapTransactionImportOptions> = {}) => {
   const headers = parseTransactionCsv(content)[options.headerRowIndex ?? 0] ?? [];
 
-  return buildTransactionImportPreview(content, {
+  return mapTransactionImportRows(content, {
     headerRowIndex: 0,
     mapping: getDefaultTransactionImportMapping(headers),
     amountMode: "column-type",
@@ -31,34 +25,44 @@ const buildPreview = (content: string, options: Partial<TransactionImportPreview
     expenseTypeValues: "expense, debit",
     incomeTypeValues: "income, credit",
     existingCategories: [],
-    existingDuplicateKeys: [],
-    createId: makeIdFactory(),
+    confirmedTransactionCurrency: "EUR",
+    rateDirection: "transactionToDefault",
     ...options,
   });
 };
 
-describe("transaction import", () => {
-  it("imports positive amount rows with mapped type values", () => {
+describe("transaction import mapping", () => {
+  it("maps positive amount rows with currency and type values", () => {
     const content = [
-      "date,amount,type,description,notes,parent_category,category",
-      "2026-01-15,12.50,debit,Groceries,,Food,Groceries",
+      "date,amount,type,description,notes,parent_category,category,currency",
+      "2026-01-15,12.50,debit,Groceries,,Food,Groceries,EUR",
     ].join("\n");
 
-    const preview = buildPreview(content);
+    const mapped = mapRows(content);
 
-    expect(preview.summary.importableRows).toBe(1);
-    expect(preview.transactions).toEqual([
+    expect(mapped.hasCurrencyColumn).toBe(true);
+    expect(mapped.rows).toEqual([
       {
-        id: "id-1",
-        description: "Groceries",
-        amount: 1250,
+        rowNumber: 2,
+        date: "2026-01-15T00:00:00",
+        amountMinor: 1250,
         currency: "EUR",
-        transactionDate: "2026-01-15T00:00:00",
         transactionType: "expense",
-        transactionCategoryId: null,
-        notes: null,
+        description: "Groceries",
       },
     ]);
+  });
+
+  it("uses one confirmed currency for currencyless files", () => {
+    const content = [
+      "date,amount,type,description,notes,parent_category,category",
+      "2026-01-15,12.50,expense,Groceries,,Food,Groceries",
+    ].join("\n");
+
+    const mapped = mapRows(content, { confirmedTransactionCurrency: "USD" });
+
+    expect(mapped.hasCurrencyColumn).toBe(false);
+    expect(mapped.rows[0]?.currency).toBe("USD");
   });
 
   it("infers type from signed amounts", () => {
@@ -69,16 +73,13 @@ describe("transaction import", () => {
     ].join("\n");
     const headers = parseTransactionCsv(content)[0] ?? [];
 
-    const preview = buildPreview(content, {
+    const mapped = mapRows(content, {
       mapping: getDefaultTransactionImportMapping(headers),
       amountMode: "signed",
     });
 
-    expect(preview.transactions.map((transaction) => transaction.transactionType)).toEqual([
-      "expense",
-      "income",
-    ]);
-    expect(preview.transactions.map((transaction) => transaction.amount)).toEqual([1250, 800]);
+    expect(mapped.rows.map((row) => row.transactionType)).toEqual(["expense", "income"]);
+    expect(mapped.rows.map((row) => row.amountMinor)).toEqual([1250, 800]);
   });
 
   it("parses ISO datetime values", () => {
@@ -162,24 +163,17 @@ describe("transaction import", () => {
     expect(parseImportDate("15.01.2026", "DD.MM.YYYY")).toEqual({ ok: true, value: canonical });
   });
 
-  it("marks impossible preview dates as invalid without payload entries", () => {
+  it("omits invalid dates from mapped rows so the backend can block", () => {
     const content = [
       "date,amount,type,description",
       "2026-02-30,12.50,expense,Groceries",
       "2026-01-15,12.50,expense,Valid row",
     ].join("\n");
 
-    const preview = buildPreview(content);
+    const mapped = mapRows(content);
 
-    expect(preview.summary.importableRows).toBe(1);
-    expect(preview.summary.invalidRows).toBe(1);
-    expect(preview.transactions).toHaveLength(1);
-    expect(preview.rows[0]).toMatchObject({
-      status: "invalid",
-      message: "Invalid date",
-      transactionDate: "2026-02-30",
-    });
-    expect(preview.rows[1]).toMatchObject({ status: "import" });
+    expect(mapped.rows[0]?.date).toBeUndefined();
+    expect(mapped.rows[1]?.date).toBe("2026-01-15T00:00:00");
   });
 
   it("parses dates without leading zeros", () => {
@@ -205,74 +199,58 @@ describe("transaction import", () => {
     expect(mapping.description).toBe(4);
   });
 
-  it("skips duplicate transactions by date, amount, and description", () => {
-    const content = ["date,amount,type,description", "2026-01-15,12.50,expense,Groceries"].join(
-      "\n",
-    );
-    const existingDuplicateKeys = ["2026-01-15\u00001250\u0000EUR\u0000groceries"];
-
-    const preview = buildPreview(content, { existingDuplicateKeys });
-
-    expect(preview.summary.duplicateRows).toBe(1);
-    expect(preview.transactions).toHaveLength(0);
-  });
-
-  it("uses day precision and normalized description for duplicate keys", () => {
+  it("maps native Zai export amount_minor and rate fields", () => {
     const content = [
-      "date,amount,type,description",
-      "2026-01-15T08:30:00,12.50,expense, Groceries ",
-      "2026-01-15T20:45:00,12.50,expense,groceries",
-      "2026-04-02T09:00:00,-7.00,expense,",
+      "zai_export_version,date,amount_minor,amount,currency,type,description,notes,parent_category,category,rate_variant,rate_state,rate_date,source_observation_date,source_currency,reference_currency,coefficient,scale,original_decimal,formula_version,origin",
+      "1,2026-01-15T08:30:00,350,3.50,EUR,expense,Coffee,,Food,Groceries,identity,complete,2026-01-15,,EUR,EUR,1,0,1,1,supplied",
     ].join("\n");
 
-    const existingDuplicateKeys = [
-      "2026-01-15\u00001250\u0000EUR\u0000groceries",
-      "2026-04-02\u0000700\u0000EUR\u0000",
-    ];
+    const mapped = mapRows(content, { dateFormat: "ISO", missingCategoryMode: "create" });
 
-    const preview = buildPreview(content, {
-      dateFormat: "ISO",
-      existingDuplicateKeys,
+    expect(mapped.isZaiExport).toBe(true);
+    expect(mapped.hasCurrencyColumn).toBe(true);
+    expect(mapped.rows[0]).toMatchObject({
+      amountMinor: 350,
+      currency: "EUR",
+      transactionType: "expense",
+      description: "Coffee",
+      parentCategory: "Food",
+      category: "Groceries",
+      native: {
+        exportVersion: 1,
+        rateVariant: "identity",
+        rateState: "complete",
+        rateDate: "2026-01-15",
+        sourceCurrency: "EUR",
+        referenceCurrency: "EUR",
+        coefficient: 1,
+        scale: 0,
+        originalDecimal: "1",
+        formulaVersion: 1,
+        origin: "supplied",
+      },
     });
-
-    expect(preview.summary.duplicateRows).toBe(3);
-    expect(preview.transactions).toHaveLength(0);
   });
 
-  it("creates missing categories when configured", () => {
+  it("maps existing category names in create mode", () => {
     const content = ["date,amount,type,category", "2026-01-15,12.50,expense,Food - Groceries"].join(
       "\n",
     );
     const headers = parseTransactionCsv(content)[0] ?? [];
 
-    const preview = buildPreview(content, {
+    const mapped = mapRows(content, {
       mapping: {
         ...getDefaultTransactionImportMapping(headers),
-        categoryName: findCategoryColumn(headers),
+        categoryName: headers.findIndex((header) => header.trim().toLowerCase() === "category"),
       },
       categoryLinkMode: "single-column",
       missingCategoryMode: "create",
     });
 
-    expect(preview.summary.categoriesToCreate).toBe(2);
-    expect(preview.transactions[0]?.transactionCategoryId).toBe("id-2");
-  });
-
-  it("keeps transaction category IDs aligned with preview categories", () => {
-    const content = ["date,amount,type,category", "2026-01-15,12.50,expense,Food"].join("\n");
-    const headers = parseTransactionCsv(content)[0] ?? [];
-
-    const preview = buildPreview(content, {
-      mapping: {
-        ...getDefaultTransactionImportMapping(headers),
-        categoryName: findCategoryColumn(headers),
-      },
-      categoryLinkMode: "single-column",
-      missingCategoryMode: "create",
+    expect(mapped.rows[0]).toMatchObject({
+      parentCategory: "Food",
+      category: "Groceries",
     });
-
-    expect(preview.categories).toHaveLength(1);
-    expect(preview.transactions[0]?.transactionCategoryId).toBe(preview.categories[0]?.id);
   });
 
   it("resolves existing category paths in columns mode", () => {
@@ -299,41 +277,13 @@ describe("transaction import", () => {
       "2026-01-15,12.50,expense,Food,Groceries",
     ].join("\n");
 
-    const preview = buildPreview(content, {
+    const mapped = mapRows(content, {
       existingCategories: [root, child],
     });
 
-    expect(preview.transactions[0]?.transactionCategoryId).toBe("child");
-  });
-
-  it("falls back to nearest existing ancestor when child is missing", () => {
-    const health: TransactionCategory = {
-      id: "health-root",
-      parentId: null,
-      name: "Health",
-      description: null,
-      color: "#C55B26",
-      role: "spending",
-      parent: null,
-    };
-    const content = ["date,amount,type,category", "2026-01-15,12.50,expense,Health - Other"].join(
-      "\n",
-    );
-    const headers = parseTransactionCsv(content)[0] ?? [];
-
-    const preview = buildPreview(content, {
-      mapping: {
-        ...getDefaultTransactionImportMapping(headers),
-        categoryName: findCategoryColumn(headers),
-      },
-      categoryLinkMode: "single-column",
-      existingCategories: [health],
+    expect(mapped.rows[0]).toMatchObject({
+      parentCategory: "Food",
+      category: "Groceries",
     });
-
-    expect(preview.transactions[0]?.transactionCategoryId).toBe("health-root");
-    expect(preview.rows[0]?.message).toContain('Child category "Other" not found');
   });
 });
-
-const findCategoryColumn = (headers: Array<string>) =>
-  headers.findIndex((header) => header.trim().toLowerCase() === "category");

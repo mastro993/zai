@@ -1,66 +1,67 @@
 use axum::http::StatusCode;
 use serde_json::{Value, json};
 
-use crate::common::request_json;
+use crate::common::{import_categories, request_json};
 
 pub async fn seed_filter_test_transactions(app: &axum::Router) {
-    let (status, _) = request_json(
+    let (status, _) = import_categories(
         app,
-        "POST",
-        "/api/transactions/import-batch",
-        Some(json!({
-            "categories": [
-                { "id": "food-cat", "name": "Food", "color": "#FF0000" },
-                { "id": "travel-cat", "name": "Travel", "color": "#00FF00" }
-            ],
-            "transactions": [
-                {
-                    "description": "Morning coffee",
-                    "amount": 350,
-                    "currency": "EUR",
-                    "transactionDate": "2026-07-05T08:00:00",
-                    "transactionType": "expense",
-                    "transactionCategoryId": "food-cat",
-                    "notes": "cafe"
-                },
-                {
-                    "description": "Salary payment",
-                    "amount": 500000,
-                    "currency": "EUR",
-                    "transactionDate": "2026-07-01T12:00:00",
-                    "transactionType": "income",
-                    "transactionCategoryId": null
-                },
-                {
-                    "description": "Train ticket",
-                    "amount": 2500,
-                    "currency": "EUR",
-                    "transactionDate": "2026-07-15T14:30:00",
-                    "transactionType": "expense",
-                    "transactionCategoryId": "travel-cat"
-                },
-                {
-                    "description": "Coffee beans",
-                    "amount": 1200,
-                    "currency": "EUR",
-                    "transactionDate": "2026-07-20T10:00:00",
-                    "transactionType": "expense",
-                    "transactionCategoryId": "food-cat"
-                },
-                {
-                    "description": "Freelance gig",
-                    "amount": 80000,
-                    "currency": "EUR",
-                    "transactionDate": "2026-07-25T16:00:00",
-                    "transactionType": "income",
-                    "transactionCategoryId": null
-                }
-            ]
-        })),
+        json!([
+            { "id": "food-cat", "name": "Food", "color": "#FF0000" },
+            { "id": "travel-cat", "name": "Travel", "color": "#00FF00" }
+        ]),
     )
     .await;
-
     assert_eq!(status, StatusCode::OK);
+
+    let transactions = [
+        json!({
+            "description": "Morning coffee",
+            "amount": 350,
+            "currency": "EUR",
+            "transactionDate": "2026-07-05T08:00:00",
+            "transactionType": "expense",
+            "transactionCategoryId": "food-cat",
+            "notes": "cafe"
+        }),
+        json!({
+            "description": "Salary payment",
+            "amount": 500000,
+            "currency": "EUR",
+            "transactionDate": "2026-07-01T12:00:00",
+            "transactionType": "income",
+            "transactionCategoryId": null
+        }),
+        json!({
+            "description": "Train ticket",
+            "amount": 2500,
+            "currency": "EUR",
+            "transactionDate": "2026-07-15T14:30:00",
+            "transactionType": "expense",
+            "transactionCategoryId": "travel-cat"
+        }),
+        json!({
+            "description": "Coffee beans",
+            "amount": 1200,
+            "currency": "EUR",
+            "transactionDate": "2026-07-20T10:00:00",
+            "transactionType": "expense",
+            "transactionCategoryId": "food-cat"
+        }),
+        json!({
+            "description": "Freelance gig",
+            "amount": 80000,
+            "currency": "EUR",
+            "transactionDate": "2026-07-25T16:00:00",
+            "transactionType": "income",
+            "transactionCategoryId": null
+        }),
+    ];
+
+    for payload in transactions {
+        let (status, _) = request_json(app, "POST", "/api/transactions", Some(payload)).await;
+        assert_eq!(status, StatusCode::CREATED);
+    }
 }
 
 pub fn transaction_descriptions(body: &Value) -> Vec<String> {

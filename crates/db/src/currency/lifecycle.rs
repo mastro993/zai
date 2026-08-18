@@ -36,6 +36,13 @@ struct ObservationBoundRow {
 
 pub fn enable_currency(pool: &DbPool, currency_code: &str) -> Result<()> {
     let mut connection = get_connection(pool)?;
+    enable_currency_on(&mut connection, currency_code)
+}
+
+pub(crate) fn enable_currency_on(
+    connection: &mut SqliteConnection,
+    currency_code: &str,
+) -> Result<()> {
     let now = Utc::now().naive_utc();
     sql_query(
         "INSERT INTO enabled_currencies (code, enabled_at, disabled_at) \
@@ -44,7 +51,7 @@ pub fn enable_currency(pool: &DbPool, currency_code: &str) -> Result<()> {
     )
     .bind::<Text, _>(currency_code)
     .bind::<Timestamp, _>(now)
-    .execute(&mut connection)
+    .execute(connection)
     .into_core()?;
     Ok(())
 }
@@ -70,7 +77,10 @@ pub fn prove_coverage(pool: &DbPool, currency_code: &str) -> Result<()> {
     prove_coverage_on(&mut connection, currency_code)
 }
 
-fn prove_coverage_on(connection: &mut SqliteConnection, currency_code: &str) -> Result<()> {
+pub(crate) fn prove_coverage_on(
+    connection: &mut SqliteConnection,
+    currency_code: &str,
+) -> Result<()> {
     if currency_code == "EUR" {
         return Ok(());
     }

@@ -103,4 +103,13 @@ impl CurrencySettingsPort for CurrencySettingsRepository {
     ) -> Result<zai_core::features::currency::ExchangeRateQuote> {
         super::lifecycle::quote(&self.pool, source, target, rate_date)
     }
+
+    fn default_currency_revision(&self) -> Result<i32> {
+        super::setup::default_currency_revision(&self.pool)
+    }
+
+    fn coverage_proof_digest(&self) -> Result<String> {
+        let mut connection = crate::connection::get_connection(&self.pool)?;
+        crate::exchange_rates::coverage_proof_digest(&mut connection)
+    }
 }

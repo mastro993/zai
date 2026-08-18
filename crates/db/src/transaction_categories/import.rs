@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
@@ -51,9 +51,14 @@ impl<'a> From<&'a TransactionCategoryRow> for ImportCategoryInsert<'a> {
     }
 }
 
+pub(crate) struct ImportCategoryInsertOutcome {
+    pub inserted: Vec<TransactionCategoryRow>,
+    pub id_remap: HashMap<String, String>,
+}
+
 struct ImportValidationState {
     categories_by_id: HashMap<String, CategoryMetadata>,
-    sibling_names: HashSet<(Option<String>, String)>,
+    sibling_ids: HashMap<(Option<String>, String), String>,
 }
 
 impl ImportValidationState {
@@ -69,17 +74,23 @@ impl ImportValidationState {
             .load::<(String, Option<String>, String, String)>(conn)
             .into_storage()?;
         let mut categories_by_id = HashMap::with_capacity(categories.len());
-        let mut sibling_names = HashSet::with_capacity(categories.len());
+        let mut sibling_ids = HashMap::with_capacity(categories.len());
 
         for (id, parent_id, name, role) in categories {
-            sibling_names.insert((parent_id.clone(), normalize_name(&name)));
+            sibling_ids.insert((parent_id.clone(), normalize_name(&name)), id.clone());
             categories_by_id.insert(id, CategoryMetadata { parent_id, role });
         }
 
         Ok(Self {
             categories_by_id,
-            sibling_names,
+            sibling_ids,
         })
+    }
+
+    fn existing_sibling_id(&self, parent_id: Option<&str>, name: &str) -> Option<String> {
+        self.sibling_ids
+            .get(&(parent_id.map(str::to_string), normalize_name(name)))
+            .cloned()
     }
 
     fn prepare_row(
@@ -90,7 +101,7 @@ impl ImportValidationState {
         let sibling_parent_id = resolved_parent.as_ref().map(|parent| parent.id.clone());
         let sibling_key = (sibling_parent_id, normalize_name(&row.name));
 
-        if !self.sibling_names.insert(sibling_key) {
+        if self.sibling_ids.contains_key(&sibling_key) {
             return Err(category_conflict());
         }
 
@@ -99,6 +110,7 @@ impl ImportValidationState {
             return Err(category_conflict());
         }
 
+        self.sibling_ids.insert(sibling_key, row.id.clone());
         self.categories_by_id.insert(
             row.id.clone(),
             CategoryMetadata {
@@ -145,9 +157,12 @@ fn category_conflict() -> StorageError {
 pub(crate) fn insert_import_categories(
     conn: &mut SqliteConnection,
     new_categories: Vec<NewTransactionCategory>,
-) -> StorageResult<Vec<TransactionCategoryRow>> {
+) -> StorageResult<ImportCategoryInsertOutcome> {
     if new_categories.is_empty() {
-        return Ok(Vec::new());
+        return Ok(ImportCategoryInsertOutcome {
+            inserted: Vec::new(),
+            id_remap: HashMap::new(),
+        });
     }
 
     let (roots, children): (Vec<_>, Vec<_>) = new_categories.into_iter().partition(|category| {
@@ -158,9 +173,29 @@ pub(crate) fn insert_import_categories(
     });
     let mut state = ImportValidationState::load(conn)?;
     let mut rows = Vec::with_capacity(roots.len() + children.len());
+    let mut id_remap: HashMap<String, String> = HashMap::new();
 
-    for category in roots.into_iter().chain(children) {
-        rows.push(state.prepare_row(category.into())?);
+    for mut category in roots.into_iter().chain(children) {
+        if let Some(parent_id) = category.parent_id.as_ref() {
+            if let Some(mapped) = id_remap.get(parent_id) {
+                category.parent_id = Some(mapped.clone());
+            }
+        }
+        let requested_id = category.id.clone().unwrap_or_default();
+        if let Some(existing_id) =
+            state.existing_sibling_id(category.parent_id.as_deref(), &category.name)
+        {
+            if !requested_id.is_empty() {
+                id_remap.insert(requested_id, existing_id);
+            }
+            continue;
+        }
+        let row = state.prepare_row(category.into())?;
+        if !requested_id.is_empty() && requested_id != row.id {
+            id_remap.insert(requested_id, row.id.clone());
+        }
+        id_remap.insert(row.id.clone(), row.id.clone());
+        rows.push(row);
     }
 
     for chunk in rows.chunks(IMPORT_INSERT_CHUNK_SIZE) {
@@ -175,7 +210,10 @@ pub(crate) fn insert_import_categories(
             .map_err(map_category_unique_violation)?;
     }
 
-    Ok(rows)
+    Ok(ImportCategoryInsertOutcome {
+        inserted: rows,
+        id_remap,
+    })
 }
 
 pub(super) async fn import_categories(
@@ -190,7 +228,7 @@ pub(super) async fn import_categories(
         .writer
         .exec(
             move |conn: &mut SqliteConnection| -> crate::errors::Result<Vec<TransactionCategory>> {
-                let categories = insert_import_categories(conn, new_categories)?;
+                let categories = insert_import_categories(conn, new_categories)?.inserted;
 
                 let ids = categories
                     .iter()

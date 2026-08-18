@@ -47,6 +47,38 @@ impl CanonicalRate {
     pub const fn scale(&self) -> u32 {
         self.scale
     }
+
+    /// Reciprocal used when a mapped external rate is default→transaction.
+    pub fn inverse(&self) -> crate::Result<Self> {
+        if self.coefficient == 1 && self.scale == 0 {
+            return Ok(Self::one());
+        }
+        const EXTRA: u32 = 8;
+        let numer = 10_i128
+            .checked_pow(self.scale.saturating_add(EXTRA))
+            .ok_or_else(|| Error::InvalidData("Cannot invert exchange rate".to_string()))?;
+        let quot = numer / i128::from(self.coefficient);
+        if quot <= 0 {
+            return Err(Error::InvalidData(
+                "Cannot invert exchange rate".to_string(),
+            ));
+        }
+        let digits = quot.to_string();
+        let extra = EXTRA as usize;
+        let decimal = if digits.len() <= extra {
+            format!("0.{:0>width$}", digits, width = extra)
+        } else {
+            let split = digits.len() - extra;
+            format!("{}.{}", &digits[..split], &digits[split..])
+        };
+        let trimmed = decimal.trim_end_matches('0').trim_end_matches('.');
+        if trimmed.is_empty() || trimmed == "0" {
+            return Err(Error::InvalidData(
+                "Cannot invert exchange rate".to_string(),
+            ));
+        }
+        Self::parse(trimmed)
+    }
 }
 
 impl fmt::Display for CanonicalRate {

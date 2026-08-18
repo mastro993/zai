@@ -28,6 +28,7 @@ pub enum ErrorCode {
     ProviderDisclosureRequired,
     IncompatibleApplicationFormat,
     ManualRateReplacementRequired,
+    StaleImportPreview,
     Internal,
 }
 
@@ -133,6 +134,9 @@ pub enum Error {
 
     #[error("Replacing a manual exchange rate requires confirmation")]
     ManualRateReplacementRequired { current_revision: serde_json::Value },
+
+    #[error("Import preview is stale and must be rebuilt")]
+    StaleImportPreview,
 }
 
 const INTERNAL_PUBLIC_MESSAGE: &str = "An internal error occurred";
@@ -196,6 +200,7 @@ impl Error {
             Self::ProviderDisclosureRequired => ErrorCode::ProviderDisclosureRequired,
             Self::IncompatibleApplicationFormat => ErrorCode::IncompatibleApplicationFormat,
             Self::ManualRateReplacementRequired { .. } => ErrorCode::ManualRateReplacementRequired,
+            Self::StaleImportPreview => ErrorCode::StaleImportPreview,
         }
     }
 
@@ -433,5 +438,13 @@ mod tests {
             .to_envelope("Failed to materialize budget");
 
         assert_eq!(envelope.code, ErrorCode::CalculationOverflow);
+    }
+
+    #[test]
+    fn stale_import_preview_uses_distinct_structured_error_code() {
+        let envelope = Error::StaleImportPreview.to_envelope("Failed to commit import");
+
+        assert_eq!(envelope.code, ErrorCode::StaleImportPreview);
+        assert!(envelope.message.contains("stale"));
     }
 }

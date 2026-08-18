@@ -7,6 +7,7 @@ import {
   TableIcon,
 } from "@hugeicons/core-free-icons";
 
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import type { RateDirection } from "../types/import";
 import type {
   TransactionImportAmountMode,
   TransactionImportCategoryLinkMode,
@@ -35,6 +37,8 @@ export type ImportConfig = {
   missingCategoryMode: TransactionImportMissingCategoryMode;
   expenseTypeValues: string;
   incomeTypeValues: string;
+  confirmedTransactionCurrency: string;
+  rateDirection: RateDirection;
 };
 
 const EMPTY_COLUMN = "none";
@@ -64,6 +68,11 @@ const MISSING_CATEGORY_OPTIONS: Array<{
 const CATEGORY_LINK_OPTIONS: Array<{ value: TransactionImportCategoryLinkMode; label: string }> = [
   { value: "columns", label: "Dedicated parent column" },
   { value: "single-column", label: "Single column with separator" },
+];
+
+const RATE_DIRECTION_OPTIONS: Array<{ value: RateDirection; label: string }> = [
+  { value: "transactionToDefault", label: "Transaction currency → default" },
+  { value: "defaultToTransaction", label: "Default → transaction currency" },
 ];
 
 function SectionHeader({ icon, title }: { icon: typeof TableIcon; title: string }) {
@@ -188,30 +197,50 @@ export function TransactionImportMappingStep({
   mapping,
   config,
   mappingReady,
+  catalog,
+  isZaiExport,
+  needsProviderDisclosure,
+  confirmProviderDisclosure,
   onMappingChange,
   onConfigChange,
   onHeaderRowChange,
+  onConfirmProviderDisclosureChange,
 }: {
   headers: Array<string>;
   mapping: TransactionImportColumnMapping;
   config: ImportConfig;
   mappingReady: boolean;
+  catalog: Array<{ code: string; name: string }>;
+  isZaiExport: boolean;
+  needsProviderDisclosure: boolean;
+  confirmProviderDisclosure: boolean;
   onMappingChange: (key: keyof TransactionImportColumnMapping, value: number | null) => void;
   onConfigChange: (patch: Partial<ImportConfig>) => void;
   onHeaderRowChange: (value: string) => void;
+  onConfirmProviderDisclosureChange: (value: boolean) => void;
 }) {
   const isColumnType = config.amountMode === "column-type";
   const isSingleColumnCategory = config.categoryLinkMode === "single-column";
+  const hasCurrencyColumn = mapping.currency !== null || isZaiExport;
+  const currencyItems = catalog.map((item) => ({
+    value: item.code,
+    label: `${item.name} (${item.code})`,
+  }));
 
   return (
     <div className="flex flex-col gap-6">
+      {isZaiExport ? (
+        <p className="border border-border px-3 py-2 text-xs text-muted-foreground">
+          Zai export detected. Original amount, currency, and rate fields are mapped automatically.
+        </p>
+      ) : null}
       <section className="flex flex-col gap-3">
         <SectionHeader icon={TableIcon} title="Required columns" />
         <FieldGroup className="grid gap-4 sm:grid-cols-2">
           <ColumnSelect
             label="Amount"
-            required
-            allowNone={false}
+            required={mapping.amountMinor === null}
+            allowNone={mapping.amountMinor !== null}
             value={mapping.amount}
             headers={headers}
             onChange={(value) => onMappingChange("amount", value)}
@@ -245,9 +274,79 @@ export function TransactionImportMappingStep({
               strokeWidth={1.8}
             />
             Map the amount and date columns
-            {isColumnType ? ", plus a type column," : ""} to review your import.
+            {isColumnType ? ", plus a type column," : ""}
+            {hasCurrencyColumn ? "" : ", and confirm one transaction currency,"} to review your
+            import.
           </p>
         )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <SectionHeader icon={Coins01Icon} title="Currency" />
+        <FieldGroup className="grid gap-4 sm:grid-cols-2">
+          <ColumnSelect
+            label="Currency column"
+            value={mapping.currency}
+            headers={headers}
+            onChange={(value) => onMappingChange("currency", value)}
+          />
+          {hasCurrencyColumn ? (
+            <p className="self-end text-xs text-muted-foreground">
+              Blank or invalid currency cells make the whole import invalid.
+            </p>
+          ) : currencyItems.some((item) => item.value === config.confirmedTransactionCurrency) ? (
+            <OptionSelect
+              label="Transaction currency"
+              value={config.confirmedTransactionCurrency}
+              items={currencyItems}
+              onChange={(value) => onConfigChange({ confirmedTransactionCurrency: value })}
+              description="Required for files without a currency column. Default currency is preselected only."
+            />
+          ) : (
+            <p className="self-end text-xs text-muted-foreground">Loading currencies…</p>
+          )}
+          <ColumnSelect
+            label="Amount minor units"
+            value={mapping.amountMinor}
+            headers={headers}
+            onChange={(value) => onMappingChange("amountMinor", value)}
+          />
+          <ColumnSelect
+            label="Mapped rate"
+            value={mapping.rate}
+            headers={headers}
+            onChange={(value) => onMappingChange("rate", value)}
+          />
+          {mapping.rate !== null ? (
+            <>
+              <OptionSelect
+                label="Mapped rate direction"
+                value={config.rateDirection}
+                items={RATE_DIRECTION_OPTIONS}
+                onChange={(value) => onConfigChange({ rateDirection: value })}
+              />
+              <ColumnSelect
+                label="Mapped rate date"
+                value={mapping.rateDate}
+                headers={headers}
+                onChange={(value) => onMappingChange("rateDate", value)}
+              />
+            </>
+          ) : null}
+        </FieldGroup>
+        {needsProviderDisclosure ? (
+          <Field orientation="horizontal">
+            <Checkbox
+              id="transaction-import-provider-disclosure"
+              checked={confirmProviderDisclosure}
+              onCheckedChange={(checked) => onConfirmProviderDisclosureChange(checked === true)}
+            />
+            <FieldLabel htmlFor="transaction-import-provider-disclosure">
+              Retrieve ECB euro reference rates for currencies this import will prepare. Zai sends
+              no financial data.
+            </FieldLabel>
+          </Field>
+        ) : null}
       </section>
 
       <section className="flex flex-col gap-3">

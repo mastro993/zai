@@ -136,6 +136,20 @@ impl CurrencyService {
         }
     }
 
+    pub fn start_import_preview_job(&self) -> Result<CurrencyJob> {
+        self.settings.require_setup()?;
+        if self.settings.running_job()?.is_some() {
+            return Err(Error::CurrencyJobConflict);
+        }
+        let job = CurrencyJob::import_preview(format!("curjob-{}", Uuid::new_v4()));
+        self.settings.insert_job(&job)?;
+        self.publish(&CurrencyStateEvent::Started {
+            job_id: job.job_id.clone(),
+            job_type: CurrencyJobType::ImportPreview,
+        });
+        Ok(job)
+    }
+
     pub fn has_ecb_retained_data(&self) -> Result<bool> {
         self.settings.has_ecb_retained_data()
     }
@@ -216,7 +230,7 @@ impl CurrencyService {
         }
     }
 
-    fn fail_job(&self, job: CurrencyJob, error: Error) -> Result<CurrencyJob> {
+    pub(crate) fn fail_job(&self, job: CurrencyJob, error: Error) -> Result<CurrencyJob> {
         let finished = job.finish_failed(super::service::job_error_envelope(&error));
         self.settings.update_job(&finished)?;
         self.publish_finished(&finished, CurrencyJobFinishState::Failed);

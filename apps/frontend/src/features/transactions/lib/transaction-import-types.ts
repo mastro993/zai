@@ -15,12 +15,16 @@ export type TransactionImportDateFormat =
 
 export type TransactionImportColumnMapping = {
   amount: number | null;
+  amountMinor: number | null;
+  currency: number | null;
   transactionDate: number | null;
   transactionType: number | null;
   description: number | null;
   notes: number | null;
   categoryName: number | null;
   categoryParent: number | null;
+  rate: number | null;
+  rateDate: number | null;
 };
 
 export type TransactionImportPayload = {
