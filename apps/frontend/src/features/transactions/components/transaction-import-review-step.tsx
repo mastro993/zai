@@ -13,12 +13,17 @@ import type {
 } from "../lib/transaction-import";
 import { TransactionTypeBadge } from "./transaction-type-badge";
 
-const STATUS_META: Record<TransactionImportPreviewStatus, { label: string; dot: string }> = {
+interface ImportStatusMeta {
+  label: string;
+  dot: string;
+}
+
+const STATUS_META = {
   import: { label: "Ready", dot: "bg-primary" },
   duplicate: { label: "Duplicate", dot: "bg-muted-foreground/50" },
   invalid: { label: "Invalid", dot: "bg-destructive" },
   empty: { label: "Empty", dot: "bg-border" },
-};
+} satisfies Record<TransactionImportPreviewStatus, ImportStatusMeta>;
 
 function StatStrip({ summary }: { summary: TransactionImportPreview["summary"] }) {
   const cells = [

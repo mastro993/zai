@@ -2,6 +2,7 @@ import { Result } from "@praha/byethrow";
 
 import { downloadTextFile } from "@/commands/file-capabilities/download-text-file";
 import { CommandError, type CommandResult, toCommandError } from "@/commands/shared";
+import { hasWindow } from "@/lib/runtime-globals";
 
 import { getTransactionExportFilename } from "../lib/transaction-export";
 import { exportTransactionsCsv, type TransactionFilters } from "./transactions";
@@ -10,7 +11,7 @@ export const exportTransactions = async (options?: {
   filters?: TransactionFilters;
   transactionIds?: Array<string>;
 }): CommandResult<string | null> => {
-  if (typeof window === "undefined") {
+  if (!hasWindow()) {
     return Result.fail(new CommandError("Transaction export is only available in the client"));
   }
 

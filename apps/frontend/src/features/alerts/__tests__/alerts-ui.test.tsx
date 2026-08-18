@@ -1,53 +1,29 @@
 // @vitest-environment jsdom
 import { Result } from "@praha/byethrow";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { navigateMock } = vi.hoisted(() => ({
-  navigateMock: vi.fn(),
-}));
+import { CommandError } from "@/commands/errors";
+import * as budgets from "@/features/budgets/commands/budgets";
 
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => navigateMock,
-}));
-
+import * as alertsCommands from "../commands/alerts";
+import { AlertRow } from "../components/alert-row";
+import { AlertsBell } from "../components/alerts-bell";
 import { AlertsLedgerFilters } from "../components/alerts-ledger-filters";
 import { AlertsLedgerSheet } from "../components/alerts-ledger-sheet";
-import { AlertsBell } from "../components/alerts-bell";
-import { AlertRow } from "../components/alert-row";
 import { AlertsControllerProvider, useAlertsController } from "../hooks/use-alerts-controller";
 import { alertsBellLabel, domainAlertSeverityLabel, formatAlertCreatedAt } from "../lib/format";
 import { isNavigableAlertDestination, isUnreadAlert, parseDomainAlertListPage } from "../lib/parse";
 import type { DomainAlert } from "../types/domain-alert";
-
-vi.mock("@hugeicons/react", () => ({
-  HugeiconsIcon: () => <span data-testid="icon" />,
-}));
-
-const markAlertRead = vi.fn();
-const markAlertUnread = vi.fn();
-const markAllAlertsRead = vi.fn();
-const getBudget = vi.fn();
-
-vi.mock("../commands/alerts", () => ({
-  listAlerts: vi.fn(() =>
-    Promise.resolve(
-      Result.succeed({
-        items: [],
-        nextCursor: null,
-      }),
-    ),
-  ),
-  getUnreadAlertCount: vi.fn(() => Promise.resolve(Result.succeed(0))),
-  markAllAlertsRead: (...args: Array<unknown>) => markAllAlertsRead(...args),
-  markAlertRead: (...args: Array<unknown>) => markAlertRead(...args),
-  markAlertUnread: (...args: Array<unknown>) => markAlertUnread(...args),
-}));
-
-vi.mock("@/features/budgets/commands/budgets", () => ({
-  getBudget: (...args: Array<unknown>) => getBudget(...args),
-}));
 
 const sampleAlert: DomainAlert = {
   id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
@@ -76,8 +52,20 @@ const readAlert: DomainAlert = {
   readAt: "2026-07-14T11:00:00",
 };
 
-function success<T>(value: T) {
-  return Promise.resolve(Result.succeed(value));
+function stubMatchMedia() {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: (query: string) => ({
+      addEventListener: () => undefined,
+      addListener: () => undefined,
+      dispatchEvent: () => false,
+      matches: false,
+      media: query,
+      onchange: null,
+      removeEventListener: () => undefined,
+      removeListener: () => undefined,
+    }),
+  });
 }
 
 function ControllerProbe() {
@@ -110,8 +98,31 @@ function ControllerProbe() {
   );
 }
 
-function renderController(ui: ReactNode = <ControllerProbe />) {
-  return render(<AlertsControllerProvider>{ui}</AlertsControllerProvider>);
+async function renderController(ui: ReactNode = <ControllerProbe />) {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <AlertsControllerProvider>
+        <Outlet />
+      </AlertsControllerProvider>
+    ),
+  });
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => ui,
+  });
+  const budgetRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/budgets/$budgetId",
+    component: () => <div>Budget destination</div>,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, budgetRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  await router.load();
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 describe("domain alert parsing", () => {
@@ -176,19 +187,11 @@ describe("alerts bell label", () => {
     expect(alertsBellLabel(3)).toBe("Alerts, 3 unread");
   });
 
-  it("renders the bell as an outlined icon button", () => {
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn(() => ({
-        matches: false,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      })),
-    });
+  it("renders the bell as an outlined icon button", async () => {
+    stubMatchMedia();
+    await renderController(<AlertsBell />);
 
-    renderController(<AlertsBell />);
-
-    const bell = screen.getByRole("button", { name: "Alerts, 0 unread" });
+    const bell = await screen.findByRole("button", { name: "Alerts, 0 unread" });
     expect(bell.classList.contains("border-border")).toBe(true);
     expect(bell.classList.contains("bg-background")).toBe(true);
     expect(bell.textContent).toBe("");
@@ -218,11 +221,43 @@ describe("alerts ledger filters", () => {
 
 describe("alerts controller lifecycle", () => {
   beforeEach(() => {
-    markAlertRead.mockReset();
-    markAlertUnread.mockReset();
-    markAllAlertsRead.mockReset();
-    getBudget.mockReset();
-    navigateMock.mockReset();
+    stubMatchMedia();
+    vi.restoreAllMocks();
+    vi.spyOn(alertsCommands, "listAlerts").mockResolvedValue(
+      Result.succeed({ items: [], nextCursor: null }),
+    );
+    vi.spyOn(alertsCommands, "getUnreadAlertCount").mockResolvedValue(Result.succeed(0));
+    vi.spyOn(alertsCommands, "markAllAlertsRead").mockResolvedValue(Result.succeed(0));
+    vi.spyOn(alertsCommands, "markAlertRead").mockResolvedValue(
+      Result.succeed({
+        ...sampleAlert,
+        readAt: "2026-07-14T11:00:00",
+      }),
+    );
+    vi.spyOn(alertsCommands, "markAlertUnread").mockResolvedValue(Result.succeed(sampleAlert));
+    vi.spyOn(budgets, "getBudget").mockResolvedValue(
+      Result.succeed({
+        id: budgetDestinationId,
+        name: "Groceries",
+        revision: 1,
+        paused: false,
+        categoryIds: [],
+        cadence: "month",
+        measurementMode: "spending",
+        baseAllowance: 10000,
+        rolloverMode: "off",
+        warningPercentage: 80,
+        currentPeriod: {
+          start: "2026-07-01T00:00:00",
+          end: "2026-08-01T00:00:00",
+          baseAllowance: 10000,
+          effectiveAllowance: 10000,
+          netBudgetSpending: 0,
+          remainingAllowance: 10000,
+          status: "onTrack",
+        },
+      }),
+    );
   });
 
   afterEach(() => {
@@ -230,67 +265,48 @@ describe("alerts controller lifecycle", () => {
   });
 
   it("updates unread count after mark read", async () => {
-    markAlertRead.mockResolvedValueOnce(
-      success({
-        ...sampleAlert,
-        readAt: "2026-07-14T11:00:00",
-      }),
-    );
-
-    renderController();
+    await renderController();
 
     fireEvent.click(screen.getByTestId("toggle-read"));
 
     await waitFor(() => {
-      expect(markAlertRead).toHaveBeenCalledWith(sampleAlert.id);
+      expect(alertsCommands.markAlertRead).toHaveBeenCalledWith(sampleAlert.id);
     });
   });
 
   it("marks unread alert read before budget navigation", async () => {
-    markAlertRead.mockResolvedValueOnce(
-      success({
+    vi.mocked(alertsCommands.markAlertRead).mockResolvedValueOnce(
+      Result.succeed({
         ...budgetAlert,
         readAt: "2026-07-14T11:00:00",
       }),
     );
-    getBudget.mockResolvedValueOnce(
-      success({
-        id: budgetDestinationId,
-        name: "Groceries",
-      }),
-    );
 
-    renderController();
+    const router = await renderController();
 
     fireEvent.click(screen.getByTestId("open-budget-alert"));
 
     await waitFor(() => {
-      expect(markAlertRead).toHaveBeenCalledWith(budgetAlert.id);
-      expect(getBudget).toHaveBeenCalledWith(budgetDestinationId);
-      expect(navigateMock).toHaveBeenCalledWith({
-        to: "/cash-flow/budgets/$budgetId",
-        params: { budgetId: budgetDestinationId },
-      });
+      expect(alertsCommands.markAlertRead).toHaveBeenCalledWith(budgetAlert.id);
+      expect(budgets.getBudget).toHaveBeenCalledWith(budgetDestinationId);
+      expect(router.state.location.pathname).toBe(`/cash-flow/budgets/${budgetDestinationId}`);
     });
   });
 
   it("keeps alert read and shows feedback when budget destination is stale", async () => {
-    markAlertRead.mockResolvedValueOnce(
-      success({
+    vi.mocked(alertsCommands.markAlertRead).mockResolvedValueOnce(
+      Result.succeed({
         ...budgetAlert,
         readAt: "2026-07-14T11:00:00",
       }),
     );
-    getBudget.mockResolvedValueOnce(
-      Promise.resolve(
-        Result.fail({
-          code: "notFound",
-          message: "Failed to load budget: Not found: budget",
-        }),
+    vi.mocked(budgets.getBudget).mockResolvedValueOnce(
+      Result.fail(
+        new CommandError("Failed to load budget: Not found: budget", { code: "notFound" }),
       ),
     );
 
-    renderController();
+    const router = await renderController();
 
     fireEvent.click(screen.getByTestId("open-budget-alert"));
 
@@ -299,18 +315,20 @@ describe("alerts controller lifecycle", () => {
         "This budget is no longer available. The alert history is unchanged.",
       );
     });
-    expect(navigateMock).not.toHaveBeenCalled();
+    expect(router.state.location.pathname).toBe("/");
   });
 
   it("disables mark all read when no unread alerts remain", async () => {
-    renderController();
+    await renderController();
 
     fireEvent.click(screen.getByTestId("open-ledger"));
 
     await waitFor(() => {
-      const markAll = screen.getByRole("button", { name: "Mark all read" }) as HTMLButtonElement;
+      const markAll = screen.getByRole("button", { name: "Mark all read" });
+      expect(markAll).toBeInstanceOf(HTMLButtonElement);
+      if (!(markAll instanceof HTMLButtonElement)) return;
       expect(markAll.disabled).toBe(true);
     });
-    expect(markAllAlertsRead).not.toHaveBeenCalled();
+    expect(alertsCommands.markAllAlertsRead).not.toHaveBeenCalled();
   });
 });

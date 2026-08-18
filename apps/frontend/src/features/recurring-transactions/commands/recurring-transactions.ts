@@ -80,8 +80,8 @@ export const getRecurringTransactions = (
 ): CommandResult<RecurringFeedResult> => {
   return invokeDecodedCommand(RECURRING_COMMANDS.get_recurring_transactions, {
     limit,
-    ...(cursor ? { cursor } : {}),
-    ...(filters ? { filters } : {}),
+    cursor,
+    filters,
   });
 };
 
@@ -101,7 +101,7 @@ export const getRecurringTransactionOccurrences = (
   return invokeDecodedCommand(RECURRING_COMMANDS.get_recurring_transaction_occurrences, {
     recurringTransactionId,
     limit,
-    ...(cursor ? { cursor } : {}),
+    cursor,
   });
 };
 
@@ -258,7 +258,7 @@ export const getRecurringTransactionFailureHistory = (
   return invokeDecodedCommand(RECURRING_COMMANDS.get_recurring_transaction_failure_history, {
     recurringTransactionId,
     limit,
-    ...(cursor ? { cursor } : {}),
+    cursor,
   });
 };
 
@@ -333,10 +333,9 @@ export const retryRecurringGenerationFailure = (
 export const getMatchingRecurringTransactionIds = (
   filters?: RecurringFeedFilters,
 ): CommandResult<RecurringMatchingIds> => {
-  return invokeDecodedCommand(
-    RECURRING_COMMANDS.get_matching_recurring_transaction_ids,
-    filters ? { filters } : {},
-  );
+  return invokeDecodedCommand(RECURRING_COMMANDS.get_matching_recurring_transaction_ids, {
+    filters,
+  });
 };
 
 export const preflightRecurringBulk = (

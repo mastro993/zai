@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -6,34 +8,24 @@ import {
   selectAlertEventTransport,
 } from "../commands/alert-events";
 
-type EventListener = (event: Event) => void;
-
-class FakeEventSource {
+class FakeEventSource extends EventTarget {
   static instances: Array<FakeEventSource> = [];
 
   readonly url: string;
   closed = false;
-  private readonly listeners = new Map<string, EventListener>();
 
   constructor(url: string) {
+    super();
     this.url = url;
     FakeEventSource.instances.push(this);
-  }
-
-  addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
-    this.listeners.set(type, listener as EventListener);
-  }
-
-  removeEventListener(type: string) {
-    this.listeners.delete(type);
   }
 
   close() {
     this.closed = true;
   }
 
-  emit(type: string, event: Event) {
-    this.listeners.get(type)?.(event);
+  emit(event: Event) {
+    this.dispatchEvent(event);
   }
 }
 
@@ -56,15 +48,15 @@ describe("alert event transports", () => {
     expect(source?.url).toBe("http://127.0.0.1:3000/api/alerts/events");
     await subscription.ready;
 
-    source?.emit("message", { data: "payload" } as MessageEvent<string>);
-    source?.emit("open", new Event("open"));
-    source?.emit("open", new Event("open"));
+    source?.emit(new MessageEvent("message", { data: "payload" }));
+    source?.emit(new Event("open"));
+    source?.emit(new Event("open"));
 
     expect(onEvent).toHaveBeenCalledWith("payload");
     expect(onReconnect).toHaveBeenCalledOnce();
 
     subscription.close();
-    source?.emit("message", { data: "ignored" } as MessageEvent<string>);
+    source?.emit(new MessageEvent("message", { data: "ignored" }));
     expect(source?.closed).toBe(true);
     expect(onEvent).toHaveBeenCalledOnce();
   });

@@ -1,141 +1,204 @@
 // @vitest-environment jsdom
 
+import { Result } from "@praha/byethrow";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tanstack/react-devtools", () => ({
-  TanStackDevtools: () => null,
-}));
+import {
+  ApplicationTitleBar,
+  ApplicationTitleBarProvider,
+} from "@/components/application-title-bar";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import * as alertsController from "@/features/alerts/hooks/use-alerts-controller";
+import type { AlertsControllerValue } from "@/features/alerts/hooks/alerts-controller-context";
+import * as breadcrumbs from "@/hooks/use-screen-breadcrumbs";
 
-vi.mock("@tanstack/react-router-devtools", () => ({
-  TanStackRouterDevtoolsPanel: () => null,
-}));
+import * as budgets from "../../commands/budgets";
+import { budgetSchema, type Budget } from "../../types/budget";
+import { BudgetDetailScreen } from "../budget-detail-screen";
+import { BudgetScreen } from "../budget-screen";
 
-const { budget, budgetState, history } = vi.hoisted(() => ({
-  budget: {
-    id: "budget-1",
-    name: "Monthly groceries",
-    revision: 1,
-    paused: false,
-    categoryIds: [],
-    cadence: "month",
-    measurementMode: "spending",
+const budget = budgetSchema.parse({
+  id: "budget-1",
+  name: "Monthly groceries",
+  revision: 1,
+  paused: false,
+  categoryIds: [],
+  cadence: "month",
+  measurementMode: "spending",
+  baseAllowance: 10000,
+  rolloverMode: "off",
+  warningPercentage: 80,
+  currentPeriod: {
+    start: "2026-07-01T00:00:00",
+    end: "2026-08-01T00:00:00",
     baseAllowance: 10000,
-    rolloverMode: "off",
-    warningPercentage: 80,
-    currentPeriod: {
-      start: "2026-07-01T00:00:00",
-      end: "2026-08-01T00:00:00",
-      baseAllowance: 10000,
-      effectiveAllowance: 10000,
-      netBudgetSpending: 2500,
-      remainingAllowance: 7500,
-      status: "onTrack",
+    effectiveAllowance: 10000,
+    netBudgetSpending: 2500,
+    remainingAllowance: 7500,
+    status: "onTrack",
+  },
+});
+
+const history = {
+  data: [],
+  page: 1,
+  perPage: 50,
+  totalPages: 1,
+};
+
+interface BudgetListState {
+  deferRefresh: boolean;
+  deleted: boolean;
+  lifecyclePaused: boolean;
+  pausedOnly: boolean;
+  resolveRefresh: (() => void) | undefined;
+}
+
+const budgetState: BudgetListState = {
+  deferRefresh: false,
+  deleted: false,
+  lifecyclePaused: false,
+  pausedOnly: false,
+  resolveRefresh: undefined,
+};
+
+const idleAlertsController: AlertsControllerValue = {
+  bellRef: { current: null },
+  clearFilters: () => undefined,
+  closeLedger: () => undefined,
+  destinationFeedback: null,
+  errorMessage: null,
+  filters: { readState: "all", severity: "all" },
+  hasActiveFilters: false,
+  isLedgerOpen: false,
+  ledgerFocusAlertId: null,
+  items: [],
+  lifecycleErrors: {},
+  lifecyclePendingId: null,
+  loadOlder: async () => undefined,
+  loadOlderError: null,
+  loadOlderStatus: "idle",
+  markAllRead: async () => undefined,
+  markAllReadError: null,
+  markAllReadPending: false,
+  nextCursor: null,
+  openAlert: async () => undefined,
+  openLedger: () => undefined,
+  refresh: async () => undefined,
+  refreshStatus: "ready",
+  setReadStateFilter: () => undefined,
+  setSeverityFilter: () => undefined,
+  toggleAlertReadState: async () => undefined,
+  unreadCount: 0,
+  unreadCountKnown: true,
+};
+
+function currentBudget(): Budget {
+  if (budgetState.lifecyclePaused) {
+    return { ...budget, paused: true, revision: 2 };
+  }
+  return budget;
+}
+
+function listForFilter(filter: string | undefined): Array<Budget> {
+  if (budgetState.deleted) {
+    return [];
+  }
+  if (budgetState.pausedOnly || budgetState.lifecyclePaused) {
+    return filter === "all" || filter === "paused" ? [{ ...budget, paused: true }] : [];
+  }
+  return [budget];
+}
+
+function stubWindowChrome() {
+  Object.defineProperty(window, "scrollTo", {
+    configurable: true,
+    value: () => undefined,
+  });
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: (query: string) => ({
+      addEventListener: () => undefined,
+      addListener: () => undefined,
+      dispatchEvent: () => false,
+      matches: false,
+      media: query,
+      onchange: null,
+      removeEventListener: () => undefined,
+      removeListener: () => undefined,
+    }),
+  });
+}
+
+async function renderBudgetApp() {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <SidebarProvider>
+        <ApplicationTitleBarProvider>
+          <ApplicationTitleBar buildTarget="web" />
+          <Outlet />
+        </ApplicationTitleBarProvider>
+      </SidebarProvider>
+    ),
+  });
+  const listRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/budgets/",
+    loader: async (): Promise<{ budgets: Budget[] }> => {
+      const result = await budgets.getBudgets("all");
+      if (Result.isFailure(result)) {
+        return { budgets: [] };
+      }
+      return { budgets: result.value };
     },
-  },
-  history: {
-    data: [],
-    page: 1,
-    perPage: 50,
-    totalPages: 1,
-  },
-  budgetState: {
-    deferRefresh: false,
-    deleted: false,
-    lifecyclePaused: false,
-    pausedOnly: false,
-    resolveRefresh: undefined as undefined | (() => void),
-  },
-}));
-
-vi.mock("@/features/budgets/commands/budgets", async () => {
-  const { Result } = await import("@praha/byethrow");
-  const success = <T,>(value: T) => Promise.resolve(Result.succeed(value));
-
-  return {
-    createBudget: vi.fn((values: { name: string }) =>
-      success({ ...budget, id: "budget-2", name: values.name }),
-    ),
-    deleteBudget: vi.fn(() => {
-      budgetState.deleted = true;
-      return success(undefined);
-    }),
-    editBudget: vi.fn(() => success(budget)),
-    getBudget: vi.fn(() =>
-      success(budgetState.lifecyclePaused ? { ...budget, paused: true, revision: 2 } : budget),
-    ),
-    getBudgets: vi.fn((filter?: string) => {
-      if (!budgetState.deleted) {
-        if (budgetState.pausedOnly || budgetState.lifecyclePaused) {
-          return success(
-            filter === "all" || filter === "paused" ? [{ ...budget, paused: true }] : [],
-          );
-        }
-        return success([budget]);
-      }
-      if (!budgetState.deferRefresh) {
-        return success([]);
-      }
-      return new Promise((resolve) => {
-        budgetState.resolveRefresh = () => resolve(Result.succeed([]));
-      });
-    }),
-    getBudgetHistory: vi.fn(() => success(history)),
-    pauseBudget: vi.fn(() => {
-      budgetState.lifecyclePaused = true;
-      return success({ ...budget, paused: true, revision: 2 });
-    }),
-    resumeBudget: vi.fn(() => {
-      budgetState.lifecyclePaused = false;
-      return success({ ...budget, revision: 3 });
-    }),
-    updateBudget: vi.fn(() => success(budget)),
-  };
-});
-
-vi.mock("@/features/alerts/hooks/use-alerts-controller", () => ({
-  AlertsControllerProvider: ({ children }: { children: React.ReactNode }) => children,
-  useAlertsController: () => ({
-    bellRef: { current: null },
-    closeLedger: vi.fn(),
-    destinationFeedback: null,
-    errorMessage: null,
-    isLedgerOpen: false,
-    items: [],
-    lifecycleErrors: {},
-    lifecyclePendingId: null,
-    openAlert: vi.fn(async () => undefined),
-    openLedger: vi.fn(),
-    refresh: vi.fn(async () => undefined),
-    refreshStatus: "ready",
-    toggleAlertReadState: vi.fn(async () => undefined),
-    unreadCount: 0,
-  }),
-}));
-
-vi.mock("@/features/alerts/components/alerts-bell", () => ({
-  AlertsBell: () => null,
-}));
-
-vi.mock("@hugeicons/react", () => ({
-  HugeiconsIcon: () => <span data-testid="icon" />,
-}));
-
-vi.mock("@/features/categories/commands/transaction-categories", async () => {
-  const { Result } = await import("@praha/byethrow");
-  const success = <T,>(value: T) => Promise.resolve(Result.succeed(value));
-
-  return {
-    createTransactionCategory: vi.fn(() => success(undefined)),
-    deleteTransactionCategories: vi.fn(() => success([])),
-    getTransactionCategories: vi.fn(() => success([])),
-    importTransactionCategories: vi.fn(() => success([])),
-    updateTransactionCategory: vi.fn(() => success(undefined)),
-  };
-});
-
-import { routeTree } from "@/routeTree.gen";
+    component: function BudgetListPage() {
+      // SAFETY: list loader always returns { budgets: Budget[] }.
+      const data = listRoute.useLoaderData() as { budgets: Budget[] };
+      const budgetListKey = data.budgets
+        .map((item) => `${item.id}:${item.revision}:${item.paused}`)
+        .join("|");
+      return <BudgetScreen key={budgetListKey} initialBudgets={data.budgets} categories={[]} />;
+    },
+  });
+  const detailRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/budgets/$budgetId",
+    loader: async ({ params }) => {
+      const budgetResult = await budgets.getBudget(params.budgetId);
+      const historyResult = await budgets.getBudgetHistory(params.budgetId);
+      return {
+        budget: Result.isSuccess(budgetResult) ? budgetResult.value : currentBudget(),
+        history: Result.isSuccess(historyResult) ? historyResult.value : history,
+      };
+    },
+    component: function BudgetDetailPage() {
+      const data = detailRoute.useLoaderData();
+      return (
+        <BudgetDetailScreen
+          budget={data?.budget ?? currentBudget()}
+          history={data?.history ?? history}
+          categories={[]}
+        />
+      );
+    },
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([listRoute, detailRoute]),
+    history: createMemoryHistory({ initialEntries: ["/cash-flow/budgets"] }),
+  });
+  await router.load();
+  render(<RouterProvider router={router} />);
+  return router;
+}
 
 describe("cash-flow budget navigation", () => {
   beforeEach(() => {
@@ -144,36 +207,44 @@ describe("cash-flow budget navigation", () => {
     budgetState.lifecyclePaused = false;
     budgetState.pausedOnly = false;
     budgetState.resolveRefresh = undefined;
-    Object.defineProperty(window, "scrollTo", {
-      configurable: true,
-      value: vi.fn(),
+    stubWindowChrome();
+    vi.spyOn(breadcrumbs, "useScreenBreadcrumbs").mockReturnValue([{ label: "Budgets" }]);
+    vi.spyOn(alertsController, "useAlertsController").mockReturnValue(idleAlertsController);
+    vi.spyOn(budgets, "createBudget").mockImplementation(async (values) =>
+      Result.succeed({ ...budget, id: "budget-2", name: values.name }),
+    );
+    vi.spyOn(budgets, "deleteBudget").mockImplementation(async () => {
+      budgetState.deleted = true;
+      return Result.succeed(undefined);
     });
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn(() => ({
-        addEventListener: vi.fn(),
-        addListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-        matches: false,
-        media: "",
-        onchange: null,
-        removeEventListener: vi.fn(),
-        removeListener: vi.fn(),
-      })),
+    vi.spyOn(budgets, "getBudget").mockImplementation(async () => Result.succeed(currentBudget()));
+    vi.spyOn(budgets, "getBudgets").mockImplementation(async (filter) => {
+      if (budgetState.deleted && budgetState.deferRefresh) {
+        return new Promise((resolve) => {
+          budgetState.resolveRefresh = () => resolve(Result.succeed([]));
+        });
+      }
+      return Result.succeed(listForFilter(filter));
     });
+    vi.spyOn(budgets, "getBudgetHistory").mockResolvedValue(Result.succeed(history));
+    vi.spyOn(budgets, "pauseBudget").mockImplementation(async () => {
+      budgetState.lifecyclePaused = true;
+      return Result.succeed({ ...budget, paused: true, revision: 2 });
+    });
+    vi.spyOn(budgets, "resumeBudget").mockImplementation(async () => {
+      budgetState.lifecyclePaused = false;
+      return Result.succeed({ ...budget, revision: 3 });
+    });
+    vi.spyOn(budgets, "updateBudget").mockResolvedValue(Result.succeed(budget));
   });
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it("renders the budget detail screen after selecting a budget", async () => {
-    const router = createRouter({
-      routeTree,
-      history: createMemoryHistory({ initialEntries: ["/cash-flow/budgets"] }),
-    });
-
-    render(<RouterProvider router={router} />);
+    const router = await renderBudgetApp();
 
     const budgetLink = await screen.findByRole("link", { name: budget.name });
     fireEvent.click(budgetLink);
@@ -185,12 +256,7 @@ describe("cash-flow budget navigation", () => {
   it("renders Back to budgets as a semantic link without native-button warnings", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    const router = createRouter({
-      routeTree,
-      history: createMemoryHistory({ initialEntries: ["/cash-flow/budgets"] }),
-    });
-
-    render(<RouterProvider router={router} />);
+    await renderBudgetApp();
 
     fireEvent.click(await screen.findByRole("link", { name: budget.name }));
 
@@ -198,7 +264,7 @@ describe("cash-flow budget navigation", () => {
     expect(control.tagName).toBe("A");
     expect(control.getAttribute("href")).toMatch(/\/cash-flow\/budgets\/?$/);
     expect(
-      consoleError.mock.calls.some((call: Array<unknown>) =>
+      consoleError.mock.calls.some((call) =>
         String(call[0]).includes("expected a native <button>"),
       ),
     ).toBe(false);
@@ -207,12 +273,7 @@ describe("cash-flow budget navigation", () => {
   });
 
   it("shows a newly created budget in the active list", async () => {
-    const router = createRouter({
-      routeTree,
-      history: createMemoryHistory({ initialEntries: ["/cash-flow/budgets"] }),
-    });
-
-    render(<RouterProvider router={router} />);
+    await renderBudgetApp();
 
     fireEvent.click(await screen.findByRole("button", { name: "New budget" }));
     fireEvent.change(await screen.findByLabelText("Name"), {
@@ -227,12 +288,7 @@ describe("cash-flow budget navigation", () => {
   });
 
   it("shows a newly created budget in the all list", async () => {
-    const router = createRouter({
-      routeTree,
-      history: createMemoryHistory({ initialEntries: ["/cash-flow/budgets"] }),
-    });
-
-    render(<RouterProvider router={router} />);
+    await renderBudgetApp();
 
     const allFilter = await screen.findByRole("button", { name: "All" });
     fireEvent.click(allFilter);
@@ -252,12 +308,7 @@ describe("cash-flow budget navigation", () => {
 
   it("keeps the filters available when only paused budgets exist", async () => {
     budgetState.pausedOnly = true;
-    const router = createRouter({
-      routeTree,
-      history: createMemoryHistory({ initialEntries: ["/cash-flow/budgets"] }),
-    });
-
-    render(<RouterProvider router={router} />);
+    await renderBudgetApp();
 
     expect(await screen.findByText("No active budgets")).toBeTruthy();
     const pausedFilter = screen.getByRole("button", { name: "Paused" });
@@ -268,12 +319,7 @@ describe("cash-flow budget navigation", () => {
   });
 
   it("refreshes the budget list after changing lifecycle state", async () => {
-    const router = createRouter({
-      routeTree,
-      history: createMemoryHistory({ initialEntries: ["/cash-flow/budgets"] }),
-    });
-
-    render(<RouterProvider router={router} />);
+    await renderBudgetApp();
 
     fireEvent.click(await screen.findByRole("link", { name: budget.name }));
     fireEvent.click(await screen.findByRole("button", { name: "Pause budget" }));
@@ -286,12 +332,7 @@ describe("cash-flow budget navigation", () => {
 
   it("refreshes the budget list after deleting a budget", async () => {
     budgetState.deferRefresh = true;
-    const router = createRouter({
-      routeTree,
-      history: createMemoryHistory({ initialEntries: ["/cash-flow/budgets"] }),
-    });
-
-    render(<RouterProvider router={router} />);
+    const router = await renderBudgetApp();
 
     fireEvent.click(await screen.findByRole("link", { name: budget.name }));
     fireEvent.click(await screen.findByRole("button", { name: "Delete budget" }));
@@ -299,7 +340,7 @@ describe("cash-flow budget navigation", () => {
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete budget" }));
 
-    await waitFor(() => expect(budgetState.resolveRefresh).toBeTypeOf("function"));
+    await waitFor(() => expect(budgetState.resolveRefresh).not.toBeUndefined());
     budgetState.resolveRefresh?.();
     await waitFor(() => expect(router.state.location.pathname).toBe("/cash-flow/budgets"));
     await waitFor(() => expect(screen.queryByRole("link", { name: budget.name })).toBeNull());

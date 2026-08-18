@@ -1,12 +1,12 @@
 import type { RecurringLifecycle, ScheduleRule } from "../types/recurring-transaction";
 
-export const recurringLifecycleLabel: Record<RecurringLifecycle, string> = {
+export const recurringLifecycleLabel = {
   active: "Active",
   paused: "Paused",
   stopped: "Stopped",
   completed: "Completed",
   tombstoned: "Deleted",
-};
+} satisfies Record<RecurringLifecycle, string>;
 
 export const formatScheduleRule = (rule: ScheduleRule): string => {
   if (rule.type === "monthlyDay") {

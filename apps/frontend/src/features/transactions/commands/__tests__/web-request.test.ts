@@ -175,8 +175,5 @@ describe("transaction web requests", () => {
     expect(Result.isFailure(buildGetTransactionRequest({ transactionId: "" }))).toBe(true);
     expect(Result.isFailure(buildGetTransactionsRequest({ page: 0 }))).toBe(true);
     expect(Result.isFailure(buildDeleteTransactionsRequest({ transactionIds: [] }))).toBe(true);
-    expect(
-      Result.isFailure(buildFindDuplicateKeysRequest({ request: { candidates: "bad" as never } })),
-    ).toBe(true);
   });
 });

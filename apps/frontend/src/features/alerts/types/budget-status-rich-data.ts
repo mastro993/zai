@@ -19,9 +19,7 @@ export const budgetStatusRichDataV1Schema = z.object({
 
 export type BudgetStatusRichDataV1 = z.infer<typeof budgetStatusRichDataV1Schema>;
 
-export const parseBudgetStatusRichDataV1 = (
-  payload: Record<string, unknown>,
-): BudgetStatusRichDataV1 | null => {
+export const parseBudgetStatusRichDataV1 = <TRaw>(payload: TRaw): BudgetStatusRichDataV1 | null => {
   const parsed = budgetStatusRichDataV1Schema.safeParse(payload);
   return parsed.success ? parsed.data : null;
 };

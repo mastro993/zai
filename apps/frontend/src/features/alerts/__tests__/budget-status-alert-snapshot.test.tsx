@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@hugeicons/react", () => ({
-  HugeiconsIcon: () => <span data-testid="icon" />,
-}));
+import { afterEach, describe, expect, it } from "vitest";
 
 import { AlertRow } from "../components/alert-row";
 import type { DomainAlert } from "../types/domain-alert";

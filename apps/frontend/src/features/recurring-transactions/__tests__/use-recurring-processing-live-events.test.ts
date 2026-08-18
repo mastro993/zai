@@ -3,42 +3,42 @@ import { Result } from "@praha/byethrow";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createTransportMock } = vi.hoisted(() => ({
-  createTransportMock: vi.fn(),
-}));
-
-vi.mock("../commands/recurring-processing-events", () => ({
-  createRecurringProcessingEventTransport: createTransportMock,
-}));
-
+import {
+  RecurringProcessingEventError,
+  type RecurringProcessingEventHandler,
+  type RecurringProcessingEventReconnectHandler,
+} from "../commands/recurring-processing-events";
+import * as recurringProcessingEvents from "../commands/recurring-processing-events";
 import {
   RecurringProcessingReconciliationError,
   useRecurringProcessingLiveEvents,
 } from "../hooks/use-recurring-processing-live-events";
 
-interface TestSubscriptionError {
-  code: string;
-  message: string;
-}
-
-let emit: (value: unknown) => void = () => undefined;
-let reconnect: () => void = () => undefined;
-let readyResult: Result.Result<void, TestSubscriptionError> = Result.succeed(undefined);
+let emit: RecurringProcessingEventHandler = () => undefined;
+let reconnect: RecurringProcessingEventReconnectHandler = () => undefined;
+let readyResult: Result.Result<void, RecurringProcessingEventError> = Result.succeed(undefined);
 let readyPromiseFactory = () => Promise.resolve(readyResult);
 
 describe("useRecurringProcessingLiveEvents", () => {
-  let close: ReturnType<typeof vi.fn>;
+  let close: () => void;
 
   beforeEach(() => {
-    close = vi.fn();
-    createTransportMock.mockReset();
+    close = vi.fn(() => undefined);
     readyResult = Result.succeed(undefined);
     readyPromiseFactory = () => Promise.resolve(readyResult);
-    createTransportMock.mockImplementation(() => ({
-      subscribe: (onEvent: (value: unknown) => void, onReconnect: () => void) => {
+    vi.spyOn(
+      recurringProcessingEvents,
+      "createRecurringProcessingEventTransport",
+    ).mockImplementation(() => ({
+      subscribe: (onEvent, onReconnect) => {
         emit = onEvent;
         reconnect = onReconnect;
-        return { ready: readyPromiseFactory(), close };
+        return {
+          ready: readyPromiseFactory(),
+          close: () => {
+            close();
+          },
+        };
       },
     }));
     Object.defineProperty(document, "visibilityState", {
@@ -66,9 +66,7 @@ describe("useRecurringProcessingLiveEvents", () => {
     expect(onReconcile).toHaveBeenCalledOnce();
 
     await act(async () => {
-      // Lag collapse / delay recovery arrive as stateChanged hints.
       emit(JSON.stringify({ version: 1, type: "stateChanged" }));
-      // Missed mid-run progress still forces durable reconcile.
       emit(
         JSON.stringify({
           version: 1,
@@ -95,7 +93,9 @@ describe("useRecurringProcessingLiveEvents", () => {
     const onReconcile = vi.fn(() => Promise.resolve(Result.succeed(undefined)));
     const onReady = vi.fn(() => Promise.resolve(Result.succeed(undefined)));
     const onSubscriptionFailure = vi.fn();
-    readyResult = Result.fail({ code: "subscription_failed", message: "subscription unavailable" });
+    readyResult = Result.fail(
+      new RecurringProcessingEventError("subscription_failed", "subscription unavailable"),
+    );
 
     renderHook(() =>
       useRecurringProcessingLiveEvents({
@@ -111,9 +111,11 @@ describe("useRecurringProcessingLiveEvents", () => {
   });
 
   it("reconciles on remount before subscription readiness", async () => {
-    let resolveReady: ((result: Result.Result<void, TestSubscriptionError>) => void) | undefined;
+    let resolveReady:
+      | ((result: Result.Result<void, RecurringProcessingEventError>) => void)
+      | undefined;
     readyPromiseFactory = () =>
-      new Promise<Result.Result<void, TestSubscriptionError>>((resolve) => {
+      new Promise<Result.Result<void, RecurringProcessingEventError>>((resolve) => {
         resolveReady = resolve;
       });
     const onReconcile = vi.fn(() => Promise.resolve(Result.succeed(undefined)));

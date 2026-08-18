@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Result } from "@praha/byethrow";
 import { useRef, useState } from "react";
 
@@ -9,6 +9,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { CommandError } from "@/commands/errors";
 import type { Transaction } from "@/features/transactions/types/model";
 
+import * as recurringCommands from "../../commands/recurring-transactions";
 import { RecurringFormDrawer } from "../recurring-form-drawer";
 import type {
   RecurringAdoptOutcome,
@@ -27,24 +28,19 @@ const adoptTransaction = {
   notes: "Paid by bank transfer",
 } satisfies Transaction;
 
-vi.mock("@/features/recurring-transactions/commands/recurring-transactions", async () => {
-  const actual = await vi.importActual(
-    "@/features/recurring-transactions/commands/recurring-transactions",
+beforeEach(() => {
+  vi.spyOn(recurringCommands, "previewRecurringAdoption").mockResolvedValue(
+    Result.succeed({
+      transactionId: adoptTransaction.id,
+      firstScheduledLocal: adoptTransaction.transactionDate,
+      laterDueCount: 2,
+    }),
   );
-  return {
-    ...(actual as object),
-    previewRecurringAdoption: vi.fn(async () =>
-      Result.succeed({
-        transactionId: adoptTransaction.id,
-        firstScheduledLocal: adoptTransaction.transactionDate,
-        laterDueCount: 2,
-      }),
-    ),
-  };
 });
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
 });
 
 function Harness({

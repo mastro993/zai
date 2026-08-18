@@ -167,6 +167,4 @@ export const RECURRING_COMMANDS = {
   ),
 } as const;
 
-export const RECURRING_BACKEND_COMMANDS = Object.values(
-  RECURRING_COMMANDS,
-) as unknown as Array<CommandDescriptor>;
+export const RECURRING_BACKEND_COMMANDS = Object.values(RECURRING_COMMANDS);

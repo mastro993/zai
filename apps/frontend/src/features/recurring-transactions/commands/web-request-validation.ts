@@ -103,62 +103,48 @@ export interface BulkArgs {
   request: { action: RecurringBulkAction; items: Array<RecurringBulkItem> };
 }
 
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-export const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === "string" && value.length > 0;
-const isPositiveInteger = (value: unknown): value is number =>
-  typeof value === "number" && Number.isInteger(value) && value > 0;
-export const isRevision = (value: unknown): value is number => isPositiveInteger(value);
+const isNonEmptyString = (value: string): boolean => value.length > 0;
+
+const isPositiveInteger = (value: number): boolean => Number.isInteger(value) && value > 0;
+
+export const isRevision = (value: number): boolean => isPositiveInteger(value);
 
 export const validateIdentifier = (
-  args: unknown,
+  args: RecurringIdentifierArgs,
 ): Result.Result<RecurringIdentifierArgs, CommandError> => {
-  if (!isRecord(args) || !isNonEmptyString(args.recurringTransactionId)) {
+  if (!isNonEmptyString(args.recurringTransactionId)) {
     return Result.fail(new CommandError("Recurring transaction id must be a non-empty string"));
   }
   return Result.succeed({ recurringTransactionId: args.recurringTransactionId });
 };
 
-export const validateLifecycle = (args: unknown): Result.Result<LifecycleArgs, CommandError> => {
+export const validateLifecycle = (
+  args: LifecycleArgs,
+): Result.Result<LifecycleArgs, CommandError> => {
   const identifier = validateIdentifier(args);
   if (Result.isFailure(identifier)) return identifier;
-  if (!isRecord(args) || !isRevision(args.expectedRevision)) {
+  if (!isRevision(args.expectedRevision)) {
     return Result.fail(new CommandError("Recurring revision must be a positive integer"));
   }
   return Result.succeed({ ...identifier.value, expectedRevision: args.expectedRevision });
 };
 
-export const validateFilters = (
-  value: unknown,
-): Result.Result<RecurringFeedFilters | null | undefined, CommandError> => {
-  if (value === undefined || value === null) return Result.succeed(value);
-  if (!isRecord(value))
-    return Result.fail(new CommandError("Recurring filters must be a record or null"));
-  if (value.search !== undefined && typeof value.search !== "string") {
-    return Result.fail(new CommandError("Recurring search must be a string"));
+export const filterQuery = (filters: RecurringFeedFilters | null | undefined) => {
+  const query: Record<string, string> = {};
+  if (filters?.search) {
+    query.search = filters.search;
   }
-  if (value.lifecycle !== undefined && typeof value.lifecycle !== "string") {
-    return Result.fail(new CommandError("Recurring lifecycle must be a string"));
+  if (filters?.lifecycle) {
+    query.lifecycle = filters.lifecycle;
   }
-  if (value.needsAttention !== undefined && typeof value.needsAttention !== "boolean") {
-    return Result.fail(new CommandError("Recurring attention filter must be boolean"));
+  if (filters?.needsAttention !== undefined) {
+    query.needsAttention = String(filters.needsAttention);
   }
-  return Result.succeed(value as RecurringFeedFilters);
+  return query;
 };
 
-export const filterQuery = (
-  filters: RecurringFeedFilters | null | undefined,
-): Record<string, string> => ({
-  ...(filters?.search ? { search: filters.search } : {}),
-  ...(filters?.lifecycle ? { lifecycle: filters.lifecycle } : {}),
-  ...(typeof filters?.needsAttention === "boolean"
-    ? { needsAttention: String(filters.needsAttention) }
-    : {}),
-});
-
 export const parseLimit = (
-  value: unknown,
+  value: number | undefined,
   fallback: number,
 ): Result.Result<number, CommandError> => {
   const limit = value === undefined ? fallback : value;
@@ -167,7 +153,9 @@ export const parseLimit = (
     : Result.fail(new CommandError("Recurring pagination must use a positive integer"));
 };
 
-export const parseCursor = (value: unknown): Result.Result<string | undefined, CommandError> => {
+export const parseCursor = (
+  value: string | undefined,
+): Result.Result<string | undefined, CommandError> => {
   if (value === undefined) return Result.succeed(undefined);
   return isNonEmptyString(value)
     ? Result.succeed(value)

@@ -6,7 +6,7 @@ import {
   recurringRepairPreviewSchema,
 } from "../recurring-failure";
 
-const failure = (repairFieldKey: unknown) =>
+const failure = (repairFieldKey: string) =>
   recurringGenerationFailureSchema.safeParse({
     recurringTransactionId: "recurring-1",
     scheduleRevisionId: "schedule-1",

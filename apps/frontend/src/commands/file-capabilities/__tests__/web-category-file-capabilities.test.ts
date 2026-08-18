@@ -5,6 +5,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { webDownloadTextFile } from "../web-download-text-file";
 import { webSelectCsvImportFile } from "../web-select-csv-import-file";
 
+const stubFileInput = (file: File | null, eventName: "change" | "cancel") => {
+  const input = document.createElement("input");
+  expect(input).toBeInstanceOf(HTMLInputElement);
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+
+  if (file !== null) {
+    Object.defineProperty(input, "files", {
+      configurable: true,
+      value: [file],
+    });
+  }
+
+  vi.spyOn(input, "click").mockImplementation(() => {
+    input.dispatchEvent(new Event(eventName));
+  });
+  vi.spyOn(document, "createElement").mockReturnValue(input);
+  vi.spyOn(window, "addEventListener").mockImplementation(() => undefined);
+  vi.spyOn(window, "removeEventListener").mockImplementation(() => undefined);
+};
+
 describe("web category file capabilities", () => {
   beforeEach(() => {
     vi.stubGlobal("URL", {
@@ -19,30 +41,13 @@ describe("web category file capabilities", () => {
   });
 
   it("reads selected CSV content through File.text()", async () => {
-    const click = vi.fn();
-    const remove = vi.fn();
-    const text = vi.fn().mockResolvedValue("name,parent_name\nFood,,");
-    const input = {
-      type: "file",
-      accept: "",
-      files: [{ name: "categories.csv", text }],
-      addEventListener: vi.fn((event, listener) => {
-        if (event === "change") {
-          queueMicrotask(() => listener());
-        }
-      }),
-      remove,
-      click,
-    };
-
-    vi.spyOn(document, "createElement").mockReturnValue(input as unknown as HTMLInputElement);
-    vi.spyOn(window, "addEventListener").mockImplementation(() => undefined);
-    vi.spyOn(window, "removeEventListener").mockImplementation(() => undefined);
+    stubFileInput(
+      new File(["name,parent_name\nFood,,"], "categories.csv", { type: "text/csv" }),
+      "change",
+    );
 
     const result = await webSelectCsvImportFile({ title: "Import categories" });
 
-    expect(click).toHaveBeenCalled();
-    expect(text).toHaveBeenCalled();
     expect(result).toEqual({
       name: "categories.csv",
       content: "name,parent_name\nFood,,",
@@ -50,24 +55,7 @@ describe("web category file capabilities", () => {
   });
 
   it("returns null when the browser file picker is canceled", async () => {
-    const click = vi.fn();
-    const remove = vi.fn();
-    const input = {
-      type: "file",
-      accept: "",
-      files: null,
-      addEventListener: vi.fn((event, listener) => {
-        if (event === "cancel") {
-          queueMicrotask(() => listener());
-        }
-      }),
-      remove,
-      click,
-    };
-
-    vi.spyOn(document, "createElement").mockReturnValue(input as unknown as HTMLInputElement);
-    vi.spyOn(window, "addEventListener").mockImplementation(() => undefined);
-    vi.spyOn(window, "removeEventListener").mockImplementation(() => undefined);
+    stubFileInput(null, "cancel");
 
     const result = await webSelectCsvImportFile({ title: "Import categories" });
 
@@ -124,11 +112,11 @@ describe("web category file capabilities", () => {
   });
 
   it("returns null when the save file picker is canceled", async () => {
+    const abortError = new Error("The user aborted a request.");
+    abortError.name = "AbortError";
     Object.defineProperty(window, "showSaveFilePicker", {
       configurable: true,
-      value: vi
-        .fn()
-        .mockRejectedValue(new DOMException("The user aborted a request.", "AbortError")),
+      value: vi.fn().mockRejectedValue(abortError),
     });
 
     const filename = await webDownloadTextFile({

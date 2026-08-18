@@ -6,10 +6,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DrawerSelect } from "../drawer-select";
 
-vi.mock("@hugeicons/react", () => ({
-  HugeiconsIcon: () => <span data-testid="icon" />,
-}));
-
 const OPTIONS = [
   {
     value: "spending" as const,

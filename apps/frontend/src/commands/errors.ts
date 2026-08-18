@@ -1,21 +1,23 @@
 import type { Result } from "@praha/byethrow";
 
+import { asWireObject, asWireString, type WireObject, type WireValue } from "@/lib/wire";
+
 export interface CommandErrorEnvelope {
   code: string;
   message: string;
-  details?: unknown;
+  details?: WireValue;
 }
 
 export interface CommandErrorOptions {
   cause?: unknown;
   code?: string;
-  details?: unknown;
+  details?: WireValue;
 }
 
 export class CommandError extends Error {
   override readonly name = "CommandError";
   readonly code: string | undefined;
-  readonly details: unknown;
+  readonly details: WireValue | undefined;
 
   constructor(message: string, options: CommandErrorOptions = {}) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
@@ -29,55 +31,61 @@ export interface BudgetImpact {
   name: string;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
+const isCommandErrorEnvelope = (cause: unknown): cause is CommandErrorEnvelope => {
+  const record = asWireObject(cause);
+  return asWireString(record?.code) !== undefined && asWireString(record?.message) !== undefined;
+};
 
-const readRecord = (value: unknown): Record<string, unknown> | undefined =>
-  isRecord(value) && !Array.isArray(value) ? value : undefined;
-
-const isCommandErrorEnvelope = (value: unknown): value is CommandErrorEnvelope =>
-  isRecord(value) && typeof value.code === "string" && typeof value.message === "string";
-
-export const commandErrorFromEnvelope = (error: unknown): CommandError | undefined => {
-  if (!isCommandErrorEnvelope(error)) {
+export const commandErrorFromEnvelope = (cause: unknown): CommandError | undefined => {
+  if (!isCommandErrorEnvelope(cause)) {
     return undefined;
   }
 
-  return new CommandError(error.message, {
-    cause: error,
-    code: error.code,
-    details: error.details,
+  return new CommandError(cause.message, {
+    cause,
+    code: cause.code,
+    details: cause.details,
   });
 };
 
-export const toCommandError = (error: unknown): CommandError => {
-  if (error instanceof CommandError) {
-    return error;
+export const toCommandError = (cause: unknown): CommandError => {
+  if (cause instanceof CommandError) {
+    return cause;
   }
 
-  const envelopeError = commandErrorFromEnvelope(error);
+  const envelopeError = commandErrorFromEnvelope(cause);
   if (envelopeError) {
     return envelopeError;
   }
 
-  if (error instanceof Error) {
-    return new CommandError(error.message, { cause: error });
+  if (cause instanceof Error) {
+    return new CommandError(cause.message, { cause });
   }
 
-  return new CommandError(String(error));
+  return new CommandError(String(cause));
+};
+
+const parseBudgetImpact = (value: WireValue): BudgetImpact | undefined => {
+  const record = asWireObject(value);
+  const id = asWireString(record?.id);
+  const name = asWireString(record?.name);
+  if (id === undefined || name === undefined) {
+    return undefined;
+  }
+  return { id, name };
 };
 
 export const getAffectedBudgets = (error: CommandError): Array<BudgetImpact> => {
-  const details = readRecord(error.details);
+  const details: WireObject | undefined = asWireObject(error.details);
   const budgets = details?.affectedBudgets;
   if (!Array.isArray(budgets)) {
     return [];
   }
 
-  return budgets.filter(
-    (budget): budget is BudgetImpact =>
-      isRecord(budget) && typeof budget.id === "string" && typeof budget.name === "string",
-  );
+  return budgets.flatMap((budget) => {
+    const parsed = parseBudgetImpact(budget);
+    return parsed === undefined ? [] : [parsed];
+  });
 };
 
 export type CommandResult<T> = Result.ResultAsync<T, CommandError>;

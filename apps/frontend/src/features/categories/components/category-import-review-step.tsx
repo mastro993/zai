@@ -10,13 +10,18 @@ import {
 } from "@/lib/import-preview-filter";
 import type { CategoryImportPreview, CategoryImportPreviewStatus } from "../lib/category-import";
 
-const STATUS_META: Record<CategoryImportPreviewStatus, { label: string; dot: string }> = {
+interface ImportStatusMeta {
+  label: string;
+  dot: string;
+}
+
+const STATUS_META = {
   import: { label: "Ready", dot: "bg-primary" },
   warning: { label: "Warning", dot: "bg-amber-600 dark:bg-amber-500" },
   duplicate: { label: "Duplicate", dot: "bg-muted-foreground/50" },
   invalid: { label: "Invalid", dot: "bg-destructive" },
   empty: { label: "Empty", dot: "bg-border" },
-};
+} satisfies Record<CategoryImportPreviewStatus, ImportStatusMeta>;
 
 function StatStrip({ summary }: { summary: CategoryImportPreview["summary"] }) {
   const cells = [

@@ -39,8 +39,6 @@ export const ALERT_COMMANDS = {
   ),
 } as const;
 
-export const ALERT_BACKEND_COMMANDS = Object.values(
-  ALERT_COMMANDS,
-) as unknown as Array<CommandDescriptor>;
+export const ALERT_BACKEND_COMMANDS = Object.values(ALERT_COMMANDS);
 
 export const ALERT_COMMAND_REGISTRY = [...ALERT_BACKEND_COMMANDS] as const;

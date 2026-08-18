@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { Result } from "@praha/byethrow";
 
@@ -10,10 +10,10 @@ import {
 
 const transports = {
   tauri: {
-    invoke: async <T>() => "tauri" as T,
+    invoke: vi.fn(),
   },
   web: {
-    invoke: async <T>() => "web" as T,
+    invoke: vi.fn(),
   },
 } satisfies CommandTransportMap;
 

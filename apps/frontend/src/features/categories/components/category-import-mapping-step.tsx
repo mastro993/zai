@@ -63,7 +63,17 @@ function OptionSelect<T extends string>({
   return (
     <Field>
       <FieldLabel>{label}</FieldLabel>
-      <Select items={items} value={value} onValueChange={(next) => onChange(String(next) as T)}>
+      <Select
+        items={items}
+        value={value}
+        onValueChange={(next) => {
+          const encoded = String(next);
+          const selected = items.find((item) => item.value === encoded);
+          if (selected) {
+            onChange(selected.value);
+          }
+        }}
+      >
         <SelectTrigger className="w-full" aria-label={label}>
           <SelectValue />
         </SelectTrigger>

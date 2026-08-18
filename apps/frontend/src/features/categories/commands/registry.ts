@@ -59,6 +59,4 @@ export const CATEGORY_COMMANDS = {
   ),
 } as const;
 
-export const CATEGORY_BACKEND_COMMANDS = Object.values(
-  CATEGORY_COMMANDS,
-) as unknown as Array<CommandDescriptor>;
+export const CATEGORY_BACKEND_COMMANDS = Object.values(CATEGORY_COMMANDS);

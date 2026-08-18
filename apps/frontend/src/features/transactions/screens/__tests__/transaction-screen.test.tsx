@@ -1,312 +1,247 @@
 // @vitest-environment jsdom
 
+import { Result } from "@praha/byethrow";
 import { cleanup, act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/components/screen-base", () => ({
-  ScreenBase: ({ children, actions }: { children: React.ReactNode; actions?: React.ReactNode }) => (
-    <div>
-      <div>{actions}</div>
-      {children}
-    </div>
-  ),
-}));
+import { CommandError } from "@/commands/errors";
+import {
+  ApplicationTitleBar,
+  ApplicationTitleBarProvider,
+} from "@/components/application-title-bar";
+import { toast } from "@/components/toaster/toast";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import * as alertsController from "@/features/alerts/hooks/use-alerts-controller";
+import type { AlertsControllerValue } from "@/features/alerts/hooks/alerts-controller-context";
+import { categorySchema, type TransactionCategory } from "@/features/categories/types/model";
+import * as transactionCategories from "@/features/categories/commands/transaction-categories";
+import * as recurringCommands from "@/features/recurring-transactions/commands/recurring-transactions";
+import * as breadcrumbs from "@/hooks/use-screen-breadcrumbs";
 
-vi.mock("@/components/toaster/toast", () => ({
-  toast: {
-    error: vi.fn(),
-    info: vi.fn(),
-    success: vi.fn(),
-  },
-}));
+import * as transactions from "../../commands/transactions";
+import { transactionSchema, type PaginatedTransactions, type Transaction } from "../../types/model";
+import { TransactionScreen } from "../transaction-screen";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, ...props }: { children: React.ReactNode; to?: string }) => (
-    <a href={props.to}>{children}</a>
-  ),
-  useNavigate: () => vi.fn(),
-}));
-
-vi.mock("@/hooks/use-screen-breadcrumbs", () => ({
-  useScreenBreadcrumbs: () => [{ label: "Transactions" }],
-}));
-
-vi.mock("@/features/alerts/components/alerts-bell", () => ({
-  AlertsBell: () => null,
-}));
-
-vi.mock("@/features/recurring-transactions/commands/recurring-transactions", async () => {
-  const { Result: ResultModule } = await import("@praha/byethrow");
-
-  return {
-    adoptRecurringTransaction: vi.fn(),
-    getTransactionRecurringProvenance: vi.fn(async () => ResultModule.succeed(null)),
-    previewRecurringAdoption: vi.fn(async (transactionId: string) =>
-      ResultModule.succeed({
-        transactionId,
-        firstScheduledLocal: "2026-07-01T10:00:00",
-        laterDueCount: 0,
-      }),
-    ),
-  };
+const coffee = transactionSchema.parse({
+  id: "tx-initial",
+  description: "Initial coffee",
+  amount: 350,
+  transactionDate: "2026-07-01T10:00:00",
+  transactionType: "expense",
+  transactionCategoryId: null,
+  notes: null,
 });
 
-vi.mock("@hugeicons/react", () => ({
-  HugeiconsIcon: () => <span data-testid="icon" />,
-}));
+const staleRent = transactionSchema.parse({
+  id: "tx-stale",
+  description: "Stale rent",
+  amount: 120000,
+  transactionDate: "2026-07-02T10:00:00",
+  transactionType: "expense",
+  transactionCategoryId: null,
+  notes: null,
+});
 
-vi.mock("../../components/transaction-import-dialog", () => ({
-  TransactionImportDialog: ({
-    onImported,
-  }: {
-    onImported: (createdCount: number, skippedRows: number) => Promise<void>;
-  }) => (
-    <button type="button" onClick={() => void onImported(1, 0)}>
-      Trigger import refresh
-    </button>
-  ),
-}));
+const freshSalary = transactionSchema.parse({
+  id: "tx-current",
+  description: "Fresh salary",
+  amount: 250000,
+  transactionDate: "2026-07-03T10:00:00",
+  transactionType: "income",
+  transactionCategoryId: null,
+  notes: null,
+});
 
-const transactionState = vi.hoisted(() => ({
-  releaseStale: undefined as undefined | (() => void),
-  releaseCurrent: undefined as undefined | (() => void),
+const food = categorySchema.parse({
+  id: "cat-1",
+  parentId: null,
+  name: "Food",
+  description: null,
+  color: "#C55B26",
+  role: "spending",
+});
+
+const page = (
+  data: Array<Transaction>,
+  currentPage: number,
+  totalPages: number,
+): PaginatedTransactions => ({
+  data,
+  page: currentPage,
+  perPage: 50,
+  totalPages,
+});
+
+interface TransactionRequestState {
+  releaseStale: (() => void) | undefined;
+  releaseCurrent: (() => void) | undefined;
+  holdStale: boolean;
+  holdCurrent: boolean;
+  returnInitialEmpty: boolean;
+  returnEmptyOnPage2: boolean;
+  returnEmptyForQuery: boolean;
+}
+
+const transactionState: TransactionRequestState = {
+  releaseStale: undefined,
+  releaseCurrent: undefined,
   holdStale: false,
   holdCurrent: false,
   returnInitialEmpty: false,
   returnEmptyOnPage2: false,
   returnEmptyForQuery: false,
-}));
+};
 
-vi.mock("../../commands/transactions", async () => {
-  const { Result: ResultModule } = await import("@praha/byethrow");
-  const { CommandError: ErrorClass } = await import("@/commands/errors");
-
-  return {
-    createTransaction: vi.fn(),
-    deleteTransaction: vi.fn(),
-    deleteTransactions: vi.fn(),
-    getFilteredTransactionIds: vi.fn(),
-    exportTransactionsCsv: vi.fn(),
-    findExistingDuplicateKeys: vi.fn(),
-    getTransactions: vi.fn((page, perPage, filters) => {
-      const query = filters?.query ?? "";
-
-      if (query === "stale") {
-        if (transactionState.holdStale) {
-          return new Promise((resolve) => {
-            transactionState.releaseStale = () =>
-              resolve(
-                ResultModule.succeed({
-                  data: [
-                    {
-                      id: "tx-stale",
-                      description: "Stale rent",
-                      amount: 120000,
-                      transactionDate: "2026-07-02T10:00:00",
-                      transactionType: "expense",
-                      transactionCategoryId: null,
-                      notes: null,
-                    },
-                  ],
-                  page: 1,
-                  perPage: 50,
-                  totalPages: 1,
-                }),
-              );
-          });
-        }
-      }
-
-      if (query === "current") {
-        if (transactionState.holdCurrent) {
-          return new Promise((resolve) => {
-            transactionState.releaseCurrent = () =>
-              resolve(
-                ResultModule.succeed({
-                  data: [
-                    {
-                      id: "tx-current",
-                      description: "Fresh salary",
-                      amount: 250000,
-                      transactionDate: "2026-07-03T10:00:00",
-                      transactionType: "income",
-                      transactionCategoryId: null,
-                      notes: null,
-                    },
-                  ],
-                  page: 1,
-                  perPage: 50,
-                  totalPages: 1,
-                }),
-              );
-          });
-        }
-
-        return Promise.resolve(
-          ResultModule.succeed({
-            data: [
-              {
-                id: "tx-current",
-                description: "Fresh salary",
-                amount: 250000,
-                transactionDate: "2026-07-03T10:00:00",
-                transactionType: "income",
-                transactionCategoryId: null,
-                notes: null,
-              },
-            ],
-            page: 1,
-            perPage: 50,
-            totalPages: 1,
-          }),
-        );
-      }
-
-      if (query === "stale-fail") {
-        if (transactionState.holdStale) {
-          return new Promise((resolve) => {
-            transactionState.releaseStale = () =>
-              resolve(ResultModule.fail(new ErrorClass("stale request failed")));
-          });
-        }
-      }
-
-      if (query === "no-matches" && transactionState.returnEmptyForQuery) {
-        return Promise.resolve(
-          ResultModule.succeed({
-            data: [],
-            page: 1,
-            perPage: 50,
-            totalPages: 1,
-          }),
-        );
-      }
-
-      if (query === "empty-page" && page === 2) {
-        return Promise.resolve(
-          ResultModule.succeed({
-            data: [],
-            page: 2,
-            perPage: 50,
-            totalPages: 2,
-          }),
-        );
-      }
-
-      if (!query && transactionState.returnInitialEmpty) {
-        return Promise.resolve(
-          ResultModule.succeed({
-            data: [],
-            page: 1,
-            perPage: 50,
-            totalPages: 1,
-          }),
-        );
-      }
-
-      if (page === 2 && transactionState.returnEmptyOnPage2) {
-        return Promise.resolve(
-          ResultModule.succeed({
-            data: [],
-            page: 2,
-            perPage: 50,
-            totalPages: 2,
-          }),
-        );
-      }
-
-      if (page === 2 && !query && transactionState.holdStale) {
-        return new Promise((resolve) => {
-          transactionState.releaseStale = () =>
-            resolve(
-              ResultModule.succeed({
-                data: [],
-                page: 2,
-                perPage: 50,
-                totalPages: 2,
-              }),
-            );
-        });
-      }
-
-      return Promise.resolve(
-        ResultModule.succeed({
-          data: [
-            {
-              id: "tx-initial",
-              description: "Initial coffee",
-              amount: 350,
-              transactionDate: "2026-07-01T10:00:00",
-              transactionType: "expense",
-              transactionCategoryId: null,
-              notes: null,
-            },
-          ],
-          page,
-          perPage,
-          totalPages: 2,
-        }),
-      );
-    }),
-    updateTransaction: vi.fn(),
-  };
-});
-
-vi.mock("@/features/categories/commands/transaction-categories", async () => {
-  const { Result: ResultModule } = await import("@praha/byethrow");
-
-  return {
-    getTransactionCategories: vi.fn(() =>
-      Promise.resolve(
-        ResultModule.succeed([
-          {
-            id: "cat-2",
-            parentId: null,
-            name: "Imported category",
-            description: null,
-            color: "#C55B26",
-            role: "spending",
-          },
-        ]),
-      ),
-    ),
-  };
-});
-
-import { toast } from "@/components/toaster/toast";
-
-import * as transactionCategories from "@/features/categories/commands/transaction-categories";
-import * as transactions from "../../commands/transactions";
-import { TransactionScreen } from "../transaction-screen";
+const idleAlertsController: AlertsControllerValue = {
+  bellRef: { current: null },
+  clearFilters: () => undefined,
+  closeLedger: () => undefined,
+  destinationFeedback: null,
+  errorMessage: null,
+  filters: { readState: "all", severity: "all" },
+  hasActiveFilters: false,
+  isLedgerOpen: false,
+  ledgerFocusAlertId: null,
+  items: [],
+  lifecycleErrors: {},
+  lifecyclePendingId: null,
+  loadOlder: async () => undefined,
+  loadOlderError: null,
+  loadOlderStatus: "idle",
+  markAllRead: async () => undefined,
+  markAllReadError: null,
+  markAllReadPending: false,
+  nextCursor: null,
+  openAlert: async () => undefined,
+  openLedger: () => undefined,
+  refresh: async () => undefined,
+  refreshStatus: "ready",
+  setReadStateFilter: () => undefined,
+  setSeverityFilter: () => undefined,
+  toggleAlertReadState: async () => undefined,
+  unreadCount: 0,
+  unreadCountKnown: true,
+};
 
 const initialData = {
-  transactions: {
-    data: [
-      {
-        id: "tx-initial",
-        description: "Initial coffee",
-        amount: 350,
-        transactionDate: "2026-07-01T10:00:00",
-        transactionType: "expense",
-        transactionCategoryId: null,
-        notes: null,
-      },
-    ],
-    page: 1,
-    perPage: 50,
-    totalPages: 2,
-  },
-  categories: [
-    {
-      id: "cat-1",
-      parentId: null,
-      name: "Food",
-      description: null,
-      color: "#C55B26",
-      role: "spending" as const,
-    },
-  ],
+  transactions: page([coffee], 1, 2),
+  categories: [food],
 };
+
+function stubWindowChrome() {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: (query: string) => ({
+      addEventListener: () => undefined,
+      addListener: () => undefined,
+      dispatchEvent: () => false,
+      matches: false,
+      media: query,
+      onchange: null,
+      removeEventListener: () => undefined,
+      removeListener: () => undefined,
+    }),
+  });
+}
+
+function resolveTransactions(
+  currentPage: number,
+  query: string,
+):
+  | Result.Result<PaginatedTransactions, CommandError>
+  | Promise<Result.Result<PaginatedTransactions, CommandError>> {
+  if (query === "stale") {
+    if (transactionState.holdStale) {
+      return new Promise((resolve) => {
+        transactionState.releaseStale = () => resolve(Result.succeed(page([staleRent], 1, 1)));
+      });
+    }
+  }
+
+  if (query === "current") {
+    if (transactionState.holdCurrent) {
+      return new Promise((resolve) => {
+        transactionState.releaseCurrent = () => resolve(Result.succeed(page([freshSalary], 1, 1)));
+      });
+    }
+    return Result.succeed(page([freshSalary], 1, 1));
+  }
+
+  if (query === "stale-fail") {
+    if (transactionState.holdStale) {
+      return new Promise((resolve) => {
+        transactionState.releaseStale = () =>
+          resolve(Result.fail(new CommandError("stale request failed")));
+      });
+    }
+  }
+
+  if (query === "no-matches" && transactionState.returnEmptyForQuery) {
+    return Result.succeed(page([], 1, 1));
+  }
+
+  if (query === "empty-page" && currentPage === 2) {
+    return Result.succeed(page([], 2, 2));
+  }
+
+  if (!query && transactionState.returnInitialEmpty) {
+    return Result.succeed(page([], 1, 1));
+  }
+
+  if (currentPage === 2 && transactionState.returnEmptyOnPage2) {
+    return Result.succeed(page([], 2, 2));
+  }
+
+  if (currentPage === 2 && !query && transactionState.holdStale) {
+    return new Promise((resolve) => {
+      transactionState.releaseStale = () => resolve(Result.succeed(page([], 2, 2)));
+    });
+  }
+
+  return Result.succeed(page([coffee], currentPage, 2));
+}
+
+async function renderScreen(
+  data: {
+    transactions: PaginatedTransactions;
+    categories: Array<TransactionCategory>;
+  } = initialData,
+) {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <SidebarProvider>
+        <ApplicationTitleBarProvider>
+          <ApplicationTitleBar buildTarget="web" />
+          <Outlet />
+        </ApplicationTitleBarProvider>
+      </SidebarProvider>
+    ),
+  });
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => <TransactionScreen initialData={data} />,
+  });
+  const categoriesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/categories",
+    component: () => <div>Categories</div>,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, categoriesRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  await router.load();
+  return render(<RouterProvider router={router} />);
+}
 
 const typeSearchQuery = (value: string) => {
   fireEvent.change(screen.getByPlaceholderText("Search description or notes..."), {
@@ -329,33 +264,64 @@ describe("transaction screen request guard", () => {
     transactionState.returnEmptyForQuery = false;
     transactionState.releaseStale = undefined;
     transactionState.releaseCurrent = undefined;
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn(() => ({
-        addEventListener: vi.fn(),
-        addListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-        matches: false,
-        media: "",
-        onchange: null,
-        removeEventListener: vi.fn(),
-        removeListener: vi.fn(),
-      })),
-    });
+    stubWindowChrome();
+    vi.spyOn(breadcrumbs, "useScreenBreadcrumbs").mockReturnValue([{ label: "Transactions" }]);
+    vi.spyOn(alertsController, "useAlertsController").mockReturnValue(idleAlertsController);
+    vi.spyOn(toast, "success").mockReturnValue(1);
+    vi.spyOn(toast, "error").mockReturnValue(1);
+    vi.spyOn(toast, "info").mockReturnValue(1);
+    vi.spyOn(transactions, "getTransactions").mockImplementation(
+      async (currentPage, _perPage, filters) =>
+        resolveTransactions(currentPage ?? 1, filters?.query ?? ""),
+    );
+    vi.spyOn(transactions, "createTransaction").mockResolvedValue(
+      Result.succeed(
+        transactionSchema.parse({
+          id: "tx-new",
+          description: null,
+          amount: 0,
+          transactionDate: "2026-07-15T10:00:00",
+          transactionType: "expense",
+          transactionCategoryId: null,
+          notes: null,
+        }),
+      ),
+    );
+    vi.spyOn(transactionCategories, "getTransactionCategories").mockResolvedValue(
+      Result.succeed([
+        categorySchema.parse({
+          id: "cat-2",
+          parentId: null,
+          name: "Imported category",
+          description: null,
+          color: "#C55B26",
+          role: "spending",
+        }),
+      ]),
+    );
+    vi.spyOn(recurringCommands, "getTransactionRecurringProvenance").mockResolvedValue(
+      Result.succeed(null),
+    );
+    vi.spyOn(recurringCommands, "previewRecurringAdoption").mockImplementation(
+      async (transactionId) =>
+        Result.succeed({
+          transactionId,
+          firstScheduledLocal: "2026-07-01T10:00:00",
+          laterDueCount: 0,
+        }),
+    );
   });
 
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
-
-  const renderScreen = () => render(<TransactionScreen initialData={initialData} />);
 
   it("ignores older success after a newer success", async () => {
     transactionState.holdStale = true;
 
-    renderScreen();
+    await renderScreen();
     expect(screen.getByText("Initial coffee")).toBeTruthy();
 
     typeSearchQuery("stale");
@@ -372,7 +338,7 @@ describe("transaction screen request guard", () => {
   it("ignores older failure after a newer success", async () => {
     transactionState.holdStale = true;
 
-    renderScreen();
+    await renderScreen();
     typeSearchQuery("stale-fail");
     typeSearchQuery("current");
 
@@ -389,7 +355,7 @@ describe("transaction screen request guard", () => {
     transactionState.holdStale = true;
     transactionState.holdCurrent = true;
 
-    renderScreen();
+    await renderScreen();
     fireEvent.change(screen.getByPlaceholderText("Search description or notes..."), {
       target: { value: "stale" },
     });
@@ -417,7 +383,7 @@ describe("transaction screen request guard", () => {
   it("runs empty-page fallback only for the active request", async () => {
     transactionState.holdStale = true;
 
-    renderScreen();
+    await renderScreen();
     goToNextPage();
     await waitFor(() =>
       expect(transactions.getTransactions).toHaveBeenLastCalledWith(2, 50, undefined),
@@ -436,7 +402,7 @@ describe("transaction screen request guard", () => {
   it("corrects to the previous page when the active request returns an empty page", async () => {
     transactionState.returnEmptyOnPage2 = true;
 
-    renderScreen();
+    await renderScreen();
 
     goToNextPage();
 
@@ -445,16 +411,16 @@ describe("transaction screen request guard", () => {
     );
   });
 
-  it("loads categories after import refresh", async () => {
-    renderScreen();
+  it("opens the import wizard from the header action", async () => {
+    await renderScreen();
 
-    fireEvent.click(screen.getByRole("button", { name: "Trigger import refresh" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Import transactions" }));
 
-    await waitFor(() => expect(transactionCategories.getTransactionCategories).toHaveBeenCalled());
+    expect(await screen.findByRole("dialog", { name: "Import transactions" })).toBeTruthy();
   });
 
   it("debounces search before issuing a request", async () => {
-    renderScreen();
+    await renderScreen();
 
     const searchInput = screen.getByPlaceholderText("Search description or notes...");
     fireEvent.change(searchInput, { target: { value: "cur" } });
@@ -470,30 +436,25 @@ describe("transaction screen request guard", () => {
     ).toHaveLength(1);
   });
 
-  it("styles missing descriptions as muted italic text", () => {
-    render(
-      <TransactionScreen
-        initialData={{
-          transactions: {
-            data: [
-              {
-                id: "tx-no-description",
-                description: null,
-                amount: 350,
-                transactionDate: "2026-07-01T10:00:00",
-                transactionType: "expense",
-                transactionCategoryId: null,
-                notes: null,
-              },
-            ],
-            page: 1,
-            perPage: 50,
-            totalPages: 1,
-          },
-          categories: [],
-        }}
-      />,
-    );
+  it("styles missing descriptions as muted italic text", async () => {
+    await renderScreen({
+      transactions: page(
+        [
+          transactionSchema.parse({
+            id: "tx-no-description",
+            description: null,
+            amount: 350,
+            transactionDate: "2026-07-01T10:00:00",
+            transactionType: "expense",
+            transactionCategoryId: null,
+            notes: null,
+          }),
+        ],
+        1,
+        1,
+      ),
+      categories: [],
+    });
 
     const noDescription = screen.getByText("No description");
 
@@ -502,36 +463,23 @@ describe("transaction screen request guard", () => {
   });
 
   it("toasts when a transaction is created", async () => {
-    const { Result: ResultModule } = await import("@praha/byethrow");
-    vi.mocked(transactions.createTransaction).mockResolvedValue(
-      ResultModule.succeed({
-        id: "tx-new",
-        description: null,
-        amount: 0,
-        transactionDate: "2026-07-15T10:00:00",
-        transactionType: "expense",
-        transactionCategoryId: null,
-        notes: null,
-      }),
-    );
-
-    renderScreen();
-    fireEvent.click(screen.getByRole("button", { name: "New transaction" }));
+    await renderScreen();
+    fireEvent.click(await screen.findByRole("button", { name: "New transaction" }));
     fireEvent.click(screen.getByRole("button", { name: "Save transaction" }));
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Transaction created"));
   });
 
   it("focuses the amount field when opening a new transaction", async () => {
-    renderScreen();
+    await renderScreen();
 
-    fireEvent.click(screen.getByRole("button", { name: "New transaction" }));
+    fireEvent.click(await screen.findByRole("button", { name: "New transaction" }));
 
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Amount")));
   });
 
   it("opens recurring adoption in the shared recurring form", async () => {
-    renderScreen();
+    await renderScreen();
 
     fireEvent.click(screen.getByRole("button", { name: "Adopt Initial coffee as recurring" }));
 
@@ -543,29 +491,24 @@ describe("transaction screen request guard", () => {
   });
 
   it("blocks recurring adoption when the source transaction has no description", async () => {
-    render(
-      <TransactionScreen
-        initialData={{
-          transactions: {
-            data: [
-              {
-                id: "tx-no-description",
-                description: "   ",
-                amount: 350,
-                transactionDate: "2026-07-01T10:00:00",
-                transactionType: "expense",
-                transactionCategoryId: null,
-                notes: null,
-              },
-            ],
-            page: 1,
-            perPage: 50,
-            totalPages: 1,
-          },
-          categories: [],
-        }}
-      />,
-    );
+    await renderScreen({
+      transactions: page(
+        [
+          transactionSchema.parse({
+            id: "tx-no-description",
+            description: "   ",
+            amount: 350,
+            transactionDate: "2026-07-01T10:00:00",
+            transactionType: "expense",
+            transactionCategoryId: null,
+            notes: null,
+          }),
+        ],
+        1,
+        1,
+      ),
+      categories: [],
+    });
 
     fireEvent.click(screen.getByTitle("Make recurring"));
 
@@ -577,15 +520,11 @@ describe("transaction screen request guard", () => {
     expect(screen.queryByRole("heading", { name: "Adopt as recurring" })).toBeNull();
   });
 
-  it("hides file actions when there are no transactions", () => {
-    render(
-      <TransactionScreen
-        initialData={{
-          transactions: { data: [], page: 1, perPage: 50, totalPages: 1 },
-          categories: [],
-        }}
-      />,
-    );
+  it("hides file actions when there are no transactions", async () => {
+    await renderScreen({
+      transactions: page([], 1, 1),
+      categories: [],
+    });
 
     expect(screen.queryByRole("group", { name: "Transaction file actions" })).toBeNull();
     expect(screen.getAllByRole("button", { name: "Import transactions" })).toHaveLength(1);
@@ -593,15 +532,11 @@ describe("transaction screen request guard", () => {
     expect(screen.queryByPlaceholderText("Search description or notes...")).toBeNull();
   });
 
-  it("renders the no-transactions onboarding state with create and import actions", () => {
-    render(
-      <TransactionScreen
-        initialData={{
-          transactions: { data: [], page: 1, perPage: 50, totalPages: 1 },
-          categories: [],
-        }}
-      />,
-    );
+  it("renders the no-transactions onboarding state with create and import actions", async () => {
+    await renderScreen({
+      transactions: page([], 1, 1),
+      categories: [],
+    });
 
     const emptyState = screen.getByRole("region", { name: "No transactions yet" });
     const emptyContent = emptyState.querySelector('[data-slot="empty-content"]');
@@ -621,7 +556,7 @@ describe("transaction screen request guard", () => {
   it("keeps filters visible when an active filter returns no transactions", async () => {
     transactionState.returnEmptyForQuery = true;
 
-    renderScreen();
+    await renderScreen();
     typeSearchQuery("no-matches");
 
     await waitFor(() =>

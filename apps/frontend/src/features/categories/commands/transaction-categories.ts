@@ -6,19 +6,10 @@ import type {
   CategoryChildrenDeleteStrategy,
   CategoryDeletionPreview,
   CategoryFormValues,
-  CategoryRole,
   TransactionCategory,
 } from "../types/model";
 import { CATEGORY_COMMANDS } from "./registry";
-
-type CategoryPayload = {
-  id?: string;
-  parentId?: string | null;
-  name: string;
-  description?: string | null;
-  color?: string | null;
-  role?: CategoryRole | null;
-};
+import type { CategoryPayload, DeleteCategoriesArgs, UpdateCategoryArgs } from "./web-requests";
 
 const toCategoryPayload = (values: CategoryFormValues): CategoryPayload => ({
   name: values.name,
@@ -49,12 +40,15 @@ export const updateTransactionCategory = (
   values: CategoryFormValues,
   confirmBudgetImpact = false,
 ): CommandResult<TransactionCategory> => {
+  const updatedCategory: UpdateCategoryArgs["updatedCategory"] = {
+    id,
+    ...toCategoryPayload(values),
+  };
+  if (confirmBudgetImpact) {
+    updatedCategory.confirmBudgetImpact = true;
+  }
   return invokeDecodedCommand(CATEGORY_COMMANDS.update_transaction_category, {
-    updatedCategory: {
-      id,
-      ...toCategoryPayload(values),
-      ...(confirmBudgetImpact ? { confirmBudgetImpact: true } : {}),
-    },
+    updatedCategory,
   });
 };
 
@@ -63,11 +57,14 @@ export const deleteTransactionCategories = (
   childrenStrategy: CategoryChildrenDeleteStrategy = "block",
   confirmBudgetImpact = false,
 ): CommandResult<Array<TransactionCategory>> => {
-  return invokeDecodedCommand(CATEGORY_COMMANDS.delete_transaction_categories, {
+  const args: DeleteCategoriesArgs = {
     categoryIds,
     childrenStrategy,
-    ...(confirmBudgetImpact ? { confirmBudgetImpact: true } : {}),
-  });
+  };
+  if (confirmBudgetImpact) {
+    args.confirmBudgetImpact = true;
+  }
+  return invokeDecodedCommand(CATEGORY_COMMANDS.delete_transaction_categories, args);
 };
 
 export const previewDeleteTransactionCategories = (

@@ -4,31 +4,14 @@ import { Result } from "@praha/byethrow";
 
 import { downloadTextFile } from "../download-text-file";
 import { selectCsvImportFile } from "../select-csv-import-file";
-import { tauriDownloadTextFile } from "../tauri-download-text-file";
-import { tauriSelectCsvImportFile } from "../tauri-select-csv-import-file";
-import { webDownloadTextFile } from "../web-download-text-file";
-import { webSelectCsvImportFile } from "../web-select-csv-import-file";
 
-vi.mock("../web-select-csv-import-file", () => ({
-  webSelectCsvImportFile: vi.fn(),
-}));
+const webSelectMock = vi.fn();
+const tauriSelectMock = vi.fn();
+const webDownloadMock = vi.fn();
+const tauriDownloadMock = vi.fn();
 
-vi.mock("../tauri-select-csv-import-file", () => ({
-  tauriSelectCsvImportFile: vi.fn(),
-}));
-
-vi.mock("../web-download-text-file", () => ({
-  webDownloadTextFile: vi.fn(),
-}));
-
-vi.mock("../tauri-download-text-file", () => ({
-  tauriDownloadTextFile: vi.fn(),
-}));
-
-const webSelectMock = vi.mocked(webSelectCsvImportFile);
-const tauriSelectMock = vi.mocked(tauriSelectCsvImportFile);
-const webDownloadMock = vi.mocked(webDownloadTextFile);
-const tauriDownloadMock = vi.mocked(tauriDownloadTextFile);
+const selectAdapters = { web: webSelectMock, tauri: tauriSelectMock };
+const downloadAdapters = { web: webDownloadMock, tauri: tauriDownloadMock };
 
 describe("category file capability routing", () => {
   const originalBuildTarget = import.meta.env.VITE_ZAI_BUILD_TARGET;
@@ -48,7 +31,7 @@ describe("category file capability routing", () => {
     import.meta.env.VITE_ZAI_BUILD_TARGET = "web";
     webSelectMock.mockResolvedValue({ name: "categories.csv", content: "name" });
 
-    const result = await selectCsvImportFile({ title: "Import categories" });
+    const result = await selectCsvImportFile({ title: "Import categories" }, selectAdapters);
 
     expect(webSelectMock).toHaveBeenCalledWith({ title: "Import categories" });
     expect(tauriSelectMock).not.toHaveBeenCalled();
@@ -59,7 +42,7 @@ describe("category file capability routing", () => {
     import.meta.env.VITE_ZAI_BUILD_TARGET = "tauri";
     tauriSelectMock.mockResolvedValue({ name: "categories.csv", content: "name" });
 
-    const result = await selectCsvImportFile({ title: "Import categories" });
+    const result = await selectCsvImportFile({ title: "Import categories" }, selectAdapters);
 
     expect(tauriSelectMock).toHaveBeenCalledWith({ title: "Import categories" });
     expect(webSelectMock).not.toHaveBeenCalled();
@@ -70,11 +53,14 @@ describe("category file capability routing", () => {
     import.meta.env.VITE_ZAI_BUILD_TARGET = "web";
     webDownloadMock.mockResolvedValue("zai_transaction_categories_20260706_162830.csv");
 
-    const result = await downloadTextFile({
-      title: "Export categories",
-      filename: "zai_transaction_categories_20260706_162830.csv",
-      content: "name,parent_name,color,description",
-    });
+    const result = await downloadTextFile(
+      {
+        title: "Export categories",
+        filename: "zai_transaction_categories_20260706_162830.csv",
+        content: "name,parent_name,color,description",
+      },
+      downloadAdapters,
+    );
 
     expect(webDownloadMock).toHaveBeenCalled();
     expect(tauriDownloadMock).not.toHaveBeenCalled();
@@ -85,11 +71,14 @@ describe("category file capability routing", () => {
     import.meta.env.VITE_ZAI_BUILD_TARGET = "tauri";
     tauriDownloadMock.mockResolvedValue("zai_transaction_categories_20260706_162830.csv");
 
-    const result = await downloadTextFile({
-      title: "Export categories",
-      filename: "zai_transaction_categories_20260706_162830.csv",
-      content: "name,parent_name,color,description",
-    });
+    const result = await downloadTextFile(
+      {
+        title: "Export categories",
+        filename: "zai_transaction_categories_20260706_162830.csv",
+        content: "name,parent_name,color,description",
+      },
+      downloadAdapters,
+    );
 
     expect(tauriDownloadMock).toHaveBeenCalled();
     expect(webDownloadMock).not.toHaveBeenCalled();
@@ -100,7 +89,7 @@ describe("category file capability routing", () => {
     import.meta.env.VITE_ZAI_BUILD_TARGET = "web";
     webSelectMock.mockResolvedValue({ name: "transactions.csv", content: "date,amount" });
 
-    const result = await selectCsvImportFile({ title: "Import transactions" });
+    const result = await selectCsvImportFile({ title: "Import transactions" }, selectAdapters);
 
     expect(webSelectMock).toHaveBeenCalledWith({ title: "Import transactions" });
     expect(tauriSelectMock).not.toHaveBeenCalled();
@@ -111,11 +100,14 @@ describe("category file capability routing", () => {
     import.meta.env.VITE_ZAI_BUILD_TARGET = "tauri";
     tauriDownloadMock.mockResolvedValue("zai_transactions_20260710_112700.csv");
 
-    const result = await downloadTextFile({
-      title: "Export transactions",
-      filename: "zai_transactions_20260710_112700.csv",
-      content: "date,amount,type,description",
-    });
+    const result = await downloadTextFile(
+      {
+        title: "Export transactions",
+        filename: "zai_transactions_20260710_112700.csv",
+        content: "date,amount,type,description",
+      },
+      downloadAdapters,
+    );
 
     expect(tauriDownloadMock).toHaveBeenCalled();
     expect(webDownloadMock).not.toHaveBeenCalled();
@@ -135,7 +127,7 @@ describe("category file capability routing", () => {
 
     const result = await Result.try({
       try: () => downloadTextFile({ title: "Export categories", filename: "x.csv", content: "" }),
-      catch: (error) => error,
+      catch: (cause) => cause,
     });
 
     expect(Result.isFailure(result)).toBe(true);

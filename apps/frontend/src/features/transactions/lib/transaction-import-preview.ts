@@ -70,9 +70,14 @@ export const buildTransactionImportPreview = (
     return id;
   };
 
-  const resolveCategoryId = (parsed: ParsedCategoryPath | null) => {
+  interface ResolvedImportCategory {
+    categoryId: string | null;
+    message: string;
+  }
+
+  const resolveCategoryId = (parsed: ParsedCategoryPath | null): ResolvedImportCategory => {
     if (!parsed?.name) {
-      return { categoryId: null as string | null, message: "" };
+      return { categoryId: null, message: "" };
     }
 
     if (!parsed.isChild) {

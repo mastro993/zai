@@ -168,7 +168,10 @@ function TransactionTable({
                 data-state={isSelected ? "selected" : undefined}
                 className={cn("border-t", isSelected && "bg-muted/30", "cursor-pointer")}
                 onClick={(event) => {
-                  const target = event.target as HTMLElement;
+                  const target = event.target;
+                  if (!(target instanceof Element)) {
+                    return;
+                  }
 
                   if (target.closest("button, [data-slot='checkbox'], a")) {
                     return;

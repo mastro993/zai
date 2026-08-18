@@ -2,34 +2,20 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Result } from "@praha/byethrow";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { RecurringTransactionDocument } from "../../types/recurring-transaction";
 import type {
   RecurringFailurePage,
   RecurringGenerationFailure,
 } from "../../types/recurring-failure";
+import * as recurringCommands from "../../commands/recurring-transactions";
 import { RecurringFailureBanner } from "../recurring-failure-banner";
 import { RecurringFailureHistory } from "../recurring-failure-history";
 
-const commandMocks = vi.hoisted(() => ({
-  getRecurringTransactionFailureHistory: vi.fn(),
-  previewRecurringGenerationRepair: vi.fn(),
-  repairRecurringGenerationFailure: vi.fn(),
-  retryRecurringGenerationFailure: vi.fn(),
-  getRecurringGenerationFailureDiagnostics: vi.fn(),
-}));
-
-vi.mock("@/features/recurring-transactions/commands/recurring-transactions", async () => {
-  const actual = await vi.importActual(
-    "@/features/recurring-transactions/commands/recurring-transactions",
-  );
-  return { ...(actual as object), ...commandMocks };
-});
-
 afterEach(() => {
   cleanup();
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 const resolvedFailure = {
@@ -112,9 +98,15 @@ function documentWithFailure(): RecurringTransactionDocument {
 }
 
 describe("RecurringFailureHistory", () => {
+  beforeEach(() => {
+    vi.spyOn(recurringCommands, "getRecurringTransactionFailureHistory").mockResolvedValue(
+      Result.succeed(failurePage([])),
+    );
+  });
+
   it("stays collapsed, exposes accessible state, and loads cursor pages", async () => {
     const nextFailure = { ...resolvedFailure, ordinal: 1 };
-    commandMocks.getRecurringTransactionFailureHistory.mockResolvedValue(
+    vi.mocked(recurringCommands.getRecurringTransactionFailureHistory).mockResolvedValue(
       Result.succeed(failurePage([nextFailure])),
     );
 
@@ -139,7 +131,7 @@ describe("RecurringFailureHistory", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Load more resolved failures" }));
     await waitFor(() => {
-      expect(commandMocks.getRecurringTransactionFailureHistory).toHaveBeenCalledWith(
+      expect(recurringCommands.getRecurringTransactionFailureHistory).toHaveBeenCalledWith(
         "rt-1",
         20,
         "cursor-2",
@@ -151,8 +143,8 @@ describe("RecurringFailureHistory", () => {
 });
 
 describe("RecurringFailureBanner", () => {
-  it("exposes redacted failure details, previews proposed value, and returns focus", async () => {
-    commandMocks.previewRecurringGenerationRepair.mockResolvedValue(
+  beforeEach(() => {
+    vi.spyOn(recurringCommands, "previewRecurringGenerationRepair").mockResolvedValue(
       Result.succeed({
         repairFieldKey: "transactionCategoryId",
         affectedUnfulfilledSegmentCount: 3,
@@ -160,7 +152,9 @@ describe("RecurringFailureBanner", () => {
         nextAction: "repair",
       }),
     );
+  });
 
+  it("exposes redacted failure details, previews proposed value, and returns focus", async () => {
     const document = documentWithFailure();
     render(
       <RecurringFailureBanner document={document} categories={[]} onDocumentChange={vi.fn()} />,
@@ -176,7 +170,10 @@ describe("RecurringFailureBanner", () => {
     const repairButton = screen.getByRole("button", { name: "Repair" });
     fireEvent.click(repairButton);
     const previewButton = screen.getByRole("button", { name: "Preview repair" });
-    fireEvent.submit(previewButton.closest("form") as HTMLFormElement);
+    const form = previewButton.closest("form");
+    expect(form).toBeInstanceOf(HTMLFormElement);
+    if (!(form instanceof HTMLFormElement)) return;
+    fireEvent.submit(form);
 
     await waitFor(() => {
       expect(screen.getByText("Proposed category:")).toBeTruthy();

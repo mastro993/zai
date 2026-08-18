@@ -1,18 +1,30 @@
 // @vitest-environment jsdom
 
+import { Result } from "@praha/byethrow";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CommandError } from "@/commands/errors";
+import {
+  ApplicationTitleBar,
+  ApplicationTitleBarProvider,
+} from "@/components/application-title-bar";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import * as alertsController from "@/features/alerts/hooks/use-alerts-controller";
+import type { AlertsControllerValue } from "@/features/alerts/hooks/alerts-controller-context";
+import * as breadcrumbs from "@/hooks/use-screen-breadcrumbs";
+
+import * as recurringCommands from "../../commands/recurring-transactions";
 import type { BudgetPeriodForecast, BudgetProjectionResult } from "../../types/budget-projection";
-
-vi.mock("@tanstack/react-devtools", () => ({
-  TanStackDevtools: () => null,
-}));
-
-vi.mock("@tanstack/react-router-devtools", () => ({
-  TanStackRouterDevtoolsPanel: () => null,
-}));
+import { ForecastBoardScreen, ForecastErrorScreen } from "../forecast-board-screen";
 
 const period = (
   overrides: Partial<BudgetPeriodForecast> &
@@ -33,14 +45,19 @@ const period = (
   ...overrides,
 });
 
-const { projectionState } = vi.hoisted(() => ({
-  projectionState: {
-    mode: "ready" as "ready" | "empty" | "error" | "incomplete" | "refreshFail" | "defer",
-    includePausedCalls: [] as Array<boolean | undefined>,
-    horizonCalls: [] as Array<number>,
-    resolve: undefined as undefined | ((value: unknown) => void),
-  },
-}));
+interface ProjectionState {
+  mode: "ready" | "empty" | "error" | "incomplete" | "refreshFail" | "defer";
+  includePausedCalls: Array<boolean | undefined>;
+  horizonCalls: Array<number>;
+  resolve: ((value: Result.Result<BudgetProjectionResult, CommandError>) => void) | undefined;
+}
+
+const projectionState: ProjectionState = {
+  mode: "ready",
+  includePausedCalls: [],
+  horizonCalls: [],
+  resolve: undefined,
+};
 
 const readyProjection = (): BudgetProjectionResult => ({
   observedLocal: "2026-07-22T10:00:00",
@@ -100,138 +117,127 @@ const incompleteProjection = (): BudgetProjectionResult => ({
       message: "Catch-up unfinished — contribution withheld",
     },
   ],
-  periods: readyProjection().periods.map((item) =>
-    Object.assign({}, item, { status: null as null }),
-  ),
+  periods: readyProjection().periods.map((item) => Object.assign({}, item, { status: null })),
 });
 
-vi.mock("@/features/recurring-transactions/commands/recurring-transactions", async () => {
-  const { Result } = await import("@praha/byethrow");
-  return {
-    getRecurringBudgetProjections: vi.fn(
-      (input: { horizonMonths: number; includePausedBudgets?: boolean }) => {
-        projectionState.horizonCalls.push(input.horizonMonths);
-        projectionState.includePausedCalls.push(input.includePausedBudgets);
-        if (projectionState.mode === "defer") {
-          return new Promise((resolve) => {
-            projectionState.resolve = resolve;
-          });
-        }
-        if (projectionState.mode === "error") {
-          return Promise.resolve(Result.fail({ message: "Projection unavailable" }));
-        }
-        if (projectionState.mode === "refreshFail") {
-          return Promise.resolve(Result.fail({ message: "Refresh failed" }));
-        }
-        if (projectionState.mode === "empty") {
-          return Promise.resolve(
-            Result.succeed({
-              observedLocal: "2026-07-22T10:00:00",
-              throughLocal: "2027-01-22T10:00:00",
-              horizonMonths: input.horizonMonths,
-              complete: true,
-              periods: [],
-              sourceErrors: [],
-            }),
-          );
-        }
-        if (projectionState.mode === "incomplete") {
-          return Promise.resolve(Result.succeed(incompleteProjection()));
-        }
-        return Promise.resolve(Result.succeed(readyProjection()));
-      },
-    ),
-    getRecurringTransactions: vi.fn(() =>
-      Promise.resolve(Result.succeed({ items: [], nextCursor: null })),
-    ),
-    getRecurringTransaction: vi.fn(() =>
-      Promise.resolve(
-        Result.succeed({
-          recurringTransaction: {
-            id: "rt-rent",
-            lifecycle: "active",
-            totalOccurrences: null,
-            fulfilledCount: 1,
-            revision: 1,
-            lifecycleChangedAt: "2026-07-01T10:00:00",
-            createdAt: "2026-07-01T10:00:00",
-            updatedAt: "2026-07-01T10:00:00",
-          },
-          schedule: {
-            id: "sched-1",
-            recurringTransactionId: "rt-rent",
-            sequence: 1,
-            effectiveFromLocal: "2026-08-01T09:00:00",
-            firstScheduledLocal: "2026-08-01T09:00:00",
-            rule: { type: "interval", every: 1, unit: "month" },
-          },
-          template: {
-            id: "tmpl-1",
-            recurringTransactionId: "rt-rent",
-            sequence: 1,
-            effectiveFromLocal: "2026-08-01T09:00:00",
-            amount: 145000,
-            transactionType: "expense",
-            description: "Apartment rent",
-          },
-          occurrenceSummary: {
-            fulfilledCount: 1,
-            totalOccurrences: null,
-            nextScheduledLocal: "2026-09-01T09:00:00",
-            needsAttention: false,
-          },
-          links: { state: "ready", occurrences: { items: [] } },
-          failures: { state: "empty", waitingCount: 0, history: { items: [] } },
-          budgetImpact: { state: "unavailable", message: "n/a" },
-        }),
-      ),
-    ),
-    getRecurringTransactionOccurrences: vi.fn(() =>
-      Promise.resolve(Result.succeed({ items: [], nextCursor: null })),
-    ),
-  };
+const emptyProjection = (horizonMonths: number): BudgetProjectionResult => ({
+  observedLocal: "2026-07-22T10:00:00",
+  throughLocal: "2027-01-22T10:00:00",
+  horizonMonths,
+  complete: true,
+  periods: [],
+  sourceErrors: [],
 });
 
-vi.mock("@/features/categories/commands/transaction-categories", async () => {
-  const { Result } = await import("@praha/byethrow");
-  return {
-    getTransactionCategories: vi.fn(() => Promise.resolve(Result.succeed([]))),
-  };
-});
+const idleAlertsController: AlertsControllerValue = {
+  bellRef: { current: null },
+  clearFilters: () => undefined,
+  closeLedger: () => undefined,
+  destinationFeedback: null,
+  errorMessage: null,
+  filters: { readState: "all", severity: "all" },
+  hasActiveFilters: false,
+  isLedgerOpen: false,
+  ledgerFocusAlertId: null,
+  items: [],
+  lifecycleErrors: {},
+  lifecyclePendingId: null,
+  loadOlder: async () => undefined,
+  loadOlderError: null,
+  loadOlderStatus: "idle",
+  markAllRead: async () => undefined,
+  markAllReadError: null,
+  markAllReadPending: false,
+  nextCursor: null,
+  openAlert: async () => undefined,
+  openLedger: () => undefined,
+  refresh: async () => undefined,
+  refreshStatus: "ready",
+  setReadStateFilter: () => undefined,
+  setSeverityFilter: () => undefined,
+  toggleAlertReadState: async () => undefined,
+  unreadCount: 0,
+  unreadCountKnown: true,
+};
 
-vi.mock("@/features/alerts/hooks/use-alerts-controller", () => ({
-  AlertsControllerProvider: ({ children }: { children: React.ReactNode }) => children,
-  useAlertsController: () => ({
-    bellRef: { current: null },
-    closeLedger: vi.fn(),
-    destinationFeedback: null,
-    errorMessage: null,
-    isLedgerOpen: false,
-    items: [],
-    lifecycleErrors: {},
-    lifecyclePendingId: null,
-    openAlert: vi.fn(async () => undefined),
-    openLedger: vi.fn(),
-    refresh: vi.fn(async () => undefined),
-    refreshStatus: "ready",
-    toggleAlertReadState: vi.fn(async () => undefined),
-    unreadCount: 0,
-  }),
-}));
+function stubWindowChrome() {
+  Object.defineProperty(window, "scrollTo", {
+    configurable: true,
+    value: () => undefined,
+  });
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: (query: string) => ({
+      addEventListener: () => undefined,
+      addListener: () => undefined,
+      dispatchEvent: () => false,
+      matches: false,
+      media: query,
+      onchange: null,
+      removeEventListener: () => undefined,
+      removeListener: () => undefined,
+    }),
+  });
+}
 
-vi.mock("@/features/alerts/components/alerts-bell", () => ({
-  AlertsBell: () => null,
-}));
+function resolveProjection(
+  horizonMonths: number,
+): Result.Result<BudgetProjectionResult, CommandError> {
+  if (projectionState.mode === "error") {
+    return Result.fail(new CommandError("Projection unavailable"));
+  }
+  if (projectionState.mode === "refreshFail") {
+    return Result.fail(new CommandError("Refresh failed"));
+  }
+  if (projectionState.mode === "empty") {
+    return Result.succeed(emptyProjection(horizonMonths));
+  }
+  if (projectionState.mode === "incomplete") {
+    return Result.succeed(incompleteProjection());
+  }
+  return Result.succeed(readyProjection());
+}
 
-vi.mock("@hugeicons/react", () => ({
-  HugeiconsIcon: () => <span data-testid="icon" />,
-}));
-
-import { routeTree } from "@/routeTree.gen";
-
-async function renderPath(pathname: string) {
-  const history = createMemoryHistory({ initialEntries: [pathname] });
-  const router = createRouter({ routeTree, history });
+async function renderForecast(initialProjection: BudgetProjectionResult) {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <SidebarProvider>
+        <ApplicationTitleBarProvider>
+          <ApplicationTitleBar buildTarget="web" />
+          <Outlet />
+        </ApplicationTitleBarProvider>
+      </SidebarProvider>
+    ),
+  });
+  const forecastRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/forecast",
+    component: () => <ForecastBoardScreen initialProjection={initialProjection} />,
+  });
+  const recurringRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/recurring/$recurringTransactionId",
+    component: () => <div>Recurring document</div>,
+  });
+  const budgetsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/budgets",
+    component: () => <div>Budgets</div>,
+  });
+  const recurringIndexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/recurring",
+    component: () => <div>Recurring</div>,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      forecastRoute,
+      recurringRoute,
+      budgetsRoute,
+      recurringIndexRoute,
+    ]),
+    history: createMemoryHistory({ initialEntries: ["/cash-flow/forecast"] }),
+  });
   await router.load();
   render(<RouterProvider router={router} />);
   return router;
@@ -243,31 +249,30 @@ describe("forecast board screen", () => {
     projectionState.includePausedCalls = [];
     projectionState.horizonCalls = [];
     projectionState.resolve = undefined;
-    Object.defineProperty(window, "scrollTo", {
-      configurable: true,
-      value: vi.fn(),
-    });
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn(() => ({
-        addEventListener: vi.fn(),
-        addListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-        matches: false,
-        media: "",
-        onchange: null,
-        removeEventListener: vi.fn(),
-        removeListener: vi.fn(),
-      })),
-    });
+    stubWindowChrome();
+    vi.spyOn(breadcrumbs, "useScreenBreadcrumbs").mockReturnValue([{ label: "Forecast" }]);
+    vi.spyOn(alertsController, "useAlertsController").mockReturnValue(idleAlertsController);
+    vi.spyOn(recurringCommands, "getRecurringBudgetProjections").mockImplementation(
+      async (input) => {
+        projectionState.horizonCalls.push(input.horizonMonths);
+        projectionState.includePausedCalls.push(input.includePausedBudgets);
+        if (projectionState.mode === "defer") {
+          return new Promise((resolve) => {
+            projectionState.resolve = resolve;
+          });
+        }
+        return resolveProjection(input.horizonMonths);
+      },
+    );
   });
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it("renders the budgets-by-periods matrix with cell values", async () => {
-    await renderPath("/cash-flow/forecast");
+    await renderForecast(readyProjection());
     expect(await screen.findByRole("table", { name: "Budget forecast matrix" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Forecast" })).toBeNull();
     expect(
@@ -282,14 +287,14 @@ describe("forecast board screen", () => {
     expect(screen.getByText(/Partial/)).toBeTruthy();
     expect(screen.getByText(/Coverage full period/)).toBeTruthy();
     expect(screen.getByText(/Coverage partial/)).toBeTruthy();
-    expect(screen.getByLabelText("Horizon")).toBeTruthy();
+    expect(await screen.findByLabelText("Horizon")).toBeTruthy();
     expect(
       screen.getByRole("checkbox", { name: "Include paused budgets or history" }),
     ).toBeTruthy();
   });
 
   it("moves focus across matrix cells with arrow keys", async () => {
-    await renderPath("/cash-flow/forecast");
+    await renderForecast(readyProjection());
     const first = await screen.findByRole("button", {
       name: /Housing, 2026-08-01 to 2026-09-01/,
     });
@@ -302,7 +307,7 @@ describe("forecast board screen", () => {
   });
 
   it("opens cell drill-down with attribution and navigates to the recurring document", async () => {
-    const router = await renderPath("/cash-flow/forecast");
+    const router = await renderForecast(readyProjection());
     const cell = await screen.findByRole("button", {
       name: /Housing, 2026-08-01 to 2026-09-01/,
     });
@@ -317,8 +322,7 @@ describe("forecast board screen", () => {
   });
 
   it("shows incomplete state with typed source errors and withheld status", async () => {
-    projectionState.mode = "incomplete";
-    await renderPath("/cash-flow/forecast");
+    await renderForecast(incompleteProjection());
     expect(await screen.findByRole("status")).toBeTruthy();
     expect(screen.getByText("Forecast incomplete")).toBeTruthy();
     expect(screen.getByText("Catch-up due")).toBeTruthy();
@@ -327,8 +331,7 @@ describe("forecast board screen", () => {
   });
 
   it("shows empty and error states distinctly", async () => {
-    projectionState.mode = "empty";
-    await renderPath("/cash-flow/forecast");
+    await renderForecast(emptyProjection(6));
     const emptyState = await screen.findByRole("region", { name: "No forecast periods" });
     const emptyContent = emptyState.querySelector('[data-slot="empty-content"]');
 
@@ -350,17 +353,16 @@ describe("forecast board screen", () => {
     expect(recurringLink.getAttribute("href")).toBe("/cash-flow/recurring");
 
     cleanup();
-    projectionState.mode = "error";
-    await renderPath("/cash-flow/forecast");
+    render(<ForecastErrorScreen message="Projection unavailable" />);
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(screen.getByText("Projection unavailable")).toBeTruthy();
   });
 
   it("refetches when horizon or paused toggle changes and separates refresh failure", async () => {
-    await renderPath("/cash-flow/forecast");
+    await renderForecast(readyProjection());
     await screen.findByRole("table", { name: "Budget forecast matrix" });
 
-    fireEvent.change(screen.getByLabelText("Horizon"), { target: { value: "3" } });
+    fireEvent.change(await screen.findByLabelText("Horizon"), { target: { value: "3" } });
     await waitFor(() => {
       expect(projectionState.horizonCalls.at(-1)).toBe(3);
     });
@@ -372,7 +374,7 @@ describe("forecast board screen", () => {
   });
 
   it("returns focus to the cell after closing drill-down", async () => {
-    await renderPath("/cash-flow/forecast");
+    await renderForecast(readyProjection());
     const cell = await screen.findByRole("button", {
       name: /Housing, 2026-08-01 to 2026-09-01/,
     });

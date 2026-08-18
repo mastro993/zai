@@ -1,5 +1,6 @@
 import fixtures from "../../../../../../test-fixtures/domain-alert-events.json";
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import { parseDomainAlertEvent } from "../lib/parse";
 import {
@@ -69,10 +70,14 @@ describe("urgent alert toast policy", () => {
 
     expect(warningMock).toHaveBeenCalledOnce();
     expect(errorMock).toHaveBeenCalledOnce();
-    const warningOptions = warningMock.mock.calls[0]?.[1] as {
-      action: { onClick: () => void };
-    };
-    warningOptions.action.onClick();
+    const warningOptions = z
+      .object({ action: z.object({ onClick: z.instanceof(Function) }) })
+      .safeParse(warningMock.mock.calls[0]?.[1]);
+    expect(warningOptions.success).toBe(true);
+    if (!warningOptions.success) {
+      return;
+    }
+    warningOptions.data.action.onClick();
     expect(onActivate).toHaveBeenCalledWith(warningEvent.alert);
   });
 

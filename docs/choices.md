@@ -49,3 +49,11 @@ Agent defaults (no re-grill; contracts already accepted):
 - One spec, not eight. `/to-spec` synthesizes the product+contract source of truth. The eight-PR stack stays the execution sequence.
 - Test seams = families already locked in [Define multi-currency production verification and rollout contract](https://github.com/mastro993/zai/issues/377). Highest existing first: Playwright lifecycle, native smoke, command-contract-parity, privacy canaries, released-schema fixtures, repository structural, core units, frontend Vitest, failure-recovery, post-`main` benchmark.
 - Published [Implement production-ready multi-currency support](https://github.com/mastro993/zai/issues/385) with `ready-for-agent`. Map 367 stays open until the atomic merge.
+
+## 2026-08-18
+
+- **Anti-slop lives at `tools/oxlint/anti-slop/`.** Local Oxlint JS plugin, not a published package. Root `.oxlintrc.json` registers it; all 15 rules are `"error"`.
+- **Oxlint + `@oxlint/plugins` pinned to 1.78.0.** Same current versions. `oxlint` stays a frontend devDep; `@oxlint/plugins` is a root devDep so the vendored plugin resolves from `tools/`.
+- **Anti-slop migration shipped with the install.** Stop hook requires `pnpm check`. Findings were fixed, not suppressed: `satisfies` / named contracts, zod + `asWire*` instead of `typeof`/`unknown`, `setCommandTransports` + file-capability adapters instead of `vi.mock`, `schema.parse` fixtures instead of `as T`.
+- **Tauri plugin ESM exports are not spyable** (`configurable: false`). File-capability tests inject `{ web, tauri }` adapters; real `tauriSelectCsvImportFile` / `tauriDownloadTextFile` / Tauri `listen` are called only to assert fail-closed outside Tauri.
+- **Table-driven web-request `as never` replaced with `check<T>(build, args, expected)`.** Dropped type-lie cases (`items: "bad"`, invalid enum keys). Kept empty id / revision 0.

@@ -19,6 +19,13 @@ import type {
 
 type ConfirmKind = "pause" | "resume" | "stop" | "delete" | null;
 
+interface LifecycleConfirmCopy {
+  title: string;
+  description: string;
+  actionLabel: string;
+  pendingLabel: string;
+}
+
 const lifecycleOutcomeMessage = (outcome: RecurringLifecycleOutcome): string | undefined => {
   if (outcome.outcome !== "unchanged") {
     return undefined;
@@ -32,14 +39,7 @@ const lifecycleOutcomeMessage = (outcome: RecurringLifecycleOutcome): string | u
   return "No lifecycle change applied.";
 };
 
-const confirmCopyFor = (
-  kind: Exclude<ConfirmKind, null>,
-): {
-  title: string;
-  description: string;
-  actionLabel: string;
-  pendingLabel: string;
-} => {
+const confirmCopyFor = (kind: Exclude<ConfirmKind, null>): LifecycleConfirmCopy => {
   switch (kind) {
     case "pause":
       return {

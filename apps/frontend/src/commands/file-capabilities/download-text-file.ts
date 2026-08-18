@@ -1,13 +1,24 @@
 import { Result } from "@praha/byethrow";
 
-import { CommandError } from "../errors";
 import { parseCommandBuildTarget } from "../build-target";
+import { CommandError } from "../errors";
 import { tauriDownloadTextFile } from "./tauri-download-text-file";
 import type { DownloadTextFileOptions } from "./types";
 import { webDownloadTextFile } from "./web-download-text-file";
 
+export interface DownloadTextFileAdapters {
+  web: typeof webDownloadTextFile;
+  tauri: typeof tauriDownloadTextFile;
+}
+
+const defaultDownloadTextFileAdapters: DownloadTextFileAdapters = {
+  web: webDownloadTextFile,
+  tauri: tauriDownloadTextFile,
+};
+
 export const downloadTextFile = async (
   options: DownloadTextFileOptions,
+  adapters: DownloadTextFileAdapters = defaultDownloadTextFileAdapters,
 ): Promise<string | null> => {
   const buildTargetResult = parseCommandBuildTarget(import.meta.env.VITE_ZAI_BUILD_TARGET);
 
@@ -16,8 +27,8 @@ export const downloadTextFile = async (
   }
 
   if (buildTargetResult.value === "web") {
-    return webDownloadTextFile(options);
+    return adapters.web(options);
   }
 
-  return tauriDownloadTextFile(options);
+  return adapters.tauri(options);
 };

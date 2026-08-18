@@ -77,82 +77,55 @@ export interface ImportTransactionBatchArgs {
   transactions: Array<TransactionPayload & { id?: string }>;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+interface FlatTransactionFilters {
+  query?: string;
+  transactionType?: string;
+  startDate?: string;
+  endDate?: string;
+  categories?: Array<string>;
+  uncategorized?: string;
+}
 
-const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === "string" && value.length > 0;
+interface FilteredTransactionIdsBody extends FlatTransactionFilters {
+  sortField?: string;
+  sortDesc?: boolean;
+}
 
-const isStringArray = (value: unknown): value is Array<string> =>
-  Array.isArray(value) && value.every(isNonEmptyString);
+interface ExportTransactionsBody extends FlatTransactionFilters {
+  transactionIds?: Array<string>;
+}
 
-const parseFilters = (
-  value: unknown,
-): Result.Result<TransactionFilters | null | undefined, CommandError> => {
-  if (value === undefined || value === null) {
-    return Result.succeed(value);
-  }
-  if (!isRecord(value)) {
-    return Result.fail(new CommandError("Transaction filters must be a record or null"));
-  }
-  for (const key of ["query", "transactionType", "startDate", "endDate"] as const) {
-    if (value[key] !== undefined && typeof value[key] !== "string") {
-      return Result.fail(new CommandError(`Transaction filter ${key} must be a string`));
-    }
-  }
-  if (value.categories !== undefined && !isStringArray(value.categories)) {
-    return Result.fail(new CommandError("Transaction categories must be an array of strings"));
-  }
-  return Result.succeed(value as TransactionFilters);
-};
+const isNonEmptyString = (value: string): boolean => value.length > 0;
 
-const parseSort = (
-  value: unknown,
-): Result.Result<TransactionSort | null | undefined, CommandError> => {
-  if (value === undefined || value === null) {
-    return Result.succeed(value);
-  }
-  if (!isRecord(value) || !isNonEmptyString(value.field) || typeof value.desc !== "boolean") {
-    return Result.fail(
-      new CommandError("Transaction sort must contain a field and boolean direction"),
-    );
-  }
-  return Result.succeed(value as unknown as TransactionSort);
-};
+const isPositiveInteger = (value: number): boolean => Number.isInteger(value) && value > 0;
 
 const parsePagination = (
-  page: unknown,
-  perPage: unknown,
+  page: number | undefined,
+  perPage: number | undefined,
 ): Result.Result<{ page: number; perPage: number }, CommandError> => {
   const validPage = page === undefined ? 1 : page;
   const validPerPage = perPage === undefined ? 50 : perPage;
-  if (
-    typeof validPage !== "number" ||
-    !Number.isInteger(validPage) ||
-    validPage < 1 ||
-    typeof validPerPage !== "number" ||
-    !Number.isInteger(validPerPage) ||
-    validPerPage < 1
-  ) {
+  if (!isPositiveInteger(validPage) || !isPositiveInteger(validPerPage)) {
     return Result.fail(new CommandError("Transaction pagination must use positive integers"));
   }
   return Result.succeed({ page: validPage, perPage: validPerPage });
 };
 
-const flattenFilters = (
-  filters: TransactionFilters | null | undefined,
-): Record<string, unknown> => {
+const flattenFilters = (filters: TransactionFilters | null | undefined): FlatTransactionFilters => {
+  const body: FlatTransactionFilters = {};
   if (!filters) {
-    return {};
+    return body;
   }
-  const body: Record<string, unknown> = {};
   if (filters.query) body.query = filters.query;
   if (filters.transactionType) body.transactionType = filters.transactionType;
   if (filters.startDate) body.startDate = filters.startDate;
   if (filters.endDate) body.endDate = filters.endDate;
   if (filters.categories) {
-    body[filters.categories.length === 0 ? "uncategorized" : "categories"] =
-      filters.categories.length === 0 ? "true" : filters.categories;
+    if (filters.categories.length === 0) {
+      body.uncategorized = "true";
+    } else {
+      body.categories = filters.categories;
+    }
   }
   return body;
 };
@@ -162,18 +135,19 @@ const addFilterQuery = (
   filters: TransactionFilters | null | undefined,
 ): void => {
   const flatFilters = flattenFilters(filters);
-  for (const [key, value] of Object.entries(flatFilters)) {
-    if (key === "categories" && Array.isArray(value)) {
-      for (const categoryId of value) {
-        params.append("categoryId", categoryId);
-      }
-    } else if (typeof value === "string") {
-      params.set(key, value);
+  if (flatFilters.categories) {
+    for (const categoryId of flatFilters.categories) {
+      params.append("categoryId", categoryId);
     }
   }
+  if (flatFilters.query) params.set("query", flatFilters.query);
+  if (flatFilters.transactionType) params.set("transactionType", flatFilters.transactionType);
+  if (flatFilters.startDate) params.set("startDate", flatFilters.startDate);
+  if (flatFilters.endDate) params.set("endDate", flatFilters.endDate);
+  if (flatFilters.uncategorized) params.set("uncategorized", flatFilters.uncategorized);
 };
 
-const queryFromParams = (params: URLSearchParams): Record<string, string | Array<string>> => {
+const queryFromParams = (params: URLSearchParams) => {
   const query: Record<string, string | Array<string>> = {};
   for (const key of new Set(params.keys())) {
     const values = params.getAll(key);
@@ -182,37 +156,18 @@ const queryFromParams = (params: URLSearchParams): Record<string, string | Array
   return query;
 };
 
-const parseSortAndFilters = (
-  filters: unknown,
-  sort: unknown,
-): Result.Result<
-  { filters: TransactionFilters | null | undefined; sort: TransactionSort | null | undefined },
-  CommandError
-> => {
-  const validFilters = parseFilters(filters);
-  if (Result.isFailure(validFilters)) return validFilters;
-  const validSort = parseSort(sort);
-  if (Result.isFailure(validSort)) return validSort;
-  return Result.succeed({ filters: validFilters.value, sort: validSort.value });
-};
-
 export const buildGetTransactionsRequest = (
   args: GetTransactionsArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args)) {
-    return Result.fail(new CommandError("Transaction list arguments must be a record"));
-  }
   const pagination = parsePagination(args.page, args.perPage);
   if (Result.isFailure(pagination)) return pagination;
-  const parsed = parseSortAndFilters(args.filters, args.sort);
-  if (Result.isFailure(parsed)) return parsed;
   const params = new URLSearchParams();
   params.set("page", String(pagination.value.page));
   params.set("perPage", String(pagination.value.perPage));
-  addFilterQuery(params, parsed.value.filters);
-  if (parsed.value.sort) {
-    params.set("sortField", parsed.value.sort.field);
-    params.set("sortDesc", String(parsed.value.sort.desc));
+  addFilterQuery(params, args.filters);
+  if (args.sort) {
+    params.set("sortField", args.sort.field);
+    params.set("sortDesc", String(args.sort.desc));
   }
   return Result.succeed({
     method: "GET",
@@ -224,65 +179,45 @@ export const buildGetTransactionsRequest = (
 export const buildGetFilteredTransactionIdsRequest = (
   args: GetFilteredTransactionIdsArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args)) {
-    return Result.fail(new CommandError("Filtered transaction arguments must be a record"));
+  const body: FilteredTransactionIdsBody = flattenFilters(args.filters);
+  if (args.sort) {
+    body.sortField = args.sort.field;
+    body.sortDesc = args.sort.desc;
   }
-  const parsed = parseSortAndFilters(args.filters, args.sort);
-  if (Result.isFailure(parsed)) return parsed;
   return Result.succeed({
     method: "POST",
     path: "/transactions/ids",
-    body: {
-      ...flattenFilters(parsed.value.filters),
-      ...(parsed.value.sort
-        ? { sortField: parsed.value.sort.field, sortDesc: parsed.value.sort.desc }
-        : {}),
-    },
+    body,
   });
 };
 
 export const buildExportTransactionsRequest = (
   args: ExportTransactionsArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !isRecord(args.request)) {
-    return Result.fail(new CommandError("Transaction export requires a request record"));
-  }
-  const parsedFilters = parseFilters(args.request.filters);
-  if (Result.isFailure(parsedFilters)) return parsedFilters;
-  if (
-    args.request.transactionIds !== undefined &&
-    args.request.transactionIds !== null &&
-    !isStringArray(args.request.transactionIds)
-  ) {
-    return Result.fail(new CommandError("Transaction export ids must be an array of strings"));
+  const body: ExportTransactionsBody = flattenFilters(args.request.filters);
+  if (args.request.transactionIds) {
+    body.transactionIds = args.request.transactionIds;
   }
   return Result.succeed({
     method: "POST",
     path: "/transactions/export",
-    body: {
-      ...flattenFilters(parsedFilters.value),
-      ...(args.request.transactionIds ? { transactionIds: args.request.transactionIds } : {}),
-    },
+    body,
   });
 };
 
 export const buildFindDuplicateKeysRequest = (
   args: FindDuplicateKeysArgs,
-): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !isRecord(args.request) || !Array.isArray(args.request.candidates)) {
-    return Result.fail(new CommandError("Duplicate lookup requires candidates"));
-  }
-  return Result.succeed({
+): Result.Result<WebRequestSpec, CommandError> =>
+  Result.succeed({
     method: "POST",
     path: "/transactions/duplicate-keys",
     body: { candidates: args.request.candidates },
   });
-};
 
 export const buildGetTransactionRequest = (
   args: TransactionIdentifierArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !isNonEmptyString(args.transactionId)) {
+  if (!isNonEmptyString(args.transactionId)) {
     return Result.fail(new CommandError("Transaction id must be a non-empty string"));
   }
   return Result.succeed({
@@ -291,34 +226,19 @@ export const buildGetTransactionRequest = (
   });
 };
 
-const validTransactionPayload = (value: unknown): value is TransactionPayload =>
-  isRecord(value) &&
-  typeof value.amount === "number" &&
-  Number.isInteger(value.amount) &&
-  isNonEmptyString(value.transactionDate) &&
-  isNonEmptyString(value.transactionType);
-
 export const buildCreateTransactionRequest = (
   args: CreateTransactionArgs,
-): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !validTransactionPayload(args.newTransaction)) {
-    return Result.fail(new CommandError("Transaction payload must be a valid record"));
-  }
-  return Result.succeed({
+): Result.Result<WebRequestSpec, CommandError> =>
+  Result.succeed({
     method: "POST",
     path: "/transactions",
     body: args.newTransaction,
   });
-};
 
 export const buildUpdateTransactionRequest = (
   args: UpdateTransactionArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (
-    !isRecord(args) ||
-    !validTransactionPayload(args.updatedTransaction) ||
-    !isNonEmptyString(args.updatedTransaction.id)
-  ) {
+  if (!isNonEmptyString(args.updatedTransaction.id)) {
     return Result.fail(new CommandError("Transaction update requires a valid id and payload"));
   }
   const { id: _id, ...body } = args.updatedTransaction;
@@ -332,7 +252,7 @@ export const buildUpdateTransactionRequest = (
 export const buildDeleteTransactionRequest = (
   args: TransactionIdentifierArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !isNonEmptyString(args.transactionId)) {
+  if (!isNonEmptyString(args.transactionId)) {
     return Result.fail(new CommandError("Transaction id must be a non-empty string"));
   }
   return Result.succeed({
@@ -344,7 +264,7 @@ export const buildDeleteTransactionRequest = (
 export const buildDeleteTransactionsRequest = (
   args: DeleteTransactionsArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !isStringArray(args.transactionIds) || args.transactionIds.length === 0) {
+  if (args.transactionIds.length === 0 || !args.transactionIds.every(isNonEmptyString)) {
     return Result.fail(new CommandError("Transaction deletion requires ids"));
   }
   return Result.succeed({
@@ -356,28 +276,18 @@ export const buildDeleteTransactionsRequest = (
 
 export const buildImportTransactionsRequest = (
   args: ImportTransactionsArgs,
-): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !Array.isArray(args.transactions)) {
-    return Result.fail(new CommandError("Transaction import requires transactions"));
-  }
-  return Result.succeed({
+): Result.Result<WebRequestSpec, CommandError> =>
+  Result.succeed({
     method: "POST",
     path: "/transactions/import",
     body: { transactions: args.transactions },
   });
-};
 
 export const buildImportTransactionBatchRequest = (
   args: ImportTransactionBatchArgs,
-): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !Array.isArray(args.categories) || !Array.isArray(args.transactions)) {
-    return Result.fail(
-      new CommandError("Transaction batch import requires categories and transactions"),
-    );
-  }
-  return Result.succeed({
+): Result.Result<WebRequestSpec, CommandError> =>
+  Result.succeed({
     method: "POST",
     path: "/transactions/import-batch",
     body: { categories: args.categories, transactions: args.transactions },
   });
-};

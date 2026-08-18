@@ -5,6 +5,23 @@ import { cn } from "@/lib/utils";
 
 export type ImportStep = 0 | 1 | 2;
 
+export const previousImportStep = (current: ImportStep): ImportStep => {
+  if (current === 2) {
+    return 1;
+  }
+  if (current === 1) {
+    return 0;
+  }
+  return 0;
+};
+
+const toImportStep = (index: number): ImportStep | undefined => {
+  if (index === 0 || index === 1 || index === 2) {
+    return index;
+  }
+  return undefined;
+};
+
 const STEPS: Array<{ title: string; hint: string }> = [
   { title: "Source", hint: "Pick a CSV" },
   { title: "Map", hint: "Match columns" },
@@ -33,7 +50,12 @@ export function ImportStepper({
               type="button"
               disabled={!canSelect}
               aria-current={status === "current" ? "step" : undefined}
-              onClick={() => onStepSelect(index as ImportStep)}
+              onClick={() => {
+                const next = toImportStep(index);
+                if (next !== undefined) {
+                  onStepSelect(next);
+                }
+              }}
               className={cn(
                 "group flex min-w-0 items-center gap-2 text-left outline-none",
                 canSelect && "cursor-pointer",

@@ -1,3 +1,5 @@
+import { asWireString } from "@/lib/wire";
+
 import {
   DEFAULT_CATEGORY_COLOR,
   type CategoryRole,
@@ -26,5 +28,10 @@ export const getCategoryDisplayName = (
 export const getCategoryRoleLabel = (role: CategoryRole) =>
   role === "income" ? "Income" : "Spending";
 
-export const isCategoryColor = (color: unknown): color is string | null =>
-  color === null || (typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color));
+export const isCategoryColor = <TRaw>(color: TRaw): boolean => {
+  if (color === null) {
+    return true;
+  }
+  const text = asWireString(color);
+  return text !== undefined && /^#[0-9a-f]{6}$/i.test(text);
+};

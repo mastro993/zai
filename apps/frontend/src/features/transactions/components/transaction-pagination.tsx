@@ -72,7 +72,13 @@ function TransactionPagination({
             items={rowsPerPageItems}
             value={String(perPage)}
             onValueChange={(next) => {
-              onPerPageChange(Number(next) as TransactionRowsPerPage);
+              const encoded = String(next);
+              const selected = TRANSACTION_ROWS_PER_PAGE_OPTIONS.find(
+                (option) => String(option) === encoded,
+              );
+              if (selected !== undefined) {
+                onPerPageChange(selected);
+              }
             }}
           >
             <SelectTrigger size="sm" aria-label="Rows per page">

@@ -1,13 +1,9 @@
 // @vitest-environment jsdom
 
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { CategoryImportSourceStep } from "../category-import-source-step";
-
-vi.mock("@hugeicons/react", () => ({
-  HugeiconsIcon: () => <span data-testid="icon" />,
-}));
 
 describe("CategoryImportSourceStep", () => {
   it("displays browser-safe file metadata without a desktop path", () => {

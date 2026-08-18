@@ -4,51 +4,44 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Result } from "@praha/byethrow";
 
-import { downloadTextFile } from "@/commands/file-capabilities/download-text-file";
-import { selectCsvImportFile } from "@/commands/file-capabilities/select-csv-import-file";
-import type * as SharedCommands from "@/commands/shared";
+import * as downloadTextFileModule from "@/commands/file-capabilities/download-text-file";
+import * as selectCsvImportFileModule from "@/commands/file-capabilities/select-csv-import-file";
+import { resetCommandTransports, setCommandTransports } from "@/commands/shared";
 
 import { exportTransactions } from "../transaction-export";
 import { openTransactionImportFile } from "../transaction-import";
 
-vi.mock("@/commands/file-capabilities/select-csv-import-file", () => ({
-  selectCsvImportFile: vi.fn(),
-}));
-
-vi.mock("@/commands/file-capabilities/download-text-file", () => ({
-  downloadTextFile: vi.fn(),
-}));
-
-const invokeDecodedCommandMock = vi.hoisted(() => vi.fn());
-
-vi.mock("@/commands/shared", async (importOriginal) => {
-  const actual = await importOriginal<typeof SharedCommands>();
-  return {
-    ...actual,
-    invokeDecodedCommand: invokeDecodedCommandMock,
-  };
-});
-
-const selectMock = vi.mocked(selectCsvImportFile);
-const downloadMock = vi.mocked(downloadTextFile);
+const invokeMock = vi.fn();
 
 describe("transaction file capability routing", () => {
   beforeEach(() => {
-    selectMock.mockReset();
-    downloadMock.mockReset();
-    invokeDecodedCommandMock.mockReset();
+    invokeMock.mockReset();
+    setCommandTransports({
+      tauri: { invoke: invokeMock },
+      web: { invoke: invokeMock },
+    });
+    vi.stubEnv("VITE_ZAI_BUILD_TARGET", "web");
+    vi.spyOn(selectCsvImportFileModule, "selectCsvImportFile").mockReset();
+    vi.spyOn(downloadTextFileModule, "downloadTextFile").mockReset();
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    resetCommandTransports();
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it("routes transaction CSV import through the shared file capability adapter", async () => {
-    selectMock.mockResolvedValue({ name: "transactions.csv", content: "date,description,amount" });
+    vi.mocked(selectCsvImportFileModule.selectCsvImportFile).mockResolvedValue({
+      name: "transactions.csv",
+      content: "date,description,amount",
+    });
 
     const result = await openTransactionImportFile();
 
-    expect(selectMock).toHaveBeenCalledWith({ title: "Import transactions" });
+    expect(selectCsvImportFileModule.selectCsvImportFile).toHaveBeenCalledWith({
+      title: "Import transactions",
+    });
     expect(Result.isSuccess(result)).toBe(true);
     if (Result.isFailure(result)) {
       return;
@@ -57,18 +50,18 @@ describe("transaction file capability routing", () => {
   });
 
   it("routes transaction CSV export through backend csv then shared file capability", async () => {
-    invokeDecodedCommandMock.mockResolvedValue(
-      Result.succeed({
-        csv: "date,amount,type,description,notes,parent_category,category\n2026-07-09T12:30:00,3.50,expense,Coffee,,,",
-      }),
+    invokeMock.mockResolvedValue({
+      csv: "date,amount,type,description,notes,parent_category,category\n2026-07-09T12:30:00,3.50,expense,Coffee,,,",
+    });
+    vi.mocked(downloadTextFileModule.downloadTextFile).mockResolvedValue(
+      "zai_transactions_20260710_112700.csv",
     );
-    downloadMock.mockResolvedValue("zai_transactions_20260710_112700.csv");
 
     const result = await exportTransactions({
       transactionIds: ["txn-1"],
     });
 
-    expect(invokeDecodedCommandMock).toHaveBeenCalledWith(
+    expect(invokeMock).toHaveBeenCalledWith(
       expect.objectContaining({ name: "export_transactions_csv" }),
       {
         request: {
@@ -77,7 +70,7 @@ describe("transaction file capability routing", () => {
         },
       },
     );
-    expect(downloadMock).toHaveBeenCalledWith({
+    expect(downloadTextFileModule.downloadTextFile).toHaveBeenCalledWith({
       title: "Export transactions",
       filename: expect.stringMatching(/^zai_transactions_\d{8}_\d{6}\.csv$/),
       content: expect.stringContaining("date,amount,type,description"),

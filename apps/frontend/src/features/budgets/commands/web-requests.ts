@@ -45,59 +45,44 @@ export interface UpdateBudgetArgs extends BudgetIdentifierArgs {
   updatedBudget: BudgetPayload & { expectedRevision: number };
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+const isNonEmptyString = (value: string): boolean => value.length > 0;
 
-const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === "string" && value.length > 0;
+const isNonNegativeInteger = (value: number): boolean => Number.isInteger(value) && value >= 0;
 
-const isRevision = (value: unknown): value is number =>
-  typeof value === "number" && Number.isInteger(value) && value >= 0;
+const isPositiveInteger = (value: number): boolean => Number.isInteger(value) && value > 0;
 
-const isPositiveInteger = (value: unknown): value is number =>
-  typeof value === "number" && Number.isInteger(value) && value > 0;
-
-const validateIdentifier = (args: unknown): Result.Result<BudgetIdentifierArgs, CommandError> => {
-  if (!isRecord(args) || !isNonEmptyString(args.budgetId)) {
+const validateIdentifier = (
+  args: BudgetIdentifierArgs,
+): Result.Result<BudgetIdentifierArgs, CommandError> => {
+  if (!isNonEmptyString(args.budgetId)) {
     return Result.fail(new CommandError("Budget id must be a non-empty string"));
   }
   return Result.succeed({ budgetId: args.budgetId });
 };
 
-const validateRevision = (args: unknown): Result.Result<BudgetRevisionArgs, CommandError> => {
+const validateRevision = (
+  args: BudgetRevisionArgs,
+): Result.Result<BudgetRevisionArgs, CommandError> => {
   const identifier = validateIdentifier(args);
   if (Result.isFailure(identifier)) {
     return identifier;
   }
-  if (!isRecord(args) || !isRevision(args.expectedRevision)) {
+  if (!isNonNegativeInteger(args.expectedRevision)) {
     return Result.fail(new CommandError("Budget revision must be a non-negative integer"));
   }
   return Result.succeed({ ...identifier.value, expectedRevision: args.expectedRevision });
 };
 
-const validatePayload = (value: unknown): value is BudgetPayload =>
-  isRecord(value) &&
-  isNonEmptyString(value.name) &&
-  typeof value.baseAllowance === "number" &&
-  Number.isInteger(value.baseAllowance) &&
-  typeof value.cadence === "string" &&
-  Array.isArray(value.categoryIds) &&
-  value.categoryIds.every((id) => typeof id === "string") &&
-  typeof value.measurementMode === "string" &&
-  typeof value.rolloverMode === "string" &&
-  (value.warningPercentage === null || typeof value.warningPercentage === "number");
-
 export const buildGetBudgetsRequest = (
   args: GetBudgetsArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args)) {
-    return Result.fail(new CommandError("Budget list arguments must be a record"));
-  }
-  const filter = (args as GetBudgetsArgs).filter;
+  const filter = args.filter;
   if (
     filter !== undefined &&
     filter !== null &&
-    !["active", "paused", "all"].includes(String(filter))
+    filter !== "active" &&
+    filter !== "paused" &&
+    filter !== "all"
   ) {
     return Result.fail(new CommandError("Budget filter is invalid"));
   }
@@ -123,7 +108,7 @@ export const buildGetBudgetRequest = (
 export const buildCreateBudgetRequest = (
   args: CreateBudgetArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !validatePayload(args.newBudget)) {
+  if (!isNonEmptyString(args.newBudget.name)) {
     return Result.fail(new CommandError("Budget payload must be a valid record"));
   }
   return Result.succeed({
@@ -136,10 +121,10 @@ export const buildCreateBudgetRequest = (
 export const buildUpdateBudgetRequest = (
   args: UpdateBudgetArgs,
 ): Result.Result<WebRequestSpec, CommandError> => {
-  if (!isRecord(args) || !isNonEmptyString(args.budgetId) || !validatePayload(args.updatedBudget)) {
+  if (!isNonEmptyString(args.budgetId) || !isNonEmptyString(args.updatedBudget.name)) {
     return Result.fail(new CommandError("Budget update requires a valid id and payload"));
   }
-  if (!isRevision(args.updatedBudget.expectedRevision)) {
+  if (!isNonNegativeInteger(args.updatedBudget.expectedRevision)) {
     return Result.fail(new CommandError("Budget revision must be a non-negative integer"));
   }
   const { expectedRevision: _expectedRevision, ...body } = args.updatedBudget;
@@ -171,7 +156,6 @@ export const buildGetBudgetHistoryRequest = (
     return identifier;
   }
   if (
-    !isRecord(args) ||
     (args.page !== undefined && !isPositiveInteger(args.page)) ||
     (args.perPage !== undefined && !isPositiveInteger(args.perPage))
   ) {

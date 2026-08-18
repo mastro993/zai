@@ -51,7 +51,6 @@ import {
   transactionFormSchema,
   type TransactionFormInput,
   type TransactionFormValues,
-  type TransactionType,
 } from "../types/model";
 import type { TransactionFormMode } from "../types/transaction-types";
 
@@ -82,7 +81,11 @@ const getFormDefaults = (mode: TransactionFormMode): TransactionFormInput => {
     description: mode.transaction.description ?? "",
     amount: formatAmountFromMinor(mode.transaction.amount),
     transactionDate: toDateTimeInputValue(mode.transaction.transactionDate),
-    transactionType: mode.transaction.transactionType as TransactionType,
+    transactionType:
+      mode.transaction.transactionType === "income" ||
+      mode.transaction.transactionType === "expense"
+        ? mode.transaction.transactionType
+        : "expense",
     transactionCategoryId: mode.transaction.transactionCategoryId ?? "",
     notes: mode.transaction.notes ?? "",
   };

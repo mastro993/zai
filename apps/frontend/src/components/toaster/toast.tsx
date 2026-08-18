@@ -1,6 +1,8 @@
 import type { ReactElement, ReactNode } from "react";
 import { toast as sonnerToast, type ExternalToast, type ToastT, type ToastToDismiss } from "sonner";
 
+import { isCallable } from "@/lib/wire";
+
 import { ToastItem, type ToastVariant } from "./toast-item";
 
 type ToastMessage = (() => ReactNode) | ReactNode;
@@ -10,9 +12,13 @@ type PromiseInput<ToastData> = Promise<ToastData> | (() => Promise<ToastData>);
 interface ToastPromiseOptions<ToastData> extends Omit<ExternalToast, "description"> {
   loading?: ReactNode;
   success?: ReactNode | ((data: ToastData) => ReactNode | Promise<ReactNode>);
-  error?: ReactNode | ((error: unknown) => ReactNode | Promise<ReactNode>);
+  error?: ReactNode | ((cause: unknown) => ReactNode | Promise<ReactNode>);
   description?: ReactNode | ((data: ToastData) => ReactNode | Promise<ReactNode>);
   finally?: () => void | Promise<void>;
+}
+
+interface PromiseToastHandle<ToastData> {
+  unwrap: () => Promise<ToastData>;
 }
 
 const SUCCESS_DURATION_MS = 4000;
@@ -83,6 +89,18 @@ function renderToast(
   );
 }
 
+function isMessageFactory<Arg>(
+  value: ReactNode | ((arg: Arg) => ReactNode | Promise<ReactNode>),
+): value is (arg: Arg) => ReactNode | Promise<ReactNode> {
+  return isCallable(value);
+}
+
+function isPromiseFactory<ToastData>(
+  value: PromiseInput<ToastData>,
+): value is () => Promise<ToastData> {
+  return isCallable(value);
+}
+
 async function resolveMessage<Arg>(
   value: ReactNode | ((arg: Arg) => ReactNode | Promise<ReactNode>) | undefined,
   arg: Arg,
@@ -91,7 +109,7 @@ async function resolveMessage<Arg>(
   if (value === undefined) {
     return fallback;
   }
-  if (typeof value === "function") {
+  if (isMessageFactory(value)) {
     return value(arg);
   }
   return value;
@@ -126,14 +144,17 @@ function promiseToast<ToastData>(
   const { loading, success, error, description, finally: onFinally, ...rest } = options;
   const id = renderToast("loading", loading ?? "Loading…", {
     ...rest,
-    description: typeof description === "function" ? undefined : description,
+    description:
+      description !== undefined && isMessageFactory(description) ? undefined : description,
   });
 
-  const pending = (typeof promise === "function" ? promise() : promise)
+  const pending = (isPromiseFactory(promise) ? promise() : promise)
     .then(async (result) => {
       const message = await resolveMessage(success, result, "Done");
       const resolvedDescription =
-        typeof description === "function" ? await description(result) : description;
+        description !== undefined && isMessageFactory(description)
+          ? await description(result)
+          : description;
 
       renderToast("success", message, {
         ...rest,
@@ -150,9 +171,9 @@ function promiseToast<ToastData>(
       throw cause;
     });
 
-  return Object.assign(id, { unwrap: () => pending }) as typeof id & {
-    unwrap: () => Promise<ToastData>;
-  };
+  // SAFETY: Object.assign boxes the primitive toast id and attaches unwrap;
+  // callers use the result as the sonner id plus unwrap().
+  return Object.assign(id, { unwrap: () => pending }) as typeof id & PromiseToastHandle<ToastData>;
 }
 
 toast.promise = promiseToast;

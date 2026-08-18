@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { asWireString } from "@/lib/wire";
 
 import { useCurrencyConfirms } from "../hooks/use-currency-confirms";
 import {
@@ -98,9 +99,10 @@ export function VariantB({ scene, state, actions }: CurrencyPrototypeVariantProp
                 items={catalogItems}
                 value={confirms.addCode}
                 onValueChange={(value) => {
-                  if (typeof value === "string") {
-                    confirms.setAddCode(value);
-                    actions.startAdd(value);
+                  const code = asWireString(value);
+                  if (code !== undefined) {
+                    confirms.setAddCode(code);
+                    actions.startAdd(code);
                   }
                 }}
               >
@@ -233,8 +235,9 @@ export function VariantB({ scene, state, actions }: CurrencyPrototypeVariantProp
               items={transactionItems}
               value={state.transaction.currency}
               onValueChange={(value) => {
-                if (typeof value === "string") {
-                  actions.setTransactionCurrency(value);
+                const code = asWireString(value);
+                if (code !== undefined) {
+                  actions.setTransactionCurrency(code);
                 }
               }}
             >

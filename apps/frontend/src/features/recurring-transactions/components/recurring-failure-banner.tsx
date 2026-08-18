@@ -100,8 +100,8 @@ export function RecurringFailureBanner({
       return;
     }
     const payload = JSON.stringify(result.value, null, 2);
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(payload);
+    if (globalThis.navigator !== undefined && globalThis.navigator.clipboard) {
+      await globalThis.navigator.clipboard.writeText(payload);
       toast.success("Diagnostics copied");
       return;
     }

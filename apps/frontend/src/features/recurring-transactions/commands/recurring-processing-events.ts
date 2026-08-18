@@ -2,10 +2,11 @@ import { Result } from "@praha/byethrow";
 
 import { parseCommandBuildTarget, type CommandBuildTarget } from "@/commands/build-target";
 import { resolveRecurringProcessingEventUrl } from "@/commands/web-api";
+import { hasEventSource } from "@/lib/runtime-globals";
 
 import { RECURRING_PROCESSING_EVENT_NAME } from "../types/recurring-processing-event";
 
-export type RecurringProcessingEventHandler = (value: unknown) => void;
+export type RecurringProcessingEventHandler = (payload: string) => void;
 export type RecurringProcessingEventReconnectHandler = () => void;
 export type RecurringProcessingEventFailureCode =
   | "subscription_failed"
@@ -103,23 +104,22 @@ export const createTauriRecurringProcessingEventTransport =
 export const createWebRecurringProcessingEventTransport =
   (): RecurringProcessingEventTransport => ({
     subscribe: (onEvent, onReconnect, onFailure) => {
-      const sourceResult =
-        typeof EventSource === "undefined"
-          ? Result.fail(
+      const sourceResult = !hasEventSource()
+        ? Result.fail(
+            new RecurringProcessingEventError(
+              "subscription_unavailable",
+              "Recurring processing updates are unavailable in this runtime.",
+            ),
+          )
+        : Result.try({
+            try: () => new EventSource(resolveRecurringProcessingEventUrl()),
+            catch: (cause) =>
               new RecurringProcessingEventError(
-                "subscription_unavailable",
-                "Recurring processing updates are unavailable in this runtime.",
+                "subscription_failed",
+                "Recurring processing updates could not be subscribed to.",
+                cause,
               ),
-            )
-          : Result.try({
-              try: () => new EventSource(resolveRecurringProcessingEventUrl()),
-              catch: (cause) =>
-                new RecurringProcessingEventError(
-                  "subscription_failed",
-                  "Recurring processing updates could not be subscribed to.",
-                  cause,
-                ),
-            });
+          });
       if (Result.isFailure(sourceResult)) {
         return failedSubscription(sourceResult.error);
       }
@@ -138,7 +138,11 @@ export const createWebRecurringProcessingEventTransport =
           resolveReady(result);
         }
       };
-      const handleMessage = (event: Event) => onEvent((event as MessageEvent<string>).data);
+      const handleMessage = (event: Event) => {
+        // SAFETY: EventSource "message" listeners receive MessageEvent; tests emit the same `.data` contract.
+        const message = event as MessageEvent<string>;
+        onEvent(message.data);
+      };
       const handleOpen = () => {
         if (hasOpened || hadError) {
           onReconnect();
@@ -199,10 +203,10 @@ export const resolveRecurringProcessingEventTransport = (
       };
 };
 
-const recurringProcessingEventTransports: RecurringProcessingEventTransportMap = {
+const recurringProcessingEventTransports = {
   tauri: createTauriRecurringProcessingEventTransport(),
   web: createWebRecurringProcessingEventTransport(),
-};
+} satisfies RecurringProcessingEventTransportMap;
 
 export const createRecurringProcessingEventTransport = (): RecurringProcessingEventTransport =>
   resolveRecurringProcessingEventTransport(

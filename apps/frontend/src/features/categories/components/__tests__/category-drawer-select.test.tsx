@@ -1,45 +1,68 @@
 // @vitest-environment jsdom
 
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { TransactionCategory } from "../../types/model";
+import { categorySchema } from "../../types/model";
 import { CategoryDrawerSelect } from "../category-drawer-select";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, ...props }: { children: React.ReactNode; to?: string }) => (
-    <a href={props.to}>{children}</a>
-  ),
-}));
-
-vi.mock("@hugeicons/react", () => ({
-  HugeiconsIcon: () => <span data-testid="icon" />,
-}));
-
-const food = {
+const food = categorySchema.parse({
   id: "food",
   parentId: null,
   name: "Food",
   role: "spending",
-} as TransactionCategory;
+  color: "#C32828",
+});
 
-const groceries = {
+const groceries = categorySchema.parse({
   id: "groceries",
   parentId: "food",
   name: "Groceries",
   role: "spending",
   parent: food,
-} as TransactionCategory;
+  color: "#C32828",
+});
 
 const categories = [food, groceries];
+
+async function renderWithRouter(ui: ReactNode) {
+  const rootRoute = createRootRoute({
+    component: () => <Outlet />,
+  });
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => ui,
+  });
+  const categoriesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/categories",
+    component: () => <div>Categories</div>,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, categoriesRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  await router.load();
+  return render(<RouterProvider router={router} />);
+}
 
 describe("CategoryDrawerSelect", () => {
   afterEach(() => cleanup());
 
-  it("commits multi selection only on Done", () => {
+  it("commits multi selection only on Done", async () => {
     const onChange = vi.fn();
 
-    render(
+    await renderWithRouter(
       <CategoryDrawerSelect
         id="cats"
         mode="multiple"
@@ -60,10 +83,10 @@ describe("CategoryDrawerSelect", () => {
     expect(onChange).toHaveBeenCalledWith(["food"]);
   });
 
-  it("discards multi draft on Back", () => {
+  it("discards multi draft on Back", async () => {
     const onChange = vi.fn();
 
-    render(
+    await renderWithRouter(
       <CategoryDrawerSelect
         id="cats"
         mode="multiple"
@@ -86,10 +109,10 @@ describe("CategoryDrawerSelect", () => {
     );
   });
 
-  it("commits single selection immediately", () => {
+  it("commits single selection immediately", async () => {
     const onChange = vi.fn();
 
-    render(
+    await renderWithRouter(
       <CategoryDrawerSelect
         id="cat"
         mode="single"
@@ -109,8 +132,8 @@ describe("CategoryDrawerSelect", () => {
     expect(onChange).toHaveBeenCalledWith("groceries");
   });
 
-  it("uses a rounded content-sized category list", () => {
-    render(
+  it("uses a rounded content-sized category list", async () => {
+    await renderWithRouter(
       <CategoryDrawerSelect
         id="cat"
         mode="single"
@@ -131,8 +154,8 @@ describe("CategoryDrawerSelect", () => {
     expect(list.classList.contains("flex-1")).toBe(false);
   });
 
-  it("renders the optional empty-state action as a categories link", () => {
-    render(
+  it("renders the optional empty-state action as a categories link", async () => {
+    await renderWithRouter(
       <CategoryDrawerSelect
         id="cat"
         mode="single"
@@ -149,7 +172,7 @@ describe("CategoryDrawerSelect", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Choose category" }));
 
-    const action = screen.getByRole("link", { name: "Manage categories" });
+    const action = screen.getByRole("button", { name: "Manage categories" });
     expect(action.tagName).toBe("A");
     expect(action.getAttribute("href")).toMatch(/\/cash-flow\/categories\/?$/);
 
@@ -160,10 +183,10 @@ describe("CategoryDrawerSelect", () => {
     expect(emptyState?.querySelector('[data-slot="empty-icon"]')).not.toBeNull();
   });
 
-  it("clears single selection when clearable", () => {
+  it("clears single selection when clearable", async () => {
     const onChange = vi.fn();
 
-    render(
+    await renderWithRouter(
       <CategoryDrawerSelect
         id="cat"
         mode="single"
