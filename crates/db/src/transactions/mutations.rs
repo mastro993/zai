@@ -28,13 +28,17 @@ pub(super) async fn create_transaction(
             > {
                 let now = clock.sample();
                 let before = snapshot_active_budgets(conn, now)?;
-                let transaction: TransactionRow = new_transaction.into();
+                let currency = crate::currency::default_currency(conn)?;
+                let transaction = TransactionRow::from_new(new_transaction, &currency);
                 let transaction_id = transaction.id.clone();
+                let rate_date = transaction.transaction_date;
 
                 diesel::insert_into(transactions::table)
                     .values(&transaction)
                     .execute(conn)
                     .into_storage()?;
+                crate::currency::insert_identity_rate(conn, &transaction_id, rate_date)
+                    .map_err(crate::errors::StorageError::from)?;
 
                 let inserted = transactions::table
                     .filter(transactions::id.eq(&transaction_id))
@@ -57,7 +61,9 @@ pub(super) async fn create_transaction(
                     &after,
                 )?;
                 Ok(CommittedOutcome::with_alert_outcomes(
-                    inserted.into(),
+                    inserted
+                        .into_domain()
+                        .map_err(crate::errors::StorageError::from)?,
                     alerts,
                 ))
             },
@@ -116,7 +122,12 @@ pub(super) async fn update_transaction(
                     &before,
                     &after,
                 )?;
-                Ok(CommittedOutcome::with_alert_outcomes(persisted.into(), alerts))
+                Ok(CommittedOutcome::with_alert_outcomes(
+                    persisted
+                        .into_domain()
+                        .map_err(crate::errors::StorageError::from)?,
+                    alerts,
+                ))
             },
         )
         .await?;

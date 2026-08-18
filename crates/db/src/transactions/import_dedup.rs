@@ -57,7 +57,7 @@ pub(crate) fn filter_import_duplicates(
         .map(|transaction| {
             duplicate_key(
                 transaction.transaction_date,
-                transaction.amount,
+                i32::try_from(transaction.amount).unwrap_or(i32::MAX),
                 transaction.description.as_deref(),
             )
         })
@@ -104,7 +104,8 @@ mod tests {
         TransactionRow {
             id: "existing".to_string(),
             description: Some(description.to_string()),
-            amount,
+            amount: i64::from(amount),
+            currency: "EUR".to_string(),
             transaction_date: datetime(value),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,

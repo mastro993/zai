@@ -1,5 +1,24 @@
 # Choices
 
+## 2026-08-18 — [Currency schema, silent EUR migration, and fail-closed money commands](https://github.com/mastro993/zai/issues/388)
+
+Seams reused from 377/388 (no re-grill):
+
+- Released-schema fixture upgrade matrix + new `v0010` fixture
+- Connect-path backup, transactional migrate, rollback, format check
+- Command/HTTP money gate (`setupRequired`)
+- Post-setup amount-only writes expand to default-currency identity Money
+- E2E seed: `ZAI_CONFIRM_DEFAULT_CURRENCY=EUR`
+
+Agent defaults:
+
+- Format capability is `application_format.format = multi-currency-v1`
+- Backup is `VACUUM INTO` `{db}.pre-multi-currency` before 0010
+- Silent EUR sets enabled default + identity rates; `setup_completed_at` stays null
+- Minimal sync `complete_initial_currency_setup` (job-based setup stays PR 5)
+- Gate lives on money services (allow-all in unit fakes); repos stay ungated
+- Persist `BIGINT`; wire/authored DTOs stay `i32`
+
 ## 2026-08-18
 
 - **PR CI also targets `feat/**`.** `ci.yml` and `e2e.yml` run on PRs into `main` and `feat/**`. Long-lived feat stacks (e.g. `feat/multi-currency`) get the same gate as `main`. `feat/**` not `feat/*` so nested feat names still match. Benchmarks stay `push` to `main` only.

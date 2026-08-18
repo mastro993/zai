@@ -20,6 +20,7 @@ impl RecurringTransactionsService {
         &self,
         input: PreviewRecurringGenerationRepair,
     ) -> Result<RecurringRepairPreview> {
+        self.require_money()?;
         self.preview_generation_repair_inner(input).await
     }
 
@@ -27,6 +28,7 @@ impl RecurringTransactionsService {
         &self,
         input: RepairRecurringGenerationFailure,
     ) -> Result<RecurringRecoveryOutcome> {
+        self.require_money()?;
         self.repair_and_retry_inner(input).await
     }
 
@@ -34,6 +36,7 @@ impl RecurringTransactionsService {
         &self,
         input: RetryRecurringGenerationFailure,
     ) -> Result<RecurringRecoveryOutcome> {
+        self.require_money()?;
         self.retry_generation_inner(input).await
     }
 
@@ -41,6 +44,7 @@ impl RecurringTransactionsService {
         &self,
         recurring_transaction_id: &str,
     ) -> Result<GenerationFailureDiagnostics> {
+        self.require_money()?;
         self.generation_failure_diagnostics_inner(recurring_transaction_id)
             .await
     }
@@ -51,6 +55,7 @@ impl RecurringTransactionsService {
         limit: Option<i64>,
         cursor: Option<String>,
     ) -> Result<RecurringFailurePage> {
+        self.require_money()?;
         self.list_failure_history_inner(recurring_transaction_id, limit, cursor)
             .await
     }

@@ -6,10 +6,10 @@ use crate::schema::{recurring_schedule_revisions, recurring_template_revisions};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use zai_core::Result;
 use zai_core::features::recurring_transactions::{
     RecurringScheduleRevision, RecurringTemplateRevision,
 };
+use zai_core::{Error, Result};
 
 pub fn find_schedule_revision_at(
     conn: &mut SqliteConnection,
@@ -64,16 +64,23 @@ pub fn find_template_revision_at(
         .optional()
         .into_core()?;
 
-    Ok(row.map(|row| RecurringTemplateRevision {
-        id: row.id,
-        recurring_transaction_id: row.recurring_transaction_id,
-        sequence: row.sequence,
-        effective_from_local: row.effective_from_local,
-        effective_until_local: row.effective_until_local,
-        description: row.description,
-        amount: row.amount,
-        transaction_type: row.transaction_type,
-        transaction_category_id: row.transaction_category_id,
-        notes: row.notes,
-    }))
+    row.map(|row| {
+        Ok(RecurringTemplateRevision {
+            id: row.id,
+            recurring_transaction_id: row.recurring_transaction_id,
+            sequence: row.sequence,
+            effective_from_local: row.effective_from_local,
+            effective_until_local: row.effective_until_local,
+            description: row.description,
+            amount: i32::try_from(row.amount).map_err(|_| {
+                Error::InvalidData(
+                    "Persisted money exceeds the JavaScript-safe wire maximum".to_string(),
+                )
+            })?,
+            transaction_type: row.transaction_type,
+            transaction_category_id: row.transaction_category_id,
+            notes: row.notes,
+        })
+    })
+    .transpose()
 }

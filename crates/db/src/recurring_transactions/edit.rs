@@ -146,7 +146,7 @@ fn apply_template_change(
         )
         .set((
             recurring_template_revisions::description.eq(&template.description),
-            recurring_template_revisions::amount.eq(template.amount),
+            recurring_template_revisions::amount.eq(i64::from(template.amount)),
             recurring_template_revisions::transaction_type.eq(&template.transaction_type),
             recurring_template_revisions::transaction_category_id
                 .eq(&template.transaction_category_id),
@@ -170,6 +170,7 @@ fn apply_template_change(
             open.sequence + 1,
             effective_from_local,
             template,
+            &crate::currency::default_currency(conn)?,
         ))
         .execute(conn)
         .into_storage()?;
@@ -227,6 +228,7 @@ fn template_row(
     sequence: i32,
     effective_from_local: NaiveDateTime,
     template: &RecurringTemplateInput,
+    currency: &str,
 ) -> RecurringTemplateRevisionRow {
     RecurringTemplateRevisionRow {
         id: Uuid::new_v4().to_string(),
@@ -235,7 +237,8 @@ fn template_row(
         effective_from_local,
         effective_until_local: None,
         description: template.description.clone(),
-        amount: template.amount,
+        amount: i64::from(template.amount),
+        currency: currency.to_string(),
         transaction_type: template.transaction_type.clone(),
         transaction_category_id: template.transaction_category_id.clone(),
         notes: template.notes.clone(),

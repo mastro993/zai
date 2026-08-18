@@ -215,8 +215,8 @@ async fn indefinite_alert_omits_counts_and_adopted_rules_forbid_alert() {
         let mut conn = get_connection(&pool).expect("conn");
         conn.immediate_transaction(|conn| {
             diesel::sql_query(
-                "INSERT INTO transactions (id, amount, transaction_date, transaction_type, created_at, updated_at) \
-                 VALUES ('txn-adopt', 1, '2026-01-01 00:00:00', 'expense', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                "INSERT INTO transactions (id, amount, currency, transaction_date, transaction_type, created_at, updated_at) \
+                 VALUES ('txn-adopt', 1, 'EUR', '2026-01-01 00:00:00', 'expense', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
             )
             .execute(conn)?;
             diesel::sql_query(

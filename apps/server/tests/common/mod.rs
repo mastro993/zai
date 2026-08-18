@@ -61,6 +61,10 @@ pub async fn setup_app(
         initialize_context_with_clock(app_data_dir.path(), Arc::new(FixedCalendarClock))
             .expect("shared context should initialize"),
     );
+    context
+        .currency_service()
+        .complete_initial_setup("EUR")
+        .expect("confirm EUR setup");
     (create_router(Arc::clone(&context)), context, app_data_dir)
 }
 

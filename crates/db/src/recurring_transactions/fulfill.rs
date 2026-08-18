@@ -177,12 +177,15 @@ fn fulfill_generated_occurrence(
         transaction_category_id: template.transaction_category_id.clone(),
         notes: template.notes.clone(),
     };
-    let transaction_row: TransactionRow = new_transaction.into();
+    let currency = crate::currency::default_currency(conn).map_err(StorageError::from)?;
+    let transaction_row = TransactionRow::from_new(new_transaction, &currency);
 
     diesel::insert_into(transactions::table)
         .values(&transaction_row)
         .execute(conn)
         .into_storage()?;
+    crate::currency::insert_identity_rate(conn, &transaction_id, scheduled_local)
+        .map_err(StorageError::from)?;
 
     #[cfg(any(test, feature = "failpoints"))]
     {

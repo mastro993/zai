@@ -72,17 +72,17 @@ pub(crate) fn calculate_spending(
     }
 
     query
-        .load::<(i32, String, Option<String>)>(conn)
+        .load::<(i64, String, Option<String>)>(conn)
         .into_storage()?
         .into_iter()
         .try_fold(0_i64, |total, (amount, kind, role)| {
             let contribution = match (kind.as_str(), measurement_mode) {
-                ("expense", _) => i64::from(amount),
-                ("income", BudgetMeasurementMode::NetCashFlow) => -i64::from(amount),
+                ("expense", _) => amount,
+                ("income", BudgetMeasurementMode::NetCashFlow) => -amount,
                 ("income", BudgetMeasurementMode::Spending)
                     if role.as_deref() == Some("spending") =>
                 {
-                    -i64::from(amount)
+                    -amount
                 }
                 _ => 0,
             };
