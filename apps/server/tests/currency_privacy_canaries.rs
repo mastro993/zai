@@ -97,3 +97,33 @@ fn logs_alerts_and_error_envelopes_omit_payloads_and_canaries() {
     assert_absent("error envelope", &serialized);
     assert!(!serialized.contains(CANARY_HTTP));
 }
+
+#[test]
+fn currency_state_events_and_job_dtos_omit_financial_canaries() {
+    use zai_core::features::currency::{
+        CurrencyJob, CurrencyJobStatus, CurrencyJobType, CurrencyStateEvent,
+        serialize_currency_state_event,
+    };
+
+    let event = serialize_currency_state_event(&CurrencyStateEvent::Finished {
+        job_id: "job-1".into(),
+        job_type: CurrencyJobType::Setup,
+        stage_current: 1,
+        stage_total: 1,
+        state: zai_core::features::currency::CurrencyJobFinishState::Succeeded,
+    })
+    .expect("serialize event");
+    assert_absent("currency-state event", &event);
+
+    let job = serde_json::to_string(&CurrencyJob {
+        job_id: "job-1".into(),
+        job_type: CurrencyJobType::Setup,
+        status: CurrencyJobStatus::Succeeded,
+        stage_current: 1,
+        stage_total: 1,
+        currency_code: Some("EUR".into()),
+        error: None,
+    })
+    .expect("serialize job");
+    assert_absent("currency job", &job);
+}

@@ -40,6 +40,7 @@ describe("command transport registry parity", () => {
       "apps/frontend/src/features/budgets/commands/registry.ts",
       "apps/frontend/src/features/categories/commands/registry.ts",
       "apps/frontend/src/features/currency/commands/registry.ts",
+      "apps/frontend/src/features/currency/commands/web-requests.ts",
       "apps/frontend/src/features/transactions/commands/registry.ts",
       "apps/frontend/src/features/recurring-transactions/commands/registry.ts",
       "apps/frontend/src/features/alerts/commands/web-requests.ts",

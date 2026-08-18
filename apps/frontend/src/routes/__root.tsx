@@ -12,6 +12,11 @@ import {
 import { FixedSidebarTrigger } from "@/components/fixed-sidebar-trigger";
 import { NATIVE_BRAND_LEADING_INSET, WindowDragRegion } from "@/components/window-drag-region";
 import { AlertsControllerProvider } from "@/features/alerts/hooks/use-alerts-controller";
+import {
+  CurrencyBootstrapProvider,
+  useCurrencyBootstrap,
+} from "@/features/currency/hooks/use-currency-bootstrap";
+import { InitialCurrencySetupScreen } from "@/features/currency/screens/initial-currency-setup-screen";
 
 import {
   Sidebar,
@@ -65,7 +70,11 @@ export function AppLayout() {
     return <ApplicationBuildTargetError message={buildTargetResult.error.message} />;
   }
 
-  return <ApplicationShell buildTarget={buildTargetResult.value} />;
+  return (
+    <CurrencyBootstrapProvider>
+      <ApplicationShell buildTarget={buildTargetResult.value} />
+    </CurrencyBootstrapProvider>
+  );
 }
 
 interface ApplicationShellProps {
@@ -73,6 +82,24 @@ interface ApplicationShellProps {
 }
 
 function ApplicationShell({ buildTarget }: ApplicationShellProps) {
+  const { ready, setupComplete } = useCurrencyBootstrap();
+
+  if (!ready) {
+    return (
+      <main className="grid h-svh place-items-center bg-background text-foreground">
+        <p>Loading currency setup…</p>
+      </main>
+    );
+  }
+
+  if (!setupComplete) {
+    return <InitialCurrencySetupScreen />;
+  }
+
+  return <ApplicationWorkspace buildTarget={buildTarget} />;
+}
+
+function ApplicationWorkspace({ buildTarget }: ApplicationShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
 
   useEffect(() => {

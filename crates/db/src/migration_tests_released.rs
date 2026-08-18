@@ -36,7 +36,7 @@ fn released_schema_fixtures_upgrade_to_head() {
             diesel::sql_query("SELECT COUNT(*) AS count FROM __diesel_schema_migrations")
                 .get_result::<CountRow>(&mut connection)
                 .expect("migration history");
-        assert_eq!(migration_count.count, 13, "{}", fixture.name);
+        assert_eq!(migration_count.count, 14, "{}", fixture.name);
 
         assert_eq!(
             fixture_data_snapshot(&mut connection, fixture.name),

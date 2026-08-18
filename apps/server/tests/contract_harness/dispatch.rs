@@ -350,7 +350,10 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
             )
         }
         _ => {
-            if let Some(value) = recurring::try_run_tauri_for_recurring(context, call).await {
+            if let Some(value) = super::currency::try_run_tauri_for_currency(context, call) {
+                value
+            } else if let Some(value) = recurring::try_run_tauri_for_recurring(context, call).await
+            {
                 value
             } else {
                 panic!("unsupported contract call: {} {}", call.method, call.path)

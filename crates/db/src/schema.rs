@@ -227,6 +227,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    currency_jobs (id) {
+        id -> Text,
+        job_type -> Text,
+        status -> Text,
+        currency_code -> Nullable<Text>,
+        stage_current -> Integer,
+        stage_total -> Integer,
+        error_code -> Nullable<Text>,
+        error_message -> Nullable<Text>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     transaction_exchange_rate_revisions (id) {
         id -> Text,
         transaction_id -> Text,
@@ -360,6 +375,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     application_format,
     currency_settings,
     enabled_currencies,
+    currency_jobs,
     transaction_exchange_rate_revisions,
     provider_contracts,
     provider_rate_sets,

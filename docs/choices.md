@@ -1,5 +1,25 @@
 # Choices
 
+## 2026-08-18 — [Initial currency setup and currency-state](https://github.com/mastro993/zai/issues/391)
+
+Seams from the ticket (no re-grill):
+
+- Command-contract-parity + server contract harness for bootstrap, catalog, settings, setup, job/status, `currency-state`
+- Zod decode of every new command result
+- Vitest for Inspector initial currency setup
+- Core units for bootstrap null-default, setupRequired, unknown event versions
+
+Agent defaults:
+
+- Stack on valuation generations (#390). Do not land on `main`.
+- Feature folder stays `features/currency` (already on the stack).
+- Bootstrap hides the silent EUR default until setup (`defaultCurrency: null`).
+- Catalog and bootstrap work before setup. Settings list / get-currency fail `setupRequired`.
+- Setup is a durable `currency_jobs` row. EUR / same-currency confirm runs in the request and returns the finished job.
+- One running job via partial unique index. Second start fails `currencyJobConflict`.
+- Locale suggestion is frontend-only: `Intl.Locale.maximize().region` plus a compact region map, else EUR if the guess is unsupported.
+- Inspector setup is a full-screen first-use gate in the root shell. No new route. Workspace prototype stays unshipped.
+
 ## 2026-08-18 — [Valuation generations and set-based budget results](https://github.com/mastro993/zai/issues/390)
 
 Seams from 374/377/390 (no re-grill):

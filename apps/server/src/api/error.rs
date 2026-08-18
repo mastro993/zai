@@ -35,7 +35,12 @@ fn status_for_error(error: &Error) -> StatusCode {
         | Error::ClockRegression(_)
         | Error::CalculationOverflow(_)
         | Error::SetupRequired
+        | Error::UnsupportedCurrency(_)
+        | Error::CurrencyNotEnabled(_)
+        | Error::IncompleteCoverage { .. }
+        | Error::CurrencyJobConflict
         | Error::IncompatibleApplicationFormat => StatusCode::CONFLICT,
+        Error::CurrencyJobNotFound(_) => StatusCode::NOT_FOUND,
         Error::Database(db_error) => match db_error {
             DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
             DatabaseError::UniqueViolation(_) | DatabaseError::ForeignKeyViolation(_) => {
