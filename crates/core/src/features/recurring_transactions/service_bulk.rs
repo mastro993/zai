@@ -19,6 +19,7 @@ use crate::{Error, Result};
 
 impl RecurringTransactionsService {
     pub async fn list_matching_ids(&self) -> Result<RecurringMatchingIds> {
+        self.require_money()?;
         self.list_matching_ids_filtered(RecurringFeedFilters::default())
             .await
     }
@@ -27,6 +28,7 @@ impl RecurringTransactionsService {
         &self,
         filters: RecurringFeedFilters,
     ) -> Result<RecurringMatchingIds> {
+        self.require_money()?;
         self.list_matching_ids_inner(filters).await
     }
 
@@ -34,6 +36,7 @@ impl RecurringTransactionsService {
         &self,
         request: RecurringBulkRequest,
     ) -> Result<RecurringBulkPreflight> {
+        self.require_money()?;
         self.preflight_bulk_inner(request).await
     }
 
@@ -41,6 +44,7 @@ impl RecurringTransactionsService {
         &self,
         request: RecurringBulkRequest,
     ) -> Result<RecurringBulkExecuteResult> {
+        self.require_money()?;
         self.execute_bulk_inner(request).await
     }
 

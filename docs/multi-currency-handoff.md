@@ -66,6 +66,10 @@ add or keep green; the full list still ships only at the final merge.
 - No schema. No commands. No UI.
 - Gate: deterministic unit family for Money, conversion, and coverage
   completeness rules that do not need persistence.
+- Landed on `zai_core::money`. PR: [#399](https://github.com/mastro993/zai/pull/399).
+  Tests: `cargo test -p zai-core --lib money`.
+  Families: `money::amount_tests`, `money::manifest_tests`,
+  `money::convert_tests`, `money::coverage_tests`.
 
 ### 2. Schema + silent EUR + fixtures
 
@@ -82,6 +86,9 @@ add or keep green; the full list still ships only at the final merge.
 - Existing money commands fail closed until later PRs restore them.
 - E2E seed on this branch: silent EUR + confirmed EUR setup.
 - Gate: migration and upgrade family.
+- Landed in this stack PR. Tests: `cargo test -p zai-db --lib migration_`.
+  Families: `migration_currency_tests`, released-schema upgrade through
+  `v0010_multi_currency`, failpoint rollback, pre-currency fail-closed.
 
 ### 3. ECB service + provider cache + privacy canaries
 
@@ -93,6 +100,10 @@ add or keep green; the full list still ships only at the final merge.
   contain no amounts, descriptions, categories, notes, or identifiers.
 - Gate: privacy canaries; provider-cache unit and repository tests that do
   not yet require valuation heads.
+- Landed in this stack PR. Tests: `cargo test -p zai-core --lib exchange_rates`,
+  `cargo test -p zai-db --lib exchange_rates`,
+  `cargo test -p zai-app --lib ecb`,
+  `cargo test -p zai-server --test currency_privacy_canaries --test currency_privacy_inventory`.
 
 ### 4. Valuation generations
 

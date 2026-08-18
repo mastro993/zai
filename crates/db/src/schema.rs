@@ -18,7 +18,8 @@ diesel::table! {
     transactions (id) {
         id -> Text,
         description -> Nullable<Text>,
-        amount -> Integer,
+        amount -> BigInt,
+        currency -> Text,
         transaction_date -> Timestamp,
         transaction_type -> Text,
         transaction_category_id -> Nullable<Text>,
@@ -130,7 +131,8 @@ diesel::table! {
         effective_from_local -> Timestamp,
         effective_until_local -> Nullable<Timestamp>,
         description -> Text,
-        amount -> Integer,
+        amount -> BigInt,
+        currency -> Text,
         transaction_type -> Text,
         transaction_category_id -> Nullable<Text>,
         notes -> Nullable<Text>,
@@ -196,6 +198,110 @@ diesel::joinable!(recurring_generation_failures -> recurring_schedule_revisions 
 diesel::joinable!(recurring_generation_failures -> domain_alerts (generation_failure_alert_id));
 diesel::joinable!(recurring_template_revisions -> transaction_categories (transaction_category_id));
 
+diesel::table! {
+    application_format (id) {
+        id -> Integer,
+        format -> Text,
+        activated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    currency_settings (id) {
+        id -> Integer,
+        default_currency -> Text,
+        setup_completed_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    enabled_currencies (code) {
+        code -> Text,
+        enabled_at -> Timestamp,
+        disabled_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    transaction_exchange_rate_revisions (id) {
+        id -> Text,
+        transaction_id -> Text,
+        sequence -> Integer,
+        variant -> Text,
+        rate_date -> Nullable<Timestamp>,
+        original_decimal -> Nullable<Text>,
+        coefficient -> Nullable<BigInt>,
+        scale -> Nullable<Integer>,
+        formula_version -> Integer,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::joinable!(transaction_exchange_rate_revisions -> transactions (transaction_id));
+
+diesel::table! {
+    provider_contracts (id) {
+        id -> Text,
+        provider -> Text,
+        version -> Integer,
+        base_currency -> Text,
+        series_identity -> Text,
+        value_date_time_zone -> Text,
+        formula_version -> Integer,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    provider_rate_sets (id) {
+        id -> Text,
+        provider_contract_id -> Text,
+        revision_identity -> Text,
+        payload_digest -> Text,
+        accepted_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    provider_rate_observations (id) {
+        id -> Text,
+        rate_set_id -> Text,
+        currency -> Text,
+        series_id -> Text,
+        value_date -> Text,
+        original_decimal -> Text,
+        coefficient -> BigInt,
+        scale -> Integer,
+        attribution -> Text,
+    }
+}
+
+diesel::table! {
+    provider_heads (id) {
+        id -> Integer,
+        rate_set_id -> Text,
+        switched_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    provider_refresh_state (id) {
+        id -> Integer,
+        provider_contract_id -> Text,
+        last_attempt_at -> Nullable<Timestamp>,
+        last_success_at -> Nullable<Timestamp>,
+        failure_class -> Nullable<Text>,
+        retry_count -> Integer,
+        last_etag -> Nullable<Text>,
+        last_updated_after -> Nullable<Text>,
+    }
+}
+
+diesel::joinable!(provider_rate_sets -> provider_contracts (provider_contract_id));
+diesel::joinable!(provider_rate_observations -> provider_rate_sets (rate_set_id));
+diesel::joinable!(provider_heads -> provider_rate_sets (rate_set_id));
+diesel::joinable!(provider_refresh_state -> provider_contracts (provider_contract_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     transaction_categories,
     transactions,
@@ -209,4 +315,13 @@ diesel::allow_tables_to_appear_in_same_query!(
     recurring_occurrence_heads,
     recurring_occurrences,
     recurring_generation_failures,
+    application_format,
+    currency_settings,
+    enabled_currencies,
+    transaction_exchange_rate_revisions,
+    provider_contracts,
+    provider_rate_sets,
+    provider_rate_observations,
+    provider_heads,
+    provider_refresh_state,
 );

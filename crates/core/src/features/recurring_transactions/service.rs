@@ -15,6 +15,7 @@ use super::traits::{
     RecurringOccurrenceProcessor, RecurringProcessingWake, RecurringTransactionsRepositoryTrait,
 };
 use crate::features::budgets::traits::CalendarClock;
+use crate::features::currency::{AllowCurrencySetup, CurrencySetupGate};
 use crate::{Error, Result};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
@@ -23,6 +24,7 @@ use uuid::Uuid;
 pub struct RecurringTransactionsService {
     pub(super) repository: Arc<dyn RecurringTransactionsRepositoryTrait>,
     pub(super) clock: Arc<dyn CalendarClock>,
+    pub(super) currency_setup: Arc<dyn CurrencySetupGate>,
     wake: std::sync::RwLock<Option<Arc<dyn RecurringProcessingWake>>>,
 }
 
@@ -34,8 +36,18 @@ impl RecurringTransactionsService {
         Self {
             repository,
             clock,
+            currency_setup: Arc::new(AllowCurrencySetup),
             wake: std::sync::RwLock::new(None),
         }
+    }
+
+    pub fn with_currency_setup(mut self, currency_setup: Arc<dyn CurrencySetupGate>) -> Self {
+        self.currency_setup = currency_setup;
+        self
+    }
+
+    pub(super) fn require_money(&self) -> Result<()> {
+        self.currency_setup.require_setup()
     }
 
     pub fn attach_wake(&self, wake: Arc<dyn RecurringProcessingWake>) {
@@ -63,6 +75,7 @@ impl RecurringTransactionsService {
         limit: Option<i64>,
         cursor: Option<String>,
     ) -> Result<RecurringFeedResult> {
+        self.require_money()?;
         self.list_feed_filtered(limit, cursor, RecurringFeedFilters::default())
             .await
     }
@@ -73,6 +86,7 @@ impl RecurringTransactionsService {
         cursor: Option<String>,
         filters: RecurringFeedFilters,
     ) -> Result<RecurringFeedResult> {
+        self.require_money()?;
         let limit = limit.unwrap_or(DEFAULT_FEED_LIMIT).clamp(1, MAX_FEED_LIMIT);
         let filters = filters.normalized()?;
         let page = self
@@ -104,6 +118,7 @@ impl RecurringTransactionsService {
     }
 
     pub async fn get_document(&self, id: &str) -> Result<RecurringTransactionDocument> {
+        self.require_money()?;
         let recurring = self.repository.get_recurring_transaction(id).await?;
         self.compose_document(recurring).await
     }
@@ -114,6 +129,7 @@ impl RecurringTransactionsService {
         limit: Option<i64>,
         cursor: Option<String>,
     ) -> Result<RecurringOccurrencePage> {
+        self.require_money()?;
         let recurring = self
             .repository
             .get_recurring_transaction(recurring_transaction_id)
@@ -133,6 +149,7 @@ impl RecurringTransactionsService {
         &self,
         transaction_id: &str,
     ) -> Result<Option<TransactionRecurringProvenance>> {
+        self.require_money()?;
         let Some(occurrence) = self
             .repository
             .find_provenance_by_transaction(transaction_id)
@@ -161,6 +178,7 @@ impl RecurringTransactionsService {
     }
 
     pub async fn preview_adoption(&self, input: AdoptionPreviewRequest) -> Result<AdoptionPreview> {
+        self.require_money()?;
         input.validate_inputs()?;
         let observed_local = self.clock.sample();
         if self
@@ -195,6 +213,7 @@ impl RecurringTransactionsService {
         &self,
         mut input: NewRecurringTransaction,
     ) -> Result<RecurringCreateOutcome> {
+        self.require_money()?;
         input.template.description = normalize_template_description(&input.template.description);
         input.id = Some(Self::assign_id(input.id)?);
         let first_scheduled_local =

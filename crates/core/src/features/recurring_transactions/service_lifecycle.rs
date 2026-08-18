@@ -14,6 +14,7 @@ impl RecurringTransactionsService {
         &self,
         input: RecurringLifecycleUpdate,
     ) -> Result<RecurringLifecycleOutcome> {
+        self.require_money()?;
         self.apply_lifecycle(RecurringLifecycleCommand::Pause, input)
             .await
     }
@@ -44,6 +45,7 @@ impl RecurringTransactionsService {
         command: RecurringLifecycleCommand,
         update: RecurringLifecycleUpdate,
     ) -> Result<RecurringLifecycleOutcome> {
+        self.require_money()?;
         update.validate_revision()?;
         let observed_local = self.clock.sample();
 

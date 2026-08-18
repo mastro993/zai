@@ -19,7 +19,8 @@ struct AffectedTemplate {
     effective_from_local: NaiveDateTime,
     effective_until_local: Option<NaiveDateTime>,
     head_local: NaiveDateTime,
-    amount: i32,
+    amount: i64,
+    currency: String,
     transaction_type: String,
     notes: Option<String>,
 }
@@ -95,6 +96,7 @@ pub(super) fn uncategorize_unfulfilled(
                         .eq(row.effective_until_local),
                     recurring_template_revisions::description.eq(row.description),
                     recurring_template_revisions::amount.eq(row.amount),
+                    recurring_template_revisions::currency.eq(&row.currency),
                     recurring_template_revisions::transaction_type.eq(row.transaction_type),
                     recurring_template_revisions::transaction_category_id.eq(None::<String>),
                     recurring_template_revisions::notes.eq(row.notes),
@@ -171,6 +173,7 @@ fn load_affected_templates(
             recurring_template_revisions::effective_until_local,
             recurring_occurrence_heads::next_scheduled_local,
             recurring_template_revisions::amount,
+            recurring_template_revisions::currency,
             recurring_template_revisions::transaction_type,
             recurring_template_revisions::notes,
         ))
@@ -181,7 +184,8 @@ fn load_affected_templates(
             NaiveDateTime,
             Option<NaiveDateTime>,
             NaiveDateTime,
-            i32,
+            i64,
+            String,
             String,
             Option<String>,
         )>(conn)
@@ -197,6 +201,7 @@ fn load_affected_templates(
                         effective_until_local,
                         head_local,
                         amount,
+                        currency,
                         transaction_type,
                         notes,
                     )| AffectedTemplate {
@@ -207,6 +212,7 @@ fn load_affected_templates(
                         effective_until_local,
                         head_local,
                         amount,
+                        currency,
                         transaction_type,
                         notes,
                     },

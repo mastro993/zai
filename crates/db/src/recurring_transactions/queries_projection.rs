@@ -254,21 +254,26 @@ fn list_template_revisions(
         .order(recurring_template_revisions::effective_from_local.asc())
         .load::<RecurringTemplateRevisionRow>(conn)
         .into_core()?;
-    Ok(rows
-        .into_iter()
-        .map(|row| RecurringTemplateRevision {
-            id: row.id,
-            recurring_transaction_id: row.recurring_transaction_id,
-            sequence: row.sequence,
-            effective_from_local: row.effective_from_local,
-            effective_until_local: row.effective_until_local,
-            description: row.description,
-            amount: row.amount,
-            transaction_type: row.transaction_type,
-            transaction_category_id: row.transaction_category_id,
-            notes: row.notes,
+    rows.into_iter()
+        .map(|row| {
+            Ok(RecurringTemplateRevision {
+                id: row.id,
+                recurring_transaction_id: row.recurring_transaction_id,
+                sequence: row.sequence,
+                effective_from_local: row.effective_from_local,
+                effective_until_local: row.effective_until_local,
+                description: row.description,
+                amount: i32::try_from(row.amount).map_err(|_| {
+                    zai_core::Error::InvalidData(
+                        "Persisted money exceeds the JavaScript-safe wire maximum".to_string(),
+                    )
+                })?,
+                transaction_type: row.transaction_type,
+                transaction_category_id: row.transaction_category_id,
+                notes: row.notes,
+            })
         })
-        .collect())
+        .collect()
 }
 
 pub fn read_schema_version(conn: &mut SqliteConnection) -> Result<String> {

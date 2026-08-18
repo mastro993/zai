@@ -74,7 +74,10 @@ pub(super) async fn get_transactions(
             .load_page::<TransactionRow>(conn)
             .into_core()?;
 
-        let data = page_rows.into_iter().map(Transaction::from).collect();
+        let data = page_rows
+            .into_iter()
+            .map(TransactionRow::into_domain)
+            .collect::<zai_core::Result<Vec<_>>>()?;
 
         Ok(PaginatedData {
             data,
@@ -101,7 +104,7 @@ pub(super) async fn get_transaction(
             .first::<TransactionRow>(&mut conn)
             .into_core()?;
 
-        Ok(result.into())
+        result.into_domain()
     })
     .await
 }

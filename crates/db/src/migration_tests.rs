@@ -1,4 +1,7 @@
 use crate::connection::{create_pool, run_migrations};
+use crate::migration_fixture_support::{
+    RELEASED_SCHEMA_FIXTURES, load_released_schema_fixture, setup_fixture_at_version,
+};
 use crate::test_utils::TempDb;
 use diesel::Connection;
 use diesel::RunQueryDsl;
@@ -53,7 +56,7 @@ fn fresh_database_applies_squashed_budget_migration_with_current_schema() {
     .get_result::<SqlRow>(&mut connection)
     .expect("budget table");
 
-    assert_eq!(migration_count.count, 10);
+    assert_eq!(migration_count.count, 12);
     assert_eq!(table_count.count, 5);
     assert_eq!(role_column_count.count, 1);
     assert_eq!(index_count.count, 8);
@@ -113,9 +116,7 @@ fn fresh_database_applies_squashed_budget_migration_with_current_schema() {
 fn baseline_migration_can_be_reverted() {
     let temp_db = TempDb::new();
     let mut connection = SqliteConnection::establish(temp_db.path()).expect("connect");
-    let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
-
-    run_migrations(&pool).expect("migrations");
+    load_released_schema_fixture(&mut connection, "v0009_recurring_transactions");
     connection
         .revert_last_migration(TEST_MIGRATIONS)
         .expect("revert recurring migration");
@@ -152,17 +153,12 @@ fn baseline_migration_can_be_reverted() {
 
 #[test]
 fn pre_alert_finance_data_survives_domain_alerts_migration() {
-    let temp_db = TempDb::new();
-    let mut connection = SqliteConnection::establish(temp_db.path()).expect("connect");
+    let fixture = RELEASED_SCHEMA_FIXTURES
+        .iter()
+        .find(|fixture| fixture.name == "v0007_budget_lifecycle")
+        .expect("v0007");
+    let (temp_db, mut connection, _) = setup_fixture_at_version(fixture);
     let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
-
-    run_migrations(&pool).expect("migrations");
-    connection
-        .revert_last_migration(TEST_MIGRATIONS)
-        .expect("revert recurring migration");
-    connection
-        .revert_last_migration(TEST_MIGRATIONS)
-        .expect("revert domain alerts migration");
 
     diesel::sql_query(
         "INSERT INTO transaction_categories (id, name, role, created_at, updated_at) \
@@ -243,14 +239,12 @@ struct AlertPreserveRow {
 
 #[test]
 fn populated_alerts_and_finance_survive_recurring_migration() {
-    let temp_db = TempDb::new();
-    let mut connection = SqliteConnection::establish(temp_db.path()).expect("connect");
+    let fixture = RELEASED_SCHEMA_FIXTURES
+        .iter()
+        .find(|fixture| fixture.name == "v0008_domain_alerts")
+        .expect("v0008");
+    let (temp_db, mut connection, _) = setup_fixture_at_version(fixture);
     let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
-
-    run_migrations(&pool).expect("migrations");
-    connection
-        .revert_last_migration(TEST_MIGRATIONS)
-        .expect("revert recurring");
 
     diesel::sql_query(
         "INSERT INTO transaction_categories (id, name, role, created_at, updated_at) \
@@ -312,8 +306,7 @@ fn populated_alerts_and_finance_survive_recurring_migration() {
 fn recurring_downgrade_refuses_when_data_present_and_succeeds_when_empty() {
     let temp_db = TempDb::new();
     let mut connection = SqliteConnection::establish(temp_db.path()).expect("connect");
-    let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
-    run_migrations(&pool).expect("migrations");
+    load_released_schema_fixture(&mut connection, "v0009_recurring_transactions");
 
     diesel::sql_query(
         "INSERT INTO recurring_transactions (\

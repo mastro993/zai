@@ -66,6 +66,11 @@ not call currency core services directly.
   rate may convert with stale status.
 - Coverage is complete only for exact, approved carry-forward, and
   not-yet-due dates. Expected gaps fail closed.
+- PR 1 evidence ([#399](https://github.com/mastro993/zai/pull/399)):
+  `cargo test -p zai-core --lib money` (`amount_tests`,
+  `manifest_tests`, `convert_tests`, `coverage_tests`). Revision history,
+  `manualRateReplacementRequired`, authored-allowance restatement,
+  projection heads, and setup gating wait for later stack PRs.
 - Initial currency setup gates every money-bearing write and every read that
   requires a default currency. Hardcoded `EUR` in alert rich data is
   forbidden.
@@ -119,6 +124,9 @@ not call currency core services directly.
 - Canaries prove amounts, descriptions, categories, notes, and identifiers
   are absent from request URL, headers, body, logs, `currency-state` events,
   job DTOs, and error envelopes.
+- Landed names: `provider_requests_omit_financial_and_identity_canaries`,
+  `logs_alerts_and_error_envelopes_omit_payloads_and_canaries`,
+  `frontend_and_public_transports_never_contact_a_provider`.
 - Logs record stable failure class and timing only.
 - The frontend never contacts a provider.
 
@@ -235,3 +243,8 @@ cargo test -p zai --lib native_currency_workflow_smoke
 The native smoke requires the workspace `dist/index.html` stub when run
 alone; `pnpm check:backend` creates it as part of the backend gate. Update
 the exact smoke test name here when it lands.
+
+PR 2 evidence: `migration_currency_tests::*`,
+`released_schema_fixtures_upgrade_to_head` through `v0010_multi_currency`,
+`destructive_down_migration_is_refused_after_activation`,
+`pre_currency_client_fails_closed_on_migrated_database`.

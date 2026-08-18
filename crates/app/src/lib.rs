@@ -8,6 +8,7 @@ use zai_core::features::recurring_transactions::{
 };
 use zai_core::features::{
     budgets::{service::BudgetsService, traits::BudgetsServiceTrait},
+    currency::CurrencyService,
     domain_alerts::{DomainAlertsService, DomainAlertsServiceTrait},
     transaction_categories::{
         service::TransactionCategoriesService, traits::TransactionCategoriesServiceTrait,
@@ -15,11 +16,16 @@ use zai_core::features::{
     transactions::{service::TransactionsService, traits::TransactionsServiceTrait},
 };
 
+mod ecb;
 mod recurring_supervisor;
+use ecb::EcbHttpAdapter;
 use recurring_supervisor::{ProcessDelayAlertPort, RepositorySupervisorHeads};
+use zai_core::features::exchange_rates::{ExchangeRateService, SystemUtcClock};
 
 pub struct ServiceContext {
     pub budgets_service: Arc<dyn BudgetsServiceTrait>,
+    pub currency_service: Arc<CurrencyService>,
+    pub exchange_rate_service: Arc<ExchangeRateService>,
     pub domain_alerts_service: Arc<dyn DomainAlertsServiceTrait>,
     pub recurring_transactions_service: Arc<RecurringTransactionsService>,
     pub transaction_categories_service: Arc<dyn TransactionCategoriesServiceTrait>,
@@ -32,6 +38,14 @@ pub struct ServiceContext {
 impl ServiceContext {
     pub fn budgets_service(&self) -> Arc<dyn BudgetsServiceTrait> {
         Arc::clone(&self.budgets_service)
+    }
+
+    pub fn currency_service(&self) -> Arc<CurrencyService> {
+        Arc::clone(&self.currency_service)
+    }
+
+    pub fn exchange_rate_service(&self) -> Arc<ExchangeRateService> {
+        Arc::clone(&self.exchange_rate_service)
     }
 
     pub fn domain_alerts_service(&self) -> Arc<dyn DomainAlertsServiceTrait> {
@@ -135,6 +149,14 @@ pub fn bootstrap_context_with_buses_and_clock(
     )?;
     log::info!("Database initialized at {}", database.path().display());
 
+    let currency_service = Arc::new(CurrencyService::new(
+        database.currency_settings_repository(),
+    ));
+    let exchange_rate_service = Arc::new(ExchangeRateService::new(
+        Arc::new(EcbHttpAdapter::production()?),
+        database.exchange_rate_repository(),
+        Arc::new(SystemUtcClock),
+    ));
     let transaction_categories_repository = database.transaction_categories_repository();
     let transactions_repository = database.transactions_repository();
     let budgets_repository = database.budgets_repository();
@@ -145,10 +167,10 @@ pub fn bootstrap_context_with_buses_and_clock(
     ));
     let delay_alerts = Arc::new(ProcessDelayAlertPort::new(domain_alerts_repository.clone()));
 
-    let recurring_transactions_service = Arc::new(RecurringTransactionsService::new(
-        recurring_transactions_repository,
-        Arc::clone(&clock),
-    ));
+    let recurring_transactions_service = Arc::new(
+        RecurringTransactionsService::new(recurring_transactions_repository, Arc::clone(&clock))
+            .with_currency_setup(currency_service.clone()),
+    );
     let supervisor = RecurringProcessingSupervisor::new(
         recurring_transactions_service.clone(),
         clock,
@@ -164,13 +186,21 @@ pub fn bootstrap_context_with_buses_and_clock(
 
     Ok(BootstrappedApp {
         context: ServiceContext {
-            budgets_service: Arc::new(BudgetsService::new(budgets_repository)),
+            budgets_service: Arc::new(
+                BudgetsService::new(budgets_repository)
+                    .with_currency_setup(currency_service.clone()),
+            ),
+            currency_service: currency_service.clone(),
+            exchange_rate_service,
             domain_alerts_service: Arc::new(DomainAlertsService::new(domain_alerts_repository)),
             recurring_transactions_service,
             transaction_categories_service: Arc::new(TransactionCategoriesService::new(
                 transaction_categories_repository,
             )),
-            transactions_service: Arc::new(TransactionsService::new(transactions_repository)),
+            transactions_service: Arc::new(
+                TransactionsService::new(transactions_repository)
+                    .with_currency_setup(currency_service),
+            ),
             domain_alert_event_bus,
             recurring_processing_event_bus,
             recurring_processing_supervisor: handle,
@@ -218,6 +248,10 @@ mod tests {
         let app_data_dir = TempAppDataDir::new();
 
         let context = initialize_context(app_data_dir.path()).expect("context should initialize");
+        context
+            .currency_service()
+            .complete_initial_setup("EUR")
+            .expect("confirm EUR setup");
 
         assert!(app_data_dir.path().join("zai.db").exists());
 
@@ -246,5 +280,13 @@ mod tests {
         assert!(transactions.data.is_empty());
         assert!(budgets.is_empty());
         assert!(recurring.items.is_empty());
+        assert!(
+            context
+                .exchange_rate_service()
+                .current_set()
+                .await
+                .expect("cache read")
+                .is_none()
+        );
     }
 }

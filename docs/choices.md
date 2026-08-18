@@ -1,5 +1,46 @@
 # Choices
 
+## 2026-08-18 — [Private ECB provider cache with privacy canaries](https://github.com/mastro993/zai/issues/389)
+
+Seams from 373/377/389 (no re-grill):
+
+- `zai_core::features::exchange_rates` public API: request plan, payload validate, refresh service
+- `ExchangeRateCache` repository publish/read
+- Privacy canaries + public-surface inventory (same shape as recurring)
+
+Agent defaults:
+
+- Host allow-list is only `data-api.ecb.europa.eu`
+- User-Agent is `Zai/{CARGO_PKG_VERSION}`
+- Approved series = 29 ECB daily FX currencies in manifest v1 (RUB suspended; BGN omitted, not in v1)
+- History boundary `1999-01-04`; initial load = calendar-year chunks
+- Refresh uses `updatedAfter` then merges into last-known-good before validate
+- Persist ECB-vs-EUR legs only; EUR cross rates computed locally
+- No supervisor auto-start this PR (no request without later consent)
+- Publication deadline approximated as 15:00 UTC (CET winter)
+- Refresh `updatedAfter` is the last successful sync RFC3339, not HTTP Last-Modified
+- Refresh sends stored ETag as `If-None-Match`
+- Same payload digest after merge is `NotModified` (no second insert)
+
+## 2026-08-18 — [Currency schema, silent EUR migration, and fail-closed money commands](https://github.com/mastro993/zai/issues/388)
+
+Seams reused from 377/388 (no re-grill):
+
+- Released-schema fixture upgrade matrix + new `v0010` fixture
+- Connect-path backup, transactional migrate, rollback, format check
+- Command/HTTP money gate (`setupRequired`)
+- Post-setup amount-only writes expand to default-currency identity Money
+- E2E seed: `ZAI_CONFIRM_DEFAULT_CURRENCY=EUR`
+
+Agent defaults:
+
+- Format capability is `application_format.format = multi-currency-v1`
+- Backup is `VACUUM INTO` `{db}.pre-multi-currency` before 0010
+- Silent EUR sets enabled default + identity rates; `setup_completed_at` stays null
+- Minimal sync `complete_initial_currency_setup` (job-based setup stays PR 5)
+- Gate lives on money services (allow-all in unit fakes); repos stay ungated
+- Persist `BIGINT`; wire/authored DTOs stay `i32`
+
 ## 2026-08-18
 
 - **PR CI also targets `feat/**`.** `ci.yml` and `e2e.yml` run on PRs into `main` and `feat/**`. Long-lived feat stacks (e.g. `feat/multi-currency`) get the same gate as `main`. `feat/**` not `feat/*` so nested feat names still match. Benchmarks stay `push` to `main` only.
@@ -61,3 +102,14 @@ Agent defaults (no re-grill; contracts already accepted):
 - **Anti-slop migration shipped with the install.** Stop hook requires `pnpm check`. Findings were fixed, not suppressed: `satisfies` / named contracts, zod + `asWire*` instead of `typeof`/`unknown`, `setCommandTransports` + file-capability adapters instead of `vi.mock`, `schema.parse` fixtures instead of `as T`.
 - **Tauri plugin ESM exports are not spyable** (`configurable: false`). File-capability tests inject `{ web, tauri }` adapters; real `tauriSelectCsvImportFile` / `tauriDownloadTextFile` / Tauri `listen` are called only to assert fail-closed outside Tauri.
 - **Table-driven web-request `as never` replaced with `check<T>(build, args, expected)`.** Dropped type-lie cases (`items: "bad"`, invalid enum keys). Kept empty id / revision 0.
+
+## 2026-08-18 — [Exact Money, ISO manifest, and checked conversion](https://github.com/mastro993/zai/issues/387)
+
+Seams (from the ticket + 370/372): `zai_core::money` public API only. No schema, commands, UI.
+
+- **Manifest v1** pins SIX List One `2026-01-01` and CLDR 48.2. 155 fiat candidates. Generator: `scripts/generate-currency-manifest.py`.
+- **VED `valid_from` = 2021-10-01** from ISO 4217 Amendment 170. CLDR 48.2 lists VED as `tender=false` with no `from`.
+- **Wire/authored cap** is `i32::MAX` via `Money::from_authored` / `try_to_wire_minor_units`. Persist constructor accepts `i64`.
+- **`num-bigint` 0.4.8** for conversion intermediates. Round half-even once at the target ISO digits. No `f64`.
+- **Automatic legs share a `rate_set_id`.** Same value date is not enough; unexplained cross rates stay forbidden.
+- **CLDR pin URL is the raw `supplementalData.xml`** that matches `CLDR_SHA256`, not the GitHub HTML blob page.

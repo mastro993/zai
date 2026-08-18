@@ -115,6 +115,11 @@ impl NativeHarness {
             Arc::new(FixedClock::new(fixed_now())),
         )
         .expect("native context should boot");
+        bootstrapped
+            .context
+            .currency_service()
+            .complete_initial_setup("EUR")
+            .expect("confirm EUR setup");
         let context = Arc::new(bootstrapped.context);
         let supervisor_handle = context.recurring_processing_supervisor();
         let app = register_commands(mock_builder())

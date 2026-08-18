@@ -1,4 +1,8 @@
 use crate::budgets::BudgetsRepository;
+pub use crate::currency::ClientFormat;
+use crate::currency::{
+    activate_currency_schema, assert_client_format, maybe_confirm_default_currency,
+};
 use crate::domain_alerts::DomainAlertsRepository;
 use crate::errors::{IntoCore, StorageError};
 use crate::recurring_transactions::RecurringTransactionsRepository;
@@ -17,6 +21,8 @@ use std::sync::Arc;
 use zai_core::Result;
 use zai_core::features::budgets::traits::{CalendarClock, LocalCalendarClock};
 use zai_core::features::domain_alerts::DomainAlertEventBus;
+
+const PRE_CURRENCY_BACKUP_SUFFIX: &str = ".pre-multi-currency";
 
 pub(crate) type DbPool = Pool<ConnectionManager<SqliteConnection>>;
 pub(crate) type DbConnection = PooledConnection<ConnectionManager<SqliteConnection>>;
@@ -76,6 +82,19 @@ impl Database {
         ))
     }
 
+    pub fn currency_settings_repository(&self) -> Arc<crate::currency::CurrencySettingsRepository> {
+        Arc::new(crate::currency::CurrencySettingsRepository::new(
+            Arc::clone(&self.pool),
+        ))
+    }
+
+    pub fn exchange_rate_repository(&self) -> Arc<crate::exchange_rates::ExchangeRateRepository> {
+        Arc::new(crate::exchange_rates::ExchangeRateRepository::new(
+            Arc::clone(&self.pool),
+            self.writer.clone(),
+        ))
+    }
+
     pub fn recurring_transactions_repository(&self) -> Arc<RecurringTransactionsRepository> {
         Arc::new(
             RecurringTransactionsRepository::new_with_clock_and_publisher(
@@ -93,7 +112,20 @@ impl Database {
 }
 
 pub fn connect(app_data_dir: impl AsRef<Path>) -> Result<Database> {
-    connect_with_event_bus(app_data_dir, DomainAlertEventBus::new())
+    connect_with_client_format(app_data_dir, ClientFormat::MultiCurrencyV1)
+}
+
+pub fn connect_with_client_format(
+    app_data_dir: impl AsRef<Path>,
+    client_format: ClientFormat,
+) -> Result<Database> {
+    connect_with_event_bus_clock_and_format(
+        app_data_dir,
+        DomainAlertEventBus::new(),
+        Arc::new(LocalCalendarClock),
+        client_format,
+        true,
+    )
 }
 
 pub fn connect_with_event_bus(
@@ -112,10 +144,50 @@ pub fn connect_with_event_bus_and_clock(
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
     clock: Arc<dyn CalendarClock>,
 ) -> Result<Database> {
+    connect_with_event_bus_clock_and_format(
+        app_data_dir,
+        domain_alert_event_bus,
+        clock,
+        ClientFormat::MultiCurrencyV1,
+        true,
+    )
+}
+
+pub fn open_existing_with_client_format(
+    app_data_dir: impl AsRef<Path>,
+    client_format: ClientFormat,
+) -> Result<Database> {
+    connect_with_event_bus_clock_and_format(
+        app_data_dir,
+        DomainAlertEventBus::new(),
+        Arc::new(LocalCalendarClock),
+        client_format,
+        false,
+    )
+}
+
+pub fn pre_currency_backup_path(db_path: &Path) -> PathBuf {
+    let mut file_name = db_path.file_name().unwrap_or_default().to_os_string();
+    file_name.push(PRE_CURRENCY_BACKUP_SUFFIX);
+    db_path.with_file_name(file_name)
+}
+
+fn connect_with_event_bus_clock_and_format(
+    app_data_dir: impl AsRef<Path>,
+    domain_alert_event_bus: Arc<DomainAlertEventBus>,
+    clock: Arc<dyn CalendarClock>,
+    client_format: ClientFormat,
+    migrate: bool,
+) -> Result<Database> {
     let db_path = get_db_path(app_data_dir.as_ref());
     init(&db_path)?;
-    let pool = create_pool(&db_path)?;
-    run_migrations(&pool)?;
+    let pool = if migrate {
+        activate_currency_schema(&db_path)?
+    } else {
+        create_pool(&db_path)?
+    };
+    maybe_confirm_default_currency(&pool)?;
+    assert_client_format(&pool, client_format)?;
     let writer = spawn_writer(pool.as_ref().clone())?;
 
     Ok(Database {

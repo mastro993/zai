@@ -114,6 +114,11 @@ pub(crate) const RELEASED_SCHEMA_FIXTURES: &[ReleasedSchemaFixture] = &[
             "../fixtures/released_schemas/v0009_recurring_transactions_seed.sql"
         ),
     },
+    ReleasedSchemaFixture {
+        name: "v0010_multi_currency",
+        expected_version: "202608181200000010",
+        seed_sql: include_str!("../fixtures/released_schemas/v0010_multi_currency_seed.sql"),
+    },
 ];
 
 pub(crate) fn fixture_path(name: &str) -> PathBuf {
@@ -130,6 +135,15 @@ pub(crate) fn load_released_schema_fixture(
         .batch_execute(&sql)
         .unwrap_or_else(|err| panic!("apply fixture {fixture_name}: {err}"));
     latest_migration_version(connection)
+}
+
+fn latest_migration_version_optional(connection: &mut SqliteConnection) -> Option<String> {
+    diesel::sql_query(
+        "SELECT version FROM __diesel_schema_migrations ORDER BY version DESC LIMIT 1",
+    )
+    .get_result::<VersionRow>(connection)
+    .ok()
+    .map(|row| row.version)
 }
 
 pub(crate) fn latest_migration_version(connection: &mut SqliteConnection) -> String {
@@ -207,6 +221,7 @@ mod generator {
         ("v0007_budget_lifecycle", "202607122000000007"),
         ("v0008_domain_alerts", "202607141200000008"),
         ("v0009_recurring_transactions", "202607202100000009"),
+        ("v0010_multi_currency", "202608181200000010"),
     ];
 
     #[test]
@@ -220,7 +235,7 @@ mod generator {
             diesel::sql_query("SELECT version FROM __diesel_schema_migrations ORDER BY version")
                 .load(&mut connection)
                 .expect("versions");
-        assert_eq!(versions.len(), 10);
+        assert_eq!(versions.len(), 12);
         assert_eq!(versions[3].version, "202607120900000003");
         assert_eq!(versions[4].version, "202607121000000004");
         assert_eq!(versions[5].version, "202607121200000005");
@@ -235,14 +250,14 @@ mod generator {
         for (name, target_version) in FRONTIER_VERSIONS {
             let temp_db = TempDb::new();
             let mut connection = SqliteConnection::establish(temp_db.path()).expect("connect");
-            connection
-                .run_pending_migrations(TEST_MIGRATIONS)
-                .expect("apply all migrations");
-
-            while latest_migration_version(&mut connection) != *target_version {
+            loop {
+                let current = latest_migration_version_optional(&mut connection);
+                if current.as_deref() == Some(*target_version) {
+                    break;
+                }
                 connection
-                    .revert_last_migration(TEST_MIGRATIONS)
-                    .expect("revert to frontier");
+                    .run_next_migration(TEST_MIGRATIONS)
+                    .expect("apply next migration toward frontier");
             }
 
             let dump = dump_database_schema(&mut connection);

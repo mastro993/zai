@@ -57,8 +57,8 @@ async fn provenance_and_failure_queries_are_indexed() {
             let template_id = template_id.clone();
             move |conn| {
                 diesel::sql_query(
-                    "INSERT INTO transactions (id, amount, transaction_date, transaction_type, created_at, updated_at) \
-                     VALUES ('txn-1', 2500, '2026-01-01 09:00:00', 'income', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                    "INSERT INTO transactions (id, amount, currency, transaction_date, transaction_type, created_at, updated_at) \
+                     VALUES ('txn-1', 2500, 'EUR', '2026-01-01 09:00:00', 'income', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                 )
                 .execute(conn)
                 .into_storage()?;
