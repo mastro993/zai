@@ -17,5 +17,6 @@
 
 ## 2026-08-18
 
+- CI/E2E PR filters include `feat/**` so merges into long-lived feat branches run the same checks as `main`.
 - Installed anti-slop Oxlint plugin. Copied to `tools/oxlint/anti-slop/`. Wired in `.oxlintrc.json` + `.oxfmtrc.json`. Bumped frontend `oxlint` to 1.78.0. Added root `@oxlint/plugins@1.78.0`. Migrated 444 findings so `pnpm check:frontend` is green (397 tests).
 - Migrated assigned frontend test batch off `vi.mock` / unguarded `as T` / `unknown` params. Oxlint `--deny-warnings` + Vitest green on those 21 files.
