@@ -46,6 +46,7 @@ pub(crate) fn recurring_create_payload(
             "template": {
                 "description": description,
                 "amount": amount,
+                "currency": "EUR",
                 "transactionType": "expense",
                 "transactionCategoryId": transaction_category_id,
                 "notes": null

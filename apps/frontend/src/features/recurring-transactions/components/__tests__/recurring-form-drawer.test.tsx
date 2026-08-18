@@ -9,6 +9,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { CommandError } from "@/commands/errors";
 import type { Transaction } from "@/features/transactions/types/model";
 import { sampleTransaction } from "@/features/transactions/types/sample";
+import { resetLastUsedTransactionCurrency } from "@/features/transactions/lib/last-used-currency";
 
 import * as recurringCommands from "../../commands/recurring-transactions";
 import { RecurringFormDrawer } from "../recurring-form-drawer";
@@ -41,6 +42,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  resetLastUsedTransactionCurrency();
   vi.restoreAllMocks();
 });
 
@@ -423,6 +425,7 @@ describe("RecurringFormDrawer", () => {
     const onSubmit = vi.fn(async (values: RecurringFormValues) => {
       expect(values.description).toBe("Gym");
       expect(values.amount).toBe(4500);
+      expect(values.currency).toBe("EUR");
       return Result.succeed({
         outcome: "succeeded",
         document: {
@@ -450,6 +453,7 @@ describe("RecurringFormDrawer", () => {
             sequence: 1,
             effectiveFromLocal: "2026-07-21T10:00:00",
             amount: values.amount,
+            currency: values.currency,
             transactionType: values.transactionType,
             description: values.description,
           },
@@ -515,6 +519,7 @@ describe("RecurringFormDrawer", () => {
         sequence: 1,
         effectiveFromLocal: "2026-01-01T09:00:00",
         amount: 120_000,
+        currency: "EUR",
         transactionType: "expense" as const,
         description: "Monthly rent",
       },

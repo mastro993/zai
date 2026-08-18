@@ -168,12 +168,11 @@ fn fulfill_generated_occurrence(
 
     let before = snapshot_active_budgets(conn, now)?;
     let transaction_id = Uuid::new_v4().to_string();
-    let currency = crate::currency::default_currency(conn).map_err(StorageError::from)?;
     let new_transaction = NewTransaction {
         id: Some(transaction_id.clone()),
         description: Some(template.description.clone()),
         amount: template.amount,
-        currency: currency.clone(),
+        currency: template.currency.clone(),
         transaction_date: scheduled_local,
         transaction_type: template.transaction_type.clone(),
         transaction_category_id: template.transaction_category_id.clone(),
@@ -186,7 +185,7 @@ fn fulfill_generated_occurrence(
         .values(&transaction_row)
         .execute(conn)
         .into_storage()?;
-    crate::currency::insert_identity_rate(conn, &transaction_id, scheduled_local)
+    crate::transactions::rate_revisions::apply_create_rate(conn, &transaction_row, None)
         .map_err(StorageError::from)?;
     crate::valuations::upsert_transaction_valuation(conn, &transaction_row)
         .map_err(StorageError::from)?;

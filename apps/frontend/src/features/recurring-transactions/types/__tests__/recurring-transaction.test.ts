@@ -14,6 +14,7 @@ describe("recurring transaction schemas", () => {
       template: {
         description: "Rent",
         amount: 1000,
+        currency: "EUR",
         transactionType: "expense",
       },
       zone: "Europe/Rome",
@@ -31,6 +32,7 @@ describe("recurring transaction schemas", () => {
       firstScheduledLocal: "2026-08-01T09:00",
       totalOccurrences: "12",
       amount: "45.00",
+      currency: "EUR",
       description: "Gym",
       transactionType: "expense",
     });
@@ -50,6 +52,7 @@ describe("recurring transaction schemas", () => {
       monthlyDay: "1",
       firstScheduledLocal: "2026-08-01T09:00",
       amount: "45.00",
+      currency: "EUR",
       description: "Gym",
       transactionType: "expense" as const,
     };
@@ -87,6 +90,7 @@ describe("recurring transaction schemas", () => {
         sequence: 1,
         effectiveFromLocal: "2026-08-01T09:00:00",
         amount: 120000,
+        currency: "EUR",
         transactionType: "expense",
         description: "Rent",
       },

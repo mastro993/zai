@@ -50,6 +50,7 @@ async fn run_benchmark(data_dir: &Path) -> Result<(), Box<dyn Error>> {
                 template: RecurringTemplateInput {
                     description: format!("Reference runner {source_index}"),
                     amount: 100 + (next_seed(&mut seed) % 900) as i32,
+                    currency: "EUR".to_string(),
                     transaction_type: "expense".to_string(),
                     transaction_category_id: None,
                     notes: None,

@@ -56,6 +56,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { CommandError } from "@/commands/errors";
 import type { TransactionCategory } from "@/features/categories/types/model";
 import { TransactionCategoryCombobox } from "@/features/transactions/components/transaction-category-combobox";
+import { isoFractionDigits } from "@/lib/currency";
 import {
   combineDateTime,
   isPartialAmountInput,
@@ -63,6 +64,7 @@ import {
   splitDateTime,
 } from "@/features/transactions/lib/transaction";
 
+import { setLastUsedTransactionCurrency } from "@/features/transactions/lib/last-used-currency";
 import { previewRecurringAdoption } from "../commands/recurring-transactions";
 import {
   createRecurringFormDefaults,
@@ -165,6 +167,8 @@ export function RecurringFormDrawer({
   const intervalUnit = useWatch({ control, name: "intervalUnit" });
   const monthlyDay = useWatch({ control, name: "monthlyDay" });
   const totalOccurrences = useWatch({ control, name: "totalOccurrences" });
+  const currency = useWatch({ control, name: "currency" }) ?? "EUR";
+  const fractionDigits = isoFractionDigits(currency);
   const amountErrorId = "recurring-amount-error";
   const dateErrorId = "recurring-first-error";
   const scheduleErrorId = "recurring-schedule-error";
@@ -248,6 +252,7 @@ export function RecurringFormDrawer({
       toast.success(copy.successMessage);
     }
     if (mode.type === "create") {
+      setLastUsedTransactionCurrency(values.currency);
       reset(createRecurringFormDefaults());
     }
     onOpenChange(false);
@@ -263,6 +268,7 @@ export function RecurringFormDrawer({
         <DrawerDescription>{copy.description}</DrawerDescription>
       </DrawerHeader>
       <form className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 pt-4 pb-4" onSubmit={submit}>
+        <input type="hidden" {...register("currency")} />
         <FieldSet>
           <FieldGroup>
             {configLocked ? (
@@ -336,7 +342,7 @@ export function RecurringFormDrawer({
                       value={field.value ?? ""}
                       onBlur={(event) => {
                         field.onBlur();
-                        const normalized = normalizeAmountInput(event.target.value);
+                        const normalized = normalizeAmountInput(event.target.value, fractionDigits);
 
                         if (normalized !== event.target.value) {
                           field.onChange(normalized);
@@ -347,13 +353,13 @@ export function RecurringFormDrawer({
                       onChange={(event) => {
                         const nextValue = event.target.value;
 
-                        if (isPartialAmountInput(nextValue)) {
+                        if (isPartialAmountInput(nextValue, fractionDigits)) {
                           field.onChange(nextValue);
                         }
                       }}
                     />
                     <InputGroupAddon align="inline-end">
-                      <InputGroupText>EUR</InputGroupText>
+                      <InputGroupText>{currency}</InputGroupText>
                     </InputGroupAddon>
                   </InputGroup>
                 )}

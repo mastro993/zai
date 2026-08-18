@@ -35,6 +35,7 @@ fn update_from_document(document: &RecurringTransactionDocument) -> UpdateRecurr
         template: RecurringTemplateInput {
             description: document.template.description.clone(),
             amount: document.template.amount,
+            currency: document.template.currency.clone(),
             transaction_type: document.template.transaction_type.clone(),
             transaction_category_id: document.template.transaction_category_id.clone(),
             notes: document.template.notes.clone(),

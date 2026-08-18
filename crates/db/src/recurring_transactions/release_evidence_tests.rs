@@ -88,6 +88,7 @@ async fn generated_revision_boundaries_select_one_half_open_revision() {
         template: RecurringTemplateInput {
             description: document.template.description.clone(),
             amount: document.template.amount,
+            currency: document.template.currency.clone(),
             transaction_type: document.template.transaction_type.clone(),
             transaction_category_id: document.template.transaction_category_id.clone(),
             notes: document.template.notes.clone(),

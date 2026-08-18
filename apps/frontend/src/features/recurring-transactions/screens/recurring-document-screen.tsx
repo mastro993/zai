@@ -273,7 +273,7 @@ export function RecurringDocumentScreen({
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground">Amount</dt>
-              <dd>{formatCurrencyFromMinor(template.amount, "EUR")}</dd>
+              <dd>{formatCurrencyFromMinor(template.amount, template.currency)}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Type</dt>

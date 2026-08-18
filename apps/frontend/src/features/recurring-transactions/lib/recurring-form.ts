@@ -1,6 +1,9 @@
 import { defaultFirstScheduledLocal } from "./recurring";
 import type { RecurringFormMode } from "../types/recurring-form-mode";
 import type { Transaction } from "@/features/transactions/types/model";
+import { formatAmountFromMinor } from "@/features/transactions/lib/transaction";
+import { getLastUsedTransactionCurrency } from "@/features/transactions/lib/last-used-currency";
+import { isoFractionDigits } from "@/lib/currency";
 import { SCHEDULE_INTERVAL_UNITS } from "../types/recurring-transaction";
 import type {
   RecurringFormInput,
@@ -44,6 +47,7 @@ export const createRecurringFormDefaults = (): RecurringFormInput => ({
   totalOccurrences: "",
   description: "",
   amount: "",
+  currency: getLastUsedTransactionCurrency() ?? "EUR",
   transactionType: "expense",
   transactionCategoryId: undefined,
   notes: "",
@@ -57,7 +61,8 @@ export const defaultsFromTransaction = (transaction: Transaction): RecurringForm
   firstScheduledLocal: toLocalInputValue(transaction.transactionDate),
   totalOccurrences: "",
   description: transaction.description?.trim() ?? "",
-  amount: (transaction.amount / 100).toFixed(2),
+  amount: formatAmountFromMinor(transaction.amount, isoFractionDigits(transaction.currency)),
+  currency: transaction.currency,
   transactionType: transaction.transactionType === "income" ? "income" : "expense",
   transactionCategoryId: transaction.transactionCategoryId ?? undefined,
   notes: transaction.notes?.trim() ?? "",
@@ -81,7 +86,8 @@ export const defaultsFromDocument = (
         ? ""
         : String(recurringTransaction.totalOccurrences),
     description: template.description,
-    amount: (template.amount / 100).toFixed(2),
+    amount: formatAmountFromMinor(template.amount, isoFractionDigits(template.currency)),
+    currency: template.currency,
     transactionType: template.transactionType,
     transactionCategoryId: template.transactionCategoryId ?? undefined,
     notes: template.notes ?? "",

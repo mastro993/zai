@@ -1,8 +1,9 @@
 import { z } from "zod";
 
+import { isoFractionDigits } from "@/lib/currency";
 import {
   MAX_TRANSACTION_AMOUNT_MINOR,
-  prepareAmountForValidation,
+  parseAmountToMinor,
 } from "@/features/transactions/lib/transaction";
 
 import {
@@ -59,23 +60,6 @@ const withPrivilegedRejection = <T extends ObjectSchemaFields>(fields: T) =>
     ...privilegedForbiddenFields,
   });
 
-const amountInputSchema = z
-  .string()
-  .trim()
-  .transform(prepareAmountForValidation)
-  .pipe(
-    z
-      .string()
-      .min(1, "Amount is required")
-      .refine((value) => /^\d+(\.\d{1,2})?$/.test(value), "Enter a valid amount")
-      .refine((value) => {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) && parsed >= 0;
-      }, "Amount must be zero or greater")
-      .transform((value) => Math.round(Number(value) * 100)),
-  )
-  .pipe(z.number().int().max(MAX_TRANSACTION_AMOUNT_MINOR, "Amount exceeds supported maximum"));
-
 export const scheduleRuleSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("interval"),
@@ -96,41 +80,66 @@ export const recurringFormSchema = withPrivilegedRejection({
   firstScheduledLocal: z.string().min(1, "First occurrence is required"),
   totalOccurrences: z.string().trim().optional(),
   description: z.string().trim().min(1, "Description is required"),
-  amount: amountInputSchema,
+  amount: z.string(),
+  currency: z.string().length(3),
   transactionType: z.enum(TRANSACTION_TYPES).default("expense"),
   transactionCategoryId: z.string().optional(),
   notes: z.string().trim().optional(),
-}).superRefine((value, ctx) => {
-  if (value.scheduleKind === "interval") {
-    const every = Number(value.intervalEvery);
-    if (!Number.isInteger(every) || every < 1) {
+})
+  .superRefine((value, ctx) => {
+    if (value.scheduleKind === "interval") {
+      const every = Number(value.intervalEvery);
+      if (!Number.isInteger(every) || every < 1) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Interval must be a positive whole number",
+          path: ["intervalEvery"],
+        });
+      }
+    } else {
+      const day = Number(value.monthlyDay);
+      if (!Number.isInteger(day) || day < 1 || day > 31) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Day must be between 1 and 31",
+          path: ["monthlyDay"],
+        });
+      }
+    }
+    if (value.totalOccurrences) {
+      const total = Number(value.totalOccurrences);
+      if (!Number.isInteger(total) || total < 1) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Occurrences must be a positive whole number",
+          path: ["totalOccurrences"],
+        });
+      }
+    }
+    const parsed = parseAmountToMinor(value.amount, isoFractionDigits(value.currency));
+    if (!parsed.ok) {
       ctx.addIssue({
         code: "custom",
-        message: "Interval must be a positive whole number",
-        path: ["intervalEvery"],
+        message: parsed.message,
+        path: ["amount"],
       });
+      return;
     }
-  } else {
-    const day = Number(value.monthlyDay);
-    if (!Number.isInteger(day) || day < 1 || day > 31) {
+    if (parsed.minor > MAX_TRANSACTION_AMOUNT_MINOR) {
       ctx.addIssue({
         code: "custom",
-        message: "Day must be between 1 and 31",
-        path: ["monthlyDay"],
+        message: "Amount exceeds supported maximum",
+        path: ["amount"],
       });
     }
-  }
-  if (value.totalOccurrences) {
-    const total = Number(value.totalOccurrences);
-    if (!Number.isInteger(total) || total < 1) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Occurrences must be a positive whole number",
-        path: ["totalOccurrences"],
-      });
-    }
-  }
-});
+  })
+  .transform((value) => {
+    const parsed = parseAmountToMinor(value.amount, isoFractionDigits(value.currency));
+    return {
+      ...value,
+      amount: parsed.ok ? parsed.minor : 0,
+    };
+  });
 
 export const recurringTransactionSchema = z.object({
   id: z.string().min(1),
@@ -163,6 +172,7 @@ export const recurringTemplateRevisionSchema = z.object({
   effectiveUntilLocal: z.string().nullable().optional(),
   description: z.string().trim().min(1),
   amount: z.number().int().nonnegative(),
+  currency: z.string().length(3),
   transactionType: z.enum(TRANSACTION_TYPES),
   transactionCategoryId: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
@@ -313,6 +323,7 @@ export const newRecurringTransactionSchema = withPrivilegedRejection({
   template: z.object({
     description: z.string().trim().min(1),
     amount: z.number().int().nonnegative(),
+    currency: z.string().length(3),
     transactionType: z.enum(TRANSACTION_TYPES),
     transactionCategoryId: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),

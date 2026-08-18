@@ -101,7 +101,7 @@ pub(super) fn prepare_generated_occurrence(
         id: Some("validation".to_string()),
         description: Some(template.description.clone()),
         amount: template.amount,
-        currency: "EUR".to_string(),
+        currency: template.currency.clone(),
         transaction_date: scheduled_local,
         transaction_type: template.transaction_type.clone(),
         transaction_category_id: template.transaction_category_id.clone(),
