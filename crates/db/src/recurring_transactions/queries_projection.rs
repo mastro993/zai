@@ -21,13 +21,16 @@ use zai_core::features::budgets::models::{
     BudgetListFilter, current_period, expand_category_scope,
 };
 use zai_core::features::recurring_transactions::projection::{
-    ProjectionBudgetInput, ProjectionComputeInput, ProjectionSourceInput, projection_window,
+    ProjectionBudgetInput, ProjectionComputeInput, ProjectionRateContext, ProjectionSourceInput,
+    projection_window,
 };
 use zai_core::features::recurring_transactions::{
     RecurringGenerationFailure, RecurringLifecycle, RecurringOccurrenceHead,
     RecurringScheduleRevision, RecurringTemplateRevision, RecurringTransaction,
 };
 use zai_core::features::transaction_categories::models::CategoryRole;
+use zai_core::features::valuations::ProjectionQuote;
+use zai_core::money::{ConversionRate, CurrencyCode};
 use zai_core::{Error, Result};
 
 pub fn load_projection_compute_input(
@@ -132,7 +135,74 @@ pub fn load_projection_compute_input(
         category_hierarchy: hierarchy,
         actual_spending,
         focus_recurring_transaction_id,
+        rates: load_projection_rates(conn)?,
     })
+}
+
+fn load_projection_rates(conn: &mut SqliteConnection) -> Result<ProjectionRateContext> {
+    let Ok(generation) = crate::valuations::active_generation(conn) else {
+        return Ok(ProjectionRateContext::default());
+    };
+    let target = CurrencyCode::parse(&generation.target_currency)?;
+    let accepted = crate::exchange_rates::current_accepted_set(conn)?;
+    let stale = projection_rates_are_stale(conn)?;
+    let mut quotes = HashMap::new();
+    if let Some(set) = accepted.as_ref() {
+        let Some(value_date) = set.observations.iter().map(|obs| obs.value_date).max() else {
+            return Ok(ProjectionRateContext {
+                target_currency: generation.target_currency,
+                quotes,
+            });
+        };
+        let mut currencies = set
+            .observations
+            .iter()
+            .map(|obs| obs.currency)
+            .collect::<Vec<_>>();
+        currencies.push(target);
+        currencies.sort_by_key(|code| code.as_str().to_string());
+        currencies.dedup();
+        for currency in currencies {
+            if currency == target {
+                quotes.insert(
+                    currency.as_str().to_string(),
+                    ProjectionQuote {
+                        rate: ConversionRate::Identity,
+                        stale,
+                    },
+                );
+                continue;
+            }
+            if let Ok((source_leg, target_leg)) =
+                zai_core::features::exchange_rates::legs_for_pair(set, currency, target, value_date)
+                && let Ok(rate) = zai_core::features::exchange_rates::automatic_pair(
+                    &set.id, source_leg, target_leg,
+                )
+            {
+                quotes.insert(
+                    currency.as_str().to_string(),
+                    ProjectionQuote { rate, stale },
+                );
+            }
+        }
+    }
+    Ok(ProjectionRateContext {
+        target_currency: generation.target_currency,
+        quotes,
+    })
+}
+
+fn projection_rates_are_stale(conn: &mut SqliteConnection) -> Result<bool> {
+    #[derive(QueryableByName)]
+    struct RefreshRow {
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+        failure_class: Option<String>,
+    }
+    let row = diesel::sql_query("SELECT failure_class FROM provider_refresh_state WHERE id = 1")
+        .get_result::<RefreshRow>(conn)
+        .optional()
+        .into_core()?;
+    Ok(row.is_some_and(|row| row.failure_class.is_some()))
 }
 
 fn placeholder_stale_budget(
@@ -269,6 +339,7 @@ fn list_template_revisions(
                         "Persisted money exceeds the JavaScript-safe wire maximum".to_string(),
                     )
                 })?,
+                currency: row.currency,
                 transaction_type: row.transaction_type,
                 transaction_category_id: row.transaction_category_id,
                 notes: row.notes,

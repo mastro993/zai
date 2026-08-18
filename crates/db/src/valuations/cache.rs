@@ -44,10 +44,9 @@ pub(crate) fn upsert_transaction_valuation_row(
     let target = CurrencyCode::parse(target_currency)?;
     let source = Money::from_minor_units(transaction.amount, &transaction.currency)?;
     let revision = latest_rate_revision(conn, &transaction.id)?;
-    let rate = conversion_rate_for(conn, source.currency(), target, revision.as_ref())?;
-    let converted = convert(source, target, &rate)?;
-    let complete = converted.complete;
-    let amount = converted.converted.map(|money| money.minor_units());
+    let prior = generation_prior(conn, generation_id)?;
+    let (amount, complete) =
+        convert_for_generation(conn, source, target, prior, revision.as_ref())?;
     sql_query(
         "INSERT INTO transaction_valuations (\
             generation_id, transaction_id, transaction_date, converted_amount, \
@@ -90,35 +89,57 @@ fn latest_rate_revision(
     .map_err(Into::into)
 }
 
-fn conversion_rate_for(
+fn convert_for_generation(
     conn: &mut SqliteConnection,
-    source: CurrencyCode,
+    source: Money,
     target: CurrencyCode,
+    prior: Option<CurrencyCode>,
     revision: Option<&RateRevisionRow>,
-) -> Result<ConversionRate> {
-    if source == target {
-        return Ok(ConversionRate::Identity);
+) -> Result<(Option<i64>, bool)> {
+    if source.currency() == target {
+        return Ok((Some(source.minor_units()), true));
     }
     match revision.map(|row| row.variant.as_str()) {
-        Some("pending") | None => Ok(ConversionRate::Pending {
-            rate_date: revision
-                .and_then(|row| row.rate_date.map(|value| value.date()))
-                .unwrap_or_else(|| chrono::Utc::now().date_naive()),
-        }),
+        Some("pending") | None => Ok((None, false)),
         Some("manual") => {
             let decimal = revision
                 .and_then(|row| row.original_decimal.as_deref())
                 .ok_or_else(|| {
                     zai_core::Error::InvalidData("Manual rate is missing its decimal".to_string())
                 })?;
-            if let Some(prior) = prior_currency(conn)?
-                && prior != target
-            {
-                return pair_or_pending(conn, source, target, revision);
+            let quoted_to = prior.unwrap_or(target);
+            let via_prior = convert(
+                source,
+                quoted_to,
+                &ConversionRate::Manual(CanonicalRate::parse(decimal)?),
+            )?;
+            let Some(in_prior) = via_prior.converted else {
+                return Ok((None, false));
+            };
+            if quoted_to == target {
+                return Ok((Some(in_prior.minor_units()), true));
             }
-            Ok(ConversionRate::Manual(CanonicalRate::parse(decimal)?))
+            let restated = convert(
+                in_prior,
+                target,
+                &pair_or_pending(conn, quoted_to, target, revision)?,
+            )?;
+            Ok((
+                restated.converted.map(|money| money.minor_units()),
+                restated.complete,
+            ))
         }
-        Some("identity") | Some("automatic") => pair_or_pending(conn, source, target, revision),
+        Some("identity") | Some("automatic") => {
+            let converted = convert(
+                source,
+                target,
+                &pair_or_pending(conn, source.currency(), target, revision)?,
+            )?;
+            Ok((
+                converted.converted.map(|money| money.minor_units()),
+                converted.complete,
+            ))
+        }
         Some(other) => Err(zai_core::Error::InvalidData(format!(
             "Unknown exchange-rate variant {other}"
         ))),
@@ -147,21 +168,20 @@ fn pair_or_pending(
     }
 }
 
-fn prior_currency(conn: &mut SqliteConnection) -> Result<Option<CurrencyCode>> {
+fn generation_prior(
+    conn: &mut SqliteConnection,
+    generation_id: &str,
+) -> Result<Option<CurrencyCode>> {
     #[derive(QueryableByName)]
     struct PriorRow {
         #[diesel(sql_type = Nullable<Text>)]
         prior_currency: Option<String>,
     }
-    let row = sql_query(
-        "SELECT g.prior_currency \
-         FROM valuation_heads h \
-         JOIN valuation_generations g ON g.id = h.generation_id \
-         WHERE h.kind = 'actual'",
-    )
-    .get_result::<PriorRow>(conn)
-    .optional()
-    .into_storage()?;
+    let row = sql_query("SELECT prior_currency FROM valuation_generations WHERE id = ?")
+        .bind::<Text, _>(generation_id)
+        .get_result::<PriorRow>(conn)
+        .optional()
+        .into_storage()?;
     row.and_then(|row| row.prior_currency)
         .map(|code| CurrencyCode::parse(&code))
         .transpose()

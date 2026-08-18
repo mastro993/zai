@@ -82,6 +82,7 @@ fn source(id: &str, head_local: NaiveDateTime, next_ordinal: i32) -> ProjectionS
                 effective_until_local: None,
                 description: "Rent".to_string(),
                 amount: 2_000,
+                currency: "EUR".to_string(),
                 transaction_type: "expense".to_string(),
                 transaction_category_id: Some("food".to_string()),
                 notes: None,
@@ -121,6 +122,7 @@ fn overlapping_budgets_receive_independent_contributions() {
         }],
         actual_spending: HashMap::new(),
         focus_recurring_transaction_id: None,
+        rates: ProjectionRateContext::default(),
     };
     let result = compute_budget_projection(input).unwrap();
     assert!(result.complete);
@@ -154,6 +156,7 @@ fn due_work_marks_incomplete_and_withholds_status() {
         }],
         actual_spending: HashMap::new(),
         focus_recurring_transaction_id: None,
+        rates: ProjectionRateContext::default(),
     };
     let result = compute_budget_projection(input).unwrap();
     assert!(!result.complete);
@@ -190,6 +193,7 @@ fn focused_query_limits_attribution_only() {
         }],
         actual_spending: HashMap::new(),
         focus_recurring_transaction_id: None,
+        rates: ProjectionRateContext::default(),
     };
     let global = compute_budget_projection(input.clone()).unwrap();
     input.focus_recurring_transaction_id = Some("r1".to_string());
@@ -231,6 +235,7 @@ fn partial_period_beyond_through_withholds_status() {
         category_hierarchy: vec![],
         actual_spending: HashMap::new(),
         focus_recurring_transaction_id: None,
+        rates: ProjectionRateContext::default(),
     };
     let result = compute_budget_projection(input).unwrap();
     // through = Feb 20; Jan period ends Feb 1 (complete); Feb period ends Mar 1 (partial)
@@ -266,6 +271,7 @@ fn fulfilling_projected_occurrence_preserves_combined_forecast() {
         }],
         actual_spending: HashMap::new(),
         focus_recurring_transaction_id: None,
+        rates: ProjectionRateContext::default(),
     })
     .unwrap();
 
@@ -297,6 +303,7 @@ fn fulfilling_projected_occurrence_preserves_combined_forecast() {
         }],
         actual_spending: actual,
         focus_recurring_transaction_id: None,
+        rates: ProjectionRateContext::default(),
     })
     .unwrap();
 
@@ -360,6 +367,7 @@ fn blocked_source_isolates_without_erasing_valid_contributions() {
         }],
         actual_spending: HashMap::new(),
         focus_recurring_transaction_id: None,
+        rates: ProjectionRateContext::default(),
     })
     .unwrap();
     assert!(!result.complete);
@@ -382,4 +390,39 @@ fn blocked_source_isolates_without_erasing_valid_contributions() {
     );
     assert!(jan.status.is_none());
     assert_eq!(jan.remaining_allowance, Some(7_000));
+}
+
+#[test]
+fn incomplete_current_period_does_not_seed_zero_carry() {
+    let mut food = budget("b1", "Groceries");
+    food.rollover_mode = BudgetRolloverMode::Cumulative;
+    food.current_period.complete = false;
+    food.current_period.effective_allowance = 0;
+    food.current_period.remaining_allowance = 0;
+    let result = compute_budget_projection(ProjectionComputeInput {
+        observed_local: dt(2026, 1, 15, 12, 0),
+        horizon_months: 2,
+        budgets: vec![ProjectionBudgetInput {
+            scope_category_ids: food.category_ids.clone(),
+            warning_percentage: food.warning_percentage,
+            budget: food,
+            stale: false,
+        }],
+        sources: Vec::new(),
+        category_roles: HashMap::from([("food".to_string(), CategoryRole::Spending)]),
+        category_hierarchy: vec![CategoryHierarchy {
+            id: "food".to_string(),
+            parent_id: None,
+        }],
+        actual_spending: HashMap::new(),
+        focus_recurring_transaction_id: None,
+        rates: ProjectionRateContext::default(),
+    })
+    .unwrap();
+    assert!(
+        result
+            .periods
+            .iter()
+            .all(|period| period.effective_allowance.is_none() && period.status.is_none())
+    );
 }

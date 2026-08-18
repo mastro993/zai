@@ -7,14 +7,19 @@ use super::types::{
 use super::window::{ProjectionWindow, projection_window};
 use crate::Result;
 use crate::features::budgets::models::{
-    Budget, BudgetPeriod, BudgetRolloverMode, CategoryHierarchy, calculate_period_with_rollover,
-    current_period, expand_category_scope,
+    Budget, BudgetPeriod, BudgetRolloverMode, CategoryHierarchy, current_period,
+    expand_category_scope,
 };
 use crate::features::recurring_transactions::models::{
     RecurringGenerationFailure, RecurringLifecycle, RecurringOccurrenceHead,
     RecurringScheduleRevision, RecurringTemplateRevision, RecurringTransaction,
 };
 use crate::features::transaction_categories::models::CategoryRole;
+use crate::features::valuations::{
+    PeriodCalculation, PeriodCompleteness, ProjectionQuote, calculate_period_with_completeness,
+    convert_projected,
+};
+use crate::money::{CurrencyCode, Money};
 use chrono::NaiveDateTime;
 use std::collections::HashMap;
 
@@ -45,6 +50,13 @@ pub struct ProjectionComputeInput {
     pub category_hierarchy: Vec<CategoryHierarchy>,
     pub actual_spending: HashMap<(String, NaiveDateTime), i64>,
     pub focus_recurring_transaction_id: Option<String>,
+    pub rates: ProjectionRateContext,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ProjectionRateContext {
+    pub target_currency: String,
+    pub quotes: HashMap<String, ProjectionQuote>,
 }
 
 #[derive(Debug, Clone)]
@@ -55,6 +67,7 @@ struct ResolvedProjectedOccurrence {
     scheduled_local: NaiveDateTime,
     description: String,
     amount: i32,
+    currency: String,
     transaction_type: String,
     transaction_category_id: Option<String>,
 }
@@ -136,7 +149,7 @@ pub fn compute_budget_projection(input: ProjectionComputeInput) -> Result<Budget
             expand_category_scope(&budget_input.scope_category_ids, &input.category_hierarchy)
         };
 
-        let budget_periods = forecast_budget_periods(
+        let (budget_periods, omitted) = forecast_budget_periods(
             budget_input,
             &scope_ids,
             &window,
@@ -144,7 +157,11 @@ pub fn compute_budget_projection(input: ProjectionComputeInput) -> Result<Budget
             &input.category_roles,
             &input.actual_spending,
             complete && !budget_input.stale,
+            &input.rates,
         )?;
+        if omitted {
+            complete = false;
+        }
         periods.extend(budget_periods);
     }
 
@@ -210,11 +227,13 @@ fn resolve_template(
         scheduled_local: slot.scheduled_local,
         description: template.description.clone(),
         amount: template.amount,
+        currency: template.currency.clone(),
         transaction_type: template.transaction_type.clone(),
         transaction_category_id: template.transaction_category_id.clone(),
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn forecast_budget_periods(
     budget_input: &ProjectionBudgetInput,
     scope_ids: &[String],
@@ -223,13 +242,15 @@ fn forecast_budget_periods(
     category_roles: &HashMap<String, CategoryRole>,
     actual_spending: &HashMap<(String, NaiveDateTime), i64>,
     may_emit_status: bool,
-) -> Result<Vec<BudgetPeriodForecast>> {
+    rates: &ProjectionRateContext,
+) -> Result<(Vec<BudgetPeriodForecast>, bool)> {
     let budget = &budget_input.budget;
     let mut periods = Vec::new();
     let mut previous: Option<BudgetPeriod> = None;
     let mut period_start = budget.current_period.start;
     let mut period_end = budget.current_period.end;
     let mut is_first = true;
+    let mut omitted = false;
     let mut guard = 0_u32;
 
     while period_start < window.through_local {
@@ -276,8 +297,13 @@ fn forecast_budget_periods(
                 .transaction_category_id
                 .as_ref()
                 .and_then(|id| category_roles.get(id).copied());
+            let Some(converted_amount) =
+                convert_occurrence_amount(occurrence, rates, &mut omitted)?
+            else {
+                continue;
+            };
             let contribution = signed_contribution(
-                occurrence.amount,
+                converted_amount,
                 &occurrence.transaction_type,
                 role,
                 budget.measurement_mode,
@@ -305,17 +331,22 @@ fn forecast_budget_periods(
             previous.clone()
         };
 
-        let computed = calculate_period_with_rollover(
-            period_start,
-            period_end,
-            budget.base_allowance,
-            forecast_net,
-            budget.rollover_mode,
-            rollover_seed.as_ref(),
-            budget_input.warning_percentage,
-        )?;
+        let computed = calculate_period_with_completeness(PeriodCalculation {
+            start: period_start,
+            end: period_end,
+            authored_allowance: budget.base_allowance,
+            converted_allowance: Some(budget.base_allowance),
+            net_budget_spending: forecast_net,
+            rollover_mode: budget.rollover_mode,
+            previous_period: rollover_seed.as_ref(),
+            warning_percentage: budget_input.warning_percentage,
+            completeness: PeriodCompleteness {
+                spending_complete: budget.current_period.complete || !is_first,
+                allowance_complete: true,
+            },
+        })?;
 
-        let emit_status = may_emit_status && !partial;
+        let emit_status = may_emit_status && !partial && computed.complete && !omitted;
         periods.push(BudgetPeriodForecast {
             budget_id: budget.id.clone(),
             budget_name: budget.name.clone(),
@@ -328,8 +359,8 @@ fn forecast_budget_periods(
             actual_net_budget_spending: actual,
             projected_delta,
             forecast_net_budget_spending: forecast_net,
-            effective_allowance: Some(computed.effective_allowance),
-            remaining_allowance: Some(computed.remaining_allowance),
+            effective_allowance: computed.complete.then_some(computed.effective_allowance),
+            remaining_allowance: computed.complete.then_some(computed.remaining_allowance),
             status: if emit_status {
                 Some(computed.status)
             } else {
@@ -347,10 +378,46 @@ fn forecast_budget_periods(
         period_end = next.1;
     }
 
-    Ok(periods)
+    Ok((periods, omitted))
+}
+
+fn convert_occurrence_amount(
+    occurrence: &ResolvedProjectedOccurrence,
+    rates: &ProjectionRateContext,
+    omitted: &mut bool,
+) -> Result<Option<i32>> {
+    if rates.target_currency.is_empty() || occurrence.currency == rates.target_currency {
+        return Ok(Some(occurrence.amount));
+    }
+    let source = Money::from_authored(occurrence.amount, &occurrence.currency)?;
+    let target = CurrencyCode::parse(&rates.target_currency)?;
+    let converted = convert_projected(source, target, rates.quotes.get(&occurrence.currency))?;
+    if converted.omitted {
+        *omitted = true;
+        return Ok(None);
+    }
+    let minor = converted
+        .converted
+        .map(|money| money.minor_units())
+        .unwrap_or(0);
+    i32::try_from(minor).map(Some).map_err(|_| {
+        crate::Error::CalculationOverflow("converted projection exceeds i32".to_string())
+    })
 }
 
 fn seed_previous_for_current(budget: &Budget) -> Result<BudgetPeriod> {
+    if !budget.current_period.complete {
+        return Ok(BudgetPeriod {
+            start: budget.current_period.start,
+            end: budget.current_period.start,
+            base_allowance: budget.current_period.base_allowance,
+            effective_allowance: 0,
+            net_budget_spending: budget.current_period.net_budget_spending,
+            remaining_allowance: 0,
+            status: budget.current_period.status,
+            complete: false,
+        });
+    }
     // Reconstruct the predecessor carry implied by the durable current period.
     // effective = base + carry → carry = effective - base
     let carry = budget

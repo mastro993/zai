@@ -206,9 +206,15 @@ pub struct RecurringTemplateRevision {
     pub effective_until_local: Option<NaiveDateTime>,
     pub description: String,
     pub amount: i32,
+    #[serde(default = "default_template_currency")]
+    pub currency: String,
     pub transaction_type: String,
     pub transaction_category_id: Option<String>,
     pub notes: Option<String>,
+}
+
+fn default_template_currency() -> String {
+    "EUR".to_string()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

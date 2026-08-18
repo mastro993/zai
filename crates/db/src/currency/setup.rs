@@ -79,15 +79,24 @@ pub fn complete_initial_setup(pool: &DbPool, currency_code: &str) -> Result<()> 
             .bind::<Text, _>(code)
             .bind::<Timestamp, _>(now)
             .execute(connection)?;
-            sql_query(
-                "UPDATE currency_settings \
-                 SET default_currency = ?, setup_completed_at = ? \
-                 WHERE id = 1",
-            )
-            .bind::<Text, _>(code)
-            .bind::<Timestamp, _>(now)
-            .execute(connection)?;
-            diesel::result::QueryResult::Ok(())
+            let active = crate::valuations::active_generation(connection)
+                .map_err(crate::errors::StorageError::from)?;
+            if active.target_currency != code {
+                crate::valuations::change_default_currency(connection, currency, now)
+                    .map_err(crate::errors::StorageError::from)?;
+            } else {
+                sql_query(
+                    "UPDATE currency_settings \
+                     SET default_currency = ? \
+                     WHERE id = 1",
+                )
+                .bind::<Text, _>(code)
+                .execute(connection)?;
+            }
+            sql_query("UPDATE currency_settings SET setup_completed_at = ? WHERE id = 1")
+                .bind::<Timestamp, _>(now)
+                .execute(connection)?;
+            crate::errors::Result::Ok(())
         })
         .into_core()
 }

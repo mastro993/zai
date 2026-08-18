@@ -137,8 +137,7 @@ fn replace_current_configuration_row(
         measurement_mode: update.measurement_mode.to_string(),
         rollover_mode: update.rollover_mode.to_string(),
         warning_percentage: update.warning_percentage,
-        allowance_currency: crate::valuations::current_allowance_currency(conn)
-            .map_err(StorageError::from)?,
+        allowance_currency: allowance_currency_for_edit(conn, id, budget, update.base_allowance)?,
     };
     diesel::update(
         budget_configurations::table
@@ -152,8 +151,26 @@ fn replace_current_configuration_row(
         budget_configurations::measurement_mode.eq(&configuration.measurement_mode),
         budget_configurations::rollover_mode.eq(&configuration.rollover_mode),
         budget_configurations::warning_percentage.eq(configuration.warning_percentage),
+        budget_configurations::allowance_currency.eq(&configuration.allowance_currency),
     ))
     .execute(conn)
     .into_storage()?;
     Ok(())
+}
+
+fn allowance_currency_for_edit(
+    conn: &mut SqliteConnection,
+    id: &str,
+    budget: &Budget,
+    next_allowance: i64,
+) -> crate::errors::Result<String> {
+    if budget.current_period.base_allowance != next_allowance {
+        return crate::valuations::current_allowance_currency(conn).map_err(StorageError::from);
+    }
+    budget_configurations::table
+        .filter(budget_configurations::budget_id.eq(id))
+        .filter(budget_configurations::period_start.eq(budget.current_period.start))
+        .select(budget_configurations::allowance_currency)
+        .first::<String>(conn)
+        .into_storage()
 }

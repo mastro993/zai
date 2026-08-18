@@ -7,7 +7,8 @@ mod window;
 pub use contribute::{category_in_scope, signed_contribution};
 pub use enumerate::{ProjectedSlot, enumerate_projected_slots};
 pub use forecast::{
-    ProjectionBudgetInput, ProjectionComputeInput, ProjectionSourceInput, compute_budget_projection,
+    ProjectionBudgetInput, ProjectionComputeInput, ProjectionRateContext, ProjectionSourceInput,
+    compute_budget_projection,
 };
 pub use types::{
     BudgetPeriodForecast, BudgetProjectionQuery, BudgetProjectionResult,
