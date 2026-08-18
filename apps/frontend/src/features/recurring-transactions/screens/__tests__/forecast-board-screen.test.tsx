@@ -64,6 +64,7 @@ const readyProjection = (): BudgetProjectionResult => ({
   throughLocal: "2027-01-22T10:00:00",
   horizonMonths: 6,
   complete: true,
+  currency: "EUR",
   sourceErrors: [],
   periods: [
     period({
@@ -125,6 +126,7 @@ const emptyProjection = (horizonMonths: number): BudgetProjectionResult => ({
   throughLocal: "2027-01-22T10:00:00",
   horizonMonths,
   complete: true,
+  currency: "EUR",
   periods: [],
   sourceErrors: [],
 });

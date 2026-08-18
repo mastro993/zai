@@ -18,19 +18,20 @@ fn sample_period(status: BudgetStatus) -> BudgetPeriod {
         start,
         end,
         base_allowance: 10_000,
-        effective_allowance: 10_000,
+        effective_allowance: Some(10_000),
         net_budget_spending: match status {
             BudgetStatus::OnTrack => 5_000,
             BudgetStatus::Warning => 8_500,
             BudgetStatus::Overspent => 12_000,
         },
-        remaining_allowance: match status {
+        remaining_allowance: Some(match status {
             BudgetStatus::OnTrack => 5_000,
             BudgetStatus::Warning => 1_500,
             BudgetStatus::Overspent => -2_000,
-        },
-        status,
+        }),
+        status: Some(status),
         complete: true,
+        currency: "EUR".to_string(),
     }
 }
 
@@ -50,6 +51,7 @@ fn evaluate(
             BudgetAlertScenario::PeriodAdvancement { final_status } => final_status,
             BudgetAlertScenario::ResumeCurrent { status } => status,
         }),
+        "EUR",
     )
     .expect("policy evaluation")
     .into_iter()
@@ -243,4 +245,44 @@ fn occurrence_key_is_stable_and_versioned() {
         key,
         "v1:6ba7b810-9dad-11d1-80b4-00c04fd430c8:2026-07-01T00:00:00:warning"
     );
+}
+
+#[test]
+fn incomplete_period_emits_no_alert() {
+    let mut period = sample_period(BudgetStatus::Overspent);
+    period.complete = false;
+    period.status = None;
+    period.effective_allowance = None;
+    period.remaining_allowance = None;
+    let alerts = alerts_for_scenario(
+        BudgetAlertMode::Resume,
+        BudgetAlertScenario::ResumeCurrent {
+            status: BudgetStatus::Overspent,
+        },
+        PeriodAnnouncedStatuses::default(),
+        "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+        "Groceries",
+        &period,
+        "USD",
+    )
+    .expect("policy evaluation");
+    assert!(alerts.is_empty());
+}
+
+#[test]
+fn rich_data_uses_supplied_generation_currency() {
+    let alerts = alerts_for_scenario(
+        BudgetAlertMode::Resume,
+        BudgetAlertScenario::ResumeCurrent {
+            status: BudgetStatus::Overspent,
+        },
+        PeriodAnnouncedStatuses::default(),
+        "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+        "Groceries",
+        &sample_period(BudgetStatus::Overspent),
+        "USD",
+    )
+    .expect("policy evaluation");
+    let data = alerts[0].data.as_ref().expect("rich data");
+    assert_eq!(data.payload.get("currency"), Some(&serde_json::json!("USD")));
 }

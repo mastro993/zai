@@ -136,6 +136,15 @@ async fn pausing_hides_budget_from_active_list_and_resume_restores_it() {
 
     assert!(paused.paused);
     assert_eq!(paused.revision, 1);
+    assert_eq!(
+        paused.current_period.effective_allowance,
+        created.current_period.effective_allowance
+    );
+    assert_eq!(
+        paused.current_period.remaining_allowance,
+        created.current_period.remaining_allowance
+    );
+    assert_eq!(paused.current_period.status, created.current_period.status);
     assert!(
         budgets
             .list_budgets(BudgetListFilter::Active)

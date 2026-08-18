@@ -170,6 +170,7 @@ pub fn compute_budget_projection(input: ProjectionComputeInput) -> Result<Budget
         through_local: window.through_local,
         horizon_months: window.horizon_months,
         complete,
+        currency: input.rates.target_currency.clone(),
         periods,
         source_errors,
     };
@@ -359,10 +360,10 @@ fn forecast_budget_periods(
             actual_net_budget_spending: actual,
             projected_delta,
             forecast_net_budget_spending: forecast_net,
-            effective_allowance: computed.complete.then_some(computed.effective_allowance),
-            remaining_allowance: computed.complete.then_some(computed.remaining_allowance),
+            effective_allowance: computed.effective_allowance,
+            remaining_allowance: computed.remaining_allowance,
             status: if emit_status {
-                Some(computed.status)
+                computed.status
             } else {
                 None
             },
@@ -411,11 +412,12 @@ fn seed_previous_for_current(budget: &Budget) -> Result<BudgetPeriod> {
             start: budget.current_period.start,
             end: budget.current_period.start,
             base_allowance: budget.current_period.base_allowance,
-            effective_allowance: 0,
+            effective_allowance: None,
             net_budget_spending: budget.current_period.net_budget_spending,
-            remaining_allowance: 0,
-            status: budget.current_period.status,
+            remaining_allowance: None,
+            status: None,
             complete: false,
+            currency: budget.current_period.currency.clone(),
         });
     }
     // Reconstruct the predecessor carry implied by the durable current period.
@@ -423,6 +425,9 @@ fn seed_previous_for_current(budget: &Budget) -> Result<BudgetPeriod> {
     let carry = budget
         .current_period
         .effective_allowance
+        .ok_or_else(|| {
+            crate::Error::InvalidData("Complete period missing effective allowance".to_string())
+        })?
         .checked_sub(budget.current_period.base_allowance)
         .ok_or_else(|| {
             crate::Error::CalculationOverflow("Budget calculation overflow".to_string())
@@ -432,11 +437,12 @@ fn seed_previous_for_current(budget: &Budget) -> Result<BudgetPeriod> {
             start: budget.current_period.start,
             end: budget.current_period.start,
             base_allowance: 0,
-            effective_allowance: 0,
+            effective_allowance: Some(0),
             net_budget_spending: 0,
-            remaining_allowance: 0,
+            remaining_allowance: Some(0),
             status: budget.current_period.status,
             complete: budget.current_period.complete,
+            currency: budget.current_period.currency.clone(),
         }),
         BudgetRolloverMode::PreviousPeriodOnly => {
             // previous.base - previous.net = carry
@@ -444,22 +450,24 @@ fn seed_previous_for_current(budget: &Budget) -> Result<BudgetPeriod> {
                 start: budget.current_period.start,
                 end: budget.current_period.start,
                 base_allowance: carry,
-                effective_allowance: carry,
+                effective_allowance: Some(carry),
                 net_budget_spending: 0,
-                remaining_allowance: carry,
+                remaining_allowance: Some(carry),
                 status: budget.current_period.status,
                 complete: budget.current_period.complete,
+                currency: budget.current_period.currency.clone(),
             })
         }
         BudgetRolloverMode::Cumulative => Ok(BudgetPeriod {
             start: budget.current_period.start,
             end: budget.current_period.start,
             base_allowance: 0,
-            effective_allowance: carry,
+            effective_allowance: Some(carry),
             net_budget_spending: 0,
-            remaining_allowance: carry,
+            remaining_allowance: Some(carry),
             status: budget.current_period.status,
             complete: budget.current_period.complete,
+            currency: budget.current_period.currency.clone(),
         }),
     }
 }

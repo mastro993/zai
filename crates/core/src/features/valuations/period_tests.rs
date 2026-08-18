@@ -20,11 +20,12 @@ fn complete_previous() -> BudgetPeriod {
         start,
         end,
         base_allowance: 1_000,
-        effective_allowance: 1_000,
+        effective_allowance: Some(1_000),
         net_budget_spending: 400,
-        remaining_allowance: 600,
-        status: BudgetStatus::OnTrack,
+        remaining_allowance: Some(600),
+        status: Some(BudgetStatus::OnTrack),
         complete: true,
+        currency: "EUR".to_string(),
     }
 }
 
@@ -34,11 +35,12 @@ fn incomplete_previous() -> BudgetPeriod {
         start,
         end,
         base_allowance: 1_000,
-        effective_allowance: 0,
+        effective_allowance: None,
         net_budget_spending: 250,
-        remaining_allowance: 0,
-        status: BudgetStatus::OnTrack,
+        remaining_allowance: None,
+        status: None,
         complete: false,
+        currency: "EUR".to_string(),
     }
 }
 
@@ -62,8 +64,9 @@ fn pending_spending_keeps_known_sum_and_does_not_claim() {
     .unwrap();
     assert!(!period.complete);
     assert_eq!(period.net_budget_spending, 750);
-    assert_eq!(period.effective_allowance, 0);
-    assert_eq!(period.remaining_allowance, 0);
+    assert_eq!(period.effective_allowance, None);
+    assert_eq!(period.remaining_allowance, None);
+    assert_eq!(period.status, None);
 }
 
 #[test]
@@ -124,9 +127,9 @@ fn incomplete_predecessor_does_not_block_rollover_off() {
     })
     .unwrap();
     assert!(period.complete);
-    assert_eq!(period.effective_allowance, 2_000);
-    assert_eq!(period.remaining_allowance, 1_900);
-    assert_eq!(period.status, BudgetStatus::OnTrack);
+    assert_eq!(period.effective_allowance, Some(2_000));
+    assert_eq!(period.remaining_allowance, Some(1_900));
+    assert_eq!(period.status, Some(BudgetStatus::OnTrack));
 }
 
 #[test]
@@ -146,6 +149,6 @@ fn complete_rollover_uses_predecessor_remaining() {
     })
     .unwrap();
     assert!(period.complete);
-    assert_eq!(period.effective_allowance, 2_600);
-    assert_eq!(period.remaining_allowance, 2_500);
+    assert_eq!(period.effective_allowance, Some(2_600));
+    assert_eq!(period.remaining_allowance, Some(2_500));
 }

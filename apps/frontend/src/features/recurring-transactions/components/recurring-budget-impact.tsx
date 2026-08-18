@@ -110,13 +110,13 @@ export function RecurringBudgetImpact({ impact }: RecurringBudgetImpactProps) {
                 <TableCell className="font-medium">{period.budgetName}</TableCell>
                 <TableCell>{formatBudgetPeriod(period.periodStart, period.periodEnd)}</TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatCurrencyFromMinor(period.actualNetBudgetSpending, "EUR")}
+                  {formatCurrencyFromMinor(period.actualNetBudgetSpending, projection.currency)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums text-muted-foreground">
-                  {formatCurrencyFromMinor(period.projectedDelta, "EUR")}
+                  {formatCurrencyFromMinor(period.projectedDelta, projection.currency)}
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">
-                  {formatCurrencyFromMinor(period.forecastNetBudgetSpending, "EUR")}
+                  {formatCurrencyFromMinor(period.forecastNetBudgetSpending, projection.currency)}
                 </TableCell>
                 <TableCell>{formatCoverage(period.partial, period.coveredUntil)}</TableCell>
                 <TableCell>
@@ -161,7 +161,7 @@ export function RecurringBudgetImpact({ impact }: RecurringBudgetImpactProps) {
                   </span>
                 </Link>
                 <span className="tabular-nums">
-                  {formatCurrencyFromMinor(attribution.contribution, "EUR")}
+                  {formatCurrencyFromMinor(attribution.contribution, projection.currency)}
                 </span>
               </li>
             ))}

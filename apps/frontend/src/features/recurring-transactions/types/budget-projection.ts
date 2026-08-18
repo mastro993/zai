@@ -53,6 +53,7 @@ export const budgetProjectionResultSchema = z.object({
   throughLocal: z.string(),
   horizonMonths: z.number().int().min(1).max(12),
   complete: z.boolean(),
+  currency: z.string().length(3),
   periods: z.array(budgetPeriodForecastSchema),
   sourceErrors: z.array(projectionSourceErrorSchema),
 });

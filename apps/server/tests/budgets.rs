@@ -48,6 +48,9 @@ async fn create_list_and_inspect_budget_round_trip() {
     assert_eq!(created["categoryIds"], json!([]));
     assert_eq!(created["currentPeriod"]["netBudgetSpending"], 1250);
     assert_eq!(created["currentPeriod"]["remainingAllowance"], 8750);
+    assert_eq!(created["currentPeriod"]["complete"], true);
+    assert_eq!(created["currentPeriod"]["currency"], "EUR");
+    assert_eq!(created["currentPeriod"]["status"], "onTrack");
 
     let budget_id = created["id"].as_str().expect("budget id");
     let (list_status, listed) = request_json(&app, "GET", "/api/budgets", None).await;

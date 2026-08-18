@@ -47,8 +47,8 @@ before any financial read or write. The branch e2e seed silently assigns EUR,
 then confirms EUR as the default currency, so existing lifecycle specs keep
 passing.
 
-`BUDGET_STATUS_CURRENCY = "EUR"` is deleted in PR 6. Until then it must not
-ship to `main`.
+`BUDGET_STATUS_CURRENCY = "EUR"` is deleted. Alert rich data uses the active
+generation target currency.
 
 ## Stack
 

@@ -13,6 +13,7 @@ use zai_core::features::budgets::models::{
     Budget, BudgetCadence, BudgetListFilter, current_period,
 };
 
+use super::calculate::displayed_allowance_and_currency;
 use super::{TimelineInspect, TimelineInspectEntry, TimelineSelection};
 
 pub(super) fn inspect(
@@ -71,6 +72,7 @@ pub(super) fn inspect(
                 .cloned()
         });
         match decide_state(
+            conn,
             budget,
             configuration,
             configurations.len() as i64,
@@ -126,6 +128,7 @@ pub(super) fn inspect_budget(
         .optional()
         .into_storage()?;
     decide_state(
+        conn,
         budget,
         Some(configuration),
         configuration_count,
@@ -174,6 +177,7 @@ fn load_budget_rows(
 }
 
 fn decide_state(
+    conn: &mut SqliteConnection,
     budget: BudgetRow,
     configuration: Option<BudgetConfigurationRow>,
     configuration_count: i64,
@@ -202,7 +206,9 @@ fn decide_state(
     if configuration.period_start != current_start {
         return Ok(InspectState::Stale);
     }
-    build_budget(budget, configuration, result)
+    let (displayed_base, currency) =
+        displayed_allowance_and_currency(conn, &configuration, result.complete)?;
+    build_budget(budget, configuration, result, displayed_base, currency)
         .map(InspectState::Current)
         .map_err(StorageError::CoreError)
 }

@@ -1,3 +1,5 @@
+import { formatCurrencyFromMinor } from "@/lib/currency";
+
 import type { BudgetListFilter, BudgetStatus } from "../types/budget";
 
 export const budgetCadenceLabel = {
@@ -64,3 +66,19 @@ export const budgetStatusVariant = (status: BudgetStatus) => {
 
 export const formatBudgetPeriod = (start: string, end: string) =>
   `${start.slice(0, 10)} to ${end.slice(0, 10)}`;
+
+export const formatBudgetMinor = (amount: number | null, currency: string) =>
+  amount === null ? "—" : formatCurrencyFromMinor(amount, currency);
+
+export const budgetPeriodStatusPresentation = (period: {
+  status: BudgetStatus | null;
+  complete: boolean;
+}) => {
+  if (!period.complete || period.status === null) {
+    return { label: "Incomplete", variant: "outline" as const };
+  }
+  return {
+    label: budgetStatusLabel[period.status],
+    variant: budgetStatusVariant(period.status),
+  };
+};

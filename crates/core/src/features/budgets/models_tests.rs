@@ -53,7 +53,7 @@ fn warning_threshold_rounds_up_to_minor_unit() {
     let (start, end) = sample_period();
     let period = calculate_period(start, end, 1_001, 801, Some(80)).unwrap();
 
-    assert_eq!(period.status, BudgetStatus::Warning);
+    assert_eq!(period.status, Some(BudgetStatus::Warning));
 }
 
 #[test]
@@ -61,7 +61,7 @@ fn overspent_has_priority_over_warning() {
     let (start, end) = sample_period();
     let period = calculate_period(start, end, 1_000, 1_001, Some(80)).unwrap();
 
-    assert_eq!(period.status, BudgetStatus::Overspent);
+    assert_eq!(period.status, Some(BudgetStatus::Overspent));
 }
 
 #[test]
@@ -71,11 +71,12 @@ fn rollover_modes_carry_signed_previous_results() {
         start,
         end,
         base_allowance: 1_000,
-        effective_allowance: -250,
+        effective_allowance: Some(-250),
         net_budget_spending: 1_250,
-        remaining_allowance: -1_500,
-        status: BudgetStatus::Overspent,
+        remaining_allowance: Some(-1_500),
+        status: Some(BudgetStatus::Overspent),
         complete: true,
+        currency: "EUR".to_string(),
     };
 
     let previous_only = calculate_period_with_rollover(
@@ -99,8 +100,8 @@ fn rollover_modes_carry_signed_previous_results() {
     )
     .unwrap();
 
-    assert_eq!(previous_only.effective_allowance, 1_750);
-    assert_eq!(cumulative.effective_allowance, 500);
+    assert_eq!(previous_only.effective_allowance, Some(1_750));
+    assert_eq!(cumulative.effective_allowance, Some(500));
 }
 
 #[test]
@@ -110,11 +111,12 @@ fn rollover_status_uses_signed_effective_allowance() {
         start,
         end,
         base_allowance: 0,
-        effective_allowance: -1,
+        effective_allowance: Some(-1),
         net_budget_spending: 1,
-        remaining_allowance: -1,
-        status: BudgetStatus::Overspent,
+        remaining_allowance: Some(-1),
+        status: Some(BudgetStatus::Overspent),
         complete: true,
+        currency: "EUR".to_string(),
     };
 
     let period = calculate_period_with_rollover(
@@ -128,8 +130,8 @@ fn rollover_status_uses_signed_effective_allowance() {
     )
     .unwrap();
 
-    assert_eq!(period.effective_allowance, -1);
-    assert_eq!(period.status, BudgetStatus::Overspent);
+    assert_eq!(period.effective_allowance, Some(-1));
+    assert_eq!(period.status, Some(BudgetStatus::Overspent));
 }
 
 #[test]
@@ -200,11 +202,12 @@ fn checked_arithmetic_overflow_returns_structured_error() {
         start,
         end,
         base_allowance: i64::MAX,
-        effective_allowance: i64::MAX,
+        effective_allowance: Some(i64::MAX),
         net_budget_spending: 1,
-        remaining_allowance: i64::MAX - 1,
-        status: BudgetStatus::Overspent,
+        remaining_allowance: Some(i64::MAX - 1),
+        status: Some(BudgetStatus::Overspent),
         complete: true,
+        currency: "EUR".to_string(),
     };
 
     let error = calculate_period_with_rollover(
@@ -228,7 +231,7 @@ fn warning_threshold_handles_maximum_allowance_without_false_overflow() {
     let period = calculate_period(start, end, i64::MAX, i64::MAX - 1, Some(100))
         .expect("maximum allowance should remain calculable");
 
-    assert_eq!(period.status, BudgetStatus::OnTrack);
+    assert_eq!(period.status, Some(BudgetStatus::OnTrack));
 }
 
 #[test]

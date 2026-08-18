@@ -47,8 +47,9 @@ pub(super) fn load_history(
         .into_core()?;
     let data = rows
         .into_iter()
-        .map(|(result, configuration)| period_from_rows(configuration, result))
-        .collect::<Result<Vec<_>>>()?;
+        .map(|(result, configuration)| period_from_rows(conn, configuration, result))
+        .collect::<crate::errors::Result<Vec<_>>>()
+        .into_core()?;
 
     Ok(BudgetPeriodHistory {
         data,

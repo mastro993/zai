@@ -279,9 +279,7 @@ fn load_latest_persisted_period(
     else {
         return Ok(None);
     };
-    super::persistence::period_from_rows(configuration, result)
-        .map(Some)
-        .map_err(StorageError::CoreError)
+    super::persistence::period_from_rows(conn, configuration, result).map(Some)
 }
 
 fn repair_from_frontier(

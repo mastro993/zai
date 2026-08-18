@@ -9,7 +9,6 @@ use serde_json::{Map, Value, json};
 pub const BUDGET_STATUS_PRODUCER_KEY: &str = "budget.status";
 pub const BUDGET_STATUS_RICH_KIND: &str = "budget.status";
 pub const BUDGET_STATUS_RICH_VERSION: u32 = 1;
-pub const BUDGET_STATUS_CURRENCY: &str = "EUR";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BudgetAlertMode {
@@ -77,6 +76,7 @@ pub fn alerts_for_scenario(
     budget_id: &str,
     budget_name: &str,
     period: &BudgetPeriod,
+    currency: &str,
 ) -> Result<Vec<NewDomainAlert>> {
     if mode == BudgetAlertMode::Silent || !period.complete {
         return Ok(Vec::new());
@@ -97,7 +97,7 @@ pub fn alerts_for_scenario(
     };
 
     target_status
-        .map(|status| build_status_alert(budget_id, budget_name, period, status))
+        .map(|status| build_status_alert(budget_id, budget_name, period, status, currency))
         .transpose()
         .map(|alert| alert.into_iter().collect())
 }
@@ -152,6 +152,7 @@ pub fn build_status_alert(
     budget_name: &str,
     period: &BudgetPeriod,
     status: BudgetStatus,
+    currency: &str,
 ) -> Result<NewDomainAlert> {
     let period_date = format_period_start_date(period.start);
     let (severity, title, body) = match status {
@@ -186,11 +187,15 @@ pub fn build_status_alert(
         destination: Some(DomainAlertDestination::Budget {
             budget_id: budget_id.to_string(),
         }),
-        data: Some(build_rich_data(period, status)),
+        data: Some(build_rich_data(period, status, currency)),
     })
 }
 
-fn build_rich_data(period: &BudgetPeriod, status: BudgetStatus) -> DomainAlertRichData {
+fn build_rich_data(
+    period: &BudgetPeriod,
+    status: BudgetStatus,
+    currency: &str,
+) -> DomainAlertRichData {
     let status_value = match status {
         BudgetStatus::OnTrack => "onTrack",
         BudgetStatus::Warning => "warning",
@@ -208,7 +213,7 @@ fn build_rich_data(period: &BudgetPeriod, status: BudgetStatus) -> DomainAlertRi
         ),
         (
             "effectiveAllowance".to_string(),
-            json!(period.effective_allowance),
+            json!(period.effective_allowance.expect("complete period")),
         ),
         (
             "netBudgetSpending".to_string(),
@@ -216,9 +221,9 @@ fn build_rich_data(period: &BudgetPeriod, status: BudgetStatus) -> DomainAlertRi
         ),
         (
             "remainingAllowance".to_string(),
-            json!(period.remaining_allowance),
+            json!(period.remaining_allowance.expect("complete period")),
         ),
-        ("currency".to_string(), json!(BUDGET_STATUS_CURRENCY)),
+        ("currency".to_string(), json!(currency)),
     ]);
 
     DomainAlertRichData {

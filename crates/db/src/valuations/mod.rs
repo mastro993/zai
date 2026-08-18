@@ -15,6 +15,8 @@ pub(crate) use generation::{
     current_allowance_currency,
 };
 pub(crate) use spending::{SpendingAggregate, sum_period_spending};
+#[cfg(test)]
+pub(crate) use spending::{SpendingBucketGrain, sum_spending_buckets};
 
 use crate::connection::{DbPool, get_connection};
 use crate::write_actor::WriteHandle;

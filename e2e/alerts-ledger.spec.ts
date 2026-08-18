@@ -358,6 +358,7 @@ test.describe("alerts ledger", () => {
             remainingAllowance: 7500,
             status: "onTrack",
             complete: true,
+            currency: "EUR",
           },
         }),
       });
