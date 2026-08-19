@@ -28,12 +28,12 @@ const STATUS_META = {
   empty: { label: "Empty", dot: "bg-border" },
 } satisfies Record<ImportPreviewRowResult["status"], ImportStatusMeta>;
 
-const PREP_ACTION_LABEL: Record<CurrencyPrepAction, string> = {
+const PREP_ACTION_LABEL = {
   alreadyEnabled: "already enabled",
   add: "add",
   reEnable: "re-enable",
   backfill: "backfill",
-};
+} satisfies Record<CurrencyPrepAction, string>;
 
 function coverageLabel(from: string | undefined, to: string | undefined) {
   if (!from && !to) {

@@ -39,8 +39,24 @@ export interface MapTransactionImportOptions {
   rateDirection: RateDirection;
 }
 
-const RATE_VARIANTS = new Set<RateVariant>(["identity", "automatic", "manual", "pending"]);
-const RATE_ORIGINS = new Set<RateOrigin>(["supplied", "manual"]);
+interface ExistingCategoryNames {
+  parentCategory?: string;
+  category?: string;
+}
+
+interface MappedTransactionImportRows {
+  hasCurrencyColumn: boolean;
+  isZaiExport: boolean;
+  rows: Array<MappedImportRow>;
+}
+
+const isRateVariant = (value: string): value is RateVariant =>
+  value === "identity" || value === "automatic" || value === "manual" || value === "pending";
+
+const isRateOrigin = (value: string): value is RateOrigin =>
+  value === "supplied" || value === "manual";
+
+const stripFormulaGuard = (value: string) => (value.startsWith("\t") ? value.slice(1) : value);
 
 const headerIndexMap = (headers: Array<string>) => {
   const indexes = new Map<string, number>();
@@ -91,16 +107,13 @@ const parseNativeFields = (
   ) {
     return undefined;
   }
-  if (
-    !RATE_VARIANTS.has(rateVariantRaw as RateVariant) ||
-    !RATE_ORIGINS.has(originRaw as RateOrigin)
-  ) {
+  if (!isRateVariant(rateVariantRaw) || !isRateOrigin(originRaw)) {
     return undefined;
   }
 
   return {
     exportVersion,
-    rateVariant: rateVariantRaw as RateVariant,
+    rateVariant: rateVariantRaw,
     rateState,
     rateDate,
     sourceObservationDate: optionalCell(row, indexes.get("source_observation_date")),
@@ -110,14 +123,14 @@ const parseNativeFields = (
     scale: parseIntegerCell(optionalCell(row, indexes.get("scale"))),
     originalDecimal: optionalCell(row, indexes.get("original_decimal")),
     formulaVersion: parseIntegerCell(optionalCell(row, indexes.get("formula_version"))),
-    origin: originRaw as RateOrigin,
+    origin: originRaw,
   };
 };
 
 const resolveExistingCategoryNames = (
   options: MapTransactionImportOptions,
   row: Array<string>,
-): { parentCategory?: string; category?: string } => {
+): ExistingCategoryNames => {
   const parsed = parseCategoryPath(
     row,
     options.mapping,
@@ -152,7 +165,7 @@ const resolveExistingCategoryNames = (
 export const mapTransactionImportRows = (
   content: string,
   options: MapTransactionImportOptions,
-): { hasCurrencyColumn: boolean; isZaiExport: boolean; rows: Array<MappedImportRow> } => {
+): MappedTransactionImportRows => {
   const table = parseCsv(content);
   const headerRowIndex = Math.max(
     0,
@@ -217,8 +230,6 @@ export const mapTransactionImportRows = (
         mapped.transactionType = parsedType.value;
       }
     }
-
-    const stripFormulaGuard = (value: string) => (value.startsWith("\t") ? value.slice(1) : value);
 
     const description = stripFormulaGuard(normalizeName(getCell(row, options.mapping.description)));
     const notes = stripFormulaGuard(normalizeName(getCell(row, options.mapping.notes)));

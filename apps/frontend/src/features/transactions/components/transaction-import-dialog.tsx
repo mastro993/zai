@@ -59,15 +59,17 @@ const sleep = (ms: number) =>
 
 const waitForPreviewJob = async (
   token: string,
+  attempt = 0,
 ): Promise<Result.Result<BoundImportPreview, CommandError>> => {
-  for (let attempt = 0; attempt < 80; attempt += 1) {
-    const result = await getTransactionImportPreview(token);
-    if (Result.isFailure(result) || result.value.job.status !== "running") {
-      return result;
-    }
-    await sleep(250);
+  const result = await getTransactionImportPreview(token);
+  if (Result.isFailure(result) || result.value.job.status !== "running") {
+    return result;
   }
-  return Result.fail(new CommandError("Import preview timed out"));
+  if (attempt >= 79) {
+    return Result.fail(new CommandError("Import preview timed out"));
+  }
+  await sleep(250);
+  return waitForPreviewJob(token, attempt + 1);
 };
 
 function TransactionImportDialog({

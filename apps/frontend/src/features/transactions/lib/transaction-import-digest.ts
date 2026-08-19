@@ -1,6 +1,6 @@
 import { Result } from "@praha/byethrow";
 
-import { CommandError, toCommandError } from "@/commands/errors";
+import { toCommandError, type CommandError } from "@/commands/errors";
 
 const toHex = (bytes: ArrayBuffer) =>
   Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
