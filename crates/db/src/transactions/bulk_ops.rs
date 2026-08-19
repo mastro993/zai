@@ -60,10 +60,10 @@ pub(crate) fn export_transactions_csv(
 
     let category_lookup = load_category_lookup(conn, &rows)?;
     let rate_fields = load_export_rate_fields(conn, &rows)?;
-    let csv_rows = rows
-        .iter()
-        .map(|row| to_csv_row(row, &category_lookup, &rate_fields))
-        .collect::<Vec<_>>();
+    let mut csv_rows = Vec::with_capacity(rows.len());
+    for row in &rows {
+        csv_rows.push(to_csv_row(row, &category_lookup, &rate_fields)?);
+    }
 
     Ok(format_transactions_csv(&csv_rows))
 }
@@ -201,7 +201,7 @@ fn to_csv_row<'a>(
     row: &'a TransactionRow,
     categories_by_id: &HashMap<String, TransactionCategoryRow>,
     rate_fields: &HashMap<String, super::rate_revisions::ExportRateFields>,
-) -> CsvTransactionRow<'a> {
+) -> Result<CsvTransactionRow<'a>> {
     let fields = rate_fields.get(&row.id);
     let (exchange_rate, formula_version, complete) = match fields {
         Some(fields) => (
@@ -218,9 +218,13 @@ fn to_csv_row<'a>(
             false,
         ),
     };
-    CsvTransactionRow {
+    Ok(CsvTransactionRow {
         transaction_date: row.transaction_date,
-        amount_minor: i32::try_from(row.amount).unwrap_or(i32::MAX),
+        amount_minor: i32::try_from(row.amount).map_err(|_| {
+            zai_core::Error::InvalidData(
+                "Transaction amount exceeds supported export range".to_string(),
+            )
+        })?,
         currency: row.currency.as_str(),
         transaction_type: row.transaction_type.as_str(),
         description: row.description.as_deref(),
@@ -229,5 +233,5 @@ fn to_csv_row<'a>(
         exchange_rate,
         formula_version,
         complete,
-    }
+    })
 }

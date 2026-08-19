@@ -52,6 +52,7 @@ impl TransactionImportService {
         request: PreviewTransactionImportRequest,
     ) -> Result<BoundImportPreview> {
         self.settings.require_setup()?;
+        self.prune_terminal_previews();
         let candidates = duplicate_candidates_from_request(&request);
         let existing = self
             .repository
@@ -121,6 +122,7 @@ impl TransactionImportService {
 
     pub fn get_preview(&self, token: &str) -> Result<BoundImportPreview> {
         self.settings.require_setup()?;
+        self.prune_terminal_previews();
         let stored = self
             .lock_store()
             .get(token)
@@ -156,7 +158,10 @@ impl TransactionImportService {
             .ok_or_else(|| Error::NotFound(format!("Import preview {}", job.job_id)))?;
         for code in currencies_needing_provider(&stored.preparations) {
             if let Err(error) = self.settings.prove_coverage(&code) {
-                return self.currency.fail_job(job, error);
+                let job_id = job.job_id.clone();
+                let result = self.currency.fail_job(job, error);
+                self.lock_store().remove(&job_id);
+                return result;
             }
         }
         self.currency.mark_job_succeeded(job)
@@ -167,6 +172,7 @@ impl TransactionImportService {
         request: CommitTransactionImportRequest,
     ) -> Result<CommitTransactionImportResponse> {
         self.settings.require_setup()?;
+        self.prune_terminal_previews();
         let stored = self
             .lock_store()
             .get(&request.token)
@@ -231,6 +237,23 @@ impl TransactionImportService {
         self.store
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    fn prune_terminal_previews(&self) {
+        let tokens = self.lock_store().keys().cloned().collect::<Vec<_>>();
+        for token in tokens {
+            let should_remove = match self.currency.get_job(&token) {
+                Ok(job) => matches!(
+                    job.status,
+                    CurrencyJobStatus::Failed | CurrencyJobStatus::Cancelled
+                ),
+                Err(Error::CurrencyJobNotFound(_)) => true,
+                Err(_) => false,
+            };
+            if should_remove {
+                self.lock_store().remove(&token);
+            }
+        }
     }
 }
 
@@ -608,6 +631,41 @@ mod tests {
             .await
             .expect_err("blocked");
         assert!(matches!(error, Error::InvalidData(message) if message.contains("invalid rows")));
+    }
+
+    #[tokio::test]
+    async fn prune_removes_failed_preview_store_entries() {
+        let (service, settings, _) = service();
+        settings.lock().expect("lock").disclosure_accepted = true;
+        let mut foreign = mapped_row();
+        foreign.currency = Some("USD".to_string());
+        let preview = service
+            .preview(PreviewTransactionImportRequest {
+                file_digest: "abc".to_string(),
+                has_currency_column: true,
+                confirmed_transaction_currency: None,
+                confirm_provider_disclosure: true,
+                rows: vec![foreign],
+            })
+            .await
+            .expect("preview");
+        assert_eq!(preview.job.status, CurrencyJobStatus::Running);
+
+        {
+            let mut inner = settings.lock().expect("lock");
+            if let Some(job) = inner
+                .jobs
+                .iter_mut()
+                .find(|job| job.job_id == preview.token)
+            {
+                job.status = CurrencyJobStatus::Failed;
+            }
+        }
+
+        let error = service
+            .get_preview(&preview.token)
+            .expect_err("failed preview pruned");
+        assert!(matches!(error, Error::NotFound(_)));
     }
 
     #[test]

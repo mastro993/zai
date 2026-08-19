@@ -220,6 +220,7 @@ export function TransactionImportMappingStep({
   onConfirmProviderDisclosureChange: (value: boolean) => void;
 }) {
   const isColumnType = config.amountMode === "column-type";
+  const isSignedAmountMode = config.amountMode === "signed";
   const isSingleColumnCategory = config.categoryLinkMode === "single-column";
   const hasCurrencyColumn = mapping.currency !== null || isZaiExport;
   const currencyItems = catalog.map((item) => ({
@@ -239,8 +240,8 @@ export function TransactionImportMappingStep({
         <FieldGroup className="grid gap-4 sm:grid-cols-2">
           <ColumnSelect
             label="Amount"
-            required={mapping.amountMinor === null}
-            allowNone={mapping.amountMinor !== null}
+            required={isSignedAmountMode || mapping.amountMinor === null}
+            allowNone={!isSignedAmountMode && mapping.amountMinor !== null}
             value={mapping.amount}
             headers={headers}
             onChange={(value) => onMappingChange("amount", value)}
@@ -274,7 +275,11 @@ export function TransactionImportMappingStep({
               strokeWidth={1.8}
             />
             Map the amount and date columns
-            {isColumnType ? ", plus a type column," : ""}
+            {isColumnType
+              ? ", plus a type column,"
+              : isSignedAmountMode
+                ? " with signed amounts,"
+                : ""}
             {hasCurrencyColumn ? "" : ", and confirm one transaction currency,"} to review your
             import.
           </p>

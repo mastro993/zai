@@ -128,7 +128,10 @@ function TransactionImportDialog({
   );
   const zaiExport = isZaiTransactionExport(headers);
   const hasCurrencyColumn = mapping.currency !== null || zaiExport;
-  const amountMapped = mapping.amount !== null || mapping.amountMinor !== null;
+  const isSignedAmountMode = config.amountMode === "signed";
+  const amountMapped = isSignedAmountMode
+    ? mapping.amount !== null
+    : mapping.amount !== null || mapping.amountMinor !== null;
   const mappingReady =
     amountMapped &&
     mapping.transactionDate !== null &&
