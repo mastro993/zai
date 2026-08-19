@@ -20,6 +20,14 @@ pub fn create_recurring_transaction(
     conn: &mut SqliteConnection,
     input: NewRecurringTransaction,
 ) -> Result<RecurringTransaction> {
+    persist_new_recurring_transaction(conn, input, true)
+}
+
+pub(super) fn persist_new_recurring_transaction(
+    conn: &mut SqliteConnection,
+    input: NewRecurringTransaction,
+    require_selectable_currency: bool,
+) -> Result<RecurringTransaction> {
     let id = input.id.clone().ok_or_else(|| {
         StorageError::CoreError(Error::InvalidData(
             "Recurring transaction id is required".to_string(),
@@ -31,11 +39,16 @@ pub fn create_recurring_transaction(
     let first_scheduled_local = input.first_scheduled_local;
 
     let (interval_every, interval_unit, monthly_day) = schedule_columns(&input.schedule);
-    crate::transactions::rate_revisions::require_selectable_currency(
-        conn,
-        &input.template.currency,
-    )
-    .map_err(StorageError::from)?;
+    if require_selectable_currency {
+        crate::transactions::rate_revisions::require_selectable_currency(
+            conn,
+            &input.template.currency,
+        )
+        .map_err(StorageError::from)?;
+    } else {
+        crate::transactions::rate_revisions::require_supported_currency(&input.template.currency)
+            .map_err(StorageError::from)?;
+    }
 
     diesel::insert_into(recurring_transactions::table)
         .values(RecurringTransactionRow {

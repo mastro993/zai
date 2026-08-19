@@ -4,12 +4,19 @@ use super::seed::SeedRecurringSource;
 use crate::connection::get_connection;
 use crate::schema::{domain_alerts, recurring_generation_failures, transactions};
 use diesel::prelude::*;
+use diesel::sql_types::BigInt;
 use std::sync::atomic::Ordering;
 use zai_core::features::recurring_transactions::{
     FulfillmentKind, ProcessingWorkBudget, RECURRING_GENERATION_FAILURE_PRODUCER_KEY,
     RECURRING_OCCURRENCE_PRODUCER_KEY, RecurringLifecycle, RecurringOccurrenceProcessor,
     RecurringTransactionsRepositoryTrait,
 };
+
+#[derive(QueryableByName)]
+struct CountRow {
+    #[diesel(sql_type = BigInt)]
+    count: i64,
+}
 
 #[tokio::test]
 async fn fulfillment_rolls_back_atomically_when_side_effect_fails() {
@@ -58,6 +65,30 @@ async fn fulfillment_rolls_back_atomically_when_side_effect_fails() {
     .await
     .expect("join");
     assert_eq!(txn_count, 0);
+
+    let pool = repo.pool().clone();
+    let rate_count: i64 = tokio::task::spawn_blocking(move || {
+        let mut conn = get_connection(&pool).expect("conn");
+        diesel::sql_query("SELECT COUNT(*) AS count FROM transaction_exchange_rate_revisions")
+            .get_result::<CountRow>(&mut conn)
+            .expect("rate count")
+            .count
+    })
+    .await
+    .expect("join");
+    assert_eq!(rate_count, 0);
+
+    let pool = repo.pool().clone();
+    let valuation_count: i64 = tokio::task::spawn_blocking(move || {
+        let mut conn = get_connection(&pool).expect("conn");
+        diesel::sql_query("SELECT COUNT(*) AS count FROM transaction_valuations")
+            .get_result::<CountRow>(&mut conn)
+            .expect("valuation count")
+            .count
+    })
+    .await
+    .expect("join");
+    assert_eq!(valuation_count, 0);
 
     let pool = repo.pool().clone();
     let alert_count: i64 = tokio::task::spawn_blocking(move || {
