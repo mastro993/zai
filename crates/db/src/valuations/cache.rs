@@ -93,7 +93,7 @@ fn convert_for_generation(
     conn: &mut SqliteConnection,
     source: Money,
     target: CurrencyCode,
-    prior: Option<CurrencyCode>,
+    _prior: Option<CurrencyCode>,
     revision: Option<&RateRevisionRow>,
 ) -> Result<(Option<i64>, bool)> {
     if source.currency() == target {
@@ -107,26 +107,18 @@ fn convert_for_generation(
                 .ok_or_else(|| {
                     zai_core::Error::InvalidData("Manual rate is missing its decimal".to_string())
                 })?;
-            let quoted_to = prior.unwrap_or(target);
-            let via_prior = convert(
+            // Ponytail: Interpret user-supplied manual rates as conversion from the authored
+            // transaction currency directly into the active valuation target currency.
+            // This avoids wiring the manual-rate quote to a potentially stale `prior` generation
+            // when currency defaults change.
+            let converted = convert(
                 source,
-                quoted_to,
+                target,
                 &ConversionRate::Manual(CanonicalRate::parse(decimal)?),
             )?;
-            let Some(in_prior) = via_prior.converted else {
-                return Ok((None, false));
-            };
-            if quoted_to == target {
-                return Ok((Some(in_prior.minor_units()), true));
-            }
-            let restated = convert(
-                in_prior,
-                target,
-                &pair_or_pending(conn, quoted_to, target, revision)?,
-            )?;
             Ok((
-                restated.converted.map(|money| money.minor_units()),
-                restated.complete,
+                converted.converted.map(|money| money.minor_units()),
+                converted.complete,
             ))
         }
         Some("identity") | Some("automatic") => {

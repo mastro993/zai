@@ -1,6 +1,6 @@
 use crate::{
     RECURRING_PROCESSING_EVENT_NAME, register_commands, start_alert_event_forwarder,
-    start_recurring_processing_forwarder,
+    start_currency_state_forwarder, start_recurring_processing_forwarder,
 };
 use chrono::{NaiveDate, NaiveDateTime};
 use serde_json::{Value, json};
@@ -19,6 +19,7 @@ use tauri::{WebviewWindow, WebviewWindowBuilder};
 use tokio::sync::mpsc;
 use zai_app::bootstrap_context_with_buses_and_clock;
 use zai_core::features::budgets::traits::CalendarClock;
+use zai_core::features::currency::CURRENCY_STATE_EVENT_NAME;
 use zai_core::features::domain_alerts::DomainAlertEventBus;
 use zai_core::features::recurring_transactions::{
     RecurringProcessingEvent, RecurringProcessingEventBus, RecurringProcessingFinishState,
@@ -101,6 +102,7 @@ pub(crate) struct NativeHarness {
     supervisor_handle:
         zai_core::features::recurring_transactions::RecurringProcessingSupervisorHandle,
     processing_events: mpsc::UnboundedReceiver<String>,
+    currency_events: mpsc::UnboundedReceiver<String>,
     _data_dir: TempDataDir,
 }
 
@@ -133,13 +135,20 @@ impl NativeHarness {
             .build()
             .expect("mock Tauri webview should build");
         let (sender, processing_events) = mpsc::unbounded_channel();
+        let (currency_sender, currency_events) = mpsc::unbounded_channel();
         let _ = app.listen(RECURRING_PROCESSING_EVENT_NAME, move |event| {
             let payload = event.payload().to_string();
             let payload = serde_json::from_str::<String>(&payload).unwrap_or(payload);
             let _ = sender.send(payload);
         });
+        let _ = app.listen(CURRENCY_STATE_EVENT_NAME, move |event| {
+            let payload = event.payload().to_string();
+            let payload = serde_json::from_str::<String>(&payload).unwrap_or(payload);
+            let _ = currency_sender.send(payload);
+        });
         start_alert_event_forwarder(app.handle().clone(), alert_bus);
         start_recurring_processing_forwarder(app.handle().clone(), processing_bus);
+        start_currency_state_forwarder(app.handle().clone(), currency_bus);
         bootstrapped.supervisor.spawn();
         std::mem::drop(bootstrapped.currency_refresh.spawn());
 
@@ -148,6 +157,7 @@ impl NativeHarness {
             webview,
             supervisor_handle,
             processing_events,
+            currency_events,
             _data_dir: data_dir,
         }
     }
@@ -186,6 +196,13 @@ impl NativeHarness {
                 };
             }
         }
+    }
+
+    pub(crate) async fn await_currency_state_payload(&mut self) -> String {
+        tokio::time::timeout(Duration::from_secs(10), self.currency_events.recv())
+            .await
+            .expect("currency-state event should arrive")
+            .expect("currency-state event channel should stay open")
     }
 
     pub(crate) async fn shutdown(mut self) {

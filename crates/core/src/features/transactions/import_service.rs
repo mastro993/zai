@@ -258,11 +258,15 @@ impl TransactionImportService {
 }
 
 fn ensure_transaction_id(transaction: &mut NewTransaction) {
-    if transaction
+    // `import_preview` assigns deterministic placeholder ids (e.g. `imp-2`) based on
+    // CSV row numbers. Those collide across multiple import operations, so we must
+    // replace placeholders with fresh ids during commit.
+    let placeholder_or_empty = transaction
         .id
         .as_deref()
-        .is_none_or(|id| id.trim().is_empty())
-    {
+        .is_none_or(|id| id.trim().is_empty() || id.starts_with("imp-"));
+
+    if placeholder_or_empty {
         transaction.id = Some(Uuid::new_v4().to_string());
     }
 }

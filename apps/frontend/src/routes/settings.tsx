@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 
+import { asWireObject } from "@/lib/wire";
 import { ScreenBase } from "@/components/screen-base";
 import {
   Field,
@@ -12,13 +13,16 @@ import {
 } from "@/components/ui/field";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CurrencySettingsScreen } from "@/features/currency/screens/currency-settings-screen";
-import { CurrencyControlsPrototypeScreen } from "@/features/currency-prototype/screens/currency-controls-prototype-screen";
-import { parseSettingsPrototypeSearch } from "@/features/currency-prototype/lib/prototype-search";
 
 // Three variants of currency settings and transaction currency controls,
 // switchable via ?variant=, on the existing /settings route.
 export const Route = createFileRoute("/settings")({
-  validateSearch: parseSettingsPrototypeSearch,
+  validateSearch: (search) => {
+    const record = asWireObject(search);
+    return {
+      focus: record?.focus === "rates" ? ("rates" as const) : undefined,
+    };
+  },
   component: SettingsPage,
 });
 
@@ -41,13 +45,6 @@ const isThemeMode = (value: string | undefined): value is ThemeMode =>
 
 function SettingsPage() {
   const search = Route.useSearch();
-  if (search.variant) {
-    return (
-      <CurrencyControlsPrototypeScreen
-        search={{ variant: search.variant, scene: search.scene ?? "settings" }}
-      />
-    );
-  }
 
   return (
     <ScreenBase>

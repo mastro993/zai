@@ -27,7 +27,10 @@
     "check:backend": "mkdir -p dist && printf '<!doctype html><html><body></body></html>' > dist/index.html && cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo build -p zai-db --bin recurring-crash-child --features failpoints && cargo test --workspace",
     "check": "pnpm check:frontend && pnpm check:backend",
     "benchmark:recurring": "node scripts/recurring-reference-runner.mjs",
-    "test:e2e:web": "playwright test"
+    "benchmark:currency": "node scripts/currency-reference-runner.mjs",
+    "test:e2e:web:currency-initial": "ZAI_E2E_CONFIRM_DEFAULT_CURRENCY=\"\" playwright test --grep \"currency-initial-setup\"",
+    "test:e2e:web:currency-rest": "ZAI_E2E_CONFIRM_DEFAULT_CURRENCY=\"EUR\" playwright test --grep-invert \"currency-initial-setup\"",
+    "test:e2e:web": "pnpm test:e2e:web:currency-initial && pnpm test:e2e:web:currency-rest"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.78.0",

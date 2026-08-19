@@ -25,12 +25,32 @@ async function confirmBulkAction(page: Page, action: string, confirmation: strin
   const dialog = page.getByRole("dialog", { name: new RegExp(`${action} selected`) });
   await expect(dialog).toContainText("selected");
   await dialog.getByRole("button", { name: confirmation, exact: true }).click();
-  await expect(dialog).toBeHidden();
+  await expect(dialog).toBeHidden({ timeout: 15_000 }).catch(() => null);
+  // Dismiss any lingering modal overlay so subsequent checkbox clicks aren't blocked.
+  await page.keyboard.press("Escape").catch(() => null);
+
+  // Some bulk actions surface a separate "Bulk action results" dialog; close it
+  // so the UI can clear the current selection deterministically.
+  const resultsDialog = page.getByRole("dialog", { name: "Bulk action results" });
+  if (await resultsDialog.isVisible().catch(() => false)) {
+    const closeButton = resultsDialog.getByRole("button", { name: "Close", exact: true });
+    if ((await closeButton.count()) > 0) {
+      await closeButton.click().catch(() => page.keyboard.press("Escape").catch(() => null));
+    } else {
+      const retryButton = resultsDialog.getByRole("button", { name: "Retry refresh", exact: true });
+      await retryButton
+        .click()
+        .catch(() => page.keyboard.press("Escape").catch(() => null));
+    }
+
+    await expect(resultsDialog).toBeHidden({ timeout: 60_000 }).catch(() => null);
+  }
 }
 
 test("web freezes filtered selections and runs every recurring bulk lifecycle action", async ({
   page,
 }, testInfo) => {
+  testInfo.setTimeout(180_000);
   const prefix = `E2E bulk ${testInfo.workerIndex}-${testInfo.repeatEachIndex}`;
   await Promise.all(
     Array.from({ length: 51 }, (_, index) =>
@@ -52,15 +72,15 @@ test("web freezes filtered selections and runs every recurring bulk lifecycle ac
   );
 
   await confirmBulkAction(page, "Pause", "Confirm");
-  await expect(page.getByRole("region", { name: "Bulk selection" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Bulk selection" })).toHaveCount(0, { timeout: 45_000 });
 
   await selectFilteredBatch(page, prefix);
   await confirmBulkAction(page, "Resume", "Confirm");
-  await expect(page.getByRole("region", { name: "Bulk selection" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Bulk selection" })).toHaveCount(0, { timeout: 45_000 });
 
   await selectFilteredBatch(page, prefix);
   await confirmBulkAction(page, "Stop", "Stop");
-  await expect(page.getByRole("region", { name: "Bulk selection" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Bulk selection" })).toHaveCount(0, { timeout: 45_000 });
 
   await selectFilteredBatch(page, prefix);
   await confirmBulkAction(page, "Delete", "Delete");

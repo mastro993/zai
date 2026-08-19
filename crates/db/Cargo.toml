@@ -21,6 +21,10 @@ required-features = ["failpoints"]
 name = "recurring-reference-runner"
 path = "src/bin/recurring-reference-runner.rs"
 
+[[bin]]
+name = "currency-reference-runner"
+path = "src/bin/currency-reference-runner.rs"
+
 [dependencies]
 zai-core = { workspace = true }
 diesel = { workspace = true }
