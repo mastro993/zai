@@ -317,11 +317,12 @@ async fn native_currency_workflow_smoke() {
     let mut native = NativeHarness::new();
 
     // Frontend-shaped IPC: start a currency job via the production Tauri command handler.
+    // RUB avoids provider refresh (no ECB path) so the current-thread test runtime stays responsive.
     let job = native.invoke(
         "start_currency_addition",
         json!({
-            "code": "USD",
-            "confirm_provider_disclosure": true
+            "code": "RUB",
+            "confirmProviderDisclosure": false
         }),
     );
 
