@@ -2,8 +2,9 @@
 # Cloud Agent install: deps + GTK/WebKit for Tauri clippy, and Node
 # type-stripping for oxlint JS plugins. /exec-daemon/node is 22.14 and
 # cannot import tools/oxlint/anti-slop/index.ts without
-# --experimental-strip-types. Frontend lint scripts also set that flag so
-# stop-hook `pnpm check` works even when this file is not sourced.
+# --experimental-strip-types. Persist that flag for interactive shells.
+# The stop hook does not source this file; `.agents/hooks/check-gate.sh`
+# sets the same flag before `pnpm check`.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
