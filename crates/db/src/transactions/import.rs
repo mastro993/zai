@@ -251,10 +251,10 @@ pub(super) async fn commit_bound_import(
                     .map(|row| row.transaction.clone())
                     .collect::<Vec<_>>();
                 for transaction in &mut new_transactions {
-                    if let Some(category_id) = transaction.transaction_category_id.as_ref() {
-                        if let Some(mapped) = category_plan.id_remap.get(category_id) {
-                            transaction.transaction_category_id = Some(mapped.clone());
-                        }
+                    if let Some(category_id) = transaction.transaction_category_id.as_ref()
+                        && let Some(mapped) = category_plan.id_remap.get(category_id)
+                    {
+                        transaction.transaction_category_id = Some(mapped.clone());
                     }
                 }
                 let existing_rows = load_existing_in_import_range(conn, &new_transactions)?;

@@ -98,9 +98,9 @@ pub fn classify_import(
                     currencies.push(currency);
                 }
                 preview_rows.push(result);
-                commit_rows.push(commit);
+                commit_rows.push(*commit);
             }
-            Err(result) => preview_rows.push(result),
+            Err(result) => preview_rows.push(*result),
         }
     }
 
@@ -191,10 +191,12 @@ enum ClassifiedRow {
     Skip(ImportPreviewRowResult),
     Import {
         result: ImportPreviewRowResult,
-        commit: BoundImportCommitRow,
+        commit: Box<BoundImportCommitRow>,
         currency: String,
     },
 }
+
+type ClassifyError = Box<ImportPreviewRowResult>;
 
 fn classify_row(
     mapped: &MappedImportRow,
@@ -204,7 +206,7 @@ fn classify_row(
     imported_keys: &mut HashSet<String>,
     category_ids: &mut HashMap<String, String>,
     categories: &mut Vec<NewTransactionCategory>,
-) -> std::result::Result<ClassifiedRow, ImportPreviewRowResult> {
+) -> std::result::Result<ClassifiedRow, ClassifyError> {
     let date = parse_required_date(mapped)?;
     let amount = mapped
         .amount_minor
@@ -286,10 +288,10 @@ fn classify_row(
             category: display_category(mapped),
             rate_origin: rate_origin(&rate_plan),
         },
-        commit: BoundImportCommitRow {
+        commit: Box::new(BoundImportCommitRow {
             transaction,
             rate_plan,
-        },
+        }),
         currency,
     })
 }
@@ -298,7 +300,7 @@ fn resolve_currency(
     mapped: &MappedImportRow,
     has_currency_column: bool,
     confirmed: Option<&str>,
-) -> std::result::Result<String, ImportPreviewRowResult> {
+) -> std::result::Result<String, ClassifyError> {
     if has_currency_column {
         let raw = mapped
             .currency
@@ -318,7 +320,7 @@ fn resolve_currency(
 fn resolve_rate_plan(
     mapped: &MappedImportRow,
     transaction_date: NaiveDateTime,
-) -> std::result::Result<ImportRatePlan, ImportPreviewRowResult> {
+) -> std::result::Result<ImportRatePlan, ClassifyError> {
     if let Some(native) = mapped.native.as_ref() {
         return native_rate_plan(mapped, native, transaction_date);
     }
@@ -340,7 +342,7 @@ fn native_rate_plan(
     mapped: &MappedImportRow,
     native: &NativeRateFields,
     transaction_date: NaiveDateTime,
-) -> std::result::Result<ImportRatePlan, ImportPreviewRowResult> {
+) -> std::result::Result<ImportRatePlan, ClassifyError> {
     if native.export_version > TRANSACTION_EXPORT_VERSION {
         return Err(invalid_row(mapped, UPGRADE_EXPORT_MESSAGE));
     }
@@ -391,7 +393,7 @@ fn resolve_category_id(
     mapped: &MappedImportRow,
     category_ids: &mut HashMap<String, String>,
     categories: &mut Vec<NewTransactionCategory>,
-) -> std::result::Result<Option<String>, ImportPreviewRowResult> {
+) -> std::result::Result<Option<String>, ClassifyError> {
     let name = mapped
         .category
         .as_deref()
@@ -461,7 +463,7 @@ fn resolve_category_id(
 
 fn parse_required_date(
     mapped: &MappedImportRow,
-) -> std::result::Result<NaiveDateTime, ImportPreviewRowResult> {
+) -> std::result::Result<NaiveDateTime, ClassifyError> {
     let raw = mapped
         .date
         .as_deref()
@@ -503,8 +505,8 @@ fn empty_row(row_number: i32) -> ImportPreviewRowResult {
     }
 }
 
-fn invalid_row(mapped: &MappedImportRow, message: &str) -> ImportPreviewRowResult {
-    ImportPreviewRowResult {
+fn invalid_row(mapped: &MappedImportRow, message: &str) -> ClassifyError {
+    Box::new(ImportPreviewRowResult {
         row_number: mapped.row_number,
         status: ImportPreviewRowStatus::Invalid,
         message: message.to_string(),
@@ -516,7 +518,7 @@ fn invalid_row(mapped: &MappedImportRow, message: &str) -> ImportPreviewRowResul
         notes: mapped.notes.clone(),
         category: display_category(mapped),
         rate_origin: None,
-    }
+    })
 }
 
 fn display_category(mapped: &MappedImportRow) -> Option<String> {

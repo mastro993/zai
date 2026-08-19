@@ -176,10 +176,10 @@ pub(crate) fn insert_import_categories(
     let mut id_remap: HashMap<String, String> = HashMap::new();
 
     for mut category in roots.into_iter().chain(children) {
-        if let Some(parent_id) = category.parent_id.as_ref() {
-            if let Some(mapped) = id_remap.get(parent_id) {
-                category.parent_id = Some(mapped.clone());
-            }
+        if let Some(parent_id) = category.parent_id.as_ref()
+            && let Some(mapped) = id_remap.get(parent_id)
+        {
+            category.parent_id = Some(mapped.clone());
         }
         let requested_id = category.id.clone().unwrap_or_default();
         if let Some(existing_id) =
