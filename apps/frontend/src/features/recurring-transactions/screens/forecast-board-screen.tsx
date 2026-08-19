@@ -205,6 +205,7 @@ export function ForecastBoardScreen({ initialProjection }: ForecastBoardScreenPr
             matrix={matrix}
             complete={projection.complete}
             isUpdating={isUpdating}
+            currency={projection.currency}
             onOpenCell={openCell}
           />
         )}
@@ -213,6 +214,7 @@ export function ForecastBoardScreen({ initialProjection }: ForecastBoardScreenPr
       <ForecastCellDetail
         open={selectedPeriod !== null}
         period={selectedPeriod}
+        currency={projection.currency}
         onOpenChange={onDetailOpenChange}
       />
     </ScreenBase>

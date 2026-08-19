@@ -5,10 +5,6 @@ use crate::{Error, Result};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
-fn default_template_currency() -> String {
-    "EUR".to_string()
-}
-
 fn validate_currency(code: &str) -> Result<()> {
     match CurrencyCode::parse(code) {
         Ok(_) => Ok(()),
@@ -24,7 +20,6 @@ fn validate_currency(code: &str) -> Result<()> {
 pub struct RecurringTemplateInput {
     pub description: String,
     pub amount: i32,
-    #[serde(default = "default_template_currency")]
     pub currency: String,
     pub transaction_type: String,
     pub transaction_category_id: Option<String>,
@@ -152,10 +147,17 @@ mod tests {
     }
 
     #[test]
-    fn template_json_carries_money_and_omits_a_rate() {
+    fn template_json_requires_currency_and_omits_a_rate() {
         let value = serde_json::to_value(&valid_new().template).expect("json");
         assert_eq!(value["amount"], 120_000);
         assert_eq!(value["currency"], "EUR");
         assert!(value.get("exchangeRate").is_none());
+
+        let missing_currency = serde_json::json!({
+            "description": "Rent",
+            "amount": 120000,
+            "transactionType": "expense"
+        });
+        assert!(serde_json::from_value::<RecurringTemplateInput>(missing_currency).is_err());
     }
 }

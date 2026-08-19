@@ -92,9 +92,9 @@ pub(super) fn insert_budget_row(
             period_start,
             period_end,
             net_budget_spending: period.net_budget_spending,
-            effective_allowance: Some(period.effective_allowance),
-            remaining_allowance: Some(period.remaining_allowance),
-            status: Some(super::calculate::status_string(period.status)),
+            effective_allowance: period.effective_allowance,
+            remaining_allowance: period.remaining_allowance,
+            status: period.status.map(super::calculate::status_string),
             generation_id: generation.id,
             complete: period.complete,
         })

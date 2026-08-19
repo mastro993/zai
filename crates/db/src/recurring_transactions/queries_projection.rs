@@ -228,11 +228,12 @@ fn placeholder_stale_budget(
             start,
             end,
             base_allowance: 0,
-            effective_allowance: 0,
+            effective_allowance: Some(0),
             net_budget_spending: 0,
-            remaining_allowance: 0,
-            status: zai_core::features::budgets::models::BudgetStatus::OnTrack,
+            remaining_allowance: Some(0),
+            status: Some(zai_core::features::budgets::models::BudgetStatus::OnTrack),
             complete: true,
+            currency: "EUR".to_string(),
         },
     })
 }

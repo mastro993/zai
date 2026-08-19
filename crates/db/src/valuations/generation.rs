@@ -57,6 +57,8 @@ pub(crate) fn change_default_currency(
     let built = build_actual_generation(conn, target, Some(&current.target_currency), now)?;
     activate_generation(conn, &built.id, target, now)?;
     crate::budgets::timeline::rebuild_all_results(conn).map_err(zai_core::Error::from)?;
+    crate::budgets::alerts::emit_resume_alerts_for_active_budgets(conn, now)
+        .map_err(zai_core::Error::from)?;
     active_generation(conn)
 }
 

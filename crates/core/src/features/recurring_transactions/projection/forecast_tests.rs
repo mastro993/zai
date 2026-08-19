@@ -30,11 +30,12 @@ fn budget(id: &str, name: &str) -> Budget {
             start: dt(2026, 1, 1, 0, 0),
             end: dt(2026, 2, 1, 0, 0),
             base_allowance: 10_000,
-            effective_allowance: 10_000,
+            effective_allowance: Some(10_000),
             net_budget_spending: 1_000,
-            remaining_allowance: 9_000,
-            status: BudgetStatus::OnTrack,
+            remaining_allowance: Some(9_000),
+            status: Some(BudgetStatus::OnTrack),
             complete: true,
+            currency: "EUR".to_string(),
         },
     }
 }
@@ -277,7 +278,10 @@ fn fulfilling_projected_occurrence_preserves_combined_forecast() {
 
     let mut after_fulfill_budget = food.clone();
     after_fulfill_budget.current_period.net_budget_spending += 2_000;
-    after_fulfill_budget.current_period.remaining_allowance -= 2_000;
+    after_fulfill_budget.current_period.remaining_allowance = after_fulfill_budget
+        .current_period
+        .remaining_allowance
+        .map(|value| value - 2_000);
     let mut after_source = source;
     after_source.recurring.fulfilled_count = 1;
     after_source.head.next_ordinal = 2;
@@ -397,8 +401,9 @@ fn incomplete_current_period_does_not_seed_zero_carry() {
     let mut food = budget("b1", "Groceries");
     food.rollover_mode = BudgetRolloverMode::Cumulative;
     food.current_period.complete = false;
-    food.current_period.effective_allowance = 0;
-    food.current_period.remaining_allowance = 0;
+    food.current_period.effective_allowance = None;
+    food.current_period.remaining_allowance = None;
+    food.current_period.status = None;
     let result = compute_budget_projection(ProjectionComputeInput {
         observed_local: dt(2026, 1, 15, 12, 0),
         horizon_months: 2,

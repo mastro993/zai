@@ -26,14 +26,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScreenBase } from "@/components/screen-base";
-import { formatCurrencyFromMinor } from "@/lib/currency";
 
 import { createBudget, getBudgets } from "../commands/budgets";
 import {
   budgetCadenceLabel,
   budgetListFilterLabel,
-  budgetStatusLabel,
-  budgetStatusVariant,
+  budgetPeriodStatusPresentation,
+  formatBudgetMinor,
   formatBudgetPeriod,
 } from "../lib/budget";
 import {
@@ -92,17 +91,26 @@ function BudgetRows({ budgets }: { budgets: Array<Budget> }) {
             </TableCell>
             <TableCell>{formatScope(budget.categoryIds)}</TableCell>
             <TableCell className="text-right tabular-nums">
-              {formatCurrencyFromMinor(budget.currentPeriod.effectiveAllowance, "EUR")}
+              {formatBudgetMinor(
+                budget.currentPeriod.effectiveAllowance,
+                budget.currentPeriod.currency,
+              )}
             </TableCell>
             <TableCell className="text-right tabular-nums">
-              {formatCurrencyFromMinor(budget.currentPeriod.netBudgetSpending, "EUR")}
+              {formatBudgetMinor(
+                budget.currentPeriod.netBudgetSpending,
+                budget.currentPeriod.currency,
+              )}
             </TableCell>
             <TableCell className="text-right tabular-nums">
-              {formatCurrencyFromMinor(budget.currentPeriod.remainingAllowance, "EUR")}
+              {formatBudgetMinor(
+                budget.currentPeriod.remainingAllowance,
+                budget.currentPeriod.currency,
+              )}
             </TableCell>
             <TableCell>
-              <Badge variant={budgetStatusVariant(budget.currentPeriod.status)}>
-                {budgetStatusLabel[budget.currentPeriod.status]}
+              <Badge variant={budgetPeriodStatusPresentation(budget.currentPeriod).variant}>
+                {budgetPeriodStatusPresentation(budget.currentPeriod).label}
               </Badge>
             </TableCell>
           </TableRow>

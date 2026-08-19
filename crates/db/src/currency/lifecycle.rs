@@ -6,6 +6,7 @@ use diesel::prelude::QueryableByName;
 use diesel::sql_query;
 use diesel::sql_types::{Nullable, Text, Timestamp};
 use diesel::{OptionalExtension, RunQueryDsl, sqlite::SqliteConnection};
+use zai_core::features::budgets::traits::{CalendarClock, LocalCalendarClock};
 use zai_core::features::currency::{ExchangeRateQuote, QuoteVariant};
 use zai_core::features::exchange_rates::{
     APPROVED_ECB_CURRENCIES, automatic_pair, is_approved_ecb_currency, legs_for_pair,
@@ -166,12 +167,13 @@ pub fn activate_default_generation(
 ) -> Result<()> {
     let currency = CurrencyCode::parse(currency_code)?;
     let mut connection = get_connection(pool)?;
-    let now = Utc::now().naive_utc();
+    let now = LocalCalendarClock.sample();
     connection
         .immediate_transaction(|connection| {
             crate::valuations::activate_generation(connection, generation_id, currency, now)
                 .map_err(crate::errors::StorageError::from)?;
             crate::budgets::timeline::rebuild_all_results(connection)?;
+            crate::budgets::alerts::emit_resume_alerts_for_active_budgets(connection, now)?;
             crate::errors::Result::Ok(())
         })
         .into_core()

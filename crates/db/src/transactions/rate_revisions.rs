@@ -620,12 +620,17 @@ fn wire_minor(amount: i64) -> Result<i32> {
     })
 }
 
-pub(crate) fn require_selectable_currency(conn: &mut SqliteConnection, code: &str) -> Result<()> {
-    money::CurrencyCode::parse(code).map_err(|error| match error {
-        Error::InvalidData(message) if message.starts_with("Unsupported currency code") => {
-            Error::UnsupportedCurrency(code.trim().to_ascii_uppercase())
+pub(crate) fn require_supported_currency(code: &str) -> Result<()> {
+    match money::CurrencyCode::parse(code) {
+        Ok(_) => Ok(()),
+        Err(Error::InvalidData(message)) if message.starts_with("Unsupported currency code") => {
+            Err(Error::UnsupportedCurrency(code.trim().to_ascii_uppercase()))
         }
-        other => other,
-    })?;
+        Err(other) => Err(other),
+    }
+}
+
+pub(crate) fn require_selectable_currency(conn: &mut SqliteConnection, code: &str) -> Result<()> {
+    require_supported_currency(code)?;
     crate::currency::require_enabled_currency(conn, code)
 }

@@ -126,12 +126,12 @@ async fn updating_transaction_repairs_historical_period_and_rollover_suffix() {
         .expect("repaired history");
     assert_eq!(history.data.len(), 3);
     assert_eq!(history.data[2].net_budget_spending, 0);
-    assert_eq!(history.data[2].remaining_allowance, 100);
+    assert_eq!(history.data[2].remaining_allowance, Some(100));
     assert_eq!(history.data[1].net_budget_spending, 50);
-    assert_eq!(history.data[1].effective_allowance, 200);
-    assert_eq!(history.data[1].remaining_allowance, 150);
-    assert_eq!(history.data[0].effective_allowance, 250);
-    assert_eq!(history.data[0].remaining_allowance, 250);
+    assert_eq!(history.data[1].effective_allowance, Some(200));
+    assert_eq!(history.data[1].remaining_allowance, Some(150));
+    assert_eq!(history.data[0].effective_allowance, Some(250));
+    assert_eq!(history.data[0].remaining_allowance, Some(250));
 
     let mut conn = SqliteConnection::establish(temp_db.path()).expect("database connection");
     sql_query("DELETE FROM budget_period_results WHERE budget_id = 'repair-rollover'")

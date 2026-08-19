@@ -49,11 +49,12 @@ const budgetPeriodSchema = z.object({
   start: z.string(),
   end: z.string(),
   baseAllowance: z.number().int(),
-  effectiveAllowance: z.number().int(),
+  effectiveAllowance: z.number().int().nullable(),
   netBudgetSpending: z.number().int(),
-  remainingAllowance: z.number().int(),
-  status: z.enum(BUDGET_STATUSES),
-  complete: z.boolean().default(true),
+  remainingAllowance: z.number().int().nullable(),
+  status: z.enum(BUDGET_STATUSES).nullable(),
+  complete: z.boolean(),
+  currency: z.string().length(3),
 });
 
 export const budgetSchema = z.object({

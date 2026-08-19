@@ -1,21 +1,19 @@
 use super::calculate::{
-    calculate_configuration, count_missing_periods, invalid_budget, load_category_hierarchy,
-    next_period, parse_cadence, status_string, validate_period_boundaries,
+    calculate_configuration, count_missing_periods, displayed_allowance, invalid_budget,
+    load_category_hierarchy, next_period, parse_cadence, status_string, validate_period_boundaries,
 };
 use crate::budgets::models::{
-    BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget,
+    BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget, map_period,
 };
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{budget_configurations, budget_period_results, budgets};
+use crate::valuations::current_allowance_currency;
 use chrono::NaiveDateTime;
 use diesel::OptionalExtension;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use zai_core::Error;
-use zai_core::Result;
-use zai_core::features::budgets::models::{
-    Budget, BudgetCadence, BudgetPeriod, BudgetStatus, current_period,
-};
+use zai_core::features::budgets::models::{Budget, BudgetCadence, BudgetPeriod, current_period};
 
 pub(super) struct AdvanceInput {
     pub id: String,
@@ -58,53 +56,47 @@ pub(super) fn load_previous_period(
         .filter(budget_configurations::period_start.eq(result.period_start))
         .first::<BudgetConfigurationRow>(conn)
         .into_storage()?;
-    period_from_rows(configuration, result)
-        .map(Some)
-        .map_err(StorageError::CoreError)
+    period_from_rows(conn, configuration, result).map(Some)
 }
 
 pub(crate) fn period_from_rows(
+    conn: &mut SqliteConnection,
     configuration: BudgetConfigurationRow,
     result: BudgetPeriodResultRow,
-) -> Result<BudgetPeriod> {
+) -> crate::errors::Result<BudgetPeriod> {
+    let currency = current_allowance_currency(conn).map_err(StorageError::from)?;
+    period_from_rows_with_currency(conn, configuration, result, &currency)
+}
+
+pub(crate) fn period_from_rows_with_currency(
+    conn: &mut SqliteConnection,
+    configuration: BudgetConfigurationRow,
+    result: BudgetPeriodResultRow,
+    currency: &str,
+) -> crate::errors::Result<BudgetPeriod> {
     if configuration.period_start >= configuration.period_end
         || result.period_start >= result.period_end
         || configuration.period_start != result.period_start
         || configuration.period_end != result.period_end
     {
-        return Err(Error::Repository(
+        return Err(StorageError::CoreError(Error::Repository(
             "Invalid budget period boundaries".to_string(),
-        ));
+        )));
     }
-    let (status, effective_allowance, remaining_allowance) = if result.complete {
-        let status = match result.status.as_deref() {
-            Some("onTrack") => BudgetStatus::OnTrack,
-            Some("warning") => BudgetStatus::Warning,
-            Some("overspent") => BudgetStatus::Overspent,
-            _ => return Err(Error::Repository("Invalid budget status".to_string())),
-        };
-        (
-            status,
-            result.effective_allowance.ok_or_else(|| {
-                Error::Repository("Complete period missing effective allowance".to_string())
-            })?,
-            result.remaining_allowance.ok_or_else(|| {
-                Error::Repository("Complete period missing remaining allowance".to_string())
-            })?,
-        )
-    } else {
-        (BudgetStatus::OnTrack, 0, 0)
-    };
-    Ok(BudgetPeriod {
-        start: result.period_start,
-        end: result.period_end,
-        base_allowance: configuration.base_allowance,
-        effective_allowance,
-        net_budget_spending: result.net_budget_spending,
-        remaining_allowance,
-        status,
-        complete: result.complete,
-    })
+    let displayed_base = displayed_allowance(conn, &configuration, result.complete, currency)?;
+    map_period(&result, displayed_base, currency.to_string()).map_err(StorageError::CoreError)
+}
+
+fn assemble_budget(
+    conn: &mut SqliteConnection,
+    budget: BudgetRow,
+    configuration: BudgetConfigurationRow,
+    result: BudgetPeriodResultRow,
+) -> crate::errors::Result<Budget> {
+    let currency = current_allowance_currency(conn).map_err(StorageError::from)?;
+    let displayed_base = displayed_allowance(conn, &configuration, result.complete, &currency)?;
+    build_budget(budget, configuration, result, displayed_base, currency)
+        .map_err(StorageError::CoreError)
 }
 
 pub(super) fn result_row(
@@ -117,9 +109,9 @@ pub(super) fn result_row(
         period_start: period.start,
         period_end: period.end,
         net_budget_spending: period.net_budget_spending,
-        effective_allowance: period.complete.then_some(period.effective_allowance),
-        remaining_allowance: period.complete.then_some(period.remaining_allowance),
-        status: period.complete.then(|| status_string(period.status)),
+        effective_allowance: period.effective_allowance,
+        remaining_allowance: period.remaining_allowance,
+        status: period.status.map(status_string),
         generation_id: generation_id.to_string(),
         complete: period.complete,
     }
@@ -260,7 +252,7 @@ pub(super) fn advance_timeline(
             "Budget current period could not be materialized".to_string(),
         ))
     })?;
-    build_budget(budget, configuration, result).map_err(StorageError::CoreError)
+    assemble_budget(conn, budget, configuration, result)
 }
 
 pub(crate) fn rebuild_all_results(conn: &mut SqliteConnection) -> crate::errors::Result<()> {
@@ -337,5 +329,5 @@ pub(super) fn refresh_current_configuration(
         calculate_configuration(conn, &configuration, &categories, previous_period.as_ref())?;
     let result = result_row(id, &period, &generation.id);
     upsert_period_result(conn, &result)?;
-    build_budget(budget_row, configuration, result).map_err(StorageError::CoreError)
+    assemble_budget(conn, budget_row, configuration, result)
 }

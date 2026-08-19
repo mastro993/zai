@@ -26,6 +26,7 @@ const budget = budgetSchema.parse({
     remainingAllowance: 10_000,
     status: "onTrack",
     complete: true,
+    currency: "EUR",
   },
 });
 

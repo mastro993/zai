@@ -138,18 +138,27 @@ pub(crate) fn emit_timeline_transition_alerts(
         if budget.paused {
             continue;
         }
+        if !change.resulting_current.complete {
+            continue;
+        }
+        let Some(after_status) = change.resulting_current.status else {
+            continue;
+        };
         // First materialization has no previous current period; stay silent.
         let Some(previous) = &change.previous_current else {
             continue;
         };
         let scenario = if previous.start == change.resulting_current.start {
             BudgetAlertScenario::SamePeriodTransition {
-                before: previous.status,
-                after: change.resulting_current.status,
+                before: previous
+                    .status
+                    .filter(|_| previous.complete)
+                    .unwrap_or(BudgetStatus::OnTrack),
+                after: after_status,
             }
         } else {
             BudgetAlertScenario::PeriodAdvancement {
-                final_status: change.resulting_current.status,
+                final_status: after_status,
             }
         };
         outcomes.extend(emit_budget_alert(
@@ -184,18 +193,28 @@ pub(crate) fn emit_budget_transition_alerts(
         if after_snapshot.paused {
             continue;
         }
+        if !after_snapshot.period.complete {
+            continue;
+        }
+        let Some(after_status) = after_snapshot.period.status else {
+            continue;
+        };
 
         let scenario = match before.get(&budget_id) {
             Some(before_snapshot)
                 if before_snapshot.period_start == after_snapshot.period_start =>
             {
                 BudgetAlertScenario::SamePeriodTransition {
-                    before: before_snapshot.period.status,
-                    after: after_snapshot.period.status,
+                    before: before_snapshot
+                        .period
+                        .status
+                        .filter(|_| before_snapshot.period.complete)
+                        .unwrap_or(BudgetStatus::OnTrack),
+                    after: after_status,
                 }
             }
             Some(_) | None => BudgetAlertScenario::PeriodAdvancement {
-                final_status: after_snapshot.period.status,
+                final_status: after_status,
             },
         };
 
@@ -215,16 +234,50 @@ pub(crate) fn emit_resume_budget_alert(
     conn: &mut SqliteConnection,
     budget: &Budget,
 ) -> crate::errors::Result<Vec<AlertInsertOutcome>> {
+    if !budget.current_period.complete {
+        return Ok(Vec::new());
+    }
+    let Some(status) = budget.current_period.status else {
+        return Ok(Vec::new());
+    };
     emit_budget_alert(
         conn,
         BudgetAlertMode::Resume,
-        BudgetAlertScenario::ResumeCurrent {
-            status: budget.current_period.status,
-        },
+        BudgetAlertScenario::ResumeCurrent { status },
         &budget.id,
         &budget.name,
         &budget.current_period,
     )
+}
+
+pub(crate) fn emit_resume_alerts_for_active_budgets(
+    conn: &mut SqliteConnection,
+    now: NaiveDateTime,
+) -> crate::errors::Result<Vec<AlertInsertOutcome>> {
+    let inspect = BudgetPeriodTimeline::inspect(
+        conn,
+        TimelineSelection::Filter(zai_core::features::budgets::models::BudgetListFilter::Active),
+        now,
+    )?;
+    let stale_ids = inspect.stale_ids();
+    let mut budgets = inspect
+        .entries
+        .into_iter()
+        .filter_map(|entry| match entry {
+            TimelineInspectEntry::Current(budget) if !budget.paused => Some(budget),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    if !stale_ids.is_empty() {
+        let (ensured, _) = BudgetPeriodTimeline::ensure_current(conn, &stale_ids, now)?;
+        budgets.extend(ensured.into_iter().filter(|budget| !budget.paused));
+    }
+
+    let mut outcomes = Vec::new();
+    for budget in budgets {
+        outcomes.extend(emit_resume_budget_alert(conn, &budget)?);
+    }
+    Ok(outcomes)
 }
 
 fn emit_budget_alert(
@@ -240,8 +293,16 @@ fn emit_budget_alert(
     }
 
     let announced = load_announced_statuses(conn, budget_id, period.start)?;
-    let alerts = alerts_for_scenario(mode, scenario, announced, budget_id, budget_name, period)
-        .map_err(StorageError::CoreError)?;
+    let alerts = alerts_for_scenario(
+        mode,
+        scenario,
+        announced,
+        budget_id,
+        budget_name,
+        period,
+        &period.currency,
+    )
+    .map_err(StorageError::CoreError)?;
 
     let mut outcomes = Vec::with_capacity(alerts.len());
     for alert in alerts {

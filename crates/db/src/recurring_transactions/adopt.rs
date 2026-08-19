@@ -1,4 +1,4 @@
-use super::create::create_recurring_transaction;
+use super::create::persist_new_recurring_transaction;
 use super::fulfill_head::complete_or_advance_after_fulfillment;
 use super::models::RecurringOccurrenceRow;
 use super::queries::{find_provenance_by_transaction, get_recurring_transaction};
@@ -50,7 +50,7 @@ pub fn adopt_existing_transaction(
         total_occurrences: input.total_occurrences,
         template: input.template.clone(),
     };
-    let created = create_recurring_transaction(conn, create_input)?;
+    let created = persist_new_recurring_transaction(conn, create_input, false)?;
     let schedule = super::create::find_open_schedule_revision(conn, &created.id)
         .map_err(StorageError::from)?
         .ok_or_else(|| {

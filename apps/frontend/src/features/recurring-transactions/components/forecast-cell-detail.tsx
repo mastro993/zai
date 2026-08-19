@@ -15,10 +15,16 @@ import type { BudgetPeriodForecast } from "../types/budget-projection";
 interface ForecastCellDetailProps {
   open: boolean;
   period: BudgetPeriodForecast | null;
+  currency: string;
   onOpenChange: (open: boolean) => void;
 }
 
-export function ForecastCellDetail({ open, period, onOpenChange }: ForecastCellDetailProps) {
+export function ForecastCellDetail({
+  open,
+  period,
+  currency,
+  onOpenChange,
+}: ForecastCellDetailProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md">
@@ -38,19 +44,19 @@ export function ForecastCellDetail({ open, period, onOpenChange }: ForecastCellD
                 <div>
                   <dt className="text-muted-foreground">Actual</dt>
                   <dd className="tabular-nums">
-                    {formatCurrencyFromMinor(period.actualNetBudgetSpending, "EUR")}
+                    {formatCurrencyFromMinor(period.actualNetBudgetSpending, currency)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Projected Δ</dt>
                   <dd className="tabular-nums text-muted-foreground">
-                    {formatCurrencyFromMinor(period.projectedDelta, "EUR")}
+                    {formatCurrencyFromMinor(period.projectedDelta, currency)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Forecast</dt>
                   <dd className="tabular-nums font-medium">
-                    {formatCurrencyFromMinor(period.forecastNetBudgetSpending, "EUR")}
+                    {formatCurrencyFromMinor(period.forecastNetBudgetSpending, currency)}
                   </dd>
                 </div>
                 <div>
@@ -89,7 +95,7 @@ export function ForecastCellDetail({ open, period, onOpenChange }: ForecastCellD
                           </span>
                         </Link>
                         <span className="tabular-nums">
-                          {formatCurrencyFromMinor(item.contribution, "EUR")}
+                          {formatCurrencyFromMinor(item.contribution, currency)}
                         </span>
                       </li>
                     ))}

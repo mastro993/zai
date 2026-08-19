@@ -47,8 +47,8 @@ before any financial read or write. The branch e2e seed silently assigns EUR,
 then confirms EUR as the default currency, so existing lifecycle specs keep
 passing.
 
-`BUDGET_STATUS_CURRENCY = "EUR"` is deleted in PR 6. Until then it must not
-ship to `main`.
+`BUDGET_STATUS_CURRENCY = "EUR"` is deleted. Alert rich data uses the active
+generation target currency.
 
 ## Stack
 
@@ -148,6 +148,7 @@ add or keep green; the full list still ships only at the final merge.
 - Alert rich data uses the active generation's target currency. Delete
   `BUDGET_STATUS_CURRENCY`.
 - Gate: existing command parity and contract harnesses on the new shapes.
+- Budget/alert DTO seams from #395: PR [#411](https://github.com/mastro993/zai/pull/411).
 
 ### 7. Bound import + full-fidelity export
 

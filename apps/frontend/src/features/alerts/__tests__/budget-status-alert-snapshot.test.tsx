@@ -53,6 +53,30 @@ describe("budget status alert renderer", () => {
     );
   });
 
+  it("formats snapshot amounts with the payload generation currency", () => {
+    render(
+      <AlertRow
+        alert={{
+          ...baseAlert,
+          data: {
+            kind: "budget.status",
+            version: 1,
+            payload: {
+              ...baseAlert.data?.payload,
+              currency: "USD",
+            },
+          },
+        }}
+      />,
+    );
+
+    const usd = new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: "USD",
+    }).format(1000);
+    expect(screen.getAllByText(usd).length).toBeGreaterThan(0);
+  });
+
   it("omits rich section for unknown versions while keeping title and body", () => {
     render(
       <AlertRow
