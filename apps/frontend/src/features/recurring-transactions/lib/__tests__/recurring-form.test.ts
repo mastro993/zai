@@ -1,6 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { formatRecurringOrdinal, getScheduleIntervalUnitItems } from "../recurring-form";
+import {
+  resetLastUsedTransactionCurrency,
+  setLastUsedTransactionCurrency,
+} from "@/features/transactions/lib/last-used-currency";
+
+import {
+  createRecurringFormDefaults,
+  formatRecurringOrdinal,
+  getScheduleIntervalUnitItems,
+} from "../recurring-form";
+
+afterEach(() => {
+  resetLastUsedTransactionCurrency();
+});
 
 describe("recurring form schedule labels", () => {
   it("pluralizes schedule units except for exactly one", () => {
@@ -31,5 +44,17 @@ describe("recurring form schedule labels", () => {
       "23rd",
       "31st",
     ]);
+  });
+});
+
+describe("recurring form money defaults", () => {
+  it("preselects last-used currency when it is still enabled", () => {
+    setLastUsedTransactionCurrency("USD");
+    expect(createRecurringFormDefaults("EUR", ["EUR", "USD"]).currency).toBe("USD");
+  });
+
+  it("falls back to the default currency when last-used is disabled", () => {
+    setLastUsedTransactionCurrency("USD");
+    expect(createRecurringFormDefaults("EUR", ["EUR"]).currency).toBe("EUR");
   });
 });

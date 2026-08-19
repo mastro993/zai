@@ -17,6 +17,9 @@ import {
   ApplicationTitleBarProvider,
 } from "@/components/application-title-bar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import * as currencyCommands from "@/features/currency/commands/currency";
+import * as currencyEvents from "@/features/currency/commands/currency-state-events";
+import { CurrencyBootstrapProvider } from "@/features/currency/hooks/use-currency-bootstrap";
 import * as alertsController from "@/features/alerts/hooks/use-alerts-controller";
 import type { AlertsControllerValue } from "@/features/alerts/hooks/alerts-controller-context";
 import { sampleTransaction } from "@/features/transactions/types/sample";
@@ -251,12 +254,14 @@ function stubWindowChrome() {
 async function renderPath(pathname: string) {
   const rootRoute = createRootRoute({
     component: () => (
-      <SidebarProvider>
-        <ApplicationTitleBarProvider>
-          <ApplicationTitleBar buildTarget="web" />
-          <Outlet />
-        </ApplicationTitleBarProvider>
-      </SidebarProvider>
+      <CurrencyBootstrapProvider>
+        <SidebarProvider>
+          <ApplicationTitleBarProvider>
+            <ApplicationTitleBar buildTarget="web" />
+            <Outlet />
+          </ApplicationTitleBarProvider>
+        </SidebarProvider>
+      </CurrencyBootstrapProvider>
     ),
   });
   const feedRoute = createRoute({
@@ -304,6 +309,37 @@ describe("recurring screen navigation", () => {
     feedState.empty = false;
     vi.spyOn(breadcrumbs, "useScreenBreadcrumbs").mockReturnValue([{ label: "Recurring" }]);
     vi.spyOn(alertsController, "useAlertsController").mockReturnValue(idleAlertsController);
+    vi.spyOn(currencyEvents, "createCurrencyStateEventTransport").mockImplementation(() => ({
+      subscribe: (_onEvent, _onReconnect) => ({
+        ready: Promise.resolve(Result.succeed(undefined)),
+        close: () => undefined,
+      }),
+    }));
+    vi.spyOn(currencyCommands, "getCurrencyBootstrap").mockResolvedValue(
+      Result.succeed({ setupComplete: true, defaultCurrency: "EUR" }),
+    );
+    vi.spyOn(currencyCommands, "getSupportedCurrencies").mockResolvedValue(
+      Result.succeed([{ code: "EUR", name: "Euro" }]),
+    );
+    vi.spyOn(currencyCommands, "getCurrencyStatus").mockResolvedValue(
+      Result.succeed({ job: null }),
+    );
+    vi.spyOn(currencyCommands, "getCurrencies").mockResolvedValue(
+      Result.succeed([
+        {
+          code: "EUR",
+          name: "Euro",
+          status: "enabled",
+          coverageFrom: null,
+          coverageTo: null,
+          lastRefresh: null,
+          refreshStatus: "idle",
+          missingPeriods: [],
+          usedByRecurring: false,
+          isDefault: true,
+        },
+      ]),
+    );
     vi.spyOn(processingEvents, "createRecurringProcessingEventTransport").mockReturnValue({
       subscribe: () => ({
         ready: Promise.resolve(Result.succeed(undefined)),
