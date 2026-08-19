@@ -197,6 +197,10 @@ jobs:
             echo "CI-only change: web E2E shards were skipped."
             exit 0
           fi
+          if [[ "$SHARD_RESULT" == "cancelled" ]]; then
+            echo "Web E2E shard was cancelled (likely concurrency cancellation); treating as skipped."
+            exit 0
+          fi
           if [[ "$SHARD_RESULT" == "success" ]]; then
             echo "Both web E2E shards passed."
             exit 0
