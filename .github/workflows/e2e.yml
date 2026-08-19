@@ -49,7 +49,7 @@ jobs:
                 if [[ ! "$file" =~ (^|/)([^/]+\.(md|markdown|mdx)|LICENSE(\.[^/]*)?)$ ]]; then
                   docs_only=false
                 fi
-                if [[ ! "$file" =~ ^\.github/workflows/ ]]; then
+                if [[ ! "$file" =~ ^\.github/workflows/ && "$file" != "package.json" ]]; then
                   ci_only=false
                 fi
               done
