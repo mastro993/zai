@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       docs_only: ${{ steps.classify.outputs.docs_only }}
+      ci_only: ${{ steps.classify.outputs.ci_only }}
       run_e2e: ${{ steps.classify.outputs.run_e2e }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -35,6 +36,7 @@ jobs:
           shopt -s nocasematch
 
           docs_only=false
+          ci_only=false
           run_e2e=true
           changed_files=()
 
@@ -42,13 +44,16 @@ jobs:
             mapfile -t changed_files < <(git diff --name-only "$PR_BASE_SHA" "$PR_MERGE_SHA")
             if ((${#changed_files[@]} > 0)); then
               docs_only=true
+              ci_only=true
               for file in "${changed_files[@]}"; do
                 if [[ ! "$file" =~ (^|/)([^/]+\.(md|markdown|mdx)|LICENSE(\.[^/]*)?)$ ]]; then
                   docs_only=false
-                  break
+                fi
+                if [[ ! "$file" =~ ^\.github/workflows/ ]]; then
+                  ci_only=false
                 fi
               done
-              if [[ "$docs_only" == "true" ]]; then
+              if [[ "$docs_only" == "true" || "$ci_only" == "true" ]]; then
                 run_e2e=false
               fi
             fi
@@ -57,6 +62,7 @@ jobs:
           {
             echo "### Change classifier"
             echo "- Documentation-only: $docs_only"
+            echo "- CI-only: $ci_only"
             echo "- Run web E2E: $run_e2e"
             if ((${#changed_files[@]} > 0)); then
               echo "- Changed files:"
@@ -65,6 +71,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+          echo "ci_only=$ci_only" >> "$GITHUB_OUTPUT"
           echo "run_e2e=$run_e2e" >> "$GITHUB_OUTPUT"
 
   web-e2e-shard:
@@ -167,12 +174,14 @@ jobs:
             echo "- Change classifier: ${{ needs.classify.result }}"
             echo "- Shards: ${{ needs.web-e2e-shard.result }}"
             echo "- Documentation-only: ${{ needs.classify.outputs.docs_only }}"
+            echo "- CI-only: ${{ needs.classify.outputs.ci_only }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate aggregate result
         env:
           CLASSIFIER_RESULT: ${{ needs.classify.result }}
           DOCS_ONLY: ${{ needs.classify.outputs.docs_only }}
+          CI_ONLY: ${{ needs.classify.outputs.ci_only }}
           SHARD_RESULT: ${{ needs.web-e2e-shard.result }}
         run: |
           set -euo pipefail
@@ -182,6 +191,10 @@ jobs:
           fi
           if [[ "$DOCS_ONLY" == "true" && "$SHARD_RESULT" == "skipped" ]]; then
             echo "Documentation-only change: web E2E shards were skipped."
+            exit 0
+          fi
+          if [[ "$CI_ONLY" == "true" && "$SHARD_RESULT" == "skipped" ]]; then
+            echo "CI-only change: web E2E shards were skipped."
             exit 0
           fi
           if [[ "$SHARD_RESULT" == "success" ]]; then
