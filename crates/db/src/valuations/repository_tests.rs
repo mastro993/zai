@@ -1,5 +1,6 @@
 use super::{
-    INITIAL_ACTUAL_GENERATION_ID, ValuationsRepository, active_generation, sum_period_spending,
+    INITIAL_ACTUAL_GENERATION_ID, SpendingBucketGrain, ValuationsRepository, active_generation,
+    sum_period_spending, sum_spending_buckets,
 };
 use crate::connection::{create_pool, run_migrations};
 use crate::sql_statement_counter::ConnectionStatementCounter;
@@ -227,4 +228,97 @@ async fn set_based_sum_is_one_statement() {
     assert_eq!(spending.known_sum, 500);
     assert!(spending.complete);
     assert_eq!(counter.count(), 1);
+}
+
+#[tokio::test]
+async fn spending_buckets_keep_known_sum_and_mark_incomplete_days() {
+    let (_temp, _, transactions, mut conn) = setup();
+    transactions
+        .create_transaction(NewTransaction {
+            id: Some("tx-day-1".to_string()),
+            description: Some("Complete".to_string()),
+            amount: 100,
+            currency: "EUR".to_string(),
+            transaction_date: Utc
+                .with_ymd_and_hms(2026, 8, 10, 12, 0, 0)
+                .unwrap()
+                .naive_utc(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+            manual_exchange_rate: None,
+        })
+        .await
+        .expect("complete");
+    transactions
+        .create_transaction(NewTransaction {
+            id: Some("tx-day-2".to_string()),
+            description: Some("Pending".to_string()),
+            amount: 200,
+            currency: "EUR".to_string(),
+            transaction_date: Utc
+                .with_ymd_and_hms(2026, 8, 11, 12, 0, 0)
+                .unwrap()
+                .naive_utc(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+            manual_exchange_rate: None,
+        })
+        .await
+        .expect("pending seed");
+    sql_query("UPDATE transactions SET currency = 'USD' WHERE id = 'tx-day-2'")
+        .execute(&mut conn)
+        .expect("usd");
+    sql_query(
+        "UPDATE transaction_exchange_rate_revisions \
+         SET variant = 'pending', original_decimal = NULL, coefficient = NULL, scale = NULL \
+         WHERE transaction_id = 'tx-day-2'",
+    )
+    .execute(&mut conn)
+    .expect("pending");
+    let row = {
+        use crate::schema::transactions;
+        transactions::table
+            .filter(transactions::id.eq("tx-day-2"))
+            .first::<crate::transactions::models::TransactionRow>(&mut conn)
+            .expect("row")
+    };
+    crate::valuations::upsert_transaction_valuation(&mut conn, &row).expect("refresh");
+
+    let start = Utc
+        .with_ymd_and_hms(2026, 8, 1, 0, 0, 0)
+        .unwrap()
+        .naive_utc();
+    let end = Utc
+        .with_ymd_and_hms(2026, 9, 1, 0, 0, 0)
+        .unwrap()
+        .naive_utc();
+    let days = sum_spending_buckets(
+        &mut conn,
+        start,
+        end,
+        BudgetMeasurementMode::Spending,
+        &[],
+        SpendingBucketGrain::Day,
+    )
+    .expect("days");
+    assert_eq!(days.len(), 2);
+    assert!(days[0].complete);
+    assert_eq!(days[0].known_sum, 100);
+    assert!(!days[1].complete);
+    assert_eq!(days[1].known_sum, 0);
+
+    let months = sum_spending_buckets(
+        &mut conn,
+        start,
+        end,
+        BudgetMeasurementMode::Spending,
+        &[],
+        SpendingBucketGrain::Month,
+    )
+    .expect("months");
+    assert_eq!(months.len(), 1);
+    assert!(!months[0].complete);
+    assert_eq!(months[0].known_sum, 100);
 }

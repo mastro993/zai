@@ -99,6 +99,7 @@ const documentFixture: RecurringTransactionDocument = {
       throughLocal: "2026-11-05T12:00:00",
       horizonMonths: 3,
       complete: false,
+      currency: "EUR",
       sourceErrors: [
         {
           kind: "generationBlocked",

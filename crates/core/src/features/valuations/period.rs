@@ -1,5 +1,5 @@
 use crate::features::budgets::models::{
-    BudgetPeriod, BudgetRolloverMode, BudgetStatus, calculate_period_with_rollover,
+    BudgetPeriod, BudgetRolloverMode, calculate_period_with_rollover,
 };
 use chrono::NaiveDateTime;
 
@@ -55,7 +55,6 @@ pub fn calculate_period_with_completeness(
         input.previous_period,
         input.warning_percentage,
     )?;
-    period.base_allowance = input.authored_allowance;
     period.complete = true;
     Ok(period)
 }
@@ -80,10 +79,11 @@ fn incomplete_period(
         start,
         end,
         base_allowance: authored_allowance,
-        effective_allowance: 0,
+        effective_allowance: None,
         net_budget_spending,
-        remaining_allowance: 0,
-        status: BudgetStatus::OnTrack,
+        remaining_allowance: None,
+        status: None,
         complete: false,
+        currency: String::new(),
     }
 }

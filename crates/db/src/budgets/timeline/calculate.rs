@@ -40,9 +40,10 @@ pub(super) fn calculate_configuration(
         measurement_mode,
         &scope_ids,
     )?;
-    let converted_allowance = restate_configuration_allowance(conn, configuration)?;
+    let currency = current_allowance_currency(conn).map_err(StorageError::from)?;
+    let converted_allowance = restate_configuration_allowance(conn, configuration, &currency)?;
 
-    calculate_period_with_completeness(PeriodCalculation {
+    let mut period = calculate_period_with_completeness(PeriodCalculation {
         start: configuration.period_start,
         end: configuration.period_end,
         authored_allowance: configuration.base_allowance,
@@ -56,7 +57,26 @@ pub(super) fn calculate_configuration(
             allowance_complete: converted_allowance.is_some(),
         },
     })
-    .map_err(StorageError::CoreError)
+    .map_err(StorageError::CoreError)?;
+    period.currency = currency;
+    Ok(period)
+}
+
+pub(crate) fn displayed_allowance(
+    conn: &mut SqliteConnection,
+    configuration: &BudgetConfigurationRow,
+    complete: bool,
+    target_currency: &str,
+) -> crate::errors::Result<i64> {
+    let restated = restate_configuration_allowance(conn, configuration, target_currency)?;
+    match (complete, restated) {
+        (true, Some(value)) => Ok(value),
+        (true, None) => Err(invalid_budget(
+            "Complete period missing converted allowance",
+        )),
+        (false, Some(value)) => Ok(value),
+        (false, None) => Ok(configuration.base_allowance),
+    }
 }
 
 pub(crate) fn calculate_spending(
@@ -82,11 +102,11 @@ pub(crate) fn calculate_spending_aggregate(
 fn restate_configuration_allowance(
     conn: &mut SqliteConnection,
     configuration: &BudgetConfigurationRow,
+    target: &str,
 ) -> crate::errors::Result<Option<i64>> {
-    let target = current_allowance_currency(conn).map_err(StorageError::from)?;
     let authored =
         CurrencyCode::parse(&configuration.allowance_currency).map_err(StorageError::from)?;
-    let target_code = CurrencyCode::parse(&target).map_err(StorageError::from)?;
+    let target_code = CurrencyCode::parse(target).map_err(StorageError::from)?;
     if authored == target_code {
         return Ok(Some(configuration.base_allowance));
     }

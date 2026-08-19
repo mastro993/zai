@@ -16,6 +16,7 @@ describe("RecurringBudgetImpact", () => {
             throughLocal: "2026-09-05T12:00:00",
             horizonMonths: 1,
             complete: false,
+            currency: "EUR",
             periods: [],
             sourceErrors: [
               {

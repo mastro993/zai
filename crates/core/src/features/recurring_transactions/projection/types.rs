@@ -72,6 +72,7 @@ pub struct BudgetProjectionResult {
     pub through_local: NaiveDateTime,
     pub horizon_months: u32,
     pub complete: bool,
+    pub currency: String,
     pub periods: Vec<BudgetPeriodForecast>,
     pub source_errors: Vec<ProjectionSourceError>,
 }

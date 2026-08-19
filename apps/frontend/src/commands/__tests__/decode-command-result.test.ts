@@ -36,6 +36,7 @@ describe("decodeCommandValue", () => {
         remainingAllowance: 10000,
         status: "onTrack",
         complete: true,
+        currency: "EUR",
       },
     };
 

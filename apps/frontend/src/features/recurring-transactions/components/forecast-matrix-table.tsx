@@ -19,6 +19,7 @@ interface ForecastMatrixTableProps {
   matrix: ForecastMatrix;
   complete: boolean;
   isUpdating: boolean;
+  currency: string;
   onOpenCell: (period: BudgetPeriodForecast, button: HTMLButtonElement) => void;
 }
 
@@ -73,6 +74,7 @@ export function ForecastMatrixTable({
   matrix,
   complete,
   isUpdating,
+  currency,
   onOpenCell,
 }: ForecastMatrixTableProps) {
   const onCellKeyDown = (event: KeyboardEvent<HTMLButtonElement>, period: BudgetPeriodForecast) => {
@@ -146,19 +148,19 @@ export function ForecastMatrixTable({
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs text-muted-foreground">actual</span>
                         <span className="tabular-nums">
-                          {formatCurrencyFromMinor(cell.actualNetBudgetSpending, "EUR")}
+                          {formatCurrencyFromMinor(cell.actualNetBudgetSpending, currency)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs text-muted-foreground">+ proj</span>
                         <span className="tabular-nums text-muted-foreground">
-                          {formatCurrencyFromMinor(cell.projectedDelta, "EUR")}
+                          {formatCurrencyFromMinor(cell.projectedDelta, currency)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-1">
                         <span className="text-xs font-medium text-muted-foreground">forecast</span>
                         <span className="tabular-nums font-medium text-muted-foreground">
-                          {formatCurrencyFromMinor(cell.forecastNetBudgetSpending, "EUR")}
+                          {formatCurrencyFromMinor(cell.forecastNetBudgetSpending, currency)}
                         </span>
                       </div>
                       <div className="text-[10px] text-muted-foreground">

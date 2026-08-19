@@ -1,5 +1,25 @@
 # Choices
 
+## 2026-08-18 — [Budget and alert results in the active valuation generation](https://github.com/mastro993/zai/issues/395)
+
+Seams from the ticket (no re-grill):
+
+- Budget reads expose active-generation amounts; incomplete periods null `status` / `effectiveAllowance` / `remainingAllowance`
+- Authored allowance restates at period-start rate; displayed `baseAllowance` follows the new default
+- Rollover uses converted predecessor results; incomplete predecessor blocks dependent periods (Off is not blocked)
+- Pause does not rewrite period math; resume emits at most one current complete-period Warning/Overspent
+- Default-currency activation keeps closed-period alerts and re-evaluates the current period once
+- Alert rich data uses the active generation target currency; `BUDGET_STATUS_CURRENCY` deleted
+- Statistics buckets query the same transaction valuation cache; incomplete bucket = known sum + incomplete
+- Command-contract-parity + existing budget/alert harnesses on the new shapes
+
+Agent defaults:
+
+- Stack on #393 / #394. Do not land on `main`.
+- Incomplete never claims OnTrack/Warning/Overspent or remaining/effective allowance. Known converted `netBudgetSpending` still shows.
+- Occurrence key stays `v1:{budgetId}:{periodStart}:{status}` (no currency). Resume + existing current alert → no second alert.
+- No second aggregate cache. Net worth stays a stub.
+
 ## 2026-08-18 — [Currency addition, disable, default-currency change, and Currency settings](https://github.com/mastro993/zai/issues/392)
 
 Seams from the ticket (no re-grill):
