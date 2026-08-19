@@ -298,7 +298,7 @@ function AppSidebar({ buildTarget: sidebarBuildTarget }: AppSidebarProps) {
           <SidebarMenuItem>
             <SidebarMenuButton
               isActive={pathname === settingsItem.to}
-              render={<Link to={settingsItem.to} preload="intent" />}
+              render={<Link to={settingsItem.to} preload="intent" search={{ focus: undefined }} />}
               tooltip={settingsItem.title}
             >
               <HugeiconsIcon icon={settingsItem.icon} strokeWidth={2} />
