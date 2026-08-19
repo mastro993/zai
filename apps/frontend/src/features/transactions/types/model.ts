@@ -113,3 +113,5 @@ export type Transaction = z.infer<typeof transactionSchema>;
 export type TransactionExchangeRateRevision = z.infer<typeof transactionExchangeRateRevisionSchema>;
 export type PaginatedTransactions = z.infer<typeof paginatedTransactionsSchema>;
 export type TransactionType = z.infer<typeof transactionTypeSchema>;
+export type RateVariant = z.infer<typeof rateVariantSchema>;
+export type RateOrigin = z.infer<typeof rateOriginSchema>;

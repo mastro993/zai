@@ -3,7 +3,7 @@ use crate::errors::IntoCore;
 use chrono::Utc;
 use diesel::prelude::QueryableByName;
 use diesel::sql_query;
-use diesel::sql_types::{Nullable, Text, Timestamp};
+use diesel::sql_types::{Integer, Nullable, Text, Timestamp};
 use diesel::{RunQueryDsl, sqlite::SqliteConnection};
 use uuid::Uuid;
 use zai_core::money::{CONVERSION_FORMULA_VERSION, CurrencyCode};
@@ -21,6 +21,8 @@ struct CurrencyRow {
     default_currency: String,
     #[diesel(sql_type = Nullable<Timestamp>)]
     setup_completed_at: Option<chrono::NaiveDateTime>,
+    #[diesel(sql_type = Integer)]
+    default_currency_revision: i32,
 }
 
 pub fn setup_state(pool: &DbPool) -> Result<(String, bool)> {
@@ -52,6 +54,11 @@ pub fn setup_is_complete(pool: &DbPool) -> Result<bool> {
 
 pub fn default_currency(connection: &mut SqliteConnection) -> Result<String> {
     Ok(read_settings(connection)?.default_currency)
+}
+
+pub fn default_currency_revision(pool: &DbPool) -> Result<i32> {
+    let mut connection = get_connection(pool)?;
+    Ok(read_settings(&mut connection)?.default_currency_revision)
 }
 
 pub fn complete_initial_setup(pool: &DbPool, currency_code: &str) -> Result<()> {
@@ -134,7 +141,10 @@ pub fn insert_identity_rate(
 }
 
 fn read_settings(connection: &mut SqliteConnection) -> Result<CurrencyRow> {
-    sql_query("SELECT default_currency, setup_completed_at FROM currency_settings WHERE id = 1")
-        .get_result::<CurrencyRow>(connection)
-        .into_core()
+    sql_query(
+        "SELECT default_currency, setup_completed_at, default_currency_revision \
+         FROM currency_settings WHERE id = 1",
+    )
+    .get_result::<CurrencyRow>(connection)
+    .into_core()
 }

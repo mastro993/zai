@@ -1,4 +1,4 @@
-use super::{CurrencyCode, Money, WIRE_MAX_MINOR_UNITS};
+use super::{CurrencyCode, Money, WIRE_MAX_MINOR_UNITS, format_minor_units};
 use crate::Error;
 
 #[test]
@@ -66,6 +66,19 @@ fn money_persists_values_above_the_wire_maximum() {
     let money = Money::from_minor_units(WIRE_MAX_MINOR_UNITS + 1, "EUR").expect("persist i64");
 
     assert_eq!(money.minor_units(), WIRE_MAX_MINOR_UNITS + 1);
+}
+
+#[test]
+fn format_minor_units_uses_iso_digits() {
+    assert_eq!(format_minor_units(350, 2), "3.50");
+    assert_eq!(format_minor_units(1976, 0), "1976");
+    assert_eq!(format_minor_units(5059, 3), "5.059");
+    assert_eq!(
+        Money::from_minor_units(350, "EUR")
+            .expect("eur")
+            .format_decimal(),
+        "3.50"
+    );
 }
 
 #[test]

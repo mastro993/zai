@@ -13,7 +13,10 @@ use zai_core::features::{
     transaction_categories::{
         service::TransactionCategoriesService, traits::TransactionCategoriesServiceTrait,
     },
-    transactions::{service::TransactionsService, traits::TransactionsServiceTrait},
+    transactions::{
+        import_service::TransactionImportService, service::TransactionsService,
+        traits::TransactionsServiceTrait,
+    },
 };
 
 mod currency_refresh;
@@ -33,6 +36,7 @@ pub struct ServiceContext {
     pub recurring_transactions_service: Arc<RecurringTransactionsService>,
     pub transaction_categories_service: Arc<dyn TransactionCategoriesServiceTrait>,
     pub transactions_service: Arc<dyn TransactionsServiceTrait>,
+    pub transaction_import_service: Arc<TransactionImportService>,
     pub domain_alert_event_bus: Arc<DomainAlertEventBus>,
     pub recurring_processing_event_bus: Arc<RecurringProcessingEventBus>,
     pub currency_state_event_bus: Arc<CurrencyStateEventBus>,
@@ -70,6 +74,10 @@ impl ServiceContext {
         Arc::clone(&self.transactions_service)
     }
 
+    pub fn transaction_import_service(&self) -> Arc<TransactionImportService> {
+        Arc::clone(&self.transaction_import_service)
+    }
+
     pub fn domain_alert_event_bus(&self) -> Arc<DomainAlertEventBus> {
         Arc::clone(&self.domain_alert_event_bus)
     }
@@ -85,18 +93,34 @@ impl ServiceContext {
     pub fn spawn_currency_job_drive(&self) {
         let service = self.currency_service();
         let exchange = self.exchange_rate_service();
+        let import = self.transaction_import_service();
         tokio::spawn(async move {
-            if let Ok(status) = service.status()
-                && let Some(job) = status.job
-                && job.job_type == zai_core::features::currency::CurrencyJobType::AddCurrency
-                && job
-                    .currency_code
-                    .as_deref()
-                    .is_some_and(zai_core::features::currency::needs_provider)
-            {
-                let _ = exchange.refresh().await;
+            let job_type = service
+                .status()
+                .ok()
+                .and_then(|status| status.job)
+                .map(|job| job.job_type);
+            match job_type {
+                Some(zai_core::features::currency::CurrencyJobType::ImportPreview) => {
+                    let _ = exchange.refresh().await;
+                    let _ = import.drive_running_preview();
+                }
+                Some(zai_core::features::currency::CurrencyJobType::AddCurrency) => {
+                    if let Ok(status) = service.status()
+                        && let Some(job) = status.job
+                        && job
+                            .currency_code
+                            .as_deref()
+                            .is_some_and(zai_core::features::currency::needs_provider)
+                    {
+                        let _ = exchange.refresh().await;
+                    }
+                    let _ = service.drive_running_job();
+                }
+                _ => {
+                    let _ = service.drive_running_job();
+                }
             }
-            let _ = service.drive_running_job();
         });
     }
 
@@ -213,6 +237,11 @@ pub fn bootstrap_context_with_buses_and_clock(
     ));
     let transaction_categories_repository = database.transaction_categories_repository();
     let transactions_repository = database.transactions_repository();
+    let transaction_import_service = Arc::new(TransactionImportService::new(
+        currency_service.clone(),
+        database.currency_settings_repository(),
+        transactions_repository.clone(),
+    ));
     let budgets_repository = database.budgets_repository();
     let domain_alerts_repository = database.domain_alerts_repository();
     let recurring_transactions_repository = database.recurring_transactions_repository();
@@ -265,6 +294,7 @@ pub fn bootstrap_context_with_buses_and_clock(
                 TransactionsService::new(transactions_repository)
                     .with_currency_setup(currency_service),
             ),
+            transaction_import_service,
             domain_alert_event_bus,
             recurring_processing_event_bus,
             currency_state_event_bus,

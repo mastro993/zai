@@ -1,9 +1,5 @@
 use crate::errors::Result;
 use crate::features::currency::{AllowCurrencySetup, CurrencySetupGate};
-use crate::features::transaction_categories::models::{
-    NewTransactionCategory, TransactionCategory,
-};
-use crate::features::transaction_categories::service::normalize_import_categories;
 use crate::features::transactions::models::{
     DuplicateKeyCandidate, NewTransaction, Transaction, TransactionListItem,
     TransactionSearchFilters, TransactionUpdate, validate_list_paging,
@@ -112,45 +108,6 @@ impl TransactionsServiceTrait for TransactionsService {
         self.currency_setup.require_setup()?;
         self.repository.delete_transactions(ids).await
     }
-
-    async fn import_transactions(
-        &self,
-        mut transactions: Vec<NewTransaction>,
-    ) -> Result<Vec<Transaction>> {
-        self.currency_setup.require_setup()?;
-        if transactions.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        for transaction in &mut transactions {
-            transaction.validate()?;
-            ensure_transaction_id(transaction);
-        }
-
-        self.repository.import_transactions(transactions).await
-    }
-
-    async fn import_transactions_with_categories(
-        &self,
-        categories: Vec<NewTransactionCategory>,
-        mut transactions: Vec<NewTransaction>,
-    ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)> {
-        self.currency_setup.require_setup()?;
-        let mut categories = normalize_import_categories(categories)?;
-        for category in &mut categories {
-            if category.id.as_deref().is_none_or(|id| id.trim().is_empty()) {
-                category.id = Some(Uuid::new_v4().to_string());
-            }
-        }
-        for transaction in &mut transactions {
-            transaction.validate()?;
-            ensure_transaction_id(transaction);
-        }
-
-        self.repository
-            .import_transactions_with_categories(categories, transactions)
-            .await
-    }
 }
 
 fn ensure_transaction_id(transaction: &mut NewTransaction) {
@@ -167,7 +124,11 @@ fn ensure_transaction_id(transaction: &mut NewTransaction) {
 mod tests {
     use super::*;
     use crate::errors::Error;
+    use crate::features::transaction_categories::models::{
+        NewTransactionCategory, TransactionCategory,
+    };
     use crate::features::transactions::dedup::duplicate_key;
+    use crate::features::transactions::import_models::BoundImportCommitRequest;
     use crate::features::transactions::models::{
         DuplicateKeyCandidate, TransactionExchangeRateRevision,
     };
@@ -348,12 +309,23 @@ mod tests {
             let imported = self.import_transactions(transactions).await?;
             Ok((Vec::new(), imported))
         }
+
+        async fn commit_bound_import(
+            &self,
+            request: BoundImportCommitRequest,
+        ) -> Result<Vec<Transaction>> {
+            let transactions = request
+                .rows
+                .into_iter()
+                .map(|row| row.transaction)
+                .collect();
+            self.import_transactions(transactions).await
+        }
     }
 
     #[tokio::test]
     async fn import_transactions_skips_duplicates_on_second_import() {
-        let repository = Arc::new(FakeRepository::default());
-        let service = TransactionsService::new(repository);
+        let repository = FakeRepository::default();
         let payload = vec![NewTransaction {
             id: None,
             description: Some(" Groceries ".to_string()),
@@ -366,8 +338,11 @@ mod tests {
             manual_exchange_rate: None,
         }];
 
-        let first = service.import_transactions(payload.clone()).await.unwrap();
-        let second = service.import_transactions(payload).await.unwrap();
+        let first = repository
+            .import_transactions(payload.clone())
+            .await
+            .unwrap();
+        let second = repository.import_transactions(payload).await.unwrap();
 
         assert_eq!(first.len(), 1);
         assert_eq!(second.len(), 0);
@@ -386,10 +361,9 @@ mod tests {
             notes: None,
             manual_exchange_rate: None,
         })];
-        let repository = Arc::new(FakeRepository::with_existing(existing));
-        let service = TransactionsService::new(repository);
+        let repository = FakeRepository::with_existing(existing);
 
-        let imported = service
+        let imported = repository
             .import_transactions(vec![NewTransaction {
                 id: None,
                 description: Some(" Groceries ".to_string()),

@@ -205,8 +205,9 @@ fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R
         commands::transactions::update_transaction,
         commands::transactions::delete_transaction,
         commands::transactions::delete_transactions,
-        commands::transactions::import_transactions,
-        commands::transactions::import_transaction_batch,
+        commands::transactions::preview_transaction_import,
+        commands::transactions::get_transaction_import_preview,
+        commands::transactions::commit_transaction_import,
     ])
 }
 

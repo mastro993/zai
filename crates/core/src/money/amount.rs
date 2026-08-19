@@ -56,4 +56,19 @@ impl Money {
     pub fn minor_unit_digits(self) -> u8 {
         CURRENT_MANIFEST.record(self.currency).minor_unit_digits
     }
+
+    pub fn format_decimal(self) -> String {
+        format_minor_units(self.minor_units, self.minor_unit_digits())
+    }
+}
+
+/// Formats ISO minor units using the currency's fraction-digit count.
+pub fn format_minor_units(minor_units: i64, digits: u8) -> String {
+    if digits == 0 {
+        return minor_units.to_string();
+    }
+    let factor = 10_i64.pow(u32::from(digits));
+    let whole = minor_units / factor;
+    let fraction = minor_units.rem_euclid(factor);
+    format!("{whole}.{:0width$}", fraction, width = usize::from(digits))
 }

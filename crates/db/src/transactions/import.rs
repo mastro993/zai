@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use diesel::prelude::*;
@@ -8,11 +9,13 @@ use zai_core::features::domain_alerts::{CommittedOutcome, publish_created_alerts
 use zai_core::features::transaction_categories::models::{
     NewTransactionCategory, TransactionCategory,
 };
+use zai_core::features::transactions::dedup::duplicate_key;
+use zai_core::features::transactions::import_models::BoundImportCommitRequest;
 use zai_core::features::transactions::models::{NewTransaction, Transaction};
 
 use super::import_dedup;
 use super::models::TransactionRow;
-use super::rate_revisions::{apply_create_rate, transaction_detail};
+use super::rate_revisions::{apply_create_rate, apply_import_rate, transaction_detail};
 use super::repository::TransactionsRepository;
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budgets};
 use crate::budgets::timeline::{BudgetPeriodTimeline, SourceChange};
@@ -144,7 +147,7 @@ pub(super) async fn import_transactions_with_categories(
 
                 let now = clock.sample();
                 let before = snapshot_active_budgets(conn, now)?;
-                let categories_rows = insert_import_categories(conn, new_categories)?;
+                let categories_rows = insert_import_categories(conn, new_categories)?.inserted;
 
                 if !transactions_rows.is_empty() {
                     diesel::insert_into(transactions::table)
@@ -213,6 +216,134 @@ pub(super) async fn import_transactions_with_categories(
                 )?;
                 Ok(CommittedOutcome::with_alert_outcomes(
                     (inserted_categories, inserted_transactions),
+                    alerts,
+                ))
+            },
+        )
+        .await?;
+    publish_created_alerts(publisher.as_ref(), &outcome);
+    Ok(outcome.value)
+}
+
+pub(super) async fn commit_bound_import(
+    repository: &TransactionsRepository,
+    request: BoundImportCommitRequest,
+) -> Result<Vec<Transaction>> {
+    let clock = Arc::clone(&repository.clock);
+    let publisher = Arc::clone(&repository.alert_publisher);
+    let outcome = repository
+        .writer
+        .exec(
+            move |conn: &mut SqliteConnection| -> crate::errors::Result<
+                CommittedOutcome<Vec<Transaction>>,
+            > {
+                for code in &request.enable_currencies {
+                    crate::currency::prove_coverage_on(conn, code)
+                        .map_err(crate::errors::StorageError::from)?;
+                    crate::currency::enable_currency_on(conn, code)
+                        .map_err(crate::errors::StorageError::from)?;
+                }
+
+                let category_plan = insert_import_categories(conn, request.categories)?;
+                let mut new_transactions = request
+                    .rows
+                    .iter()
+                    .map(|row| row.transaction.clone())
+                    .collect::<Vec<_>>();
+                for transaction in &mut new_transactions {
+                    if let Some(category_id) = transaction.transaction_category_id.as_ref()
+                        && let Some(mapped) = category_plan.id_remap.get(category_id)
+                    {
+                        transaction.transaction_category_id = Some(mapped.clone());
+                    }
+                }
+                let existing_rows = load_existing_in_import_range(conn, &new_transactions)?;
+                let transactions_rows = prepare_import_rows(new_transactions, &existing_rows);
+                let mut rate_by_key = request
+                    .rows
+                    .iter()
+                    .map(|row| {
+                        (
+                            duplicate_key(
+                                row.transaction.transaction_date,
+                                row.transaction.amount,
+                                &row.transaction.currency,
+                                row.transaction.description.as_deref(),
+                            ),
+                            row.rate_plan.clone(),
+                        )
+                    })
+                    .collect::<HashMap<_, _>>();
+
+                let now = clock.sample();
+                let before = snapshot_active_budgets(conn, now)?;
+
+                if !transactions_rows.is_empty() {
+                    diesel::insert_into(transactions::table)
+                        .values(&transactions_rows)
+                        .execute(conn)
+                        .into_storage()?;
+                    for row in &transactions_rows {
+                        let amount = i32::try_from(row.amount).map_err(|_| {
+                            crate::errors::StorageError::from(zai_core::Error::InvalidData(
+                                "Persisted money exceeds the JavaScript-safe wire maximum"
+                                    .to_string(),
+                            ))
+                        })?;
+                        let key = duplicate_key(
+                            row.transaction_date,
+                            amount,
+                            &row.currency,
+                            row.description.as_deref(),
+                        );
+                        let plan = rate_by_key.remove(&key).ok_or_else(|| {
+                            crate::errors::StorageError::from(zai_core::Error::InvalidData(
+                                "Import rate plan missing for committed row".to_string(),
+                            ))
+                        })?;
+                        apply_import_rate(conn, row, &plan)
+                            .map_err(crate::errors::StorageError::from)?;
+                        crate::valuations::upsert_transaction_valuation(conn, row)
+                            .map_err(crate::errors::StorageError::from)?;
+                    }
+                }
+
+                let inserted_transactions = if transactions_rows.is_empty() {
+                    Vec::new()
+                } else {
+                    let transaction_ids = transactions_rows
+                        .iter()
+                        .map(|transaction| transaction.id.clone())
+                        .collect::<Vec<String>>();
+                    transactions::table
+                        .filter(transactions::id.eq_any(&transaction_ids))
+                        .load::<TransactionRow>(conn)
+                        .into_storage()?
+                        .into_iter()
+                        .map(|row| transaction_detail(conn, row))
+                        .collect::<zai_core::Result<Vec<_>>>()
+                        .map_err(crate::errors::StorageError::from)?
+                };
+
+                if !transactions_rows.is_empty() {
+                    BudgetPeriodTimeline::reconcile(
+                        conn,
+                        SourceChange::Transactions {
+                            old: vec![],
+                            new: transactions_rows.clone(),
+                        },
+                        now,
+                    )?;
+                }
+                let after = snapshot_active_budgets(conn, now)?;
+                let alerts = emit_budget_transition_alerts(
+                    conn,
+                    BudgetAlertMode::Transition,
+                    &before,
+                    &after,
+                )?;
+                Ok(CommittedOutcome::with_alert_outcomes(
+                    inserted_transactions,
                     alerts,
                 ))
             },

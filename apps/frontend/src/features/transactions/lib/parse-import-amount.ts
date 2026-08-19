@@ -2,7 +2,7 @@ import { MAX_TRANSACTION_AMOUNT_MINOR } from "./transaction";
 
 const CURRENCY_AND_SPACE_PATTERN = /[€$£¥₹\s]/g;
 
-const normalizeLocalizedAmount = (value: string): string | null => {
+const normalizeLocalizedAmount = (value: string, fractionDigits: number): string | null => {
   const lastComma = value.lastIndexOf(",");
   const lastDot = value.lastIndexOf(".");
   let normalized: string;
@@ -15,19 +15,24 @@ const normalizeLocalizedAmount = (value: string): string | null => {
     const fractionalPart = value.slice(lastComma + 1);
 
     normalized =
-      commaCount === 1 && fractionalPart.length <= 2
+      commaCount === 1 && fractionalPart.length <= Math.max(fractionDigits, 1)
         ? value.replace(",", ".")
         : value.replace(/,/g, "");
   } else if (lastDot !== -1) {
     const dotCount = (value.match(/\./g) ?? []).length;
     const fractionalPart = value.slice(lastDot + 1);
 
-    normalized = dotCount === 1 && fractionalPart.length <= 2 ? value : value.replace(/\./g, "");
+    normalized =
+      dotCount === 1 && fractionalPart.length <= Math.max(fractionDigits, 1)
+        ? value
+        : value.replace(/\./g, "");
   } else {
     normalized = value;
   }
 
-  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
+  const amountPattern =
+    fractionDigits === 0 ? /^\d+$/ : new RegExp(`^\\d+(\\.\\d{1,${fractionDigits}})?$`);
+  if (!amountPattern.test(normalized)) {
     return null;
   }
 
@@ -36,6 +41,7 @@ const normalizeLocalizedAmount = (value: string): string | null => {
 
 export const parseImportAmount = (
   raw: string,
+  fractionDigits = 2,
 ): { ok: true; cents: number; signed: number } | { ok: false; message: string } => {
   const trimmed = raw.trim();
 
@@ -54,7 +60,7 @@ export const parseImportAmount = (
   const isNegative = unwrapped.startsWith("-") || hasOpeningParenthesis;
   const stripped = unwrapped.replace(/^[-+]/, "");
 
-  const normalized = normalizeLocalizedAmount(stripped);
+  const normalized = normalizeLocalizedAmount(stripped, fractionDigits);
 
   if (normalized === null) {
     return { ok: false, message: "Invalid amount" };
@@ -67,7 +73,7 @@ export const parseImportAmount = (
   }
 
   const signed = isNegative ? -absoluteValue : absoluteValue;
-  const cents = Math.round(Math.abs(signed) * 100);
+  const cents = Math.round(Math.abs(signed) * 10 ** fractionDigits);
 
   if (!Number.isSafeInteger(cents) || cents > MAX_TRANSACTION_AMOUNT_MINOR) {
     return { ok: false, message: "Amount exceeds supported maximum" };

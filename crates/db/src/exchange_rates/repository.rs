@@ -117,6 +117,22 @@ pub(crate) fn current_accepted_set(
     load_current_set(connection)
 }
 
+pub(crate) fn coverage_proof_digest(connection: &mut SqliteConnection) -> Result<String> {
+    let head = sql_query(
+        "SELECT s.id, s.revision_identity, s.payload_digest \
+         FROM provider_heads h \
+         JOIN provider_rate_sets s ON s.id = h.rate_set_id \
+         WHERE h.id = 1",
+    )
+    .get_result::<HeadIdRow>(connection)
+    .optional()
+    .into_core()?;
+    Ok(match head {
+        Some(row) => format!("{}:{}", row.id, row.payload_digest),
+        None => "none".to_string(),
+    })
+}
+
 fn load_current_set(connection: &mut SqliteConnection) -> Result<Option<AcceptedRateSet>> {
     let head = sql_query(
         "SELECT s.id, s.revision_identity, s.payload_digest \

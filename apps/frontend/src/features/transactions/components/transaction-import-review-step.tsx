@@ -1,5 +1,7 @@
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { formatAmountFromMinor } from "../lib/transaction";
+import { isoFractionDigits } from "@/lib/currency";
 
 import {
   filterImportPreviewRows,
@@ -8,9 +10,10 @@ import {
   type ImportPreviewRowFilter,
 } from "@/lib/import-preview-filter";
 import type {
-  TransactionImportPreview,
-  TransactionImportPreviewStatus,
-} from "../lib/transaction-import";
+  BoundImportPreview,
+  CurrencyPrepAction,
+  ImportPreviewRowResult,
+} from "../types/import";
 import { TransactionTypeBadge } from "./transaction-type-badge";
 
 interface ImportStatusMeta {
@@ -23,14 +26,32 @@ const STATUS_META = {
   duplicate: { label: "Duplicate", dot: "bg-muted-foreground/50" },
   invalid: { label: "Invalid", dot: "bg-destructive" },
   empty: { label: "Empty", dot: "bg-border" },
-} satisfies Record<TransactionImportPreviewStatus, ImportStatusMeta>;
+} satisfies Record<ImportPreviewRowResult["status"], ImportStatusMeta>;
 
-function StatStrip({ summary }: { summary: TransactionImportPreview["summary"] }) {
+const PREP_ACTION_LABEL = {
+  alreadyEnabled: "already enabled",
+  add: "add",
+  reEnable: "re-enable",
+  backfill: "backfill",
+} satisfies Record<CurrencyPrepAction, string>;
+
+function coverageLabel(from: string | undefined, to: string | undefined) {
+  if (!from && !to) {
+    return "no coverage yet";
+  }
+  return `${from ?? "—"} – ${to ?? "—"}`;
+}
+
+function StatStrip({ summary }: { summary: BoundImportPreview["summary"] }) {
   const cells = [
     { label: "Ready", value: summary.importableRows, tone: "text-primary" },
     { label: "New categories", value: summary.categoriesToCreate, tone: "text-foreground" },
-    { label: "Duplicates", value: summary.duplicateRows, tone: "text-foreground" },
-    { label: "Skipped", value: summary.invalidRows + summary.emptyRows, tone: "text-foreground" },
+    { label: "Skipped", value: summary.duplicateRows + summary.emptyRows, tone: "text-foreground" },
+    {
+      label: "Invalid",
+      value: summary.invalidRows,
+      tone: summary.blocked ? "text-destructive" : "text-foreground",
+    },
   ];
 
   return (
@@ -81,12 +102,19 @@ function PreviewFilter({
   );
 }
 
+function formatPreviewAmount(row: ImportPreviewRowResult) {
+  if (row.amountMinor === undefined || !row.currency) {
+    return "—";
+  }
+  return formatAmountFromMinor(row.amountMinor, isoFractionDigits(row.currency));
+}
+
 export function TransactionImportReviewStep({
   preview,
   previewFilter,
   onPreviewFilterChange,
 }: {
-  preview: TransactionImportPreview;
+  preview: BoundImportPreview;
   previewFilter: ImportPreviewRowFilter;
   onPreviewFilterChange: (value: ImportPreviewRowFilter) => void;
 }) {
@@ -94,6 +122,52 @@ export function TransactionImportReviewStep({
 
   return (
     <div className="flex flex-col gap-4">
+      {preview.currencyPreparations.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <header className="flex flex-col gap-1">
+            <h2 className="font-heading text-xl font-semibold">
+              Currencies this import will prepare
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Review every add, re-enable, and backfill before the atomic import.
+            </p>
+          </header>
+          <ol className="flex flex-col gap-2">
+            {preview.currencyPreparations.map((need, index) => (
+              <li key={need.code} className="flex items-start gap-3 border border-border p-3">
+                <span className="w-6 text-sm text-muted-foreground">{index + 1}</span>
+                <div className="flex-1">
+                  <p className="font-medium">
+                    {need.name} ({need.code})
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {PREP_ACTION_LABEL[need.action]} ·{" "}
+                    {coverageLabel(need.coverageFrom, need.coverageTo)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+
+      {preview.summary.blocked ? (
+        <p role="alert" className="border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm">
+          Invalid rows block this import. Empty rows and duplicates are skipped; everything else
+          must be valid.
+        </p>
+      ) : null}
+
+      {preview.job.status === "running" ? (
+        <p className="text-sm text-muted-foreground">Proving currency coverage…</p>
+      ) : null}
+
+      {preview.job.status === "failed" ? (
+        <p role="alert" className="text-sm text-destructive">
+          {preview.job.error?.message ?? "Import preview failed"}
+        </p>
+      ) : null}
+
       <StatStrip summary={preview.summary} />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -115,6 +189,7 @@ export function TransactionImportReviewStep({
                 <TableHead className="w-12 text-muted-foreground">#</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Currency</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Category</TableHead>
@@ -134,9 +209,12 @@ export function TransactionImportReviewStep({
                       {row.rowNumber}
                     </TableCell>
                     <TableCell className="tabular-nums">{row.transactionDate || "—"}</TableCell>
-                    <TableCell className="text-right tabular-nums">{row.amount || "—"}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatPreviewAmount(row)}
+                    </TableCell>
+                    <TableCell className="tabular-nums">{row.currency || "—"}</TableCell>
                     <TableCell>
-                      {row.transactionType ? (
+                      {row.transactionType === "expense" || row.transactionType === "income" ? (
                         <TransactionTypeBadge type={row.transactionType} />
                       ) : (
                         <span className="text-muted-foreground">—</span>

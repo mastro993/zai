@@ -97,6 +97,9 @@ TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
 set +e
+# Cloud Agent Node is 22.14 and cannot import tools/oxlint/anti-slop/*.ts
+# without type-stripping. GitHub CI uses Node LTS (24) and does not need this.
+export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--experimental-strip-types --no-warnings"
 pnpm check >"$TMP" 2>&1
 CODE=$?
 set -e

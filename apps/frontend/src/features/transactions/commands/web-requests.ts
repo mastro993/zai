@@ -2,7 +2,10 @@ import { Result } from "@praha/byethrow";
 
 import { CommandError } from "@/commands/errors";
 import type { WebRequestSpec } from "@/commands/web-request-spec";
-import type { CategoryBackendImportPayload } from "@/features/categories/lib/category-import";
+import type {
+  CommitTransactionImportRequest,
+  PreviewTransactionImportRequest,
+} from "../types/import";
 
 export interface TransactionFilters {
   query?: string;
@@ -73,13 +76,16 @@ export interface DeleteTransactionsArgs {
   transactionIds: Array<string>;
 }
 
-export interface ImportTransactionsArgs {
-  transactions: Array<TransactionPayload & { id?: string }>;
+export interface PreviewTransactionImportArgs {
+  request: PreviewTransactionImportRequest;
 }
 
-export interface ImportTransactionBatchArgs {
-  categories: Array<CategoryBackendImportPayload>;
-  transactions: Array<TransactionPayload & { id?: string }>;
+export interface GetTransactionImportPreviewArgs {
+  token: string;
+}
+
+export interface CommitTransactionImportArgs {
+  request: CommitTransactionImportRequest;
 }
 
 interface FlatTransactionFilters {
@@ -279,20 +285,32 @@ export const buildDeleteTransactionsRequest = (
   });
 };
 
-export const buildImportTransactionsRequest = (
-  args: ImportTransactionsArgs,
+export const buildPreviewTransactionImportRequest = (
+  args: PreviewTransactionImportArgs,
 ): Result.Result<WebRequestSpec, CommandError> =>
   Result.succeed({
     method: "POST",
-    path: "/transactions/import",
-    body: { transactions: args.transactions },
+    path: "/transactions/import/preview",
+    body: args.request,
   });
 
-export const buildImportTransactionBatchRequest = (
-  args: ImportTransactionBatchArgs,
+export const buildGetTransactionImportPreviewRequest = (
+  args: GetTransactionImportPreviewArgs,
+): Result.Result<WebRequestSpec, CommandError> => {
+  if (!isNonEmptyString(args.token)) {
+    return Result.fail(new CommandError("Import preview token must be a non-empty string"));
+  }
+  return Result.succeed({
+    method: "GET",
+    path: `/transactions/import/previews/${args.token}`,
+  });
+};
+
+export const buildCommitTransactionImportRequest = (
+  args: CommitTransactionImportArgs,
 ): Result.Result<WebRequestSpec, CommandError> =>
   Result.succeed({
     method: "POST",
-    path: "/transactions/import-batch",
-    body: { categories: args.categories, transactions: args.transactions },
+    path: "/transactions/import/commit",
+    body: args.request,
   });

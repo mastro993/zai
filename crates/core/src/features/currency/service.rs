@@ -36,6 +36,12 @@ pub trait CurrencySettingsPort: Send + Sync {
     fn activate_default_generation(&self, generation_id: &str, currency_code: &str) -> Result<()>;
     fn attach_generation(&self, job_id: &str, generation_id: &str) -> Result<()>;
     fn quote(&self, source: &str, target: &str, rate_date: &str) -> Result<ExchangeRateQuote>;
+    fn default_currency_revision(&self) -> Result<i32> {
+        Ok(1)
+    }
+    fn coverage_proof_digest(&self) -> Result<String> {
+        Ok("none".to_string())
+    }
 }
 
 pub struct CurrencyService {

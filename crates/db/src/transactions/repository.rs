@@ -9,6 +9,7 @@ use zai_core::features::domain_alerts::DomainAlertEventPublisher;
 use zai_core::features::transaction_categories::models::{
     NewTransactionCategory, TransactionCategory,
 };
+use zai_core::features::transactions::import_models::BoundImportCommitRequest;
 use zai_core::features::transactions::models::{
     DuplicateKeyCandidate, NewTransaction, Transaction, TransactionListItem,
     TransactionSearchFilters, TransactionUpdate,
@@ -141,6 +142,13 @@ impl TransactionsRepositoryTrait for TransactionsRepository {
         new_transactions: Vec<NewTransaction>,
     ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)> {
         import::import_transactions_with_categories(self, new_categories, new_transactions).await
+    }
+
+    async fn commit_bound_import(
+        &self,
+        request: BoundImportCommitRequest,
+    ) -> Result<Vec<Transaction>> {
+        import::commit_bound_import(self, request).await
     }
 }
 

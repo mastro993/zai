@@ -268,6 +268,25 @@ fn canonical_rate_rejects_zero_and_non_decimal_input() {
 }
 
 #[test]
+fn canonical_rate_inverse_of_one_is_one() {
+    assert_eq!(
+        CanonicalRate::one()
+            .inverse()
+            .expect("inverse")
+            .original_decimal(),
+        "1"
+    );
+}
+
+#[test]
+fn canonical_rate_inverse_of_two_is_one_half() {
+    assert_eq!(
+        rate("2").inverse().expect("inverse").original_decimal(),
+        "0.5"
+    );
+}
+
+#[test]
 fn convert_automatic_rejects_a_missing_rate_set_identity() {
     let rate = ConversionRate::Automatic(AutomaticRate {
         rate_set_id: "  ".to_string(),

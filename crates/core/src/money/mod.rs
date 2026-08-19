@@ -15,7 +15,7 @@ mod coverage_tests;
 #[cfg(test)]
 mod manifest_tests;
 
-pub use amount::{Money, WIRE_MAX_MINOR_UNITS};
+pub use amount::{Money, WIRE_MAX_MINOR_UNITS, format_minor_units};
 pub use convert::{Conversion, convert};
 pub use coverage::{
     CoverageResolution, PublicationDay, coverage_interval_is_complete, resolve_coverage,

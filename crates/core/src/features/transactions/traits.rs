@@ -1,6 +1,7 @@
 use crate::{
     errors::Result,
     features::transaction_categories::models::{NewTransactionCategory, TransactionCategory},
+    features::transactions::import_models::BoundImportCommitRequest,
     features::transactions::models::{
         DuplicateKeyCandidate, NewTransaction, Transaction, TransactionListItem,
         TransactionSearchFilters, TransactionUpdate,
@@ -52,6 +53,11 @@ pub trait TransactionsRepositoryTrait: Send + Sync {
         categories: Vec<NewTransactionCategory>,
         transactions: Vec<NewTransaction>,
     ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)>;
+
+    async fn commit_bound_import(
+        &self,
+        request: BoundImportCommitRequest,
+    ) -> Result<Vec<Transaction>>;
 }
 
 #[async_trait]
@@ -83,15 +89,4 @@ pub trait TransactionsServiceTrait: Send + Sync {
     async fn update_transaction(&self, category: TransactionUpdate) -> Result<Transaction>;
     async fn delete_transaction(&self, id: &str) -> Result<Transaction>;
     async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<TransactionListItem>>;
-
-    async fn import_transactions(
-        &self,
-        transactions: Vec<NewTransaction>,
-    ) -> Result<Vec<Transaction>>;
-
-    async fn import_transactions_with_categories(
-        &self,
-        categories: Vec<NewTransactionCategory>,
-        transactions: Vec<NewTransaction>,
-    ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)>;
 }
