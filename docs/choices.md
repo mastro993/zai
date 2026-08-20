@@ -7,8 +7,8 @@
 ## 2026-08-20 — Transaction list shows original amount for cross-currency rows
 
 - List DTO includes original Money (`amount`, `currency`) plus converted fields. Supersedes convert-only list from #376.
-- Amount cell: when transaction currency ≠ default, `({original}) {converted}` via `formatCurrencyFromMinor` (`currencyDisplay: "narrowSymbol"`). Same-currency rows stay converted only.
-- Incomplete cross-currency: `({original}) Incomplete`.
+- Amount cell: when transaction currency ≠ default, converted on top, original muted below (no parens) via `formatCurrencyFromMinor` (`currencyDisplay: "narrowSymbol"`). Same-currency rows stay converted only.
+- Incomplete cross-currency: `Incomplete` on top, original muted below.
 
 ## 2026-08-20 — Conversion-rate quotes keep full decimal precision
 

@@ -56,13 +56,10 @@ function TransactionAmountCell({ transaction }: { transaction: TransactionListIt
 
   return (
     <TableCell className="whitespace-nowrap p-3 text-right tabular-nums">
-      {original ? (
-        <>
-          <span className="text-muted-foreground">({original})</span> {display}
-        </>
-      ) : (
-        display
-      )}
+      <span className="flex flex-col items-end gap-0.5">
+        <span className="font-semibold">{display}</span>
+        {original ? <span className="text-muted-foreground">{original}</span> : null}
+      </span>
     </TableCell>
   );
 }

@@ -24,7 +24,7 @@ The single user-selected currency in which Zai displays monetary values and
 cross-currency results, including budgets, projections, statistics, and charts.
 It preselects the first transaction currency in a transaction addition flow.
 When a transaction has another transaction currency, the transaction list
-shows the original amount in that currency next to the default-currency
+shows the original amount in that currency below the default-currency
 amount. Original amount also remains visible in transaction details and
 the edit form. The user may change the default currency at any time;
 that explicit change re-expresses app values and history while preserving

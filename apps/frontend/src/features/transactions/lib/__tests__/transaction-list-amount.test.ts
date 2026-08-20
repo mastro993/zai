@@ -20,7 +20,7 @@ describe("transactionListAmountParts", () => {
     });
   });
 
-  it("returns the original amount beside the converted amount when currencies differ", () => {
+  it("returns the original amount when currencies differ", () => {
     expect(
       transactionListAmountParts({
         amount: 4550,

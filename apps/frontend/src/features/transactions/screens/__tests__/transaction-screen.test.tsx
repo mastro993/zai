@@ -493,7 +493,7 @@ describe("transaction screen request guard", () => {
     ).toHaveLength(1);
   });
 
-  it("shows original amount in parentheses when the transaction currency differs", async () => {
+  it("shows original amount below converted when the transaction currency differs", async () => {
     const original = formatCurrencyFromMinor(4550, "USD");
     const converted = formatCurrencyFromMinor(4000, "EUR");
 
@@ -516,7 +516,10 @@ describe("transaction screen request guard", () => {
       categories: [],
     });
 
-    expect(screen.getByRole("cell", { name: `(${original}) ${converted}` })).toBeTruthy();
+    const originalNode = screen.getByText(original);
+    expect(screen.getByText(converted).classList.contains("font-semibold")).toBe(true);
+    expect(originalNode.classList.contains("text-muted-foreground")).toBe(true);
+    expect(originalNode.textContent).not.toContain("(");
   });
 
   it("omits original amount when the transaction currency matches the default", async () => {
@@ -524,7 +527,6 @@ describe("transaction screen request guard", () => {
 
     const converted = formatCurrencyFromMinor(350, "EUR");
     expect(screen.getByText(converted)).toBeTruthy();
-    expect(screen.queryByText(`(${converted}) ${converted}`)).toBeNull();
   });
 
   it("styles missing descriptions as muted italic text", async () => {

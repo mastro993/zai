@@ -1,5 +1,9 @@
 # Breadcrumbs
 
+## 2026-08-21
+
+- Transaction list amount cell: converted on top, original muted below, no parens.
+
 ## 2026-08-20
 
 - Amounts use `currencyDisplay: "narrowSymbol"` so list original is `(56,00 $)` not `(56,00 USD)`. Conversion-rate placeholder uses ISO both sides (`1 JPY = 0,005392 EUR on …`). Pending converted-amount skeleton covers the "Converted amount:" label too.
