@@ -112,7 +112,6 @@ Seams reused from 377/388 (no re-grill):
 - Connect-path backup, transactional migrate, rollback, format check
 - Command/HTTP money gate (`setupRequired`)
 - Post-setup amount-only writes expand to default-currency identity Money
-- E2E seed: `ZAI_CONFIRM_DEFAULT_CURRENCY=EUR`
 
 Agent defaults:
 
@@ -125,9 +124,7 @@ Agent defaults:
 
 ## 2026-08-18
 
-- **Web E2E shard timeout is 15 minutes.** A 5-minute job timeout cancelled shard 2 during a cold Playwright Chromium install. Cache `~/.cache/ms-playwright` by lockfile; keep 15 minutes so a cache miss plus `zai-server` compile still finishes.
-- **Playwright CI install skips `--with-deps`.** Hosted `ubuntu-24.04` already has Chromium libs. `--with-deps` hung shard 2 on `apt-get` for the full job timeout while shard 1 passed.
-- **PR CI also targets `feat/**`.** `ci.yml` and `e2e.yml` run on PRs into `main` and `feat/**`. Long-lived feat stacks (e.g. `feat/multi-currency`) get the same gate as `main`. `feat/**` not `feat/*` so nested feat names still match. Benchmarks stay `push` to `main` only.
+- **PR CI also targets `feat/**`.** `ci.yml` runs on PRs into `main` and `feat/**`. Long-lived feat stacks (e.g. `feat/multi-currency`) get the same gate as `main`. `feat/**` not `feat/*` so nested feat names still match. Benchmarks stay `push` to `main` only.
 
 ## 2026-08-17
 
@@ -168,7 +165,7 @@ User-locked: all four grill recommendations.
 User-locked: all three grill recommendations (A/A/A).
 
 - Merge surface: long-lived `feat/multi-currency` stack. `main` stays pre-currency. One merge when the release gate is green. That merge is the atomic version. Unused core does not land on `main` early.
-- Eight stacked PRs: Money+manifest → schema/EUR/fixtures → ECB+privacy → valuation generations → currency lifecycle API → existing money DTOs → bound import/export → frontend+e2e+smoke+benchmark.
+- Eight stacked PRs: Money+manifest → schema/EUR/fixtures → ECB+privacy → valuation generations → currency lifecycle API → existing money DTOs → bound import/export → frontend+native smoke+benchmark.
 - Living sequence: `docs/multi-currency-handoff.md`. Implementer may split a listed PR. Dropping a listed seam or landing it on `main` early blocks ship.
 
 ## 2026-08-17 — `/to-specs` for [Wayfind production-ready multi-currency support](https://github.com/mastro993/zai/issues/367)
@@ -176,7 +173,7 @@ User-locked: all three grill recommendations (A/A/A).
 Agent defaults (no re-grill; contracts already accepted):
 
 - One spec, not eight. `/to-spec` synthesizes the product+contract source of truth. The eight-PR stack stays the execution sequence.
-- Test seams = families already locked in [Define multi-currency production verification and rollout contract](https://github.com/mastro993/zai/issues/377). Highest existing first: Playwright lifecycle, native smoke, command-contract-parity, privacy canaries, released-schema fixtures, repository structural, core units, frontend Vitest, failure-recovery, post-`main` benchmark.
+- Test seams = families already locked in [Define multi-currency production verification and rollout contract](https://github.com/mastro993/zai/issues/377). Highest existing first: native smoke, command-contract-parity, privacy canaries, released-schema fixtures, repository structural, core units, frontend Vitest, failure-recovery, post-`main` benchmark.
 - Published [Implement production-ready multi-currency support](https://github.com/mastro993/zai/issues/385) with `ready-for-agent`. Map 367 stays open until the atomic merge.
 
 ## 2026-08-18

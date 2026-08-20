@@ -10,7 +10,7 @@ implementation. Exact test function names land here when they exist.
 ## Fixed contracts
 
 - Automated evidence is the complete ship gate. Prototype scenes become
-  Playwright and contract tests. No separate human sign-off.
+  frontend, contract, and native smoke tests. No separate human sign-off.
 - One atomic application version. Schema, valuation, commands, UI,
   import/export, and the silent EUR migration ship together. No feature flag.
 - First launch of that version creates a recoverable pre-migration backup,
@@ -155,45 +155,10 @@ not call currency core services directly.
 - Display formatting uses the currency's ISO minor-unit digits.
 - Alert snapshots use the active generation's target currency.
 
-### End-to-end
+### Native smoke
 
-Web Playwright covers:
-
-- Initial currency setup: locale suggestion requires confirmation; money
-  writes are blocked before setup completes.
-- Currency settings: add with complete coverage, disable, default-currency
-  change progress, stale and failed status.
-- Transaction form and detail: currency suffix, last-used, manual rate,
-  pending recovery, original amount, rate, and origin.
-- Import: currencyless confirmation, currency-column preparation, stale
-  preview rebuild.
-- Export: full-fidelity source fields, not a converted display value.
-- Incomplete budget periods do not claim status, remaining allowance, or
-  effective allowance.
-- Persistent refresh failure creates or updates one durable alert; success
-  resolves it.
-- Existing lifecycle specs still pass after the e2e seed receives the silent
-  EUR migration.
-
-Landed web names:
-
-- `e2e/currency-setup.spec.ts`:
-  `currency-initial-setup confirms locale suggestion and unblocks money writes`
-- `e2e/currency-journeys.spec.ts`:
-  `currency settings add, disable, and default-change`;
-  `transaction form remembers last-used currency and detail recovers pending rates`;
-  `incomplete budget period stays Incomplete with em dash amounts`;
-  `currencyless and currency-column imports prepare currencies`;
-  `stale import preview rebuilds after a default-currency change`;
-  `export csv keeps source currency and rate fields`;
-  `refresh-failure alert opens Currency settings focused on rates`
-
-Main Playwright keeps `ZAI_CONFIRM_DEFAULT_CURRENCY=EUR`. Initial setup runs
-from `playwright.currency-setup.config.ts` (ports 3001/1421, no confirm env)
-via `pnpm test:e2e:web`, only when unsharded or `--shard=1/2`.
-
-No desktop Playwright. Native smoke covers Tauri IPC. Landed:
-`native_currency_workflow_smoke`.
+Native smoke covers the complete Tauri IPC currency workflow without browser
+automation. Landed: `native_currency_workflow_smoke`.
 
 ### Failure recovery
 
@@ -265,7 +230,6 @@ The currency benchmark is not part of pull-request or functional CI checks.
 
 ```bash
 pnpm check
-pnpm test:e2e:web
 pnpm benchmark:currency
 cargo test -p zai --lib native_currency_workflow_smoke
 ```
