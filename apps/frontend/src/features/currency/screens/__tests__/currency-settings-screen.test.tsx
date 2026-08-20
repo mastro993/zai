@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { Result } from "@praha/byethrow";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CommandError } from "@/commands/errors";
@@ -30,6 +30,8 @@ const currencies = [
   },
 ];
 
+let emitEvent: (payload: string) => void = () => undefined;
+
 const renderSettings = () =>
   render(
     <CurrencyBootstrapProvider>
@@ -39,11 +41,15 @@ const renderSettings = () =>
 
 describe("CurrencySettingsScreen", () => {
   beforeEach(() => {
+    emitEvent = () => undefined;
     vi.spyOn(currencyEvents, "createCurrencyStateEventTransport").mockImplementation(() => ({
-      subscribe: (_onEvent, _onReconnect) => ({
-        ready: Promise.resolve(Result.succeed(undefined)),
-        close: () => undefined,
-      }),
+      subscribe: (onEvent, _onReconnect) => {
+        emitEvent = onEvent;
+        return {
+          ready: Promise.resolve(Result.succeed(undefined)),
+          close: () => undefined,
+        };
+      },
     }));
     vi.spyOn(currencyCommands, "getCurrencyBootstrap").mockResolvedValue(
       Result.succeed({ setupComplete: true, defaultCurrency: "EUR" }),
@@ -83,6 +89,8 @@ describe("CurrencySettingsScreen", () => {
       expect(screen.getByText("Euro")).toBeTruthy();
     });
     expect(screen.getByLabelText("Set EUR as default currency")).toBeTruthy();
+    expect(screen.getByLabelText("EUR refresh")).toBeTruthy();
+    expect(screen.getByText("Idle")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("combobox", { name: "Add currency" }));
@@ -104,5 +112,25 @@ describe("CurrencySettingsScreen", () => {
     await waitFor(() => {
       expect(currencyCommands.retryExchangeRateRefresh).toHaveBeenCalledOnce();
     });
+  });
+
+  it("shows live refresh progress on each currency row", async () => {
+    renderSettings();
+    await waitFor(() => {
+      expect(screen.getByLabelText("EUR refresh")).toBeTruthy();
+    });
+    await act(async () => {
+      emitEvent(
+        JSON.stringify({
+          version: 1,
+          type: "refreshProgress",
+          current: 18,
+          total: 28,
+        }),
+      );
+    });
+    expect(screen.getByText("Refreshing")).toBeTruthy();
+    expect(screen.getByText("18 of 28")).toBeTruthy();
+    expect(screen.getByRole("progressbar")).toBeTruthy();
   });
 });

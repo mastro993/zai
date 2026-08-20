@@ -94,6 +94,7 @@ impl ServiceContext {
         let service = self.currency_service();
         let exchange = self.exchange_rate_service();
         let import = self.transaction_import_service();
+        let events = self.currency_state_event_bus();
         tokio::spawn(async move {
             let job_type = service
                 .status()
@@ -102,7 +103,11 @@ impl ServiceContext {
                 .map(|job| job.job_type);
             match job_type {
                 Some(zai_core::features::currency::CurrencyJobType::ImportPreview) => {
-                    let _ = exchange.refresh().await;
+                    let _ = crate::currency_refresh::refresh_reporting_progress(
+                        &exchange,
+                        events.as_ref(),
+                    )
+                    .await;
                     let _ = import.drive_running_preview();
                 }
                 Some(zai_core::features::currency::CurrencyJobType::AddCurrency) => {
@@ -113,7 +118,11 @@ impl ServiceContext {
                             .as_deref()
                             .is_some_and(zai_core::features::currency::needs_provider)
                     {
-                        let _ = exchange.refresh().await;
+                        let _ = crate::currency_refresh::refresh_reporting_progress(
+                            &exchange,
+                            events.as_ref(),
+                        )
+                        .await;
                     }
                     let _ = service.drive_running_job();
                 }
@@ -125,17 +134,13 @@ impl ServiceContext {
     }
 
     pub async fn retry_exchange_rate_refresh(&self) {
-        let outcome = self.exchange_rate_service().refresh().await;
-        let _ = crate::currency_refresh::apply_refresh_outcome(
+        let _ = crate::currency_refresh::run_provider_refresh(
+            &self.exchange_rate_service(),
             &self.currency_service,
             &self.domain_alerts_repository,
-            &outcome,
+            self.currency_state_event_bus().as_ref(),
         )
         .await;
-        let _ = zai_core::features::currency::CurrencyStateEventPublisher::publish(
-            self.currency_state_event_bus().as_ref(),
-            &zai_core::features::currency::CurrencyStateEvent::StateChanged,
-        );
     }
 
     pub fn recurring_processing_supervisor(&self) -> RecurringProcessingSupervisorHandle {

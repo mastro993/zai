@@ -99,11 +99,32 @@ impl CurrencyRefreshSupervisor {
         if !retained {
             return;
         }
-        let outcome = self.exchange.refresh().await;
-        let _ = apply_refresh_outcome(&self.currency, &self.alerts, &outcome).await;
         let _ =
-            CurrencyStateEventPublisher::publish(&*self.events, &CurrencyStateEvent::StateChanged);
+            run_provider_refresh(&self.exchange, &self.currency, &self.alerts, &*self.events).await;
     }
+}
+
+pub async fn refresh_reporting_progress(
+    exchange: &ExchangeRateService,
+    events: &dyn CurrencyStateEventPublisher,
+) -> RefreshOutcome {
+    exchange
+        .refresh_with_progress(|current, total| {
+            let _ = events.publish(&CurrencyStateEvent::RefreshProgress { current, total });
+        })
+        .await
+}
+
+pub async fn run_provider_refresh(
+    exchange: &ExchangeRateService,
+    currency: &CurrencyService,
+    alerts: &DomainAlertsRepository,
+    events: &dyn CurrencyStateEventPublisher,
+) -> RefreshOutcome {
+    let outcome = refresh_reporting_progress(exchange, events).await;
+    let _ = apply_refresh_outcome(currency, alerts, &outcome).await;
+    let _ = events.publish(&CurrencyStateEvent::StateChanged);
+    outcome
 }
 
 pub async fn apply_refresh_outcome(
@@ -111,6 +132,7 @@ pub async fn apply_refresh_outcome(
     alerts: &DomainAlertsRepository,
     outcome: &RefreshOutcome,
 ) -> zai_core::Result<()> {
+    log::info!("{}", outcome.log_line());
     let now = Utc::now();
     match outcome {
         RefreshOutcome::Failed { .. } => {

@@ -75,6 +75,42 @@ describe("useCurrencyStateLiveEvents", () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
+  it("applies refreshProgress locally without GET-reconcile", async () => {
+    const onReconcile = vi.fn(() => Promise.resolve(Result.succeed(undefined)));
+    const onReady = vi.fn(() => Promise.resolve(Result.succeed(undefined)));
+    const onEvent = vi.fn();
+    const { unmount } = renderHook(() =>
+      useCurrencyStateLiveEvents({
+        onReconcile,
+        onReady,
+        onEvent,
+      }),
+    );
+
+    await waitFor(() => expect(onReady).toHaveBeenCalledOnce());
+    const reconcilesBefore = onReconcile.mock.calls.length;
+
+    await act(async () => {
+      emit(
+        JSON.stringify({
+          version: 1,
+          type: "refreshProgress",
+          current: 4,
+          total: 28,
+        }),
+      );
+    });
+
+    expect(onEvent).toHaveBeenCalledWith({
+      version: 1,
+      type: "refreshProgress",
+      current: 4,
+      total: 28,
+    });
+    expect(onReconcile).toHaveBeenCalledTimes(reconcilesBefore);
+    unmount();
+  });
+
   it("surfaces typed subscription failure and still reconciles", async () => {
     const onReconcile = vi.fn(() => Promise.resolve(Result.succeed(undefined)));
     const onReady = vi.fn(() => Promise.resolve(Result.succeed(undefined)));

@@ -31,6 +31,13 @@ const finishedSchema = z.strictObject({
   state: z.enum(["succeeded", "failed", "cancelled"]),
 });
 
+const refreshProgressSchema = z.strictObject({
+  version: z.literal(CURRENCY_STATE_EVENT_VERSION),
+  type: z.literal("refreshProgress"),
+  current: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+});
+
 const stateChangedSchema = z.strictObject({
   version: z.literal(CURRENCY_STATE_EVENT_VERSION),
   type: z.literal("stateChanged"),
@@ -40,6 +47,7 @@ export const currencyStateEventSchema = z.discriminatedUnion("type", [
   startedSchema,
   progressSchema,
   finishedSchema,
+  refreshProgressSchema,
   stateChangedSchema,
 ]);
 

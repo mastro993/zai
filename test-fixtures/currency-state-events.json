@@ -24,6 +24,12 @@
   },
   {
     "version": 1,
+    "type": "refreshProgress",
+    "current": 3,
+    "total": 28
+  },
+  {
+    "version": 1,
     "type": "stateChanged"
   }
 ]

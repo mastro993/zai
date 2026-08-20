@@ -101,6 +101,14 @@ impl ExchangeRateCache for ExchangeRateRepository {
             .await
     }
 
+    async fn record_not_modified(&self, attempted_at: DateTime<Utc>) -> Result<()> {
+        self.writer
+            .exec(move |connection| {
+                record_not_modified(connection, attempted_at.naive_utc()).into_storage()
+            })
+            .await
+    }
+
     async fn observation(
         &self,
         currency: CurrencyCode,
@@ -277,6 +285,19 @@ fn record_failure(
     )
     .bind::<Timestamp, _>(now)
     .bind::<Text, _>(class.as_str())
+    .execute(connection)
+    .into_core()?;
+    Ok(())
+}
+
+fn record_not_modified(connection: &mut SqliteConnection, now: NaiveDateTime) -> Result<()> {
+    sql_query(
+        "UPDATE provider_refresh_state \
+         SET last_attempt_at = ?, last_success_at = ?, failure_class = NULL, retry_count = 0 \
+         WHERE id = 1",
+    )
+    .bind::<Timestamp, _>(now)
+    .bind::<Timestamp, _>(now)
     .execute(connection)
     .into_core()?;
     Ok(())

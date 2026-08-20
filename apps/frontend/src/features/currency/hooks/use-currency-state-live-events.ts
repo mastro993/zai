@@ -6,6 +6,7 @@ import {
   type CurrencyStateEventError,
 } from "../commands/currency-state-events";
 import { parseCurrencyStateEvent } from "../lib/parse-currency-state-event";
+import type { CurrencyStateEvent } from "../types/currency-state-event";
 
 export class CurrencyStateReconciliationError extends Error {
   override readonly name = "CurrencyStateReconciliationError";
@@ -24,6 +25,7 @@ const reconciliationFailure = (cause: unknown): CurrencyStateReconciliationError
 interface CurrencyStateLiveEventHandlers {
   onReconcile: ReconciliationOperation;
   onReady: ReconciliationOperation;
+  onEvent?: (event: CurrencyStateEvent) => void;
   onReconciliationFailure?: (error: CurrencyStateReconciliationError) => void;
   onSubscriptionFailure?: (error: CurrencyStateEventError) => void;
   onSubscriptionRecovered?: () => void;
@@ -32,12 +34,14 @@ interface CurrencyStateLiveEventHandlers {
 export function useCurrencyStateLiveEvents({
   onReconcile,
   onReady,
+  onEvent,
   onReconciliationFailure,
   onSubscriptionFailure,
   onSubscriptionRecovered,
 }: CurrencyStateLiveEventHandlers) {
   const onReconcileRef = useRef(onReconcile);
   const onReadyRef = useRef(onReady);
+  const onEventRef = useRef(onEvent);
   const onReconciliationFailureRef = useRef(onReconciliationFailure);
   const onSubscriptionFailureRef = useRef(onSubscriptionFailure);
   const onSubscriptionRecoveredRef = useRef(onSubscriptionRecovered);
@@ -48,12 +52,14 @@ export function useCurrencyStateLiveEvents({
   useEffect(() => {
     onReconcileRef.current = onReconcile;
     onReadyRef.current = onReady;
+    onEventRef.current = onEvent;
     onReconciliationFailureRef.current = onReconciliationFailure;
     onSubscriptionFailureRef.current = onSubscriptionFailure;
     onSubscriptionRecoveredRef.current = onSubscriptionRecovered;
   }, [
     onReconcile,
     onReady,
+    onEvent,
     onReconciliationFailure,
     onSubscriptionFailure,
     onSubscriptionRecovered,
@@ -118,7 +124,13 @@ export function useCurrencyStateLiveEvents({
 
     const subscription = createCurrencyStateEventTransport().subscribe(
       (value) => {
-        parseCurrencyStateEvent(value);
+        const event = parseCurrencyStateEvent(value);
+        if (event !== null) {
+          onEventRef.current?.(event);
+        }
+        if (event?.type === "refreshProgress") {
+          return;
+        }
         enqueueReconciliation(onReconcileRef.current);
       },
       () => {
