@@ -52,6 +52,22 @@ const EMPTY_MAPPING: TransactionImportColumnMapping = {
   rateDate: null,
 };
 
+const createDefaultConfig = (): ImportConfig => {
+  const typeValues = getDefaultTypeValueInputs();
+  return {
+    headerRowIndex: 0,
+    amountMode: "column-type",
+    dateFormat: "YYYY-MM-DD",
+    categoryLinkMode: "columns",
+    categorySeparator: " - ",
+    missingCategoryMode: "uncategorized",
+    expenseTypeValues: typeValues.expenseTypeValues,
+    incomeTypeValues: typeValues.incomeTypeValues,
+    confirmedTransactionCurrency: "",
+    rateDirection: "transactionToDefault",
+  };
+};
+
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => {
     window.setTimeout(resolve, ms);
@@ -82,21 +98,7 @@ function TransactionImportDialog({
   const [file, setFile] = useState<TransactionImportFile | null>(null);
   const [fileDigest, setFileDigest] = useState<string | null>(null);
   const [mapping, setMapping] = useState<TransactionImportColumnMapping>(EMPTY_MAPPING);
-  const [config, setConfig] = useState<ImportConfig>(() => {
-    const typeValues = getDefaultTypeValueInputs();
-    return {
-      headerRowIndex: 0,
-      amountMode: "column-type",
-      dateFormat: "YYYY-MM-DD",
-      categoryLinkMode: "columns",
-      categorySeparator: " - ",
-      missingCategoryMode: "uncategorized",
-      expenseTypeValues: typeValues.expenseTypeValues,
-      incomeTypeValues: typeValues.incomeTypeValues,
-      confirmedTransactionCurrency: "",
-      rateDirection: "transactionToDefault",
-    };
-  });
+  const [config, setConfig] = useState<ImportConfig>(createDefaultConfig);
   const [step, setStep] = useState<ImportStep>(0);
   const [previewFilter, setPreviewFilter] = useState<ImportPreviewRowFilter>("importable");
   const [isPickingFile, setIsPickingFile] = useState(false);
@@ -107,13 +109,21 @@ function TransactionImportDialog({
   const [confirmProviderDisclosure, setConfirmProviderDisclosure] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setStep(0);
-      setPreviewFilter("importable");
-      setPreview(null);
-      setNeedsProviderDisclosure(false);
-      setConfirmProviderDisclosure(false);
+    if (!open) {
+      return;
     }
+    setStep(0);
+    setPreviewFilter("importable");
+    setPreview(null);
+    setNeedsProviderDisclosure(false);
+    setConfirmProviderDisclosure(false);
+    setFile(null);
+    setFileDigest(null);
+    setMapping(EMPTY_MAPPING);
+    setConfig(createDefaultConfig());
+    setIsPickingFile(false);
+    setIsPreviewing(false);
+    setIsImporting(false);
   }, [open]);
 
   useEffect(() => {

@@ -27,11 +27,10 @@
     "check:backend": "mkdir -p dist && printf '<!doctype html><html><body></body></html>' > dist/index.html && cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo build -p zai-db --bin recurring-crash-child --features failpoints && cargo test --workspace",
     "check": "pnpm check:frontend && pnpm check:backend",
     "benchmark:recurring": "node scripts/recurring-reference-runner.mjs",
-    "test:e2e:web": "playwright test"
+    "benchmark:currency": "node scripts/currency-reference-runner.mjs"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.78.0",
-    "@playwright/test": "^1.55.0",
     "@praha/byethrow-docs": "^0.12.0",
     "@praha/byethrow-oxlint": "^0.12.0",
     "@tauri-apps/cli": "~2.11.4",

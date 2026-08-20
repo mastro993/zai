@@ -25,9 +25,13 @@
 
 - Implementing [Valuation generations and set-based budget results](https://github.com/mastro993/zai/issues/390) on `feat/multi-currency` after merging ECB cache (#402). Seams: core valuation units + repository set-based SUM/COUNT, generation head switch, EXPLAIN/statement-count. No currency lifecycle API this PR.
 - Implementing [Private ECB provider cache with privacy canaries](https://github.com/mastro993/zai/issues/389) on `feat/multi-currency` after merging Money + schema (399/401). Seams: core request/validate/refresh, cache publish, privacy canaries. No auto-refresh this PR.
-- Implementing [Currency schema, silent EUR migration, and fail-closed money commands](https://github.com/mastro993/zai/issues/388) on `feat/multi-currency`. Base includes Money PR 399. Migration 0010 + backup + setupRequired gate + e2e `ZAI_CONFIRM_DEFAULT_CURRENCY=EUR`.
-- CI/E2E PR filters include `feat/**` so merges into long-lived feat branches run the same checks as `main`.
+- Implementing [Currency schema, silent EUR migration, and fail-closed money commands](https://github.com/mastro993/zai/issues/388) on `feat/multi-currency`. Base includes Money PR 399. Migration 0010 + backup + setupRequired gate.
+- CI PR filters include `feat/**` so merges into long-lived feat branches run the same checks as `main`.
 - Installed anti-slop Oxlint plugin. Copied to `tools/oxlint/anti-slop/`. Wired in `.oxlintrc.json` + `.oxfmtrc.json`. Bumped frontend `oxlint` to 1.78.0. Added root `@oxlint/plugins@1.78.0`. Migrated 444 findings so `pnpm check:frontend` is green (397 tests).
 - Migrated assigned frontend test batch off `vi.mock` / unguarded `as T` / `unknown` params. Oxlint `--deny-warnings` + Vitest green on those 21 files.
 - Opened local `feat/multi-currency` at current `main` (`6015578`). Implementing [Exact Money, ISO manifest, and checked conversion](https://github.com/mastro993/zai/issues/387) on this worktree branch; stack target is that long-lived branch, not `main`.
 - Pushed `feat/multi-currency` and opened [PR 399](https://github.com/mastro993/zai/pull/399) onto that stack for #387. Not `main`.
+
+## 2026-08-20
+
+- Implementing currency native smoke and benchmark evidence on `feat/multi-currency` (PR 8 remainder). Do not land on `main`. Seams: `native_currency_workflow_smoke`, `pnpm benchmark:currency` seed 377, and failure-recovery unit names in the release gate. Deleted throwaway `currency-prototype`. Settings search is `{ focus?: "rates" }`.

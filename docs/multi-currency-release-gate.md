@@ -10,7 +10,7 @@ implementation. Exact test function names land here when they exist.
 ## Fixed contracts
 
 - Automated evidence is the complete ship gate. Prototype scenes become
-  Playwright and contract tests. No separate human sign-off.
+  frontend, contract, and native smoke tests. No separate human sign-off.
 - One atomic application version. Schema, valuation, commands, UI,
   import/export, and the silent EUR migration ship together. No feature flag.
 - First launch of that version creates a recoverable pre-migration backup,
@@ -155,27 +155,10 @@ not call currency core services directly.
 - Display formatting uses the currency's ISO minor-unit digits.
 - Alert snapshots use the active generation's target currency.
 
-### End-to-end
+### Native smoke
 
-Web Playwright covers:
-
-- Initial currency setup: locale suggestion requires confirmation; money
-  writes are blocked before setup completes.
-- Currency settings: add with complete coverage, disable, default-currency
-  change progress, stale and failed status.
-- Transaction form and detail: currency suffix, last-used, manual rate,
-  pending recovery, original amount, rate, and origin.
-- Import: currencyless confirmation, currency-column preparation, stale
-  preview rebuild.
-- Export: full-fidelity source fields, not a converted display value.
-- Incomplete budget periods do not claim status, remaining allowance, or
-  effective allowance.
-- Persistent refresh failure creates or updates one durable alert; success
-  resolves it.
-- Existing lifecycle specs still pass after the e2e seed receives the silent
-  EUR migration.
-
-No desktop Playwright. Native smoke covers Tauri IPC.
+Native smoke covers the complete Tauri IPC currency workflow without browser
+automation. Landed: `native_currency_workflow_smoke`.
 
 ### Failure recovery
 
@@ -189,6 +172,16 @@ No desktop Playwright. Native smoke covers Tauri IPC.
 - Import crash or cancel commits nothing.
 - Migration crash retains the backup and refuses startup.
 - Failpoints plus a child-process crash test follow the recurring pattern.
+
+Landed names: `retry_pending_looks_up_again`,
+`apply_refresh_outcome_creates_one_alert_and_resolves_on_success`,
+`fail_before_activation_leaves_previous_default`,
+`restart_after_failed_activation_changes_default`,
+`cancelled_preview_cannot_commit`,
+`placeholder_import_ids_are_replaced`,
+`commit_rejects_stale_default_revision`,
+`migration_failure_after_backup_keeps_backup_and_refuses_open`,
+`migration_failure_after_migrate_restores_backup_and_refuses_open`.
 
 ### Import and export
 
@@ -237,14 +230,13 @@ The currency benchmark is not part of pull-request or functional CI checks.
 
 ```bash
 pnpm check
-pnpm test:e2e:web
 pnpm benchmark:currency
 cargo test -p zai --lib native_currency_workflow_smoke
 ```
 
 The native smoke requires the workspace `dist/index.html` stub when run
-alone; `pnpm check:backend` creates it as part of the backend gate. Update
-the exact smoke test name here when it lands.
+alone; `pnpm check:backend` creates it as part of the backend gate.
+Exact smoke name: `native_currency_workflow_smoke`.
 
 PR 2 evidence: `migration_currency_tests::*`,
 `released_schema_fixtures_upgrade_to_head` through `v0010_multi_currency`,

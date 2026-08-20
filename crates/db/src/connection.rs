@@ -85,6 +85,7 @@ impl Database {
     pub fn currency_settings_repository(&self) -> Arc<crate::currency::CurrencySettingsRepository> {
         Arc::new(crate::currency::CurrencySettingsRepository::new(
             Arc::clone(&self.pool),
+            self.writer.clone(),
         ))
     }
 

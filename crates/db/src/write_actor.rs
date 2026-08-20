@@ -1,13 +1,15 @@
 use crate::connection::DbPool;
+#[cfg(test)]
+use crate::errors::StorageError;
 use crate::errors::{IntoCore, Result};
 use diesel::SqliteConnection;
 use diesel::connection::SimpleConnection;
 use std::any::Any;
 #[cfg(test)]
-use std::sync::{
-    Arc,
-    atomic::{AtomicUsize, Ordering},
-};
+use std::sync::Arc;
+#[cfg(test)]
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc as std_mpsc;
 use tokio::sync::{mpsc, oneshot};
 use zai_core::{DatabaseError, Error};
 
@@ -16,8 +18,14 @@ type BoxedValue = Box<dyn Any + Send + 'static>;
 
 struct WriterMessage {
     job: Job<BoxedValue>,
-    reply_tx: oneshot::Sender<Result<BoxedValue>>,
+    reply_tx: WriterReply,
+    transactional: bool,
     inject_post_commit_failure: bool,
+}
+
+enum WriterReply {
+    Async(oneshot::Sender<Result<BoxedValue>>),
+    Sync(std_mpsc::SyncSender<Result<BoxedValue>>),
 }
 
 const WRITE_QUEUE_CAPACITY: usize = 1024;
@@ -75,7 +83,8 @@ impl WriteHandle {
                 job: Box::new(move |conn| {
                     job(conn).map(|value| Box::new(value) as Box<dyn Any + Send>)
                 }),
-                reply_tx: ret_tx,
+                reply_tx: WriterReply::Async(ret_tx),
+                transactional: true,
                 inject_post_commit_failure,
             })
             .await
@@ -83,6 +92,48 @@ impl WriteHandle {
 
         ret_rx
             .await
+            .map_err(|_| writer_error("database writer dropped the reply"))?
+            .into_core()
+            .map(|boxed| {
+                *boxed
+                    .downcast::<T>()
+                    .unwrap_or_else(|_| panic!("database writer returned the wrong result type"))
+            })
+    }
+
+    pub(crate) fn exec_sync<F, T>(&self, job: F) -> zai_core::Result<T>
+    where
+        F: FnOnce(&mut SqliteConnection) -> Result<T> + Send + 'static,
+        T: Send + 'static + Any,
+    {
+        let (ret_tx, ret_rx) = std_mpsc::sync_channel(1);
+
+        #[cfg(test)]
+        self.exec_count.fetch_add(1, Ordering::SeqCst);
+
+        let mut message = WriterMessage {
+            job: Box::new(move |conn| {
+                job(conn).map(|value| Box::new(value) as Box<dyn Any + Send>)
+            }),
+            reply_tx: WriterReply::Sync(ret_tx),
+            transactional: false,
+            inject_post_commit_failure: false,
+        };
+        loop {
+            match self.tx.try_send(message) {
+                Ok(()) => break,
+                Err(mpsc::error::TrySendError::Full(returned)) => {
+                    message = returned;
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                Err(mpsc::error::TrySendError::Closed(_)) => {
+                    return Err(writer_error("database writer stopped"));
+                }
+            }
+        }
+
+        ret_rx
+            .recv()
             .map_err(|_| writer_error("database writer dropped the reply"))?
             .into_core()
             .map(|boxed| {
@@ -112,10 +163,21 @@ fn spawn_writer_with_capacity(
         .name("zai-db-writer".into())
         .spawn(move || {
             while let Some(message) = handle.block_on(rx.recv()) {
-                let result = conn.immediate_transaction(|conn| (message.job)(conn));
+                let result = if message.transactional {
+                    conn.immediate_transaction(|conn| (message.job)(conn))
+                } else {
+                    (message.job)(&mut conn)
+                };
                 let result =
                     apply_post_commit_failpoint(result, message.inject_post_commit_failure);
-                let _ = message.reply_tx.send(result);
+                match message.reply_tx {
+                    WriterReply::Async(reply_tx) => {
+                        let _ = reply_tx.send(result);
+                    }
+                    WriterReply::Sync(reply_tx) => {
+                        let _ = reply_tx.send(result);
+                    }
+                }
             }
         })
         .map_err(|err| writer_error(&format!("failed to spawn database writer: {err}")))?;
@@ -154,7 +216,6 @@ fn writer_error(message: &str) -> Error {
 mod tests {
     use super::*;
     use crate::connection::run_migrations;
-    use crate::errors::StorageError;
     use crate::test_utils::TempDb;
     use diesel::r2d2::{self, Pool};
     use diesel::sqlite::SqliteConnection;
@@ -253,7 +314,8 @@ mod tests {
                         seen.lock().expect("seen").push(i);
                         Ok(Box::new(()) as BoxedValue)
                     }),
-                    reply_tx,
+                    reply_tx: WriterReply::Async(reply_tx),
+                    transactional: true,
                     inject_post_commit_failure: false,
                 })
                 .expect("queue");
@@ -267,6 +329,49 @@ mod tests {
         }
 
         assert_eq!(*seen.lock().expect("seen"), (0..8).collect::<Vec<_>>());
+    }
+
+    #[tokio::test]
+    async fn synchronous_writes_wait_for_actor_transaction() {
+        let temp_db = TempDb::new();
+        let writer = setup_writer(&temp_db);
+        let (actor_entered_tx, actor_entered_rx) = mpsc::channel();
+        let (resume_actor_tx, resume_actor_rx) = mpsc::channel::<()>();
+        let actor_writer = writer.clone();
+        let actor_write = tokio::spawn(async move {
+            actor_writer
+                .exec(move |_conn| {
+                    actor_entered_tx.send(()).expect("actor entered");
+                    resume_actor_rx.recv().expect("resume actor");
+                    Ok(())
+                })
+                .await
+        });
+        tokio::task::spawn_blocking(move || actor_entered_rx.recv())
+            .await
+            .expect("join")
+            .expect("actor entered");
+
+        let (sync_started_tx, sync_started_rx) = mpsc::channel();
+        let (sync_entered_tx, sync_entered_rx) = mpsc::channel();
+        let sync_write = std::thread::spawn(move || {
+            sync_started_tx.send(()).expect("sync started");
+            writer.exec_sync(move |_conn| {
+                sync_entered_tx.send(()).expect("sync entered");
+                Ok(())
+            })
+        });
+        sync_started_rx.recv().expect("sync started");
+        assert!(
+            sync_entered_rx
+                .recv_timeout(std::time::Duration::from_millis(50))
+                .is_err()
+        );
+
+        resume_actor_tx.send(()).expect("resume actor");
+        actor_write.await.expect("join").expect("actor write");
+        sync_write.join().expect("join").expect("sync write");
+        sync_entered_rx.recv().expect("sync entered");
     }
 
     #[tokio::test]
@@ -361,14 +466,16 @@ mod tests {
             .tx
             .try_send(WriterMessage {
                 job: Box::new(|_conn| Ok(Box::new(()) as BoxedValue)),
-                reply_tx: queued_reply_tx,
+                reply_tx: WriterReply::Async(queued_reply_tx),
+                transactional: true,
                 inject_post_commit_failure: false,
             })
             .expect("one queued job should fit");
         let (overflow_reply_tx, _overflow_reply_rx) = oneshot::channel();
         let overflow = writer.tx.try_send(WriterMessage {
             job: Box::new(|_conn| Ok(Box::new(()) as BoxedValue)),
-            reply_tx: overflow_reply_tx,
+            reply_tx: WriterReply::Async(overflow_reply_tx),
+            transactional: true,
             inject_post_commit_failure: false,
         });
 

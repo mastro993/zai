@@ -2,6 +2,8 @@ use super::jobs::{get_job, insert_job, latest_job, running_job, update_job};
 use super::settings::list_persisted;
 use super::{complete_initial_setup, require_setup, setup_state};
 use crate::connection::DbPool;
+use crate::errors::IntoStorage;
+use crate::write_actor::WriteHandle;
 use std::sync::Arc;
 use zai_core::Result;
 use zai_core::features::currency::{
@@ -10,17 +12,22 @@ use zai_core::features::currency::{
 
 pub struct CurrencySettingsRepository {
     pool: Arc<DbPool>,
+    writer: WriteHandle,
 }
 
 impl CurrencySettingsRepository {
-    pub fn new(pool: Arc<DbPool>) -> Self {
-        Self { pool }
+    pub(crate) fn new(pool: Arc<DbPool>, writer: WriteHandle) -> Self {
+        Self { pool, writer }
     }
 }
 
 impl CurrencySettingsPort for CurrencySettingsRepository {
     fn complete_initial_setup(&self, currency_code: &str) -> Result<()> {
-        complete_initial_setup(&self.pool, currency_code)
+        let pool = Arc::clone(&self.pool);
+        let currency_code = currency_code.to_string();
+        self.writer.exec_sync(move |_connection| {
+            complete_initial_setup(&pool, &currency_code).into_storage()
+        })
     }
 
     fn setup_state(&self) -> Result<CurrencySetupState> {
@@ -40,11 +47,17 @@ impl CurrencySettingsPort for CurrencySettingsRepository {
     }
 
     fn insert_job(&self, job: &CurrencyJob) -> Result<()> {
-        insert_job(&self.pool, job)
+        let pool = Arc::clone(&self.pool);
+        let job = job.clone();
+        self.writer
+            .exec_sync(move |_connection| insert_job(&pool, &job).into_storage())
     }
 
     fn update_job(&self, job: &CurrencyJob) -> Result<()> {
-        update_job(&self.pool, job)
+        let pool = Arc::clone(&self.pool);
+        let job = job.clone();
+        self.writer
+            .exec_sync(move |_connection| update_job(&pool, &job).into_storage())
     }
 
     fn get_job(&self, job_id: &str) -> Result<Option<CurrencyJobRecord>> {
@@ -60,11 +73,19 @@ impl CurrencySettingsPort for CurrencySettingsRepository {
     }
 
     fn enable_currency(&self, currency_code: &str) -> Result<()> {
-        super::lifecycle::enable_currency(&self.pool, currency_code)
+        let pool = Arc::clone(&self.pool);
+        let currency_code = currency_code.to_string();
+        self.writer.exec_sync(move |_connection| {
+            super::lifecycle::enable_currency(&pool, &currency_code).into_storage()
+        })
     }
 
     fn disable_currency(&self, currency_code: &str) -> Result<()> {
-        super::lifecycle::disable_currency(&self.pool, currency_code)
+        let pool = Arc::clone(&self.pool);
+        let currency_code = currency_code.to_string();
+        self.writer.exec_sync(move |_connection| {
+            super::lifecycle::disable_currency(&pool, &currency_code).into_storage()
+        })
     }
 
     fn prove_coverage(&self, currency_code: &str) -> Result<()> {
@@ -76,7 +97,10 @@ impl CurrencySettingsPort for CurrencySettingsRepository {
     }
 
     fn accept_provider_disclosure(&self) -> Result<()> {
-        super::lifecycle::accept_provider_disclosure(&self.pool)
+        let pool = Arc::clone(&self.pool);
+        self.writer.exec_sync(move |_connection| {
+            super::lifecycle::accept_provider_disclosure(&pool).into_storage()
+        })
     }
 
     fn has_ecb_retained_data(&self) -> Result<bool> {
@@ -84,15 +108,30 @@ impl CurrencySettingsPort for CurrencySettingsRepository {
     }
 
     fn begin_default_generation(&self, currency_code: &str) -> Result<String> {
-        super::lifecycle::begin_default_generation(&self.pool, currency_code)
+        let pool = Arc::clone(&self.pool);
+        let currency_code = currency_code.to_string();
+        self.writer.exec_sync(move |_connection| {
+            super::lifecycle::begin_default_generation(&pool, &currency_code).into_storage()
+        })
     }
 
     fn activate_default_generation(&self, generation_id: &str, currency_code: &str) -> Result<()> {
-        super::lifecycle::activate_default_generation(&self.pool, generation_id, currency_code)
+        let pool = Arc::clone(&self.pool);
+        let generation_id = generation_id.to_string();
+        let currency_code = currency_code.to_string();
+        self.writer.exec_sync(move |_connection| {
+            super::lifecycle::activate_default_generation(&pool, &generation_id, &currency_code)
+                .into_storage()
+        })
     }
 
     fn attach_generation(&self, job_id: &str, generation_id: &str) -> Result<()> {
-        super::lifecycle::attach_generation(&self.pool, job_id, generation_id)
+        let pool = Arc::clone(&self.pool);
+        let job_id = job_id.to_string();
+        let generation_id = generation_id.to_string();
+        self.writer.exec_sync(move |_connection| {
+            super::lifecycle::attach_generation(&pool, &job_id, &generation_id).into_storage()
+        })
     }
 
     fn quote(

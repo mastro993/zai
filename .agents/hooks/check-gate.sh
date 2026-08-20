@@ -34,7 +34,7 @@ is_check_relevant_path() {
     Cargo.toml|Cargo.lock|deny.toml|clippy.toml|lefthook.yml) return 0 ;;
     rust-toolchain|rust-toolchain.toml|rust-toolchain.*) return 0 ;;
     tsconfig.json|tsconfig.*.json) return 0 ;;
-    playwright.config.*|vitest.config.*) return 0 ;;
+    vitest.config.*) return 0 ;;
     *) return 1 ;;
   esac
 }

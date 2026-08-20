@@ -12,7 +12,7 @@ use diesel::prelude::*;
 use diesel::sql_query;
 use std::sync::Arc;
 use zai_core::features::budgets::models::BudgetMeasurementMode;
-use zai_core::features::transactions::models::NewTransaction;
+use zai_core::features::transactions::models::{NewTransaction, RateVariant, TransactionUpdate};
 use zai_core::features::transactions::traits::TransactionsRepositoryTrait;
 use zai_core::money::CurrencyCode;
 
@@ -321,4 +321,65 @@ async fn spending_buckets_keep_known_sum_and_mark_incomplete_days() {
     assert_eq!(months.len(), 1);
     assert!(!months[0].complete);
     assert_eq!(months[0].known_sum, 100);
+}
+
+#[tokio::test]
+async fn manual_rate_after_default_round_trip_quotes_current_target() {
+    let (_temp, repo, transactions, mut conn) = setup();
+    sql_query(
+        "INSERT INTO enabled_currencies (code, enabled_at, disabled_at) \
+         VALUES ('USD', datetime('now'), NULL)",
+    )
+    .execute(&mut conn)
+    .expect("enable USD");
+    let switched = Utc
+        .with_ymd_and_hms(2026, 8, 18, 12, 0, 0)
+        .unwrap()
+        .naive_utc();
+    repo.change_default_currency(CurrencyCode::parse("USD").unwrap(), switched)
+        .await
+        .expect("default USD");
+    repo.change_default_currency(CurrencyCode::parse("EUR").unwrap(), switched)
+        .await
+        .expect("default EUR");
+
+    let created = transactions
+        .create_transaction(NewTransaction {
+            id: Some("tx-round-trip".to_string()),
+            description: Some("Pending USD".to_string()),
+            amount: 10_000,
+            currency: "USD".to_string(),
+            transaction_date: Utc
+                .with_ymd_and_hms(2026, 8, 20, 9, 0, 0)
+                .unwrap()
+                .naive_utc(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+            manual_exchange_rate: None,
+        })
+        .await
+        .expect("create");
+    assert!(!created.complete);
+    assert_eq!(created.exchange_rate.variant, RateVariant::Pending);
+
+    let recovered = transactions
+        .update_transaction(TransactionUpdate {
+            id: created.id.clone(),
+            description: created.description.clone(),
+            amount: created.amount,
+            currency: created.currency.clone(),
+            transaction_date: created.transaction_date,
+            transaction_type: created.transaction_type.clone(),
+            transaction_category_id: created.transaction_category_id.clone(),
+            notes: created.notes.clone(),
+            manual_exchange_rate: Some("0.92".to_string()),
+            confirm_manual_rate_replacement: false,
+            retry_rate_lookup: false,
+        })
+        .await
+        .expect("manual recovery");
+    assert!(recovered.complete);
+    assert_eq!(recovered.converted_amount, Some(9_200));
+    assert_eq!(recovered.converted_currency, "EUR");
 }

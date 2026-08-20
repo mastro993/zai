@@ -33,8 +33,7 @@ until the release gate is green. That merge is the version.
 
 1. Open `feat/multi-currency` from current `main`.
 2. Stack the eight PRs below. Each targets the previous stack commit.
-3. Stack-tip CI stays green (`pnpm check`; web e2e from PR 2 onward after the
-   seed completes initial currency setup).
+3. Stack-tip CI stays green with `pnpm check`.
 4. When [`docs/multi-currency-release-gate.md`](./multi-currency-release-gate.md)
    is green on the tip, merge the stack to `main` as one version.
 5. After `main`: `pnpm benchmark:currency` in its own workflow.
@@ -43,9 +42,7 @@ until the release gate is green. That merge is the version.
 
 From PR 2 onward, money-bearing commands that are not yet restored return
 `setupRequired` (or the stricter mixed-generation / missing-field failure)
-before any financial read or write. The branch e2e seed silently assigns EUR,
-then confirms EUR as the default currency, so existing lifecycle specs keep
-passing.
+before any financial read or write.
 
 `BUDGET_STATUS_CURRENCY = "EUR"` is deleted. Alert rich data uses the active
 generation target currency.
@@ -84,7 +81,6 @@ add or keep green; the full list still ships only at the final merge.
   assignment.
 - Persist `i64`. Wire and authored cap stay `i32::MAX`.
 - Existing money commands fail closed until later PRs restore them.
-- E2E seed on this branch: silent EUR + confirmed EUR setup.
 - Gate: migration and upgrade family.
 - Landed in this stack PR. Tests: `cargo test -p zai-db --lib migration_`.
   Families: `migration_currency_tests`, released-schema upgrade through
@@ -173,7 +169,7 @@ add or keep green; the full list still ships only at the final merge.
   `features::transactions::import_service`,
   `features::transactions::export_csv`.
 
-### 8. Frontend + e2e + native smoke + benchmark
+### 8. Frontend + native smoke + benchmark
 
 - Ledger: Currency settings, transaction form, detail/pending.
 - Inspector: initial currency setup, import currency prep.
@@ -181,10 +177,18 @@ add or keep green; the full list still ships only at the final merge.
   frontend session memory.
 - Display formatting uses the currency's ISO minor-unit digits. Stop dividing
   by 100 and locking `Intl` at two fraction digits.
-- Web Playwright, `native_currency_workflow_smoke`, `pnpm benchmark:currency`.
+- `native_currency_workflow_smoke`, frontend tests, and `pnpm benchmark:currency`.
 - Prototype scenes become tests. Throwaway `currency-prototype` does not ship.
-- Gate: frontend, end-to-end, failure-recovery, and completion-evidence
+- Gate: frontend, native smoke, failure-recovery, and completion-evidence
   commands in the release gate. Then merge to `main`.
+- Landed tests: `cargo test -p zai --lib native_currency_workflow_smoke`;
+  `pnpm benchmark:currency` (seed `377`, not a PR gate);
+  `fail_before_activation_leaves_previous_default`,
+  `restart_after_failed_activation_changes_default`,
+  `cancelled_preview_cannot_commit`,
+  `placeholder_import_ids_are_replaced`,
+  `apply_refresh_outcome_creates_one_alert_and_resolves_on_success`.
+  `currency-prototype` deleted. Settings search is `{ focus?: "rates" }`.
 
 ## Starting facts on `main`
 
@@ -211,7 +215,6 @@ has been recorded:
 
 ```bash
 pnpm check
-pnpm test:e2e:web
 pnpm benchmark:currency
 cargo test -p zai --lib native_currency_workflow_smoke
 ```
