@@ -132,7 +132,7 @@ add or keep green; the full list still ships only at the final merge.
 
 ### 6. Rewrite existing money DTOs
 
-- Transaction list: `convertedAmount`, `convertedCurrency`, `complete` only.
+- Transaction list: original Money (`amount`, `currency`) plus `convertedAmount`, `convertedCurrency`, `complete`.
 - `get` / `create` / `update` / `delete` return the detail DTO: original
   Money, current rate revision, converted fields.
 - Recurring templates carry original Money, never a rate. Budgets expose

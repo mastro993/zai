@@ -181,12 +181,12 @@ describe("TransactionFormDrawer", () => {
     setLastUsedTransactionCurrency("USD");
     await renderForm();
 
-    expect(screen.getByText(/Converted amount:/)).toBeTruthy();
-    expect(screen.queryByText("Converted amount pending.")).toBeNull();
+    expect(screen.queryByText(/Converted amount:/)).toBeNull();
+    expect(screen.getByRole("status", { name: "Converted amount" })).toBeTruthy();
     const skeleton = document.querySelector('[data-slot="skeleton"]');
     expect(skeleton).not.toBeNull();
     expect(skeleton?.classList.contains("h-[1em]")).toBe(true);
-    expect(skeleton?.classList.contains("w-[6em]")).toBe(true);
+    expect(skeleton?.classList.contains("w-[14em]")).toBe(true);
   });
 
   it("hides Conversion rate for the default currency", async () => {
@@ -208,6 +208,7 @@ describe("TransactionFormDrawer", () => {
       const placeholder = rateInput.getAttribute("placeholder") ?? "";
       expect(placeholder.startsWith("1 USD = ")).toBe(true);
       expect(placeholder).toContain("0.92");
+      expect(placeholder).toContain(" EUR on ");
     });
   });
 

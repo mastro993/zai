@@ -83,6 +83,8 @@ export const transactionListItemSchema = z.object({
   transactionType: z.string().min(1),
   transactionCategoryId: nullableStringSchema,
   notes: nullableStringSchema,
+  amount: z.number().int(),
+  currency: z.string().length(3),
   convertedAmount: z.number().int().nullable(),
   convertedCurrency: z.string().length(3),
   complete: z.boolean(),

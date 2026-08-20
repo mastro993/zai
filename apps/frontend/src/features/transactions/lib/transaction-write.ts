@@ -1,6 +1,6 @@
 import { parseISO } from "date-fns";
 
-import { currencyDisplaySymbol, isoFractionDigits, localizeDecimalString } from "@/lib/currency";
+import { isoFractionDigits, localizeDecimalString } from "@/lib/currency";
 import type { Transaction, TransactionFormValues } from "../types/model";
 import { toDateTimeInputValue } from "./transaction";
 
@@ -79,7 +79,7 @@ export const formatConversionRatePlaceholder = (
         year: "numeric",
       }).format(parsed);
 
-  return `1 ${sourceCurrency} = ${formatConversionRateDisplay(rate)} ${currencyDisplaySymbol(targetCurrency)} on ${dateLabel}`;
+  return `1 ${sourceCurrency} = ${formatConversionRateDisplay(rate)} ${targetCurrency} on ${dateLabel}`;
 };
 
 export const convertedMinorFromRate = (

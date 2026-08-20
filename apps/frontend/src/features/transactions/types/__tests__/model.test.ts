@@ -79,7 +79,7 @@ describe("transactionFormSchema", () => {
 });
 
 describe("transaction result schemas", () => {
-  it("decodes a convert-only list item without original money", () => {
+  it("decodes a list item with original money and converted fields", () => {
     const parsed = transactionListItemSchema.parse({
       id: "tx-1",
       description: "Coffee",
@@ -87,14 +87,33 @@ describe("transaction result schemas", () => {
       transactionType: "expense",
       transactionCategoryId: null,
       notes: null,
-      convertedAmount: 350,
+      amount: 4550,
+      currency: "USD",
+      convertedAmount: 4000,
       convertedCurrency: "EUR",
       complete: true,
     });
 
-    expect(parsed).not.toHaveProperty("amount");
-    expect(parsed).not.toHaveProperty("currency");
+    expect(parsed.amount).toBe(4550);
+    expect(parsed.currency).toBe("USD");
+    expect(parsed.convertedAmount).toBe(4000);
     expect(parsed).not.toHaveProperty("exchangeRate");
+  });
+
+  it("rejects a list item without original money", () => {
+    expect(
+      transactionListItemSchema.safeParse({
+        id: "tx-1",
+        description: "Coffee",
+        transactionDate: "2026-07-01T10:00:00",
+        transactionType: "expense",
+        transactionCategoryId: null,
+        notes: null,
+        convertedAmount: 350,
+        convertedCurrency: "EUR",
+        complete: true,
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects the earlier amount-only expand shape as a list item", () => {

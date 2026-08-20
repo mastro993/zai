@@ -340,7 +340,7 @@ async fn pooled_transaction_read_does_not_starve_current_thread_runtime() {
 }
 
 #[tokio::test]
-async fn create_same_currency_returns_identity_detail_and_list_is_convert_only() {
+async fn create_same_currency_returns_identity_detail_and_list_includes_original_money() {
     let temp_db = TempDb::new();
     let repo = setup_test_repo(temp_db.path());
     let created = repo
@@ -362,6 +362,8 @@ async fn create_same_currency_returns_identity_detail_and_list_is_convert_only()
         .await
         .expect("list");
     assert_eq!(page.data.len(), 1);
+    assert_eq!(page.data[0].amount, created.amount);
+    assert_eq!(page.data[0].currency, created.currency);
     assert_eq!(page.data[0].converted_amount, Some(created.amount));
     assert_eq!(page.data[0].converted_currency, "EUR");
     assert!(page.data[0].complete);
@@ -431,6 +433,8 @@ async fn missing_cross_currency_rate_leaves_pending_incomplete_list_row() {
         .await
         .expect("list");
     assert!(!page.data[0].complete);
+    assert_eq!(page.data[0].amount, created.amount);
+    assert_eq!(page.data[0].currency, "USD");
     assert_eq!(page.data[0].converted_amount, None);
 }
 

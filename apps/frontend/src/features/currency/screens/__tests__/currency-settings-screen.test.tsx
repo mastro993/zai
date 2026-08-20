@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CommandError } from "@/commands/errors";
+import { currencyDisplaySymbol } from "@/lib/currency";
 
 import * as currencyCommands from "../../commands/currency";
 import * as currencyEvents from "../../commands/currency-state-events";
@@ -86,8 +87,9 @@ describe("CurrencySettingsScreen", () => {
   it("renders the ledger table and asks for ECB disclosure on first add", async () => {
     renderSettings();
     await waitFor(() => {
-      expect(screen.getByText("Euro")).toBeTruthy();
+      expect(screen.getByText(`Euro (${currencyDisplaySymbol("EUR")})`)).toBeTruthy();
     });
+    expect(screen.getByText("EUR")).toBeTruthy();
     expect(screen.getByLabelText("Set EUR as default currency")).toBeTruthy();
     expect(screen.getByLabelText("EUR refresh")).toBeTruthy();
     expect(screen.getByText("Idle")).toBeTruthy();

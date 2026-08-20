@@ -48,6 +48,8 @@ export const sampleListItem = (
     transactionType: "expense",
     transactionCategoryId: null,
     notes: null,
+    amount: 350,
+    currency: "EUR",
     convertedAmount: 350,
     convertedCurrency: "EUR",
     complete: true,

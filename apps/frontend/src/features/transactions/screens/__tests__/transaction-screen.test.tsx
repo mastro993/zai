@@ -28,6 +28,7 @@ import * as currencyCommands from "@/features/currency/commands/currency";
 import * as currencyEvents from "@/features/currency/commands/currency-state-events";
 import { CurrencyBootstrapProvider } from "@/features/currency/hooks/use-currency-bootstrap";
 import * as breadcrumbs from "@/hooks/use-screen-breadcrumbs";
+import { formatCurrencyFromMinor } from "@/lib/currency";
 
 import * as transactions from "../../commands/transactions";
 import { type PaginatedTransactions } from "../../types/model";
@@ -490,6 +491,40 @@ describe("transaction screen request guard", () => {
         .mocked(transactions.getTransactions)
         .mock.calls.filter(([, , filters]) => filters?.query === "current"),
     ).toHaveLength(1);
+  });
+
+  it("shows original amount in parentheses when the transaction currency differs", async () => {
+    const original = formatCurrencyFromMinor(4550, "USD");
+    const converted = formatCurrencyFromMinor(4000, "EUR");
+
+    await renderScreen({
+      transactions: page(
+        [
+          sampleListItem({
+            id: "tx-usd",
+            description: "Hotel",
+            amount: 4550,
+            currency: "USD",
+            convertedAmount: 4000,
+            convertedCurrency: "EUR",
+            complete: true,
+          }),
+        ],
+        1,
+        1,
+      ),
+      categories: [],
+    });
+
+    expect(screen.getByRole("cell", { name: `(${original}) ${converted}` })).toBeTruthy();
+  });
+
+  it("omits original amount when the transaction currency matches the default", async () => {
+    await renderScreen();
+
+    const converted = formatCurrencyFromMinor(350, "EUR");
+    expect(screen.getByText(converted)).toBeTruthy();
+    expect(screen.queryByText(`(${converted}) ${converted}`)).toBeNull();
   });
 
   it("styles missing descriptions as muted italic text", async () => {

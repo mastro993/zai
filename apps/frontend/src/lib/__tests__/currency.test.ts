@@ -12,6 +12,7 @@ describe("currency helpers", () => {
     const eurFormatter = new Intl.NumberFormat(undefined, {
       style: "currency",
       currency: "EUR",
+      currencyDisplay: "narrowSymbol",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
@@ -24,11 +25,32 @@ describe("currency helpers", () => {
     const usdFormatter = new Intl.NumberFormat(undefined, {
       style: "currency",
       currency: "USD",
+      currencyDisplay: "narrowSymbol",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
 
     expect(formatCurrencyFromMinor(1234, "USD")).toBe(usdFormatter.format(12.34));
+  });
+
+  it("uses the currency sign instead of the ISO code", () => {
+    const withSign = new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: "USD",
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(56);
+    const withCode = new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: "USD",
+      currencyDisplay: "code",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(56);
+
+    expect(formatCurrencyFromMinor(5600, "USD")).toBe(withSign);
+    expect(formatCurrencyFromMinor(5600, "USD")).not.toBe(withCode);
   });
 
   it("uses ISO minor-unit digits instead of dividing by 100", () => {
@@ -38,12 +60,14 @@ describe("currency helpers", () => {
     const jpyFormatter = new Intl.NumberFormat(undefined, {
       style: "currency",
       currency: "JPY",
+      currencyDisplay: "narrowSymbol",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     });
     const bhdFormatter = new Intl.NumberFormat(undefined, {
       style: "currency",
       currency: "BHD",
+      currencyDisplay: "narrowSymbol",
       minimumFractionDigits: 3,
       maximumFractionDigits: 3,
     });
@@ -60,6 +84,7 @@ describe("currency helpers", () => {
     const eurFormatter = new Intl.NumberFormat(undefined, {
       style: "currency",
       currency: "EUR",
+      currencyDisplay: "narrowSymbol",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
@@ -68,7 +93,11 @@ describe("currency helpers", () => {
   });
 
   it("returns the locale currency symbol", () => {
-    const symbol = new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" })
+    const symbol = new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: "EUR",
+      currencyDisplay: "narrowSymbol",
+    })
       .formatToParts(0)
       .find((part) => part.type === "currency")?.value;
 

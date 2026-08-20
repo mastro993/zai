@@ -31,6 +31,7 @@ const getCurrencyFormatter = (currency: string) => {
   const formatter = new Intl.NumberFormat(undefined, {
     style: "currency",
     currency,
+    currencyDisplay: "narrowSymbol",
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   });
@@ -53,9 +54,11 @@ export const formatCurrencyFromMinor = (minorUnits: number, currency: string) =>
 export const currencyDisplaySymbol = (currency: string) => {
   const symbolResult = Result.try({
     try: () => {
-      const parts = new Intl.NumberFormat(undefined, { style: "currency", currency }).formatToParts(
-        0,
-      );
+      const parts = new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency,
+        currencyDisplay: "narrowSymbol",
+      }).formatToParts(0);
       return parts.find((part) => part.type === "currency")?.value ?? currency;
     },
     catch: (): string => currency,

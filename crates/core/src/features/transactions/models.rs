@@ -119,6 +119,8 @@ pub struct TransactionListItem {
     pub transaction_type: String,
     pub transaction_category_id: Option<String>,
     pub notes: Option<String>,
+    pub amount: i32,
+    pub currency: String,
     pub converted_amount: Option<i32>,
     pub converted_currency: String,
     pub complete: bool,

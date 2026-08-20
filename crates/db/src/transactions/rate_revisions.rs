@@ -460,6 +460,8 @@ pub(crate) fn transaction_list_items(
                 transaction_type: row.transaction_type,
                 transaction_category_id: row.transaction_category_id,
                 notes: row.notes,
+                amount: wire_minor(row.amount)?,
+                currency: row.currency,
                 converted_amount,
                 converted_currency,
                 complete,

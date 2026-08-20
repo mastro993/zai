@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { currencyDisplaySymbol } from "@/lib/currency";
 import { asWireString } from "@/lib/wire";
 
 import { CurrencyRefreshMeter } from "../components/currency-refresh-meter";
@@ -165,7 +166,9 @@ export function CurrencySettingsScreen({ focusRates = false }: { focusRates?: bo
               </TableCell>
               <TableCell className="font-medium">
                 {item.code}
-                <span className="ml-2 text-muted-foreground">{item.name}</span>
+                <span className="ml-2 text-muted-foreground">
+                  {item.name} ({currencyDisplaySymbol(item.code)})
+                </span>
               </TableCell>
               <TableCell>{statusLabel(item.status)}</TableCell>
               <TableCell className="text-xs text-muted-foreground">

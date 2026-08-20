@@ -1,7 +1,7 @@
 import { parseISO } from "date-fns";
 import { describe, expect, it } from "vitest";
 
-import { currencyDisplaySymbol, localizeDecimalString } from "@/lib/currency";
+import { localizeDecimalString } from "@/lib/currency";
 
 import {
   convertedMinorFromRate,
@@ -30,7 +30,7 @@ describe("formatConversionRateDisplay", () => {
 });
 
 describe("formatConversionRatePlaceholder", () => {
-  it("renders 1 source = rate target-symbol on locale date", () => {
+  it("renders 1 source = rate target ISO on locale date", () => {
     const dateLabel = new Intl.DateTimeFormat(undefined, {
       day: "2-digit",
       month: "2-digit",
@@ -38,7 +38,7 @@ describe("formatConversionRatePlaceholder", () => {
     }).format(parseISO("2026-08-20"));
 
     expect(formatConversionRatePlaceholder("SEK", "EUR", "0.089568", "2026-08-20")).toBe(
-      `1 SEK = ${localizeDecimalString("0.089568")} ${currencyDisplaySymbol("EUR")} on ${dateLabel}`,
+      `1 SEK = ${localizeDecimalString("0.089568")} EUR on ${dateLabel}`,
     );
   });
 
@@ -50,7 +50,7 @@ describe("formatConversionRatePlaceholder", () => {
     }).format(parseISO("2026-08-20"));
 
     expect(formatConversionRatePlaceholder("JPY", "EUR", "0.00536193", "2026-08-20")).toBe(
-      `1 JPY = ${localizeDecimalString("0.005362")} ${currencyDisplaySymbol("EUR")} on ${dateLabel}`,
+      `1 JPY = ${localizeDecimalString("0.005362")} EUR on ${dateLabel}`,
     );
   });
 });

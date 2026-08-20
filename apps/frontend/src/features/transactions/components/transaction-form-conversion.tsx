@@ -117,12 +117,13 @@ export function ConvertedAmountDescription({
 
   if (pending) {
     return (
-      <FieldDescription className="flex items-center gap-1.5">
-        Converted amount:
+      <FieldDescription>
         <span
           data-slot="skeleton"
+          role="status"
           aria-busy="true"
-          className="inline-block h-[1em] w-[6em] shrink-0 animate-pulse rounded-sm bg-muted"
+          aria-label="Converted amount"
+          className="inline-block h-[1em] w-[14em] max-w-full animate-pulse rounded-sm bg-muted"
         />
       </FieldDescription>
     );
