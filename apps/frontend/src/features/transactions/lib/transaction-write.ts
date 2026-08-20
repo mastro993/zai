@@ -1,4 +1,6 @@
-import { isoFractionDigits } from "@/lib/currency";
+import { parseISO } from "date-fns";
+
+import { currencyDisplaySymbol, isoFractionDigits, localizeDecimalString } from "@/lib/currency";
 import type { Transaction, TransactionFormValues } from "../types/model";
 import { toDateTimeInputValue } from "./transaction";
 
@@ -17,6 +19,24 @@ export const formValuesFromTransaction = (transaction: Transaction): Transaction
 });
 
 export const quoteDateFromInput = (transactionDate: string) => transactionDate.slice(0, 10);
+
+export const formatConversionRatePlaceholder = (
+  sourceCurrency: string,
+  targetCurrency: string,
+  rate: string,
+  rateDate: string,
+) => {
+  const parsed = parseISO(rateDate);
+  const dateLabel = Number.isNaN(parsed.getTime())
+    ? rateDate
+    : new Intl.DateTimeFormat(undefined, {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(parsed);
+
+  return `1 ${sourceCurrency} = ${localizeDecimalString(rate)} ${currencyDisplaySymbol(targetCurrency)} on ${dateLabel}`;
+};
 
 export const convertedMinorFromRate = (
   sourceMinor: number,

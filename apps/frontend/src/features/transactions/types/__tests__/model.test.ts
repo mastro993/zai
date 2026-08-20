@@ -48,6 +48,34 @@ describe("transactionFormSchema", () => {
       transactionFormSchema.safeParse({ ...input, currency: "JPY", amount: "12.34" }).success,
     ).toBe(false);
   });
+
+  it("normalizes a comma conversion rate", () => {
+    const result = transactionFormSchema.safeParse({
+      ...input,
+      amount: "10.00",
+      currency: "USD",
+      manualExchangeRate: "0,95",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.manualExchangeRate).toBe("0.95");
+    }
+  });
+
+  it("drops a blank conversion rate", () => {
+    const result = transactionFormSchema.safeParse({
+      ...input,
+      amount: "10.00",
+      currency: "USD",
+      manualExchangeRate: "   ",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.manualExchangeRate).toBeUndefined();
+    }
+  });
 });
 
 describe("transaction result schemas", () => {

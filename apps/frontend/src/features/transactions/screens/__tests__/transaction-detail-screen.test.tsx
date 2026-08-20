@@ -266,9 +266,8 @@ describe("TransactionDetailScreen pending recovery", () => {
 
     await renderDetail(completeUsd);
     fireEvent.click(screen.getByRole("button", { name: "Edit transaction" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Adjust rate" })).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "Adjust rate" }));
-    fireEvent.change(screen.getByLabelText("Manual exchange rate"), { target: { value: "0.95" } });
+    await waitFor(() => expect(screen.getByLabelText("Conversion rate")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText("Conversion rate"), { target: { value: "0.95" } });
     fireEvent.click(screen.getByRole("button", { name: "Save transaction" }));
 
     await waitFor(() =>

@@ -2,7 +2,11 @@ import { z } from "zod";
 
 import { isoFractionDigits } from "@/lib/currency";
 
-import { MAX_TRANSACTION_AMOUNT_MINOR, parseAmountToMinor } from "../lib/transaction";
+import {
+  MAX_TRANSACTION_AMOUNT_MINOR,
+  parseAmountToMinor,
+  prepareAmountForValidation,
+} from "../lib/transaction";
 
 export const TRANSACTION_TYPES = ["expense", "income"] as const;
 
@@ -58,7 +62,7 @@ export const transactionFormSchema = z
   .transform((data) => {
     const parsed = parseAmountToMinor(data.amount, isoFractionDigits(data.currency));
     const amount = parsed.ok ? parsed.minor : 0;
-    const manualExchangeRate = data.manualExchangeRate?.trim();
+    const manualExchangeRate = prepareAmountForValidation(data.manualExchangeRate ?? "");
 
     return {
       description: data.description,

@@ -2,6 +2,7 @@
 
 ## 2026-08-20
 
+- Transaction form: drop amount "Automatic rate" copy. Non-default currency gets empty Conversion rate input; placeholder shows date rate (`1 SEK = 0,089568 € on 20/08/2026` shape). Typed override, clear reverts to date rate. Converted amount only when FX needed, under Amount label as `Converted amount: …` (pending = skeleton).
 - Currency Retry now console flood: `shouldn't retry!` is reqwest TRACE on success, not a Zai retry gate. Filtered HTTP-stack logs; emit `provider_refresh` info line.
 - Settings refresh column: per-row Progress meter. Backend `refreshProgress` events; no per-tick GET reconcile.
 - Incremental ECB refresh 404 (no new series since `updatedAfter`) was classed `httpStatus` → Retry/add looked failed. Treat as not-modified.

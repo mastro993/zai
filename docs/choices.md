@@ -1,5 +1,13 @@
 # Choices
 
+## 2026-08-20 — Transaction form conversion-rate field
+
+- Cross-currency amount helper drops rate/date/origin copy. Converted amount stays under Amount.
+- Converted amount shows only when currency ≠ default. FieldDescription under Amount input: `Converted amount: {formatted}`. Pending = prefix + `h-[1em] w-[6em]` skeleton.
+- Non-default currency always shows empty "Conversion rate" input. Placeholder is `1 SRC = rate SYM on locale-date` (source ISO, target symbol, locale decimal + date).
+- Typed value = manual override. Empty = selected-date rate (locked revision on amount-only edit, else quote).
+- Currency change clears typed rate. Date change does not.
+
 ## 2026-08-20 — ECB updatedAfter 404 is not-modified
 
 - Incremental refresh sends `updatedAfter`. ECB returns **404 No Series** when nothing new — not 304.

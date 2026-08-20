@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatCurrencyFromMinor, isoFractionDigits } from "../currency";
+import {
+  currencyDisplaySymbol,
+  formatCurrencyFromMinor,
+  isoFractionDigits,
+  localizeDecimalString,
+} from "../currency";
 
 describe("currency helpers", () => {
   it("formats minor units as EUR currency", () => {
@@ -60,5 +65,21 @@ describe("currency helpers", () => {
     });
 
     expect(formatCurrencyFromMinor(-1234, "EUR")).toBe(eurFormatter.format(-12.34));
+  });
+
+  it("returns the locale currency symbol", () => {
+    const symbol = new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" })
+      .formatToParts(0)
+      .find((part) => part.type === "currency")?.value;
+
+    expect(currencyDisplaySymbol("EUR")).toBe(symbol);
+  });
+
+  it("localizes a decimal string without rounding", () => {
+    const decimalSeparator =
+      new Intl.NumberFormat(undefined).formatToParts(1.1).find((part) => part.type === "decimal")
+        ?.value ?? ".";
+
+    expect(localizeDecimalString("0.089568")).toBe(`0${decimalSeparator}089568`);
   });
 });

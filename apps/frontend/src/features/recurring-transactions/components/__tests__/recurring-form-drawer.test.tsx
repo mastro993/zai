@@ -650,6 +650,7 @@ describe("RecurringFormDrawer", () => {
     expect(screen.getByLabelText("Transaction currency").textContent).toContain("EUR");
     expect(screen.queryByRole("button", { name: "Adjust rate" })).toBeNull();
     expect(screen.queryByLabelText("Manual exchange rate")).toBeNull();
+    expect(screen.queryByLabelText("Conversion rate")).toBeNull();
   });
 
   it("preselects last-used currency on create", async () => {
