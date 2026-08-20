@@ -57,11 +57,19 @@ impl TransactionImportService {
         let existing = self
             .repository
             .find_existing_duplicate_keys(candidates)
-            .await?;
+            .await
+            .inspect_err(|error| diagnose_preview_error("find duplicates", error))?;
         let existing_set = existing.into_iter().collect::<HashSet<_>>();
         let mut classified = classify_import(&request, &existing_set)?;
-        let persisted = self.settings.list_persisted()?;
-        let default_currency = self.settings.setup_state()?.default_currency;
+        let persisted = self
+            .settings
+            .list_persisted()
+            .inspect_err(|error| diagnose_preview_error("list currencies", error))?;
+        let default_currency = self
+            .settings
+            .setup_state()
+            .inspect_err(|error| diagnose_preview_error("read setup", error))?
+            .default_currency;
         let preparations = currency_preparations(
             &classified.currencies,
             CurrencyPrepContext {
@@ -81,12 +89,19 @@ impl TransactionImportService {
             self.settings.accept_provider_disclosure()?;
         }
 
-        let binding = binding_for(
-            &request.file_digest,
-            self.settings.default_currency_revision()?,
-            &self.settings.coverage_proof_digest()?,
-        );
-        let job = self.currency.start_import_preview_job()?;
+        let revision = self
+            .settings
+            .default_currency_revision()
+            .inspect_err(|error| diagnose_preview_error("read default revision", error))?;
+        let coverage = self
+            .settings
+            .coverage_proof_digest()
+            .inspect_err(|error| diagnose_preview_error("read coverage", error))?;
+        let binding = binding_for(&request.file_digest, revision, &coverage);
+        let job = self
+            .currency
+            .start_import_preview_job()
+            .inspect_err(|error| diagnose_preview_error("start job", error))?;
         let token = job.job_id.clone();
         self.lock_store().insert(
             token.clone(),
@@ -98,7 +113,10 @@ impl TransactionImportService {
         );
 
         let job = if provider_codes.is_empty() {
-            match self.drive_running_preview() {
+            match self
+                .drive_running_preview()
+                .inspect_err(|error| diagnose_preview_error("drive job", error))
+            {
                 Ok(job) => job,
                 Err(error) => {
                     self.lock_store().remove(&token);
@@ -254,6 +272,12 @@ impl TransactionImportService {
                 self.lock_store().remove(&token);
             }
         }
+    }
+}
+
+fn diagnose_preview_error(stage: &str, error: &Error) {
+    if std::env::var_os("ZAI_E2E_DIAGNOSTICS").is_some() {
+        eprintln!("[DEBUG-import-preview-stage] {stage}: {error:?}");
     }
 }
 
