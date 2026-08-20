@@ -20,6 +20,14 @@ pub fn create_recurring_transaction(
     conn: &mut SqliteConnection,
     input: NewRecurringTransaction,
 ) -> Result<RecurringTransaction> {
+    persist_new_recurring_transaction(conn, input, true)
+}
+
+pub(super) fn persist_new_recurring_transaction(
+    conn: &mut SqliteConnection,
+    input: NewRecurringTransaction,
+    require_selectable_currency: bool,
+) -> Result<RecurringTransaction> {
     let id = input.id.clone().ok_or_else(|| {
         StorageError::CoreError(Error::InvalidData(
             "Recurring transaction id is required".to_string(),
@@ -31,6 +39,16 @@ pub fn create_recurring_transaction(
     let first_scheduled_local = input.first_scheduled_local;
 
     let (interval_every, interval_unit, monthly_day) = schedule_columns(&input.schedule);
+    if require_selectable_currency {
+        crate::transactions::rate_revisions::require_selectable_currency(
+            conn,
+            &input.template.currency,
+        )
+        .map_err(StorageError::from)?;
+    } else {
+        crate::transactions::rate_revisions::require_supported_currency(&input.template.currency)
+            .map_err(StorageError::from)?;
+    }
 
     diesel::insert_into(recurring_transactions::table)
         .values(RecurringTransactionRow {
@@ -71,7 +89,8 @@ pub fn create_recurring_transaction(
             effective_from_local: first_scheduled_local,
             effective_until_local: None,
             description: input.template.description,
-            amount: input.template.amount,
+            amount: i64::from(input.template.amount),
+            currency: input.template.currency,
             transaction_type: input.template.transaction_type,
             transaction_category_id: input.template.transaction_category_id,
             notes: input.template.notes,
@@ -135,18 +154,26 @@ pub fn find_open_template_revision(
         .map_err(StorageError::from)
         .map_err(Error::from)?;
 
-    Ok(row.map(|row| RecurringTemplateRevision {
-        id: row.id,
-        recurring_transaction_id: row.recurring_transaction_id,
-        sequence: row.sequence,
-        effective_from_local: row.effective_from_local,
-        effective_until_local: row.effective_until_local,
-        description: row.description,
-        amount: row.amount,
-        transaction_type: row.transaction_type,
-        transaction_category_id: row.transaction_category_id,
-        notes: row.notes,
-    }))
+    row.map(|row| {
+        Ok(RecurringTemplateRevision {
+            id: row.id,
+            recurring_transaction_id: row.recurring_transaction_id,
+            sequence: row.sequence,
+            effective_from_local: row.effective_from_local,
+            effective_until_local: row.effective_until_local,
+            description: row.description,
+            amount: i32::try_from(row.amount).map_err(|_| {
+                Error::InvalidData(
+                    "Persisted money exceeds the JavaScript-safe wire maximum".to_string(),
+                )
+            })?,
+            currency: row.currency,
+            transaction_type: row.transaction_type,
+            transaction_category_id: row.transaction_category_id,
+            notes: row.notes,
+        })
+    })
+    .transpose()
 }
 
 fn schedule_columns(rule: &ScheduleRule) -> (Option<i32>, Option<String>, Option<i32>) {

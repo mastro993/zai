@@ -33,7 +33,18 @@ fn status_for_error(error: &Error) -> StatusCode {
         | Error::CategoryDeletionBlocked { .. } => StatusCode::CONFLICT,
         Error::PeriodAdvanceLimitExceeded(_)
         | Error::ClockRegression(_)
-        | Error::CalculationOverflow(_) => StatusCode::CONFLICT,
+        | Error::CalculationOverflow(_)
+        | Error::SetupRequired
+        | Error::UnsupportedCurrency(_)
+        | Error::CurrencyNotEnabled(_)
+        | Error::IncompleteCoverage { .. }
+        | Error::CurrencyJobConflict
+        | Error::DefaultCurrencyDisableForbidden
+        | Error::ProviderDisclosureRequired
+        | Error::IncompatibleApplicationFormat
+        | Error::ManualRateReplacementRequired { .. }
+        | Error::StaleImportPreview => StatusCode::CONFLICT,
+        Error::CurrencyJobNotFound(_) => StatusCode::NOT_FOUND,
         Error::Database(db_error) => match db_error {
             DatabaseError::NotFound(_) => StatusCode::NOT_FOUND,
             DatabaseError::UniqueViolation(_) | DatabaseError::ForeignKeyViolation(_) => {
@@ -146,6 +157,18 @@ mod tests {
         assert_eq!(
             serde_json::to_value(body).expect("error envelope should serialize")["code"],
             "calculationOverflow"
+        );
+    }
+
+    #[test]
+    fn stale_import_preview_maps_to_http_conflict() {
+        let (status, Json(body)) =
+            command_error("Failed to commit import", Error::StaleImportPreview);
+
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(
+            serde_json::to_value(body).expect("error envelope should serialize")["code"],
+            "staleImportPreview"
         );
     }
 }

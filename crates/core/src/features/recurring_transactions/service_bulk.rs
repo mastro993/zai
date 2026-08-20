@@ -7,7 +7,7 @@ use super::bulk::{
     count_due_from_head, record_lifecycle,
 };
 use super::edit::UNCHANGED_GENERATION_BLOCKED;
-use super::lifecycle::{RecurringLifecycleOutcome, RecurringLifecycleUpdate};
+use super::lifecycle::RecurringLifecycleUpdate;
 use super::models::RecurringFeedFilters;
 use super::models::RecurringLifecycle;
 use super::repair::{
@@ -15,10 +15,12 @@ use super::repair::{
     UNCHANGED_REPAIR_REQUIRED, recovery_action_for_failure,
 };
 use super::service::RecurringTransactionsService;
+use super::service_lifecycle::RecurringLifecycleApplyStatus;
 use crate::{Error, Result};
 
 impl RecurringTransactionsService {
     pub async fn list_matching_ids(&self) -> Result<RecurringMatchingIds> {
+        self.require_money()?;
         self.list_matching_ids_filtered(RecurringFeedFilters::default())
             .await
     }
@@ -27,6 +29,7 @@ impl RecurringTransactionsService {
         &self,
         filters: RecurringFeedFilters,
     ) -> Result<RecurringMatchingIds> {
+        self.require_money()?;
         self.list_matching_ids_inner(filters).await
     }
 
@@ -34,6 +37,7 @@ impl RecurringTransactionsService {
         &self,
         request: RecurringBulkRequest,
     ) -> Result<RecurringBulkPreflight> {
+        self.require_money()?;
         self.preflight_bulk_inner(request).await
     }
 
@@ -41,6 +45,7 @@ impl RecurringTransactionsService {
         &self,
         request: RecurringBulkRequest,
     ) -> Result<RecurringBulkExecuteResult> {
+        self.require_money()?;
         self.execute_bulk_inner(request).await
     }
 
@@ -242,20 +247,20 @@ impl RecurringTransactionsService {
             recurring_transaction_id: item.recurring_transaction_id,
             expected_revision: item.expected_revision,
         };
-        match self.apply_lifecycle(command, update).await {
-            Ok(RecurringLifecycleOutcome::Succeeded { .. }) => RecurringBulkItemResult {
+        match self.apply_lifecycle_status(command, update).await {
+            Ok(RecurringLifecycleApplyStatus::Succeeded) => RecurringBulkItemResult {
                 recurring_transaction_id: id,
                 outcome: RecurringBulkItemOutcomeKind::Succeeded,
                 reason: None,
                 next_action: None,
             },
-            Ok(RecurringLifecycleOutcome::AlreadyApplied { .. }) => RecurringBulkItemResult {
+            Ok(RecurringLifecycleApplyStatus::AlreadyApplied) => RecurringBulkItemResult {
                 recurring_transaction_id: id,
                 outcome: RecurringBulkItemOutcomeKind::Unchanged,
                 reason: Some("already_applied".to_string()),
                 next_action: None,
             },
-            Ok(RecurringLifecycleOutcome::Unchanged { reason, .. }) => {
+            Ok(RecurringLifecycleApplyStatus::Unchanged { reason }) => {
                 let next_action = if reason == UNCHANGED_GENERATION_BLOCKED {
                     Some(NEXT_ACTION_REPAIR.to_string())
                 } else {

@@ -139,6 +139,11 @@ fn apply_template_change(
             ))
         })?;
 
+    if template.currency != open.currency {
+        crate::transactions::rate_revisions::require_selectable_currency(conn, &template.currency)
+            .map_err(StorageError::from)?;
+    }
+
     if effective_from_local <= open.effective_from_local {
         diesel::update(
             recurring_template_revisions::table
@@ -146,7 +151,8 @@ fn apply_template_change(
         )
         .set((
             recurring_template_revisions::description.eq(&template.description),
-            recurring_template_revisions::amount.eq(template.amount),
+            recurring_template_revisions::amount.eq(i64::from(template.amount)),
+            recurring_template_revisions::currency.eq(&template.currency),
             recurring_template_revisions::transaction_type.eq(&template.transaction_type),
             recurring_template_revisions::transaction_category_id
                 .eq(&template.transaction_category_id),
@@ -170,6 +176,7 @@ fn apply_template_change(
             open.sequence + 1,
             effective_from_local,
             template,
+            &template.currency,
         ))
         .execute(conn)
         .into_storage()?;
@@ -227,6 +234,7 @@ fn template_row(
     sequence: i32,
     effective_from_local: NaiveDateTime,
     template: &RecurringTemplateInput,
+    currency: &str,
 ) -> RecurringTemplateRevisionRow {
     RecurringTemplateRevisionRow {
         id: Uuid::new_v4().to_string(),
@@ -235,7 +243,8 @@ fn template_row(
         effective_from_local,
         effective_until_local: None,
         description: template.description.clone(),
-        amount: template.amount,
+        amount: i64::from(template.amount),
+        currency: currency.to_string(),
         transaction_type: template.transaction_type.clone(),
         transaction_category_id: template.transaction_category_id.clone(),
         notes: template.notes.clone(),

@@ -14,6 +14,7 @@ describe("recurring transaction schemas", () => {
       template: {
         description: "Rent",
         amount: 1000,
+        currency: "EUR",
         transactionType: "expense",
       },
       zone: "Europe/Rome",
@@ -31,6 +32,7 @@ describe("recurring transaction schemas", () => {
       firstScheduledLocal: "2026-08-01T09:00",
       totalOccurrences: "12",
       amount: "45.00",
+      currency: "EUR",
       description: "Gym",
       transactionType: "expense",
     });
@@ -50,6 +52,7 @@ describe("recurring transaction schemas", () => {
       monthlyDay: "1",
       firstScheduledLocal: "2026-08-01T09:00",
       amount: "45.00",
+      currency: "EUR",
       description: "Gym",
       transactionType: "expense" as const,
     };
@@ -87,6 +90,7 @@ describe("recurring transaction schemas", () => {
         sequence: 1,
         effectiveFromLocal: "2026-08-01T09:00:00",
         amount: 120000,
+        currency: "EUR",
         transactionType: "expense",
         description: "Rent",
       },
@@ -104,5 +108,65 @@ describe("recurring transaction schemas", () => {
       },
     });
     expect(result.success).toBe(true);
+  });
+
+  it("rejects a template rate and requires original Money", () => {
+    const template = {
+      id: "tmpl-1",
+      recurringTransactionId: "rt-1",
+      sequence: 1,
+      effectiveFromLocal: "2026-08-01T09:00:00",
+      amount: 120000,
+      currency: "USD",
+      transactionType: "expense",
+      description: "Rent",
+    };
+
+    expect(
+      recurringTransactionDocumentSchema.safeParse({
+        recurringTransaction: {
+          id: "rt-1",
+          lifecycle: "active",
+          totalOccurrences: 12,
+          fulfilledCount: 0,
+          revision: 1,
+          lifecycleChangedAt: "2026-07-21T10:00:00",
+          createdAt: "2026-07-21T10:00:00",
+          updatedAt: "2026-07-21T10:00:00",
+        },
+        schedule: {
+          id: "sched-1",
+          recurringTransactionId: "rt-1",
+          sequence: 1,
+          effectiveFromLocal: "2026-08-01T09:00:00",
+          firstScheduledLocal: "2026-08-01T09:00:00",
+          rule: { type: "interval", every: 1, unit: "month" },
+        },
+        template: { ...template, exchangeRate: 1.1 },
+        occurrenceSummary: {
+          fulfilledCount: 0,
+          totalOccurrences: 12,
+          nextScheduledLocal: "2026-08-01T09:00:00",
+          needsAttention: false,
+        },
+        links: { state: "empty", occurrences: { items: [] } },
+        failures: { state: "empty", waitingCount: 0, history: { items: [] } },
+        budgetImpact: {
+          state: "unavailable",
+          message: "Budget impact will appear once forecast projections are available.",
+        },
+      }).success,
+    ).toBe(false);
+
+    const missingCurrency = newRecurringTransactionSchema.safeParse({
+      schedule: { type: "interval", every: 1, unit: "month" },
+      firstScheduledLocal: "2026-08-01T09:00:00",
+      template: {
+        description: "Rent",
+        amount: 1000,
+        transactionType: "expense",
+      },
+    });
+    expect(missingCurrency.success).toBe(false);
   });
 });

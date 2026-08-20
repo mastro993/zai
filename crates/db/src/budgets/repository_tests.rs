@@ -6,6 +6,7 @@ use crate::transactions::TransactionsRepository;
 use crate::write_actor::spawn_writer;
 use chrono::Datelike;
 use diesel::r2d2::{self, Pool};
+use diesel::{Connection, RunQueryDsl, SqliteConnection};
 use std::sync::Arc;
 use uuid::Uuid;
 use zai_core::Error;
@@ -96,10 +97,12 @@ async fn create_budget_uses_existing_month_transactions_and_materializes_project
             id: Some(Uuid::new_v4().to_string()),
             description: Some("Before budget".to_string()),
             amount: 1_250,
+            currency: "EUR".to_string(),
             transaction_date: fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: Some(spending_category.id),
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
@@ -112,9 +115,11 @@ async fn create_budget_uses_existing_month_transactions_and_materializes_project
     assert_eq!(budget.name, "Monthly spending");
     assert_eq!(budget.category_ids, Vec::<String>::new());
     assert_eq!(budget.current_period.net_budget_spending, 1_250);
-    assert_eq!(budget.current_period.effective_allowance, 10_000);
-    assert_eq!(budget.current_period.remaining_allowance, 8_750);
-    assert_eq!(budget.current_period.status, BudgetStatus::OnTrack);
+    assert_eq!(budget.current_period.effective_allowance, Some(10_000));
+    assert_eq!(budget.current_period.remaining_allowance, Some(8_750));
+    assert_eq!(budget.current_period.status, Some(BudgetStatus::OnTrack));
+    assert_eq!(budget.current_period.currency, "EUR");
+    assert!(budget.current_period.complete);
     assert_eq!(budget.current_period.start.day(), 1);
     assert_eq!(budget.current_period.end.day(), 1);
 }
@@ -153,6 +158,7 @@ async fn spending_budget_counts_refunds_but_ignores_income_category_income() {
     ] {
         transactions
             .create_transaction(NewTransaction {
+                currency: "EUR".to_string(),
                 id: Some(Uuid::new_v4().to_string()),
                 description: None,
                 amount,
@@ -160,6 +166,7 @@ async fn spending_budget_counts_refunds_but_ignores_income_category_income() {
                 transaction_type: transaction_type.to_string(),
                 transaction_category_id: category_id,
                 notes: None,
+                manual_exchange_rate: None,
             })
             .await
             .expect("transaction");
@@ -212,17 +219,19 @@ async fn reading_budget_rebuilds_projected_result_after_transaction_changes() {
             id: Some(Uuid::new_v4().to_string()),
             description: None,
             amount: 2_500,
+            currency: "EUR".to_string(),
             transaction_date: fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
 
     let refreshed = budgets.get_budget("budget-3").await.expect("budget detail");
     assert_eq!(refreshed.current_period.net_budget_spending, 2_500);
-    assert_eq!(refreshed.current_period.remaining_allowance, 7_500);
+    assert_eq!(refreshed.current_period.remaining_allowance, Some(7_500));
 }
 
 #[tokio::test]
@@ -271,6 +280,7 @@ async fn category_scope_includes_children_and_canonicalizes_redundant_selection(
     ] {
         transactions
             .create_transaction(NewTransaction {
+                currency: "EUR".to_string(),
                 id: Some(id.to_string()),
                 description: None,
                 amount,
@@ -278,6 +288,7 @@ async fn category_scope_includes_children_and_canonicalizes_redundant_selection(
                 transaction_type: "expense".to_string(),
                 transaction_category_id: Some(category_id),
                 notes: None,
+                manual_exchange_rate: None,
             })
             .await
             .expect("transaction");
@@ -340,6 +351,7 @@ async fn measurement_mode_applies_signed_income_rules_to_empty_scope() {
     ] {
         transactions
             .create_transaction(NewTransaction {
+                currency: "EUR".to_string(),
                 id: Some(id.to_string()),
                 description: None,
                 amount,
@@ -347,6 +359,7 @@ async fn measurement_mode_applies_signed_income_rules_to_empty_scope() {
                 transaction_type: transaction_type.to_string(),
                 transaction_category_id: category_id,
                 notes: None,
+                manual_exchange_rate: None,
             })
             .await
             .expect("transaction");
@@ -370,6 +383,63 @@ async fn measurement_mode_applies_signed_income_rules_to_empty_scope() {
 
     assert_eq!(spending_budget.current_period.net_budget_spending, -150);
     assert_eq!(net_budget.current_period.net_budget_spending, -1_350);
+}
+
+#[tokio::test]
+async fn incomplete_period_nulls_claimed_fields_and_keeps_known_sum() {
+    let temp_db = TempDb::new();
+    let (budgets, transactions, _) = setup(&temp_db);
+    transactions
+        .create_transaction(NewTransaction {
+            id: Some("pending-usd".to_string()),
+            description: Some("Foreign spend".to_string()),
+            amount: 2_500,
+            currency: "EUR".to_string(),
+            transaction_date: fixed_local(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+            manual_exchange_rate: None,
+        })
+        .await
+        .expect("transaction");
+    budgets
+        .create_budget(new_budget("incomplete", "Incomplete", 10_000))
+        .await
+        .expect("budget");
+
+    let mut conn = SqliteConnection::establish(temp_db.path()).expect("conn");
+    diesel::sql_query("UPDATE transactions SET currency = 'USD' WHERE id = 'pending-usd'")
+        .execute(&mut conn)
+        .expect("usd");
+    diesel::sql_query(
+        "UPDATE transaction_exchange_rate_revisions \
+         SET variant = 'pending', original_decimal = NULL, coefficient = NULL, scale = NULL \
+         WHERE transaction_id = 'pending-usd'",
+    )
+    .execute(&mut conn)
+    .expect("pending");
+    let row = {
+        use crate::schema::transactions;
+        use diesel::prelude::*;
+        transactions::table
+            .filter(transactions::id.eq("pending-usd"))
+            .first::<crate::transactions::models::TransactionRow>(&mut conn)
+            .expect("row")
+    };
+    crate::valuations::upsert_transaction_valuation(&mut conn, &row).expect("valuation");
+    crate::budgets::timeline::rebuild_all_results(&mut conn).expect("rebuild");
+
+    let budget = budgets
+        .get_budget("incomplete")
+        .await
+        .expect("incomplete budget");
+    assert!(!budget.current_period.complete);
+    assert_eq!(budget.current_period.status, None);
+    assert_eq!(budget.current_period.effective_allowance, None);
+    assert_eq!(budget.current_period.remaining_allowance, None);
+    assert_eq!(budget.current_period.net_budget_spending, 0);
+    assert_eq!(budget.current_period.currency, "EUR");
 }
 
 #[path = "repository_cadence_tests.rs"]

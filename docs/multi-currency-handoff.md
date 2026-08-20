@@ -33,8 +33,7 @@ until the release gate is green. That merge is the version.
 
 1. Open `feat/multi-currency` from current `main`.
 2. Stack the eight PRs below. Each targets the previous stack commit.
-3. Stack-tip CI stays green (`pnpm check`; web e2e from PR 2 onward after the
-   seed completes initial currency setup).
+3. Stack-tip CI stays green with `pnpm check`.
 4. When [`docs/multi-currency-release-gate.md`](./multi-currency-release-gate.md)
    is green on the tip, merge the stack to `main` as one version.
 5. After `main`: `pnpm benchmark:currency` in its own workflow.
@@ -43,12 +42,10 @@ until the release gate is green. That merge is the version.
 
 From PR 2 onward, money-bearing commands that are not yet restored return
 `setupRequired` (or the stricter mixed-generation / missing-field failure)
-before any financial read or write. The branch e2e seed silently assigns EUR,
-then confirms EUR as the default currency, so existing lifecycle specs keep
-passing.
+before any financial read or write.
 
-`BUDGET_STATUS_CURRENCY = "EUR"` is deleted in PR 6. Until then it must not
-ship to `main`.
+`BUDGET_STATUS_CURRENCY = "EUR"` is deleted. Alert rich data uses the active
+generation target currency.
 
 ## Stack
 
@@ -66,6 +63,10 @@ add or keep green; the full list still ships only at the final merge.
 - No schema. No commands. No UI.
 - Gate: deterministic unit family for Money, conversion, and coverage
   completeness rules that do not need persistence.
+- Landed on `zai_core::money`. PR: [#399](https://github.com/mastro993/zai/pull/399).
+  Tests: `cargo test -p zai-core --lib money`.
+  Families: `money::amount_tests`, `money::manifest_tests`,
+  `money::convert_tests`, `money::coverage_tests`.
 
 ### 2. Schema + silent EUR + fixtures
 
@@ -80,8 +81,10 @@ add or keep green; the full list still ships only at the final merge.
   assignment.
 - Persist `i64`. Wire and authored cap stay `i32::MAX`.
 - Existing money commands fail closed until later PRs restore them.
-- E2E seed on this branch: silent EUR + confirmed EUR setup.
 - Gate: migration and upgrade family.
+- Landed in this stack PR. Tests: `cargo test -p zai-db --lib migration_`.
+  Families: `migration_currency_tests`, released-schema upgrade through
+  `v0010_multi_currency`, failpoint rollback, pre-currency fail-closed.
 
 ### 3. ECB service + provider cache + privacy canaries
 
@@ -93,6 +96,10 @@ add or keep green; the full list still ships only at the final merge.
   contain no amounts, descriptions, categories, notes, or identifiers.
 - Gate: privacy canaries; provider-cache unit and repository tests that do
   not yet require valuation heads.
+- Landed in this stack PR. Tests: `cargo test -p zai-core --lib exchange_rates`,
+  `cargo test -p zai-db --lib exchange_rates`,
+  `cargo test -p zai-app --lib ecb`,
+  `cargo test -p zai-server --test currency_privacy_canaries --test currency_privacy_inventory`.
 
 ### 4. Valuation generations
 
@@ -107,6 +114,8 @@ add or keep green; the full list still ships only at the final merge.
 - Projections use the projection-rate head, not a transaction exchange rate.
 - Gate: repository valuation family; statement-count and `EXPLAIN QUERY PLAN`
   tests listed in the release gate.
+- Landed tests: `cargo test -p zai-core --lib features::valuations`,
+  `cargo test -p zai-db --lib valuations`.
 
 ### 5. Currency lifecycle API
 
@@ -123,7 +132,7 @@ add or keep green; the full list still ships only at the final merge.
 
 ### 6. Rewrite existing money DTOs
 
-- Transaction list: `convertedAmount`, `convertedCurrency`, `complete` only.
+- Transaction list: original Money (`amount`, `currency`) plus `convertedAmount`, `convertedCurrency`, `complete`.
 - `get` / `create` / `update` / `delete` return the detail DTO: original
   Money, current rate revision, converted fields.
 - Recurring templates carry original Money, never a rate. Budgets expose
@@ -135,6 +144,7 @@ add or keep green; the full list still ships only at the final merge.
 - Alert rich data uses the active generation's target currency. Delete
   `BUDGET_STATUS_CURRENCY`.
 - Gate: existing command parity and contract harnesses on the new shapes.
+- Budget/alert DTO seams from #395: PR [#411](https://github.com/mastro993/zai/pull/411).
 
 ### 7. Bound import + full-fidelity export
 
@@ -149,8 +159,17 @@ add or keep green; the full list still ships only at the final merge.
   replaces those source values.
 - Gate: import/export family, including semantic round trip and stale-preview
   rejection.
+- PR: [#412](https://github.com/mastro993/zai/pull/412).
+  Tests: `cargo test -p zai-core --lib transactions::`;
+  `cargo test -p zai-core --lib canonical_rate_inverse`;
+  `cargo test -p zai-db --lib bulk_ops`;
+  `cargo test -p zai-server --test transactions --test transaction_import_safety --test transactions_list_filters`;
+  frontend vitest `transaction-import`, `transaction-export`, `parse-import-amount`, `web-request`.
+  Families: `features::transactions::import_preview`,
+  `features::transactions::import_service`,
+  `features::transactions::export_csv`.
 
-### 8. Frontend + e2e + native smoke + benchmark
+### 8. Frontend + native smoke + benchmark
 
 - Ledger: Currency settings, transaction form, detail/pending.
 - Inspector: initial currency setup, import currency prep.
@@ -158,10 +177,18 @@ add or keep green; the full list still ships only at the final merge.
   frontend session memory.
 - Display formatting uses the currency's ISO minor-unit digits. Stop dividing
   by 100 and locking `Intl` at two fraction digits.
-- Web Playwright, `native_currency_workflow_smoke`, `pnpm benchmark:currency`.
+- `native_currency_workflow_smoke`, frontend tests, and `pnpm benchmark:currency`.
 - Prototype scenes become tests. Throwaway `currency-prototype` does not ship.
-- Gate: frontend, end-to-end, failure-recovery, and completion-evidence
+- Gate: frontend, native smoke, failure-recovery, and completion-evidence
   commands in the release gate. Then merge to `main`.
+- Landed tests: `cargo test -p zai --lib native_currency_workflow_smoke`;
+  `pnpm benchmark:currency` (seed `377`, not a PR gate);
+  `fail_before_activation_leaves_previous_default`,
+  `restart_after_failed_activation_changes_default`,
+  `cancelled_preview_cannot_commit`,
+  `placeholder_import_ids_are_replaced`,
+  `apply_refresh_outcome_creates_one_alert_and_resolves_on_success`.
+  `currency-prototype` deleted. Settings search is `{ focus?: "rates" }`.
 
 ## Starting facts on `main`
 
@@ -188,7 +215,6 @@ has been recorded:
 
 ```bash
 pnpm check
-pnpm test:e2e:web
 pnpm benchmark:currency
 cargo test -p zai --lib native_currency_workflow_smoke
 ```

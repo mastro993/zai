@@ -1,12 +1,12 @@
 import { parseCsv } from "@/lib/csv";
-import type { CategoryImportPayload } from "@/features/categories/lib/category-import";
+import { isoFractionDigits } from "@/lib/currency";
+import type { TransactionCategory } from "@/features/categories/types/model";
+import type { MappedImportRow, NativeRateFields, RateDirection } from "../types/import";
+import type { RateOrigin, RateVariant } from "../types/model";
 import { parseImportAmount } from "./parse-import-amount";
 import { parseImportDate } from "./transaction-import-date";
 import {
   buildCategoryLookups,
-  categoryKey,
-  childPathKey,
-  createFallbackId,
   formatCategoryDisplay,
   getCell,
   isRowEmpty,
@@ -14,256 +14,262 @@ import {
   parseCategoryPath,
   parseTypeValueList,
   resolveTypeFromColumn,
-  transactionDuplicateKey,
-  type ParsedCategoryPath,
 } from "./transaction-import-row-parsing";
+import { isZaiTransactionExport } from "./transaction-import-mapping";
 import type {
-  ImportDuplicateCandidate,
-  TransactionImportPayload,
-  TransactionImportPreview,
-  TransactionImportPreviewOptions,
-  TransactionImportPreviewRow,
-  TransactionImportPreviewStatus,
+  TransactionImportAmountMode,
+  TransactionImportCategoryLinkMode,
+  TransactionImportColumnMapping,
+  TransactionImportDateFormat,
+  TransactionImportMissingCategoryMode,
 } from "./transaction-import-types";
-import type { TransactionType } from "../types/model";
 
-const countRowsByStatus = (
-  rows: Array<TransactionImportPreviewRow>,
-  status: TransactionImportPreviewStatus,
-) => rows.filter((row) => row.status === status).length;
+export interface MapTransactionImportOptions {
+  headerRowIndex: number;
+  mapping: TransactionImportColumnMapping;
+  amountMode: TransactionImportAmountMode;
+  dateFormat: TransactionImportDateFormat;
+  categoryLinkMode: TransactionImportCategoryLinkMode;
+  categorySeparator: string;
+  missingCategoryMode: TransactionImportMissingCategoryMode;
+  expenseTypeValues: string;
+  incomeTypeValues: string;
+  existingCategories: Array<TransactionCategory>;
+  confirmedTransactionCurrency?: string;
+  rateDirection: RateDirection;
+}
 
-export const buildTransactionImportPreview = (
-  content: string,
-  options: TransactionImportPreviewOptions,
-): TransactionImportPreview => {
-  const rows = parseCsv(content);
-  const headerRowIndex = Math.max(
-    0,
-    Math.min(options.headerRowIndex, Math.max(rows.length - 1, 0)),
-  );
-  const headers = rows[headerRowIndex] ?? [];
-  const dataRows = rows.slice(headerRowIndex + 1);
-  const mapping = options.mapping;
-  const createId = options.createId ?? createFallbackId;
-  const expenseValues = parseTypeValueList(options.expenseTypeValues);
-  const incomeValues = parseTypeValueList(options.incomeTypeValues);
-  const { rootIdByKey: existingRootIdByKey, childIdByPath: existingChildIdByPath } =
-    buildCategoryLookups(options.existingCategories);
-  const existingDuplicateKeys = new Set(options.existingDuplicateKeys);
-  const importedDuplicateKeys = new Set<string>();
-  const previewRows: Array<TransactionImportPreviewRow> = [];
-  const transactions: Array<TransactionImportPayload> = [];
-  const categories: Array<CategoryImportPayload> = [];
-  const importedRootIdByKey = new Map<string, string>();
-  const importedChildIdByPath = new Map<string, string>();
+interface ExistingCategoryNames {
+  parentCategory?: string;
+  category?: string;
+}
 
-  const ensureRootCategory = (name: string) => {
-    const rootKey = categoryKey(name);
-    const existingId = existingRootIdByKey.get(rootKey) ?? importedRootIdByKey.get(rootKey);
-    if (existingId) {
-      return existingId;
-    }
+interface MappedTransactionImportRows {
+  hasCurrencyColumn: boolean;
+  isZaiExport: boolean;
+  rows: Array<MappedImportRow>;
+}
 
-    const id = createId();
-    importedRootIdByKey.set(rootKey, id);
-    categories.push({ id, parentId: null, name, description: null, color: null });
-    return id;
-  };
+const isRateVariant = (value: string): value is RateVariant =>
+  value === "identity" || value === "automatic" || value === "manual" || value === "pending";
 
-  interface ResolvedImportCategory {
-    categoryId: string | null;
-    message: string;
+const isRateOrigin = (value: string): value is RateOrigin =>
+  value === "supplied" || value === "manual";
+
+const stripFormulaGuard = (value: string) => (value.startsWith("\t") ? value.slice(1) : value);
+
+const headerIndexMap = (headers: Array<string>) => {
+  const indexes = new Map<string, number>();
+  headers.forEach((header, index) => {
+    indexes.set(header.trim().toLowerCase(), index);
+  });
+  return indexes;
+};
+
+const optionalCell = (row: Array<string>, index: number | undefined) => {
+  if (index === undefined) {
+    return undefined;
   }
+  const value = normalizeName(row[index] ?? "");
+  return value || undefined;
+};
 
-  const resolveCategoryId = (parsed: ParsedCategoryPath | null): ResolvedImportCategory => {
-    if (!parsed?.name) {
-      return { categoryId: null, message: "" };
-    }
+const parseIntegerCell = (value: string | undefined) => {
+  if (!value) {
+    return undefined;
+  }
+  if (!/^-?\d+$/.test(value)) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
+};
 
-    if (!parsed.isChild) {
-      const rootKey = categoryKey(parsed.name);
-      const existingId = existingRootIdByKey.get(rootKey) ?? importedRootIdByKey.get(rootKey);
-      if (existingId) {
-        return { categoryId: existingId, message: "" };
-      }
-      if (options.missingCategoryMode === "uncategorized") {
-        return { categoryId: null, message: "Category not found; imported uncategorized" };
-      }
-      return { categoryId: ensureRootCategory(parsed.name), message: "Category will be created" };
-    }
-
-    if (!parsed.parentName) {
-      return { categoryId: null, message: "Parent category is required" };
-    }
-
-    const pathKey = childPathKey(parsed.parentName, parsed.name);
-    const existingChildId =
-      existingChildIdByPath.get(pathKey) ?? importedChildIdByPath.get(pathKey);
-    if (existingChildId) {
-      return { categoryId: existingChildId, message: "" };
-    }
-
-    if (options.missingCategoryMode === "uncategorized") {
-      const parentRootId = existingRootIdByKey.get(categoryKey(parsed.parentName));
-      if (parentRootId) {
-        return {
-          categoryId: parentRootId,
-          message: `Child category "${parsed.name}" not found; imported with ${parsed.parentName}`,
-        };
-      }
-      return { categoryId: null, message: "Category not found; imported uncategorized" };
-    }
-
-    const parentId = ensureRootCategory(parsed.parentName);
-    const id = createId();
-    importedChildIdByPath.set(pathKey, id);
-    categories.push({ id, parentId, name: parsed.name, description: null, color: null });
-    return { categoryId: id, message: "Category will be created" };
-  };
-
-  for (const [dataIndex, row] of dataRows.entries()) {
-    const rowNumber = headerRowIndex + dataIndex + 2;
-
-    if (isRowEmpty(row)) {
-      previewRows.push({
-        rowNumber,
-        transactionDate: "",
-        amount: "",
-        transactionType: "",
-        description: "",
-        notes: "",
-        category: "",
-        status: "empty",
-        message: "Empty row skipped",
-      });
-      continue;
-    }
-
-    if (mapping.amount === null || mapping.transactionDate === null) {
-      previewRows.push({
-        rowNumber,
-        transactionDate: getCell(row, mapping.transactionDate),
-        amount: getCell(row, mapping.amount),
-        transactionType: "",
-        description: getCell(row, mapping.description),
-        notes: getCell(row, mapping.notes),
-        category: formatCategoryDisplay(
-          parseCategoryPath(row, mapping, options.categoryLinkMode, options.categorySeparator),
-        ),
-        status: "invalid",
-        message: "Map amount and date columns",
-      });
-      continue;
-    }
-
-    const parsedAmount = parseImportAmount(getCell(row, mapping.amount));
-    const parsedDate = parseImportDate(getCell(row, mapping.transactionDate), options.dateFormat);
-    const description = normalizeName(getCell(row, mapping.description));
-    const notes = normalizeName(getCell(row, mapping.notes));
-    const categoryPath = parseCategoryPath(
-      row,
-      mapping,
-      options.categoryLinkMode,
-      options.categorySeparator,
-    );
-    const previewRow: TransactionImportPreviewRow = {
-      rowNumber,
-      transactionDate: getCell(row, mapping.transactionDate),
-      amount: getCell(row, mapping.amount),
-      transactionType: "",
-      description,
-      notes,
-      category: formatCategoryDisplay(categoryPath),
-      status: "import",
-      message: "Ready to import",
-    };
-
-    if (!parsedAmount.ok) {
-      previewRows.push({ ...previewRow, status: "invalid", message: parsedAmount.message });
-      continue;
-    }
-    if (!parsedDate.ok) {
-      previewRows.push({ ...previewRow, status: "invalid", message: parsedDate.message });
-      continue;
-    }
-
-    let transactionType: TransactionType;
-    if (options.amountMode === "signed") {
-      transactionType = parsedAmount.signed < 0 ? "expense" : "income";
-    } else {
-      if (mapping.transactionType === null) {
-        previewRows.push({
-          ...previewRow,
-          status: "invalid",
-          message: "Map a transaction type column",
-        });
-        continue;
-      }
-      const parsedType = resolveTypeFromColumn(
-        getCell(row, mapping.transactionType),
-        expenseValues,
-        incomeValues,
-      );
-      if (!parsedType.ok) {
-        previewRows.push({ ...previewRow, status: "invalid", message: parsedType.message });
-        continue;
-      }
-      transactionType = parsedType.value;
-    }
-
-    previewRow.transactionType = transactionType;
-    const duplicateKey = transactionDuplicateKey(parsedDate.value, parsedAmount.cents, description);
-    if (existingDuplicateKeys.has(duplicateKey) || importedDuplicateKeys.has(duplicateKey)) {
-      previewRows.push({
-        ...previewRow,
-        status: "duplicate",
-        message: "Duplicate transaction skipped",
-      });
-      continue;
-    }
-
-    const { categoryId, message: categoryMessage } = resolveCategoryId(categoryPath);
-    if (categoryMessage) {
-      previewRow.message = categoryMessage;
-    }
-
-    importedDuplicateKeys.add(duplicateKey);
-    previewRows.push(previewRow);
-    transactions.push({
-      id: createId(),
-      description: description || null,
-      amount: parsedAmount.cents,
-      transactionDate: parsedDate.value,
-      transactionType,
-      transactionCategoryId: categoryId,
-      notes: notes || null,
-    });
+const parseNativeFields = (
+  row: Array<string>,
+  indexes: Map<string, number>,
+): NativeRateFields | undefined => {
+  const exportVersion = parseIntegerCell(optionalCell(row, indexes.get("zai_export_version")));
+  const rateVariantRaw = optionalCell(row, indexes.get("rate_variant"));
+  const originRaw = optionalCell(row, indexes.get("origin"));
+  const rateDate = optionalCell(row, indexes.get("rate_date"));
+  const sourceCurrency = optionalCell(row, indexes.get("source_currency"));
+  const referenceCurrency = optionalCell(row, indexes.get("reference_currency"));
+  const rateState = optionalCell(row, indexes.get("rate_state"));
+  if (
+    exportVersion === undefined ||
+    rateVariantRaw === undefined ||
+    originRaw === undefined ||
+    rateDate === undefined ||
+    sourceCurrency === undefined ||
+    referenceCurrency === undefined ||
+    rateState === undefined
+  ) {
+    return undefined;
+  }
+  if (!isRateVariant(rateVariantRaw) || !isRateOrigin(originRaw)) {
+    return undefined;
   }
 
   return {
-    headers,
-    rows: previewRows,
-    transactions,
-    categories,
-    summary: {
-      totalRows: previewRows.length,
-      importableRows: countRowsByStatus(previewRows, "import"),
-      duplicateRows: countRowsByStatus(previewRows, "duplicate"),
-      invalidRows: countRowsByStatus(previewRows, "invalid"),
-      emptyRows: countRowsByStatus(previewRows, "empty"),
-      categoriesToCreate: categories.length,
-    },
+    exportVersion,
+    rateVariant: rateVariantRaw,
+    rateState,
+    rateDate,
+    sourceObservationDate: optionalCell(row, indexes.get("source_observation_date")),
+    sourceCurrency,
+    referenceCurrency,
+    coefficient: parseIntegerCell(optionalCell(row, indexes.get("coefficient"))),
+    scale: parseIntegerCell(optionalCell(row, indexes.get("scale"))),
+    originalDecimal: optionalCell(row, indexes.get("original_decimal")),
+    formulaVersion: parseIntegerCell(optionalCell(row, indexes.get("formula_version"))),
+    origin: originRaw,
   };
 };
 
-export const collectImportDuplicateCandidates = (
-  content: string,
-  options: Omit<TransactionImportPreviewOptions, "existingDuplicateKeys">,
-): Array<ImportDuplicateCandidate> => {
-  const preview = buildTransactionImportPreview(content, { ...options, existingDuplicateKeys: [] });
-  return preview.transactions.map((transaction) => ({
-    transactionDate: transaction.transactionDate,
-    amount: transaction.amount,
-    description: transaction.description ?? null,
-  }));
+const resolveExistingCategoryNames = (
+  options: MapTransactionImportOptions,
+  row: Array<string>,
+): ExistingCategoryNames => {
+  const parsed = parseCategoryPath(
+    row,
+    options.mapping,
+    options.categoryLinkMode,
+    options.categorySeparator,
+  );
+  if (!parsed?.name) {
+    return {};
+  }
+  if (options.missingCategoryMode === "create") {
+    return parsed.isChild
+      ? { parentCategory: parsed.parentName, category: parsed.name }
+      : { category: parsed.name };
+  }
+
+  const { rootIdByKey, childIdByPath } = buildCategoryLookups(options.existingCategories);
+  if (!parsed.isChild) {
+    return rootIdByKey.has(parsed.name.toLowerCase()) ? { category: parsed.name } : {};
+  }
+  const childExists = childIdByPath.has(
+    `${parsed.parentName.toLowerCase()}\u0000${parsed.name.toLowerCase()}`,
+  );
+  if (childExists) {
+    return { parentCategory: parsed.parentName, category: parsed.name };
+  }
+  if (rootIdByKey.has(parsed.parentName.toLowerCase())) {
+    return { category: parsed.parentName };
+  }
+  return {};
 };
+
+export const mapTransactionImportRows = (
+  content: string,
+  options: MapTransactionImportOptions,
+): MappedTransactionImportRows => {
+  const table = parseCsv(content);
+  const headerRowIndex = Math.max(
+    0,
+    Math.min(options.headerRowIndex, Math.max(table.length - 1, 0)),
+  );
+  const headers = table[headerRowIndex] ?? [];
+  const nativeExport = isZaiTransactionExport(headers);
+  const indexes = headerIndexMap(headers);
+  const hasCurrencyColumn = options.mapping.currency !== null || nativeExport;
+  const expenseValues = parseTypeValueList(options.expenseTypeValues);
+  const incomeValues = parseTypeValueList(options.incomeTypeValues);
+  const confirmed = options.confirmedTransactionCurrency?.trim().toUpperCase();
+
+  const rows = table.slice(headerRowIndex + 1).map((row, dataIndex) => {
+    const rowNumber = headerRowIndex + dataIndex + 2;
+    if (isRowEmpty(row)) {
+      return { rowNumber, empty: true };
+    }
+
+    const mapped: MappedImportRow = { rowNumber };
+    const parsedDate = parseImportDate(
+      getCell(row, options.mapping.transactionDate),
+      options.dateFormat,
+    );
+    if (parsedDate.ok) {
+      mapped.date = parsedDate.value;
+    }
+
+    const currencyCell = getCell(row, options.mapping.currency).trim().toUpperCase();
+    if (hasCurrencyColumn) {
+      if (currencyCell) {
+        mapped.currency = currencyCell;
+      }
+    } else if (confirmed) {
+      mapped.currency = confirmed;
+    }
+
+    const amountMinorCell = getCell(row, options.mapping.amountMinor).trim();
+    if (amountMinorCell) {
+      mapped.amountMinor = parseIntegerCell(amountMinorCell);
+    } else {
+      const fractionDigits = isoFractionDigits(mapped.currency ?? confirmed ?? "EUR");
+      const parsedAmount = parseImportAmount(getCell(row, options.mapping.amount), fractionDigits);
+      if (parsedAmount.ok) {
+        mapped.amountMinor = parsedAmount.cents;
+      }
+    }
+
+    if (options.amountMode === "signed" && mapped.amountMinor !== undefined) {
+      const parsedAmount = parseImportAmount(
+        getCell(row, options.mapping.amount),
+        isoFractionDigits(mapped.currency ?? confirmed ?? "EUR"),
+      );
+      mapped.transactionType = parsedAmount.ok && parsedAmount.signed < 0 ? "expense" : "income";
+    } else {
+      const parsedType = resolveTypeFromColumn(
+        getCell(row, options.mapping.transactionType),
+        expenseValues,
+        incomeValues,
+      );
+      if (parsedType.ok) {
+        mapped.transactionType = parsedType.value;
+      }
+    }
+
+    const description = stripFormulaGuard(normalizeName(getCell(row, options.mapping.description)));
+    const notes = stripFormulaGuard(normalizeName(getCell(row, options.mapping.notes)));
+    if (description) {
+      mapped.description = description;
+    }
+    if (notes) {
+      mapped.notes = notes;
+    }
+
+    const categoryNames = resolveExistingCategoryNames(options, row);
+    if (categoryNames.parentCategory) {
+      mapped.parentCategory = categoryNames.parentCategory;
+    }
+    if (categoryNames.category) {
+      mapped.category = categoryNames.category;
+    }
+
+    if (nativeExport) {
+      mapped.native = parseNativeFields(row, indexes);
+    } else {
+      const rate = getCell(row, options.mapping.rate).trim();
+      if (rate) {
+        mapped.mappedRate = {
+          rate,
+          direction: options.rateDirection,
+          rateDate: getCell(row, options.mapping.rateDate).trim() || undefined,
+        };
+      }
+    }
+
+    return mapped;
+  });
+
+  return { hasCurrencyColumn, isZaiExport: nativeExport, rows };
+};
+
+export const formatMappedCategoryDisplay = (
+  row: Array<string>,
+  mapping: TransactionImportColumnMapping,
+  linkMode: TransactionImportCategoryLinkMode,
+  separator: string,
+) => formatCategoryDisplay(parseCategoryPath(row, mapping, linkMode, separator));

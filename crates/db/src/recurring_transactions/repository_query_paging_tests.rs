@@ -237,6 +237,7 @@ async fn create_persists_source_revisions_and_head_through_writer() {
             template: RecurringTemplateInput {
                 description: "Membership".into(),
                 amount: 4500,
+                currency: "EUR".into(),
                 transaction_type: "expense".into(),
                 transaction_category_id: None,
                 notes: None,

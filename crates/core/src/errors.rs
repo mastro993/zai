@@ -18,6 +18,17 @@ pub enum ErrorCode {
     ClockRegression,
     CalculationOverflow,
     Forbidden,
+    SetupRequired,
+    UnsupportedCurrency,
+    CurrencyNotEnabled,
+    IncompleteCoverage,
+    CurrencyJobConflict,
+    CurrencyJobNotFound,
+    DefaultCurrencyDisableForbidden,
+    ProviderDisclosureRequired,
+    IncompatibleApplicationFormat,
+    ManualRateReplacementRequired,
+    StaleImportPreview,
     Internal,
 }
 
@@ -93,6 +104,39 @@ pub enum Error {
 
     #[error("Unexpected error: {0}")]
     Unexpected(String),
+
+    #[error("Initial currency setup is required before money-bearing commands")]
+    SetupRequired,
+
+    #[error("Unsupported currency: {0}")]
+    UnsupportedCurrency(String),
+
+    #[error("Currency is not enabled: {0}")]
+    CurrencyNotEnabled(String),
+
+    #[error("Complete historical exchange-rate coverage is missing")]
+    IncompleteCoverage { missing_periods: Vec<String> },
+
+    #[error("Another currency job is already running")]
+    CurrencyJobConflict,
+
+    #[error("Currency job not found: {0}")]
+    CurrencyJobNotFound(String),
+
+    #[error("The default currency cannot be disabled")]
+    DefaultCurrencyDisableForbidden,
+
+    #[error("Confirm the exchange-rate provider before the first ECB-backed enable")]
+    ProviderDisclosureRequired,
+
+    #[error("Application format is incompatible with this client")]
+    IncompatibleApplicationFormat,
+
+    #[error("Replacing a manual exchange rate requires confirmation")]
+    ManualRateReplacementRequired { current_revision: serde_json::Value },
+
+    #[error("Import preview is stale and must be rebuilt")]
+    StaleImportPreview,
 }
 
 const INTERNAL_PUBLIC_MESSAGE: &str = "An internal error occurred";
@@ -146,6 +190,17 @@ impl Error {
             Self::Database(DatabaseError::UniqueViolation(_))
             | Self::Database(DatabaseError::ForeignKeyViolation(_)) => ErrorCode::Conflict,
             Self::Database(_) | Self::Repository(_) | Self::Unexpected(_) => ErrorCode::Internal,
+            Self::SetupRequired => ErrorCode::SetupRequired,
+            Self::UnsupportedCurrency(_) => ErrorCode::UnsupportedCurrency,
+            Self::CurrencyNotEnabled(_) => ErrorCode::CurrencyNotEnabled,
+            Self::IncompleteCoverage { .. } => ErrorCode::IncompleteCoverage,
+            Self::CurrencyJobConflict => ErrorCode::CurrencyJobConflict,
+            Self::CurrencyJobNotFound(_) => ErrorCode::CurrencyJobNotFound,
+            Self::DefaultCurrencyDisableForbidden => ErrorCode::DefaultCurrencyDisableForbidden,
+            Self::ProviderDisclosureRequired => ErrorCode::ProviderDisclosureRequired,
+            Self::IncompatibleApplicationFormat => ErrorCode::IncompatibleApplicationFormat,
+            Self::ManualRateReplacementRequired { .. } => ErrorCode::ManualRateReplacementRequired,
+            Self::StaleImportPreview => ErrorCode::StaleImportPreview,
         }
     }
 
@@ -165,6 +220,12 @@ impl Error {
                 "categoryIds": category_ids,
                 "affectedBudgets": affected_budgets,
             })),
+            Self::IncompleteCoverage { missing_periods } => {
+                Some(serde_json::json!({ "missingPeriods": missing_periods }))
+            }
+            Self::ManualRateReplacementRequired { current_revision } => {
+                Some(serde_json::json!({ "currentRevision": current_revision }))
+            }
             _ => None,
         };
         let context = context.into();
@@ -377,5 +438,13 @@ mod tests {
             .to_envelope("Failed to materialize budget");
 
         assert_eq!(envelope.code, ErrorCode::CalculationOverflow);
+    }
+
+    #[test]
+    fn stale_import_preview_uses_distinct_structured_error_code() {
+        let envelope = Error::StaleImportPreview.to_envelope("Failed to commit import");
+
+        assert_eq!(envelope.code, ErrorCode::StaleImportPreview);
+        assert!(envelope.message.contains("stale"));
     }
 }

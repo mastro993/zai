@@ -7,8 +7,8 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { format, parseISO } from "date-fns";
-import { Controller, useForm } from "react-hook-form";
-import { useRef } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { useEffect, useMemo, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -22,19 +22,31 @@ import {
 } from "@/components/ui/drawer";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from "@/components/ui/input-group";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Link } from "@tanstack/react-router";
+import { isoFractionDigits } from "@/lib/currency";
+import { asWireString } from "@/lib/wire";
 
 import { TransactionCategoryCombobox } from "./transaction-category-combobox";
+import {
+  ConversionRateField,
+  ConvertedAmountDescription,
+  useTransactionConversion,
+} from "./transaction-form-conversion";
 import type { TransactionRecurringProvenance } from "@/features/recurring-transactions/types/recurring-transaction";
+import { useCurrencyBootstrap } from "@/features/currency/hooks/use-currency-bootstrap";
+import type { CurrencySettingsRow } from "@/features/currency/types/currency";
 
 import {
   combineDateTime,
@@ -44,6 +56,8 @@ import {
   splitDateTime,
   toDateTimeInputValue,
 } from "../lib/transaction";
+import { getLastUsedTransactionCurrency } from "../lib/last-used-currency";
+import { quoteDateFromInput } from "../lib/transaction-write";
 import type { TransactionCategory } from "@/features/categories/types/model";
 
 import {
@@ -65,21 +79,44 @@ const TRANSACTION_TYPE_CONTROLS = {
   income: { icon: ArrowUp01Icon, iconClassName: "text-primary" },
 } as const;
 
-const getFormDefaults = (mode: TransactionFormMode): TransactionFormInput => {
+const selectableCodes = (currencies: Array<CurrencySettingsRow>, current: string | undefined) => {
+  const enabled = currencies.filter((row) => row.status === "enabled").map((row) => row.code);
+  if (current && !enabled.includes(current)) {
+    return [current, ...enabled];
+  }
+  return enabled;
+};
+
+const getFormDefaults = (
+  mode: TransactionFormMode,
+  defaultCurrency: string,
+  enabledCodes: Array<string>,
+): TransactionFormInput => {
   if (mode.type === "create") {
+    const lastUsed = getLastUsedTransactionCurrency();
+    const currency =
+      lastUsed && (enabledCodes.length === 0 || enabledCodes.includes(lastUsed))
+        ? lastUsed
+        : defaultCurrency;
     return {
       description: "",
-      amount: "0.00",
+      amount: formatAmountFromMinor(0, isoFractionDigits(currency)),
+      currency,
       transactionDate: getLocalDateTimeInputValue(),
       transactionType: "expense",
       transactionCategoryId: "",
       notes: "",
+      manualExchangeRate: "",
     };
   }
 
   return {
     description: mode.transaction.description ?? "",
-    amount: formatAmountFromMinor(mode.transaction.amount),
+    amount: formatAmountFromMinor(
+      mode.transaction.amount,
+      isoFractionDigits(mode.transaction.currency),
+    ),
+    currency: mode.transaction.currency,
     transactionDate: toDateTimeInputValue(mode.transaction.transactionDate),
     transactionType:
       mode.transaction.transactionType === "income" ||
@@ -88,6 +125,7 @@ const getFormDefaults = (mode: TransactionFormMode): TransactionFormInput => {
         : "expense",
     transactionCategoryId: mode.transaction.transactionCategoryId ?? "",
     notes: mode.transaction.notes ?? "",
+    manualExchangeRate: "",
   };
 };
 
@@ -126,10 +164,17 @@ function TransactionFormDrawer({
   open?: boolean;
   recurringProvenance?: TransactionRecurringProvenance | null;
 }) {
+  const { defaultCurrency, currencies } = useCurrencyBootstrap();
+  const resolvedDefault = defaultCurrency ?? "EUR";
+  const enabledCodes = useMemo(
+    () => currencies.filter((row) => row.status === "enabled").map((row) => row.code),
+    [currencies],
+  );
   const form = useForm<TransactionFormInput, unknown, TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
-    defaultValues: getFormDefaults(mode),
+    defaultValues: getFormDefaults(mode, resolvedDefault, enabledCodes),
   });
+  const { control, register, setValue } = form;
   const amountInputRef = useRef<HTMLInputElement>(null);
   const { title, description } = getFormCopy(mode);
   const isCreate = mode.type === "create";
@@ -138,6 +183,38 @@ function TransactionFormDrawer({
   const dateErrorId = "transaction-date-error";
   const typeErrorId = "transaction-type-error";
   const visibleSource = recurringProvenance?.source;
+  const watchedCurrency = useWatch({ control, name: "currency" }) ?? resolvedDefault;
+  const previousCurrencyRef = useRef(watchedCurrency);
+  const currencyItems = useMemo(() => {
+    const keepCurrent = isCreate ? enabledCodes.includes(watchedCurrency) : true;
+    const codes = selectableCodes(currencies, keepCurrent ? watchedCurrency : undefined);
+    return codes.map((code) => ({ value: code, label: code }));
+  }, [currencies, enabledCodes, isCreate, watchedCurrency]);
+  const fractionDigits = isoFractionDigits(watchedCurrency);
+  const conversion = useTransactionConversion({
+    control,
+    defaultCurrency: resolvedDefault,
+    lockedRate: mode.type === "edit" ? mode.transaction.exchangeRate : null,
+    lockedCurrency: mode.type === "edit" ? mode.transaction.currency : null,
+    lockedDate: mode.type === "edit" ? quoteDateFromInput(mode.transaction.transactionDate) : null,
+  });
+
+  useEffect(() => {
+    if (!isCreate || enabledCodes.length === 0) {
+      return;
+    }
+    if (!enabledCodes.includes(watchedCurrency)) {
+      setValue("currency", resolvedDefault);
+    }
+  }, [enabledCodes, isCreate, resolvedDefault, setValue, watchedCurrency]);
+
+  useEffect(() => {
+    if (previousCurrencyRef.current === watchedCurrency) {
+      return;
+    }
+    previousCurrencyRef.current = watchedCurrency;
+    setValue("manualExchangeRate", "");
+  }, [setValue, watchedCurrency]);
 
   return (
     <DrawerContent
@@ -168,7 +245,7 @@ function TransactionFormDrawer({
           <Field data-invalid={Boolean(errors.transactionType)}>
             <FieldLabel>Type</FieldLabel>
             <Controller
-              control={form.control}
+              control={control}
               name="transactionType"
               render={({ field }) => (
                 <ToggleGroup
@@ -208,7 +285,7 @@ function TransactionFormDrawer({
           <Field data-invalid={Boolean(errors.amount)}>
             <FieldLabel htmlFor="transaction-amount">Amount</FieldLabel>
             <Controller
-              control={form.control}
+              control={control}
               name="amount"
               render={({ field }) => (
                 <InputGroup>
@@ -216,13 +293,13 @@ function TransactionFormDrawer({
                     id="transaction-amount"
                     type="text"
                     inputMode="decimal"
-                    placeholder="0.00"
+                    placeholder={formatAmountFromMinor(0, fractionDigits)}
                     aria-describedby={errors.amount ? amountErrorId : undefined}
                     aria-invalid={Boolean(errors.amount)}
                     value={field.value ?? ""}
                     onBlur={(event) => {
                       field.onBlur();
-                      const normalized = normalizeAmountInput(event.target.value);
+                      const normalized = normalizeAmountInput(event.target.value, fractionDigits);
 
                       if (normalized !== event.target.value) {
                         field.onChange(normalized);
@@ -236,24 +313,64 @@ function TransactionFormDrawer({
                     onChange={(event) => {
                       const nextValue = event.target.value;
 
-                      if (isPartialAmountInput(nextValue)) {
+                      if (isPartialAmountInput(nextValue, fractionDigits)) {
                         field.onChange(nextValue);
                       }
                     }}
                   />
                   <InputGroupAddon align="inline-end">
-                    <InputGroupText>EUR</InputGroupText>
+                    <Controller
+                      control={control}
+                      name="currency"
+                      render={({ field: currencyField }) => (
+                        <Select
+                          items={currencyItems}
+                          value={currencyField.value}
+                          onValueChange={(value) => {
+                            const code = asWireString(value);
+                            if (code !== undefined) {
+                              currencyField.onChange(code);
+                            }
+                          }}
+                        >
+                          <SelectTrigger
+                            size="sm"
+                            className="border-0 bg-transparent shadow-none"
+                            aria-label="Transaction currency"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {currencyItems.map((item) => (
+                                <SelectItem key={item.value} value={item.value}>
+                                  {item.value}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                   </InputGroupAddon>
                 </InputGroup>
               )}
             />
+            <ConvertedAmountDescription
+              pending={conversion.convertedPending}
+              text={conversion.convertedDescription}
+            />
             <FieldError id={amountErrorId}>{errors.amount?.message}</FieldError>
           </Field>
+
+          {conversion.showRateField ? (
+            <ConversionRateField placeholder={conversion.placeholder} register={register} />
+          ) : null}
 
           <Field data-invalid={Boolean(errors.transactionDate)}>
             <FieldLabel>Date and time</FieldLabel>
             <Controller
-              control={form.control}
+              control={control}
               name="transactionDate"
               render={({ field }) => {
                 const { date, time } = splitDateTime(field.value);
@@ -327,7 +444,7 @@ function TransactionFormDrawer({
           <Field>
             <FieldLabel htmlFor="transaction-category-trigger">Category</FieldLabel>
             <Controller
-              control={form.control}
+              control={control}
               name="transactionCategoryId"
               render={({ field }) => (
                 <TransactionCategoryCombobox

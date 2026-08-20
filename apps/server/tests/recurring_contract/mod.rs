@@ -19,6 +19,7 @@ pub fn recurring_create_payload(id: &str) -> Value {
         "template": {
             "description": "Membership",
             "amount": 4500,
+            "currency": "EUR",
             "transactionType": "expense",
             "transactionCategoryId": null,
             "notes": null
@@ -185,6 +186,7 @@ pub fn create_validation_error() -> ContractExpectation {
                 "template": {
                     "description": "Bad",
                     "amount": 100,
+                    "currency": "EUR",
                     "transactionType": "expense",
                     "transactionCategoryId": null,
                     "notes": null
@@ -236,6 +238,7 @@ pub fn update_success(id: &str, revision: i64) -> ContractExpectation {
                 "template": {
                     "description": "Membership",
                     "amount": 4600,
+                    "currency": "EUR",
                     "transactionType": "expense",
                     "transactionCategoryId": null,
                     "notes": null
@@ -279,6 +282,7 @@ pub fn adopt_success(id: &str, transaction_id: &str) -> ContractExpectation {
                 "template": {
                     "description": "Adopt seed",
                     "amount": 1500,
+                    "currency": "EUR",
                     "transactionType": "expense",
                     "transactionCategoryId": null,
                     "notes": null
@@ -328,6 +332,7 @@ pub fn repair_preview_without_failure_error(id: &str) -> ContractExpectation {
                 "template": {
                     "description": "Membership",
                     "amount": 4500,
+                    "currency": "EUR",
                     "transactionType": "expense",
                     "transactionCategoryId": null,
                     "notes": null

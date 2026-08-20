@@ -23,11 +23,8 @@ import {
 } from "@/components/ui/input-group";
 import { CategoryDrawerSelect } from "@/features/categories/components/category-drawer-select";
 import type { TransactionCategory } from "@/features/categories/types/model";
-import {
-  MAX_TRANSACTION_AMOUNT_MINOR,
-  prepareAmountForValidation,
-} from "@/features/transactions/lib/transaction";
-import { formatCurrencyFromMinor } from "@/lib/currency";
+import { formatAmountFromMinor, parseAmountToMinor } from "@/features/transactions/lib/transaction";
+import { formatCurrencyFromMinor, isoFractionDigits } from "@/lib/currency";
 
 import {
   previewRecurringGenerationRepair,
@@ -39,23 +36,6 @@ import type {
   RecurringRepairField,
   RecurringTransactionDocument,
 } from "../types/recurring-transaction";
-
-const amountSchema = z
-  .string()
-  .trim()
-  .transform(prepareAmountForValidation)
-  .pipe(
-    z
-      .string()
-      .min(1, "Amount is required")
-      .refine((value) => /^\d+(\.\d{1,2})?$/.test(value), "Enter a valid amount")
-      .refine((value) => {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) && parsed >= 0;
-      }, "Amount must be zero or greater")
-      .transform((value) => Math.round(Number(value) * 100)),
-  )
-  .pipe(z.number().int().max(MAX_TRANSACTION_AMOUNT_MINOR, "Amount exceeds supported maximum"));
 
 interface RepairFormValues {
   transactionCategoryId?: string;
@@ -80,6 +60,7 @@ interface RecurringRepairDrawerProps {
 interface PreparedTemplateValues {
   description: string;
   amount: number;
+  currency: string;
   transactionType: "expense" | "income";
   transactionCategoryId?: string;
   notes?: string;
@@ -96,6 +77,8 @@ export function RecurringRepairDrawer({
 }: RecurringRepairDrawerProps) {
   const unresolved = document.failures.unresolved;
   const isCategory = repairFieldKey === "transactionCategoryId";
+  const currency = document.template.currency;
+  const fractionDigits = isoFractionDigits(currency);
   const [preview, setPreview] = useState<RecurringRepairPreview>();
   const [prepared, setPrepared] = useState<PreparedTemplateValues>();
   const [isConfirming, setIsConfirming] = useState(false);
@@ -108,7 +91,7 @@ export function RecurringRepairDrawer({
     resolver: zodResolver(repairFormSchema),
     defaultValues: {
       transactionCategoryId: document.template.transactionCategoryId ?? undefined,
-      amount: (document.template.amount / 100).toFixed(2),
+      amount: formatAmountFromMinor(document.template.amount, fractionDigits),
     },
   });
 
@@ -123,26 +106,27 @@ export function RecurringRepairDrawer({
         ? (categories.find((category) => category.id === prepared.transactionCategoryId)?.name ??
           "Selected category")
         : "Uncategorized"
-      : formatCurrencyFromMinor(prepared.amount, "EUR")
+      : formatCurrencyFromMinor(prepared.amount, currency)
     : null;
 
   const onPreview = handleSubmit(async (values) => {
     let amount = document.template.amount;
     if (!isCategory) {
-      const parsedAmount = amountSchema.safeParse(values.amount);
-      if (!parsedAmount.success) {
+      const parsedAmount = parseAmountToMinor(values.amount, fractionDigits);
+      if (!parsedAmount.ok) {
         setError("amount", {
           type: "manual",
-          message: parsedAmount.error.issues[0]?.message ?? "Enter a valid amount",
+          message: parsedAmount.message,
         });
         return;
       }
-      amount = parsedAmount.data;
+      amount = parsedAmount.minor;
     }
 
     const templateValues: PreparedTemplateValues = {
       description: document.template.description,
       amount,
+      currency,
       transactionType: document.template.transactionType,
       transactionCategoryId: isCategory
         ? values.transactionCategoryId
@@ -228,7 +212,7 @@ export function RecurringRepairDrawer({
                 <FieldLabel>Amount</FieldLabel>
                 <InputGroup>
                   <InputGroupAddon>
-                    <InputGroupText>EUR</InputGroupText>
+                    <InputGroupText>{currency}</InputGroupText>
                   </InputGroupAddon>
                   <Controller
                     control={control}
@@ -249,7 +233,7 @@ export function RecurringRepairDrawer({
                 </InputGroup>
                 <FieldError>{errors.amount?.message}</FieldError>
                 <p className="text-sm text-muted-foreground">
-                  Current value {formatCurrencyFromMinor(document.template.amount, "EUR")}
+                  Current value {formatCurrencyFromMinor(document.template.amount, currency)}
                 </p>
               </Field>
             )}

@@ -14,7 +14,7 @@ mod contract_support;
 pub(crate) use calculate::calculate_spending;
 pub(crate) use calculate::load_category_hierarchy;
 pub(crate) use inspect::InspectState;
-pub(crate) use persistence::period_from_rows;
+pub(crate) use persistence::{period_from_rows_with_currency, rebuild_all_results};
 
 use chrono::NaiveDateTime;
 use diesel::sqlite::SqliteConnection;

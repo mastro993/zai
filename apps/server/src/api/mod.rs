@@ -6,6 +6,7 @@ use zai_app::ServiceContext;
 mod alerts;
 mod budgets;
 mod categories;
+mod currency;
 pub mod error;
 mod recurring_bulk;
 mod recurring_processing_events;
@@ -17,6 +18,7 @@ pub fn router() -> Router<Arc<ServiceContext>> {
     Router::new()
         .merge(alerts::router())
         .merge(categories::router())
+        .merge(currency::router())
         .merge(budgets::router())
         .merge(recurring_projection::projection_routes())
         .merge(recurring_transactions::router())

@@ -1,7 +1,7 @@
 mod common;
 
 use axum::http::StatusCode;
-use common::{request_json, setup_app};
+use common::{import_categories, preview_and_commit_import, request_json, setup_app};
 use serde_json::{Value, json};
 use tower::ServiceExt;
 
@@ -9,6 +9,7 @@ fn sample_transaction_payload() -> Value {
     json!({
         "description": "Coffee",
         "amount": 350,
+        "currency": "EUR",
         "transactionDate": "2026-07-09T12:30:00",
         "transactionType": "expense",
         "transactionCategoryId": null,
@@ -96,20 +97,9 @@ async fn list_transactions_rejects_uncategorized_with_category_filters() {
 async fn create_transaction_with_category_succeeds() {
     let (app, _context, _dir) = setup_app("zai-transactions").await;
 
-    let (batch_status, _) = request_json(
+    let (batch_status, _) = import_categories(
         &app,
-        "POST",
-        "/api/transactions/import-batch",
-        Some(json!({
-            "categories": [{ "id": "food-cat", "name": "Food", "color": "#FF0000" }],
-            "transactions": [{
-                "description": "Lunch",
-                "amount": 1200,
-                "transactionDate": "2026-07-09T12:30:00",
-                "transactionType": "expense",
-                "transactionCategoryId": "food-cat"
-            }]
-        })),
+        json!([{ "id": "11111111-1111-1111-1111-111111111111", "name": "Food", "color": "#FF0000" }]),
     )
     .await;
     assert_eq!(batch_status, StatusCode::OK);
@@ -121,15 +111,19 @@ async fn create_transaction_with_category_succeeds() {
         Some(json!({
             "description": "Dinner",
             "amount": 1500,
+            "currency": "EUR",
             "transactionDate": "2026-07-10T19:00:00",
             "transactionType": "expense",
-            "transactionCategoryId": "food-cat"
+            "transactionCategoryId": "11111111-1111-1111-1111-111111111111"
         })),
     )
     .await;
 
     assert_eq!(status, StatusCode::CREATED);
-    assert_eq!(created["transactionCategoryId"], "food-cat");
+    assert_eq!(
+        created["transactionCategoryId"],
+        "11111111-1111-1111-1111-111111111111"
+    );
 }
 
 #[tokio::test]
@@ -147,7 +141,12 @@ async fn create_get_update_delete_transaction_round_trip() {
     assert_eq!(create_status, StatusCode::CREATED);
     assert_eq!(created["description"], "Coffee");
     assert_eq!(created["amount"], 350);
+    assert_eq!(created["currency"], "EUR");
     assert_eq!(created["transactionType"], "expense");
+    assert_eq!(created["complete"], true);
+    assert_eq!(created["convertedAmount"], 350);
+    assert_eq!(created["convertedCurrency"], "EUR");
+    assert_eq!(created["exchangeRate"]["variant"], "identity");
 
     let transaction_id = created["id"].as_str().expect("created id");
 
@@ -168,6 +167,7 @@ async fn create_get_update_delete_transaction_round_trip() {
         Some(json!({
             "description": "Updated coffee",
             "amount": 400,
+            "currency": "EUR",
             "transactionDate": "2026-07-10T08:00:00",
             "transactionType": "income",
             "transactionCategoryId": null,
@@ -219,6 +219,7 @@ async fn bulk_delete_transactions_returns_deleted_rows() {
             Some(json!({
                 "description": description,
                 "amount": 100,
+                "currency": "EUR",
                 "transactionDate": "2026-07-09T12:30:00",
                 "transactionType": "expense"
             })),
@@ -236,7 +237,16 @@ async fn bulk_delete_transactions_returns_deleted_rows() {
     .await;
 
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(deleted.as_array().expect("array").len(), 2);
+    let rows = deleted.as_array().expect("array");
+    assert_eq!(rows.len(), 2);
+    for row in rows {
+        assert_eq!(row["amount"], 100);
+        assert_eq!(row["currency"], "EUR");
+        assert!(row.get("exchangeRate").is_none());
+        assert!(row.get("convertedAmount").is_some());
+        assert!(row.get("convertedCurrency").is_some());
+        assert!(row.get("complete").is_some());
+    }
 }
 
 #[tokio::test]
@@ -250,6 +260,7 @@ async fn create_transaction_rejects_invalid_type() {
         Some(json!({
             "description": "Bad",
             "amount": 100,
+            "currency": "EUR",
             "transactionDate": "2026-07-09T12:30:00",
             "transactionType": "transfer"
         })),
@@ -277,6 +288,7 @@ async fn create_transaction_returns_conflict_for_missing_category() {
         Some(json!({
             "description": "Categorized",
             "amount": 100,
+            "currency": "EUR",
             "transactionDate": "2026-07-09T12:30:00",
             "transactionType": "expense",
             "transactionCategoryId": "missing-category"
@@ -290,60 +302,112 @@ async fn create_transaction_returns_conflict_for_missing_category() {
 }
 
 #[tokio::test]
-async fn import_transactions_returns_imported_rows() {
+async fn removed_import_routes_return_not_found() {
     let (app, _context, _dir) = setup_app("zai-transactions").await;
 
-    let (status, imported) = request_json(
-        &app,
-        "POST",
-        "/api/transactions/import",
-        Some(json!({
-            "transactions": [
-                {
-                    "description": "Imported",
-                    "amount": 500,
-                    "transactionDate": "2026-07-09T12:30:00",
-                    "transactionType": "expense"
-                }
-            ]
-        })),
-    )
-    .await;
-
-    assert_eq!(status, StatusCode::OK);
-    assert_eq!(imported.as_array().expect("array").len(), 1);
+    for path in ["/api/transactions/import", "/api/transactions/import-batch"] {
+        let (status, _) =
+            request_json(&app, "POST", path, Some(json!({ "transactions": [] }))).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+    }
 }
 
 #[tokio::test]
-async fn import_transaction_batch_returns_imported_transactions_only() {
+async fn preview_and_commit_import_returns_imported_rows() {
     let (app, _context, _dir) = setup_app("zai-transactions").await;
 
-    let (status, imported) = request_json(
+    let (status, imported) = preview_and_commit_import(
         &app,
-        "POST",
-        "/api/transactions/import-batch",
-        Some(json!({
-            "categories": [
-                {
-                    "name": "Food",
-                    "color": "#FF0000"
-                }
-            ],
-            "transactions": [
-                {
-                    "description": "Lunch",
-                    "amount": 1200,
-                    "transactionDate": "2026-07-09T12:30:00",
-                    "transactionType": "expense"
-                }
-            ]
-        })),
+        "digest-imported",
+        false,
+        Some("EUR"),
+        json!([{
+            "rowNumber": 2,
+            "date": "2026-07-09T12:30:00",
+            "amountMinor": 500,
+            "currency": "EUR",
+            "transactionType": "expense",
+            "description": "Imported"
+        }]),
     )
     .await;
 
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(imported.as_array().expect("array").len(), 1);
-    assert_eq!(imported[0]["description"], "Lunch");
+    assert_eq!(imported["transactions"].as_array().expect("array").len(), 1);
+}
+
+#[tokio::test]
+async fn preview_and_commit_creates_named_categories() {
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
+
+    let (status, imported) = preview_and_commit_import(
+        &app,
+        "digest-lunch",
+        false,
+        Some("EUR"),
+        json!([{
+            "rowNumber": 2,
+            "date": "2026-07-09T12:30:00",
+            "amountMinor": 1200,
+            "transactionType": "expense",
+            "description": "Lunch",
+            "category": "Food"
+        }]),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(imported["transactions"].as_array().expect("array").len(), 1);
+    assert_eq!(imported["transactions"][0]["description"], "Lunch");
+}
+
+#[tokio::test]
+async fn stale_import_preview_returns_conflict() {
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
+
+    let (status, preview) = common::preview_transaction_import(
+        &app,
+        "digest-stale",
+        false,
+        Some("EUR"),
+        json!([{
+            "rowNumber": 2,
+            "date": "2026-07-09T12:30:00",
+            "amountMinor": 500,
+            "transactionType": "expense",
+            "description": "Imported"
+        }]),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let token = preview["token"].as_str().expect("token");
+
+    let (status, body) = common::commit_transaction_import(&app, token, "other-digest").await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["code"], "staleImportPreview");
+}
+
+#[tokio::test]
+async fn invalid_preview_rows_block_commit() {
+    let (app, _context, _dir) = setup_app("zai-transactions").await;
+
+    let (status, body) = preview_and_commit_import(
+        &app,
+        "digest-invalid",
+        true,
+        None,
+        json!([{
+            "rowNumber": 2,
+            "date": "2026-07-09T12:30:00",
+            "amountMinor": 500,
+            "transactionType": "expense",
+            "description": "Missing currency"
+        }]),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["code"], "validation");
 }
 
 #[tokio::test]

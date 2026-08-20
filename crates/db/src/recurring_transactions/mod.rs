@@ -29,6 +29,8 @@ mod lifecycle_tests;
 mod matching;
 mod models;
 #[cfg(test)]
+mod money_tests;
+#[cfg(test)]
 mod process_contention_tests;
 #[cfg(test)]
 mod process_crash_tests;

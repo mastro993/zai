@@ -82,8 +82,13 @@ async fn list_transactions_filters_by_single_category() {
     let (app, _context, _dir) = setup_app("zai-transactions-list").await;
     seed_filter_test_transactions(&app).await;
 
-    let (status, body) =
-        request_json(&app, "GET", "/api/transactions?categoryId=food-cat", None).await;
+    let (status, body) = request_json(
+        &app,
+        "GET",
+        "/api/transactions?categoryId=11111111-1111-1111-1111-111111111111",
+        None,
+    )
+    .await;
 
     assert_eq!(status, StatusCode::OK);
     let descriptions = transaction_descriptions(&body);
@@ -100,7 +105,7 @@ async fn list_transactions_filters_by_multiple_categories() {
     let (status, body) = request_json(
         &app,
         "GET",
-        "/api/transactions?categoryId=food-cat&categoryId=travel-cat",
+        "/api/transactions?categoryId=11111111-1111-1111-1111-111111111111&categoryId=22222222-2222-2222-2222-222222222222",
         None,
     )
     .await;
@@ -144,7 +149,7 @@ async fn list_transactions_sorts_by_amount_desc() {
         .as_array()
         .expect("data")
         .iter()
-        .map(|row| row["amount"].as_i64().expect("amount"))
+        .map(|row| row["convertedAmount"].as_i64().expect("convertedAmount"))
         .collect();
     assert_eq!(amounts, vec![500000, 80000, 2500, 1200, 350]);
 }
@@ -167,7 +172,7 @@ async fn list_transactions_sorts_by_amount_asc() {
         .as_array()
         .expect("data")
         .iter()
-        .map(|row| row["amount"].as_i64().expect("amount"))
+        .map(|row| row["convertedAmount"].as_i64().expect("convertedAmount"))
         .collect();
     assert_eq!(amounts, vec![350, 1200, 2500, 80000, 500000]);
 }

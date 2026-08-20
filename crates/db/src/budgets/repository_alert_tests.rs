@@ -77,10 +77,12 @@ async fn creating_budget_with_overspent_period_is_silent() {
             id: Some(Uuid::new_v4().to_string()),
             description: Some("Big spend".to_string()),
             amount: 15_000,
+            currency: "EUR".to_string(),
             transaction_date: fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
@@ -103,7 +105,10 @@ async fn creating_budget_with_overspent_period_is_silent() {
         .list_budgets(BudgetListFilter::Active)
         .await
         .expect("list");
-    assert_eq!(listed[0].current_period.status, BudgetStatus::Overspent);
+    assert_eq!(
+        listed[0].current_period.status,
+        Some(BudgetStatus::Overspent)
+    );
     assert!(publisher.events.lock().expect("lock").is_empty());
     assert_eq!(alerts.unread_count().await.expect("count"), 0);
 }
@@ -134,10 +139,12 @@ async fn transaction_transition_to_overspent_persists_and_publishes_critical_ale
             id: Some(Uuid::new_v4().to_string()),
             description: Some("Big spend".to_string()),
             amount: 15_000,
+            currency: "EUR".to_string(),
             transaction_date: fixed_local(),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
@@ -148,12 +155,10 @@ async fn transaction_transition_to_overspent_persists_and_publishes_critical_ale
     assert_eq!(alert.producer_key, BUDGET_STATUS_PRODUCER_KEY);
     assert_eq!(alert.severity, DomainAlertSeverity::Critical);
     assert!(alert.title.contains("Groceries"));
-    assert!(
-        alert
-            .data
-            .as_ref()
-            .is_some_and(|data| data.kind == "budget.status")
-    );
+    assert!(alert.data.as_ref().is_some_and(|data| {
+        data.kind == "budget.status"
+            && data.payload.get("currency") == Some(&serde_json::json!("EUR"))
+    }));
 
     let events = publisher.events.lock().expect("lock");
     assert_eq!(events.len(), 1);
@@ -185,10 +190,12 @@ async fn duplicate_occurrence_preserves_first_alert_without_failing_mutation() {
         id: Some(Uuid::new_v4().to_string()),
         description: Some("Spend".to_string()),
         amount: 2_000,
+        currency: "EUR".to_string(),
         transaction_date: fixed_local(),
         transaction_type: "expense".to_string(),
         transaction_category_id: None,
         notes: None,
+        manual_exchange_rate: None,
     };
 
     transactions
@@ -209,4 +216,192 @@ async fn duplicate_occurrence_preserves_first_alert_without_failing_mutation() {
         .expect("count");
     assert_eq!(count, 1);
     assert_eq!(alerts.unread_count().await.expect("unread"), 1);
+}
+
+#[tokio::test]
+async fn resume_of_announced_overspent_does_not_duplicate_alert() {
+    let temp_db = TempDb::new();
+    let publisher = RecordingPublisher::default();
+    let (budgets, transactions, alerts) = setup(&temp_db, Arc::new(publisher));
+    let budget_id = Uuid::new_v4().to_string();
+    budgets
+        .create_budget(NewBudget {
+            id: Some(budget_id.clone()),
+            name: "Groceries".to_string(),
+            base_allowance: 10_000,
+            cadence: Some(BudgetCadence::Month),
+            category_ids: Vec::new(),
+            measurement_mode: None,
+            rollover_mode: None,
+            warning_percentage: Some(80),
+        })
+        .await
+        .expect("budget");
+    transactions
+        .create_transaction(NewTransaction {
+            id: Some(Uuid::new_v4().to_string()),
+            description: Some("Big spend".to_string()),
+            amount: 15_000,
+            currency: "EUR".to_string(),
+            transaction_date: fixed_local(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+            manual_exchange_rate: None,
+        })
+        .await
+        .expect("transaction");
+    assert_eq!(alerts.unread_count().await.expect("count"), 1);
+
+    let current = budgets.get_budget(&budget_id).await.expect("current");
+    let paused = budgets
+        .pause_budget(
+            &budget_id,
+            zai_core::features::budgets::models::BudgetLifecycleUpdate {
+                expected_revision: current.revision,
+            },
+        )
+        .await
+        .expect("pause");
+    budgets
+        .resume_budget(
+            &budget_id,
+            zai_core::features::budgets::models::BudgetLifecycleUpdate {
+                expected_revision: paused.revision,
+            },
+        )
+        .await
+        .expect("resume");
+    assert_eq!(alerts.unread_count().await.expect("still one"), 1);
+}
+
+#[tokio::test]
+async fn resume_of_incomplete_period_stays_silent() {
+    let temp_db = TempDb::new();
+    let publisher = RecordingPublisher::default();
+    let (budgets, transactions, alerts) = setup(&temp_db, Arc::new(publisher));
+    let budget_id = Uuid::new_v4().to_string();
+    budgets
+        .create_budget(NewBudget {
+            id: Some(budget_id.clone()),
+            name: "Groceries".to_string(),
+            base_allowance: 10_000,
+            cadence: Some(BudgetCadence::Month),
+            category_ids: Vec::new(),
+            measurement_mode: None,
+            rollover_mode: None,
+            warning_percentage: Some(80),
+        })
+        .await
+        .expect("budget");
+    transactions
+        .create_transaction(NewTransaction {
+            id: Some("pending-alert".to_string()),
+            description: Some("Foreign".to_string()),
+            amount: 15_000,
+            currency: "EUR".to_string(),
+            transaction_date: fixed_local(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+            manual_exchange_rate: None,
+        })
+        .await
+        .expect("transaction");
+    assert_eq!(alerts.unread_count().await.expect("overspent alert"), 1);
+
+    let manager = r2d2::ConnectionManager::<SqliteConnection>::new(temp_db.path());
+    let pool = Pool::builder().build(manager).expect("pool");
+    let mut conn = pool.get().expect("conn");
+    diesel::sql_query("UPDATE transactions SET currency = 'USD' WHERE id = 'pending-alert'")
+        .execute(&mut conn)
+        .expect("usd");
+    diesel::sql_query(
+        "UPDATE transaction_exchange_rate_revisions \
+         SET variant = 'pending', original_decimal = NULL, coefficient = NULL, scale = NULL \
+         WHERE transaction_id = 'pending-alert'",
+    )
+    .execute(&mut conn)
+    .expect("pending");
+    let row = {
+        use crate::schema::transactions;
+        transactions::table
+            .filter(transactions::id.eq("pending-alert"))
+            .first::<crate::transactions::models::TransactionRow>(&mut conn)
+            .expect("row")
+    };
+    crate::valuations::upsert_transaction_valuation(&mut conn, &row).expect("valuation");
+    crate::budgets::timeline::rebuild_all_results(&mut conn).expect("rebuild");
+    drop(conn);
+
+    let current = budgets.get_budget(&budget_id).await.expect("current");
+    assert!(!current.current_period.complete);
+    let paused = budgets
+        .pause_budget(
+            &budget_id,
+            zai_core::features::budgets::models::BudgetLifecycleUpdate {
+                expected_revision: current.revision,
+            },
+        )
+        .await
+        .expect("pause");
+    budgets
+        .resume_budget(
+            &budget_id,
+            zai_core::features::budgets::models::BudgetLifecycleUpdate {
+                expected_revision: paused.revision,
+            },
+        )
+        .await
+        .expect("resume");
+    assert_eq!(alerts.unread_count().await.expect("historical remains"), 1);
+}
+
+#[tokio::test]
+async fn default_currency_activation_keeps_historical_alerts() {
+    let temp_db = TempDb::new();
+    let publisher = RecordingPublisher::default();
+    let (budgets, transactions, alerts) = setup(&temp_db, Arc::new(publisher));
+    let budget_id = Uuid::new_v4().to_string();
+    budgets
+        .create_budget(NewBudget {
+            id: Some(budget_id),
+            name: "Groceries".to_string(),
+            base_allowance: 10_000,
+            cadence: Some(BudgetCadence::Month),
+            category_ids: Vec::new(),
+            measurement_mode: None,
+            rollover_mode: None,
+            warning_percentage: Some(80),
+        })
+        .await
+        .expect("budget");
+    transactions
+        .create_transaction(NewTransaction {
+            id: Some(Uuid::new_v4().to_string()),
+            description: Some("Big spend".to_string()),
+            amount: 15_000,
+            currency: "EUR".to_string(),
+            transaction_date: fixed_local(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+            manual_exchange_rate: None,
+        })
+        .await
+        .expect("transaction");
+    assert_eq!(alerts.unread_count().await.expect("alert"), 1);
+
+    let manager = r2d2::ConnectionManager::<SqliteConnection>::new(temp_db.path());
+    let pool = Pool::builder().build(manager).expect("pool");
+    let mut conn = pool.get().expect("conn");
+    crate::valuations::change_default_currency(
+        &mut conn,
+        zai_core::money::CurrencyCode::parse("USD").expect("usd"),
+        chrono::Utc::now().naive_utc(),
+    )
+    .expect("activate");
+    drop(conn);
+
+    assert_eq!(alerts.unread_count().await.expect("historical kept"), 1);
 }

@@ -13,8 +13,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { formatCurrencyFromMinor } from "@/lib/currency";
-
 import {
   getCategoryDisplayColor,
   getCategoryDisplayName,
@@ -24,10 +22,10 @@ import {
   shouldShowSelectAllMatching,
   type PageCheckboxState,
 } from "../lib/transaction-selection";
+import { transactionListAmountParts } from "../lib/transaction-list-amount";
 import { toDateTimeInputValue } from "../lib/transaction";
-import type { Transaction } from "../types/model";
+import type { TransactionListItem } from "../types/model";
 import type { TransactionCategory } from "@/features/categories/types/model";
-import type { TransactionFormMode } from "../types/transaction-types";
 import { CategoryBadge } from "@/features/categories/components/category-badge";
 import {
   TransactionTableHeadActions,
@@ -37,7 +35,7 @@ import {
 import { TransactionTypeBadge } from "./transaction-type-badge";
 
 type TransactionTableProps = {
-  transactions: Array<Transaction>;
+  transactions: Array<TransactionListItem>;
   categoryById: Map<string, TransactionCategory>;
   selectedIds: ReadonlySet<string>;
   pageCheckboxState: PageCheckboxState;
@@ -45,13 +43,26 @@ type TransactionTableProps = {
   page: number;
   perPage: number;
   totalPages: number;
-  onToggleRow: (transaction: Transaction, selected: boolean, shiftKey: boolean) => void;
+  onToggleRow: (transaction: TransactionListItem, selected: boolean, shiftKey: boolean) => void;
   onTogglePage: (selectAll: boolean) => void;
   onSelectAllMatching: () => void;
-  onEdit: (mode: TransactionFormMode) => void;
-  onAdopt: (transaction: Transaction, trigger: HTMLButtonElement | null) => void;
-  onDelete: (transaction: Transaction) => void;
+  onEdit: (transactionId: string) => void;
+  onAdopt: (transaction: TransactionListItem, trigger: HTMLButtonElement | null) => void;
+  onDelete: (transaction: TransactionListItem) => void;
 };
+
+function TransactionAmountCell({ transaction }: { transaction: TransactionListItem }) {
+  const { original, display } = transactionListAmountParts(transaction);
+
+  return (
+    <TableCell className="whitespace-nowrap p-3 text-right tabular-nums">
+      <span className="flex flex-col items-end gap-0.5">
+        <span className="font-semibold">{display}</span>
+        {original ? <span className="text-muted-foreground">{original}</span> : null}
+      </span>
+    </TableCell>
+  );
+}
 
 function HeaderCheckbox({
   pageCheckboxState,
@@ -207,9 +218,7 @@ function TransactionTable({
                     <span className="text-muted-foreground">Uncategorized</span>
                   )}
                 </TableCell>
-                <TableCell className="whitespace-nowrap p-3 text-right tabular-nums">
-                  {formatCurrencyFromMinor(transaction.amount, "EUR")}
-                </TableCell>
+                <TransactionAmountCell transaction={transaction} />
                 <TableCell className="max-w-0 p-3">
                   <span
                     className={cn(
@@ -238,7 +247,7 @@ function TransactionTable({
                     aria-label={`Edit ${transactionLabel}`}
                     title="Edit"
                     onClick={() => {
-                      onEdit({ type: "edit", transaction });
+                      onEdit(transaction.id);
                     }}
                   >
                     <HugeiconsIcon icon={PencilEdit02Icon} />

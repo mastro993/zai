@@ -4,16 +4,17 @@ import { describe, expect, it } from "vitest";
 import type { CommandError } from "@/commands/errors";
 
 import {
+  buildCommitTransactionImportRequest,
   buildCreateTransactionRequest,
   buildDeleteTransactionRequest,
   buildDeleteTransactionsRequest,
   buildExportTransactionsRequest,
   buildFindDuplicateKeysRequest,
   buildGetFilteredTransactionIdsRequest,
+  buildGetTransactionImportPreviewRequest,
   buildGetTransactionRequest,
   buildGetTransactionsRequest,
-  buildImportTransactionBatchRequest,
-  buildImportTransactionsRequest,
+  buildPreviewTransactionImportRequest,
   buildUpdateTransactionRequest,
 } from "../web-requests";
 
@@ -25,6 +26,7 @@ const unwrap = <T>(result: Result.Result<T, CommandError>): T | undefined => {
 const transaction = {
   description: "Coffee",
   amount: 350,
+  currency: "EUR",
   transactionDate: "2026-07-09T12:30:00",
   transactionType: "expense",
 };
@@ -106,7 +108,12 @@ describe("transaction web requests", () => {
       },
     });
     const candidates = [
-      { transactionDate: "2026-01-15T08:30:00", amount: 1250, description: "Groceries" },
+      {
+        transactionDate: "2026-01-15T08:30:00",
+        amount: 1250,
+        currency: "EUR",
+        description: "Groceries",
+      },
     ];
     expect(unwrap(buildFindDuplicateKeysRequest({ request: { candidates } }))).toEqual({
       method: "POST",
@@ -129,7 +136,7 @@ describe("transaction web requests", () => {
     });
   });
 
-  it("maps detail, mutation, deletion, and imports", () => {
+  it("maps detail, mutation, deletion, and bound import", () => {
     expect(unwrap(buildGetTransactionRequest({ transactionId: "txn-1" }))).toEqual({
       method: "GET",
       path: "/transactions/txn-1",
@@ -157,23 +164,34 @@ describe("transaction web requests", () => {
       path: "/transactions/bulk-delete",
       body: { transactionIds: ["txn-1", "txn-2"] },
     });
-    const transactions = [{ ...transaction, id: "txn-1" }];
-    expect(unwrap(buildImportTransactionsRequest({ transactions }))).toEqual({
+    const previewRequest = {
+      fileDigest: "abc",
+      hasCurrencyColumn: true,
+      rows: [{ rowNumber: 2, date: "2026-01-15T00:00:00", amountMinor: 1250, currency: "EUR" }],
+    };
+    expect(unwrap(buildPreviewTransactionImportRequest({ request: previewRequest }))).toEqual({
       method: "POST",
-      path: "/transactions/import",
-      body: { transactions },
+      path: "/transactions/import/preview",
+      body: previewRequest,
     });
-    const categories = [{ name: "Food", color: "#C55B26" }];
-    expect(unwrap(buildImportTransactionBatchRequest({ categories, transactions }))).toEqual({
+    expect(unwrap(buildGetTransactionImportPreviewRequest({ token: "preview-1" }))).toEqual({
+      method: "GET",
+      path: "/transactions/import/previews/preview-1",
+    });
+    expect(
+      unwrap(
+        buildCommitTransactionImportRequest({ request: { token: "preview-1", fileDigest: "abc" } }),
+      ),
+    ).toEqual({
       method: "POST",
-      path: "/transactions/import-batch",
-      body: { categories, transactions },
+      path: "/transactions/import/commit",
+      body: { token: "preview-1", fileDigest: "abc" },
     });
   });
 
   it("rejects malformed runtime values locally", () => {
     expect(Result.isFailure(buildGetTransactionRequest({ transactionId: "" }))).toBe(true);
     expect(Result.isFailure(buildGetTransactionsRequest({ page: 0 }))).toBe(true);
-    expect(Result.isFailure(buildDeleteTransactionsRequest({ transactionIds: [] }))).toBe(true);
+    expect(Result.isFailure(buildGetTransactionImportPreviewRequest({ token: "" }))).toBe(true);
   });
 });

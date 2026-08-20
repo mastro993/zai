@@ -1,7 +1,7 @@
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { Button } from "@/components/ui/button";
 
-import type { Transaction } from "../types/model";
+import type { TransactionListItem } from "../types/model";
 
 function TransactionDeleteConfirmationDialog({
   transaction,
@@ -11,7 +11,7 @@ function TransactionDeleteConfirmationDialog({
   onOpenChangeComplete,
   onDelete,
 }: {
-  transaction: Transaction | null;
+  transaction: TransactionListItem | null;
   open: boolean;
   isDeleting: boolean;
   onOpenChange: (open: boolean) => void;

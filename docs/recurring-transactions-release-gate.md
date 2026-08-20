@@ -55,7 +55,6 @@ It is not part of pull-request or functional CI checks.
 
 ```bash
 pnpm check
-pnpm test:e2e:web
 pnpm benchmark:recurring
 cargo test -p zai --lib native_recurring_workflow_smoke_boots_processes_and_resolves_links
 pnpm --filter frontend exec vitest run src/features/recurring-transactions/commands/__tests__/native-adapter.test.ts

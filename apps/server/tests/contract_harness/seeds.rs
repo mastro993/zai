@@ -21,6 +21,7 @@ pub fn transaction_payload(description: &str, amount: i32) -> Value {
     json!({
         "description": description,
         "amount": amount,
+        "currency": "EUR",
         "transactionDate": "2026-01-15T12:00:00",
         "transactionType": "expense",
         "transactionCategoryId": null,

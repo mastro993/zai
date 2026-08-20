@@ -121,6 +121,7 @@ async fn repair_marks_failure_and_keeps_template_change_after_retry_wake() {
             template: RecurringTemplateInput {
                 description: before.template.description.clone(),
                 amount: 2500,
+                currency: before.template.currency.clone(),
                 transaction_type: before.template.transaction_type.clone(),
                 transaction_category_id: before.template.transaction_category_id.clone(),
                 notes: before.template.notes.clone(),
@@ -175,6 +176,7 @@ async fn repair_remains_durable_when_retry_fails_after_commit() {
             template: RecurringTemplateInput {
                 description: before.template.description.clone(),
                 amount: 2500,
+                currency: before.template.currency.clone(),
                 transaction_type: before.template.transaction_type.clone(),
                 transaction_category_id: before.template.transaction_category_id.clone(),
                 notes: before.template.notes.clone(),
@@ -261,6 +263,7 @@ async fn category_repair_rejects_missing_category() {
             template: RecurringTemplateInput {
                 description: before.template.description.clone(),
                 amount: before.template.amount,
+                currency: before.template.currency.clone(),
                 transaction_type: before.template.transaction_type.clone(),
                 transaction_category_id: Some("missing-category".into()),
                 notes: before.template.notes.clone(),

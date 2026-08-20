@@ -83,6 +83,7 @@ describe("bulk transaction commands stay constant-cost", () => {
       Array.from({ length: 250 }, (_, index) => ({
         transactionDate: "2026-01-15T12:00:00",
         amount: 1000 + index,
+        currency: "EUR",
         description: `row-${index}`,
       })),
     );

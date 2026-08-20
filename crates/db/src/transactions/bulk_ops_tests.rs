@@ -51,10 +51,12 @@ async fn get_filtered_transaction_ids_respects_filters_and_sort() {
             id: Some(Uuid::new_v4().to_string()),
             description: Some("Coffee".to_string()),
             amount: 350,
+            currency: "EUR".to_string(),
             transaction_date: parse_datetime("2026-01-15T08:30:00"),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("early transaction");
@@ -63,10 +65,12 @@ async fn get_filtered_transaction_ids_respects_filters_and_sort() {
             id: Some(Uuid::new_v4().to_string()),
             description: Some("Salary".to_string()),
             amount: 250_000,
+            currency: "EUR".to_string(),
             transaction_date: parse_datetime("2026-01-01T00:00:00"),
             transaction_type: "income".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("late transaction");
@@ -124,10 +128,12 @@ async fn export_transactions_csv_matches_frontend_fixture() {
             id: Some("tx-1".to_string()),
             description: Some("Coffee, \"special\"".to_string()),
             amount: 350,
+            currency: "EUR".to_string(),
             transaction_date: parse_datetime("2026-01-15T08:30:00"),
             transaction_type: "expense".to_string(),
             transaction_category_id: Some(child.id),
             notes: Some("Morning\nrun".to_string()),
+            manual_exchange_rate: None,
         })
         .await
         .expect("coffee transaction");
@@ -136,10 +142,12 @@ async fn export_transactions_csv_matches_frontend_fixture() {
             id: Some("tx-2".to_string()),
             description: Some("Salary".to_string()),
             amount: 250_000,
+            currency: "EUR".to_string(),
             transaction_date: parse_datetime("2026-01-01T00:00:00"),
             transaction_type: "income".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("salary transaction");
@@ -149,12 +157,13 @@ async fn export_transactions_csv_matches_frontend_fixture() {
     assert_eq!(
         csv,
         [
-            "date,amount,type,description,notes,parent_category,category",
-            "2026-01-15T08:30:00,3.50,expense,\"Coffee, \"\"special\"\"\",\"Morning\nrun\",Food,Groceries",
-            "2026-01-01T00:00:00,2500.00,income,Salary,,,",
+            "zai_export_version,date,amount_minor,amount,currency,type,description,notes,parent_category,category,rate_variant,rate_state,rate_date,source_observation_date,source_currency,reference_currency,coefficient,scale,original_decimal,formula_version,origin",
+            "1,2026-01-15T08:30:00,350,3.50,EUR,expense,\"Coffee, \"\"special\"\"\",\"Morning\nrun\",Food,Groceries,identity,complete,2026-01-15,,EUR,EUR,1,0,1,1,supplied",
+            "1,2026-01-01T00:00:00,250000,2500.00,EUR,income,Salary,,,,identity,complete,2026-01-01,,EUR,EUR,1,0,1,1,supplied",
         ]
         .join("\n")
     );
+    assert!(!csv.contains("converted"));
 }
 
 #[tokio::test]
@@ -168,10 +177,12 @@ async fn export_transactions_csv_by_ids_ignores_filters() {
             id: Some("coffee".to_string()),
             description: Some("Coffee".to_string()),
             amount: 350,
+            currency: "EUR".to_string(),
             transaction_date: parse_datetime("2026-01-15T08:30:00"),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("coffee");
@@ -180,10 +191,12 @@ async fn export_transactions_csv_by_ids_ignores_filters() {
             id: Some("salary".to_string()),
             description: Some("Salary".to_string()),
             amount: 250_000,
+            currency: "EUR".to_string(),
             transaction_date: parse_datetime("2026-01-01T00:00:00"),
             transaction_type: "income".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("salary");
@@ -214,10 +227,12 @@ async fn find_existing_duplicate_keys_returns_only_existing_matches() {
             id: Some(Uuid::new_v4().to_string()),
             description: Some("groceries".to_string()),
             amount: 1250,
+            currency: "EUR".to_string(),
             transaction_date: parse_datetime("2026-01-15T23:59:59"),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("existing transaction");
@@ -228,11 +243,13 @@ async fn find_existing_duplicate_keys_returns_only_existing_matches() {
             DuplicateKeyCandidate {
                 transaction_date: parse_datetime("2026-01-15T08:30:00"),
                 amount: 1250,
+                currency: "EUR".to_string(),
                 description: Some(" Groceries ".to_string()),
             },
             DuplicateKeyCandidate {
                 transaction_date: parse_datetime("2026-01-16T08:30:00"),
                 amount: 900,
+                currency: "EUR".to_string(),
                 description: Some("Coffee".to_string()),
             },
         ],
@@ -240,7 +257,10 @@ async fn find_existing_duplicate_keys_returns_only_existing_matches() {
     .expect("duplicate keys");
 
     assert_eq!(keys.len(), 1);
-    assert_eq!(keys[0], "2026-01-15\u{0000}1250\u{0000}groceries");
+    assert_eq!(
+        keys[0],
+        "2026-01-15\u{0000}1250\u{0000}EUR\u{0000}groceries"
+    );
 }
 
 #[test]

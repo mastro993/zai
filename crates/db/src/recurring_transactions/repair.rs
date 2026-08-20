@@ -127,7 +127,7 @@ fn update_segment_field(
                 recurring_template_revisions::table
                     .filter(recurring_template_revisions::id.eq(segment_id)),
             )
-            .set(recurring_template_revisions::amount.eq(template.amount))
+            .set(recurring_template_revisions::amount.eq(i64::from(template.amount)))
             .execute(conn)
             .into_storage()?;
         }
@@ -145,7 +145,7 @@ fn apply_field_to_row(
             row.transaction_category_id = template.transaction_category_id.clone();
         }
         RecurringRepairField::Amount => {
-            row.amount = template.amount;
+            row.amount = i64::from(template.amount);
         }
     }
 }

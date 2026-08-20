@@ -1,14 +1,19 @@
 use crate::budgets::models::{BudgetConfigurationRow, BudgetRow};
 use crate::errors::{IntoStorage, StorageError};
-use crate::schema::{self, transaction_categories};
+use crate::schema::transaction_categories;
+use crate::valuations::{SpendingAggregate, current_allowance_currency, sum_period_spending};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use zai_core::Error;
 use zai_core::features::budgets::models::{
     BudgetCadence, BudgetMeasurementMode, BudgetPeriod, BudgetRolloverMode, CategoryHierarchy,
-    calculate_period_with_rollover, current_period, expand_category_scope,
+    current_period, expand_category_scope,
 };
+use zai_core::features::valuations::{
+    PeriodCalculation, PeriodCompleteness, calculate_period_with_completeness,
+};
+use zai_core::money::{ConversionRate, CurrencyCode, Money};
 
 pub(super) const MAX_PERIOD_ADVANCE: i64 = 2_000;
 
@@ -28,24 +33,50 @@ pub(super) fn calculate_configuration(
         .rollover_mode
         .parse::<BudgetRolloverMode>()
         .map_err(|_| invalid_budget("Invalid budget rollover mode"))?;
-    let spending = calculate_spending(
+    let spending = calculate_spending_aggregate(
         conn,
         configuration.period_start,
         configuration.period_end,
         measurement_mode,
         &scope_ids,
     )?;
+    let currency = current_allowance_currency(conn).map_err(StorageError::from)?;
+    let converted_allowance = restate_configuration_allowance(conn, configuration, &currency)?;
 
-    calculate_period_with_rollover(
-        configuration.period_start,
-        configuration.period_end,
-        configuration.base_allowance,
-        spending,
+    let mut period = calculate_period_with_completeness(PeriodCalculation {
+        start: configuration.period_start,
+        end: configuration.period_end,
+        authored_allowance: configuration.base_allowance,
+        converted_allowance,
+        net_budget_spending: spending.known_sum,
         rollover_mode,
         previous_period,
-        configuration.warning_percentage,
-    )
-    .map_err(StorageError::CoreError)
+        warning_percentage: configuration.warning_percentage,
+        completeness: PeriodCompleteness {
+            spending_complete: spending.complete,
+            allowance_complete: converted_allowance.is_some(),
+        },
+    })
+    .map_err(StorageError::CoreError)?;
+    period.currency = currency;
+    Ok(period)
+}
+
+pub(crate) fn displayed_allowance(
+    conn: &mut SqliteConnection,
+    configuration: &BudgetConfigurationRow,
+    complete: bool,
+    target_currency: &str,
+) -> crate::errors::Result<i64> {
+    let restated = restate_configuration_allowance(conn, configuration, target_currency)?;
+    match (complete, restated) {
+        (true, Some(value)) => Ok(value),
+        (true, None) => Err(invalid_budget(
+            "Complete period missing converted allowance",
+        )),
+        (false, Some(value)) => Ok(value),
+        (false, None) => Ok(configuration.base_allowance),
+    }
 }
 
 pub(crate) fn calculate_spending(
@@ -55,43 +86,68 @@ pub(crate) fn calculate_spending(
     measurement_mode: BudgetMeasurementMode,
     scope_ids: &[String],
 ) -> crate::errors::Result<i64> {
-    let mut query = schema::transactions::table
-        .left_join(schema::transaction_categories::table)
-        .filter(schema::transactions::deleted_at.is_null())
-        .filter(schema::transactions::transaction_date.ge(start))
-        .filter(schema::transactions::transaction_date.lt(end))
-        .select((
-            schema::transactions::amount,
-            schema::transactions::transaction_type,
-            schema::transaction_categories::role.nullable(),
-        ))
-        .into_boxed();
+    Ok(sum_period_spending(conn, start, end, measurement_mode, scope_ids)?.known_sum)
+}
 
-    if !scope_ids.is_empty() {
-        query = query.filter(schema::transactions::transaction_category_id.eq_any(scope_ids));
+pub(crate) fn calculate_spending_aggregate(
+    conn: &mut SqliteConnection,
+    start: NaiveDateTime,
+    end: NaiveDateTime,
+    measurement_mode: BudgetMeasurementMode,
+    scope_ids: &[String],
+) -> crate::errors::Result<SpendingAggregate> {
+    sum_period_spending(conn, start, end, measurement_mode, scope_ids)
+}
+
+fn restate_configuration_allowance(
+    conn: &mut SqliteConnection,
+    configuration: &BudgetConfigurationRow,
+    target: &str,
+) -> crate::errors::Result<Option<i64>> {
+    let authored =
+        CurrencyCode::parse(&configuration.allowance_currency).map_err(StorageError::from)?;
+    let target_code = CurrencyCode::parse(target).map_err(StorageError::from)?;
+    if authored == target_code {
+        return Ok(Some(configuration.base_allowance));
     }
+    let money = Money::new(configuration.base_allowance, authored).map_err(StorageError::from)?;
+    let rate = period_start_rate(
+        conn,
+        authored,
+        target_code,
+        configuration.period_start.date(),
+    )?;
+    let restated =
+        zai_core::features::valuations::restate_authored_allowance(money, target_code, &rate)
+            .map_err(StorageError::from)?;
+    Ok(restated.converted.map(|value| value.minor_units()))
+}
 
-    query
-        .load::<(i32, String, Option<String>)>(conn)
-        .into_storage()?
-        .into_iter()
-        .try_fold(0_i64, |total, (amount, kind, role)| {
-            let contribution = match (kind.as_str(), measurement_mode) {
-                ("expense", _) => i64::from(amount),
-                ("income", BudgetMeasurementMode::NetCashFlow) => -i64::from(amount),
-                ("income", BudgetMeasurementMode::Spending)
-                    if role.as_deref() == Some("spending") =>
-                {
-                    -i64::from(amount)
-                }
-                _ => 0,
-            };
-            total.checked_add(contribution).ok_or_else(|| {
-                StorageError::CoreError(Error::CalculationOverflow(
-                    "Budget calculation overflow".to_string(),
-                ))
-            })
-        })
+fn period_start_rate(
+    conn: &mut SqliteConnection,
+    source: CurrencyCode,
+    target: CurrencyCode,
+    value_date: chrono::NaiveDate,
+) -> crate::errors::Result<ConversionRate> {
+    if source == target {
+        return Ok(ConversionRate::Identity);
+    }
+    let Some(accepted) =
+        crate::exchange_rates::current_accepted_set(conn).map_err(StorageError::from)?
+    else {
+        return Ok(ConversionRate::Pending {
+            rate_date: value_date,
+        });
+    };
+    match zai_core::features::exchange_rates::legs_for_pair(&accepted, source, target, value_date) {
+        Ok((source_leg, target_leg)) => {
+            zai_core::features::exchange_rates::automatic_pair(&accepted.id, source_leg, target_leg)
+                .map_err(StorageError::from)
+        }
+        Err(_) => Ok(ConversionRate::Pending {
+            rate_date: value_date,
+        }),
+    }
 }
 
 pub(super) fn count_missing_periods(

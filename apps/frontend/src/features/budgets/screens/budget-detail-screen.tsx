@@ -14,7 +14,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScreenBase } from "@/components/screen-base";
-import { formatCurrencyFromMinor } from "@/lib/currency";
 
 import {
   deleteBudget,
@@ -28,9 +27,9 @@ import { BudgetFormDrawer } from "../components/budget-form-drawer";
 import {
   budgetCadenceLabel,
   budgetMeasurementLabel,
+  budgetPeriodStatusPresentation,
   budgetRolloverLabel,
-  budgetStatusLabel,
-  budgetStatusVariant,
+  formatBudgetMinor,
   formatBudgetPeriod,
 } from "../lib/budget";
 import type { Budget, BudgetFormValues, BudgetHistory } from "../types/budget";
@@ -195,20 +194,20 @@ export function BudgetDetailScreen({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Metric
           label="Effective allowance"
-          value={formatCurrencyFromMinor(period.effectiveAllowance, "EUR")}
+          value={formatBudgetMinor(period.effectiveAllowance, period.currency)}
         />
         <Metric
           label="Net budget spending"
-          value={formatCurrencyFromMinor(period.netBudgetSpending, "EUR")}
+          value={formatBudgetMinor(period.netBudgetSpending, period.currency)}
         />
         <Metric
           label="Remaining allowance"
-          value={formatCurrencyFromMinor(period.remainingAllowance, "EUR")}
+          value={formatBudgetMinor(period.remainingAllowance, period.currency)}
         />
         <div className="flex flex-col gap-2 border p-3">
           <span className="text-xs text-muted-foreground">Status</span>
-          <Badge className="w-fit" variant={budgetStatusVariant(period.status)}>
-            {budgetStatusLabel[period.status]}
+          <Badge className="w-fit" variant={budgetPeriodStatusPresentation(period).variant}>
+            {budgetPeriodStatusPresentation(period).label}
           </Badge>
         </div>
       </div>
@@ -255,17 +254,17 @@ export function BudgetDetailScreen({
               <TableRow key={historyPeriod.start}>
                 <TableCell>{formatBudgetPeriod(historyPeriod.start, historyPeriod.end)}</TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatCurrencyFromMinor(historyPeriod.effectiveAllowance, "EUR")}
+                  {formatBudgetMinor(historyPeriod.effectiveAllowance, historyPeriod.currency)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatCurrencyFromMinor(historyPeriod.netBudgetSpending, "EUR")}
+                  {formatBudgetMinor(historyPeriod.netBudgetSpending, historyPeriod.currency)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatCurrencyFromMinor(historyPeriod.remainingAllowance, "EUR")}
+                  {formatBudgetMinor(historyPeriod.remainingAllowance, historyPeriod.currency)}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={budgetStatusVariant(historyPeriod.status)}>
-                    {budgetStatusLabel[historyPeriod.status]}
+                  <Badge variant={budgetPeriodStatusPresentation(historyPeriod).variant}>
+                    {budgetPeriodStatusPresentation(historyPeriod).label}
                   </Badge>
                 </TableCell>
               </TableRow>

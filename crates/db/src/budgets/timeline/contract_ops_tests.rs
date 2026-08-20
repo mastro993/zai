@@ -1,4 +1,4 @@
-use super::contract_support::{date, insert_budget_row, setup_conn};
+use super::contract_support::{date, insert_budget_row, insert_valued_transaction, setup_conn};
 use super::{BudgetPeriodTimeline, SourceChange, TimelineInspectEntry, TimelineSelection};
 use crate::schema::budget_configurations;
 use crate::test_utils::TempDb;
@@ -107,7 +107,10 @@ fn config_replacement_recalculates_current_period() {
     .expect("reconcile");
     assert_eq!(changes.len(), 1);
     assert_eq!(changes[0].resulting_current.base_allowance, 5_000);
-    assert_eq!(changes[0].resulting_current.effective_allowance, 5_000);
+    assert_eq!(
+        changes[0].resulting_current.effective_allowance,
+        Some(5_000)
+    );
 }
 
 #[test]
@@ -126,11 +129,13 @@ fn rollover_mode_carries_remaining_allowance_across_periods() {
     )
     .expect("insert");
 
-    diesel::insert_into(crate::schema::transactions::table)
-        .values(&TransactionRow {
+    insert_valued_transaction(
+        &mut conn,
+        &TransactionRow {
             id: Uuid::new_v4().to_string(),
             description: None,
             amount: 2_000,
+            currency: "EUR".to_string(),
             transaction_date: january,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
@@ -138,15 +143,18 @@ fn rollover_mode_carries_remaining_allowance_across_periods() {
             created_at: january,
             updated_at: january,
             deleted_at: None,
-        })
-        .execute(&mut conn)
-        .expect("transaction");
+        },
+    )
+    .expect("transaction");
 
     let (_, changes) =
         BudgetPeriodTimeline::ensure_current(&mut conn, &["rollover".to_string()], february)
             .expect("advance");
     assert_eq!(changes.len(), 1);
-    assert_eq!(changes[0].resulting_current.effective_allowance, 18_000);
+    assert_eq!(
+        changes[0].resulting_current.effective_allowance,
+        Some(18_000)
+    );
 }
 
 #[test]
@@ -170,6 +178,7 @@ fn transaction_correction_repairs_suffix() {
         id: "tx-1".to_string(),
         description: None,
         amount: 500,
+        currency: "EUR".to_string(),
         transaction_date: january,
         transaction_type: "expense".to_string(),
         transaction_category_id: None,
@@ -178,10 +187,7 @@ fn transaction_correction_repairs_suffix() {
         updated_at: january,
         deleted_at: None,
     };
-    diesel::insert_into(crate::schema::transactions::table)
-        .values(&tx)
-        .execute(&mut conn)
-        .expect("insert tx");
+    insert_valued_transaction(&mut conn, &tx).expect("insert tx");
     BudgetPeriodTimeline::ensure_current(&mut conn, &["suffix".to_string()], march)
         .expect("catch up");
 
@@ -197,6 +203,7 @@ fn transaction_correction_repairs_suffix() {
         ))
         .execute(&mut conn)
         .expect("move transaction in db");
+    crate::valuations::upsert_transaction_valuation(&mut conn, &moved).expect("refresh valuation");
     BudgetPeriodTimeline::reconcile(
         &mut conn,
         SourceChange::Transactions {

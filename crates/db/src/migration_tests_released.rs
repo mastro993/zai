@@ -36,7 +36,7 @@ fn released_schema_fixtures_upgrade_to_head() {
             diesel::sql_query("SELECT COUNT(*) AS count FROM __diesel_schema_migrations")
                 .get_result::<CountRow>(&mut connection)
                 .expect("migration history");
-        assert_eq!(migration_count.count, 10, "{}", fixture.name);
+        assert_eq!(migration_count.count, 15, "{}", fixture.name);
 
         assert_eq!(
             fixture_data_snapshot(&mut connection, fixture.name),
@@ -51,6 +51,40 @@ fn released_schema_fixtures_upgrade_to_head() {
         .get_result::<CountRow>(&mut connection)
         .expect("domain alerts table");
         assert_eq!(domain_alert_table_count.count, 1, "{}", fixture.name);
+
+        assert_eq!(
+            diesel::sql_query("SELECT COUNT(*) AS count FROM transactions WHERE currency != 'EUR'")
+                .get_result::<CountRow>(&mut connection)
+                .expect("non-EUR transactions")
+                .count,
+            0,
+            "{} silent EUR transactions",
+            fixture.name
+        );
+        if table_exists(&mut connection, "recurring_template_revisions") {
+            assert_eq!(
+                diesel::sql_query(
+                    "SELECT COUNT(*) AS count FROM recurring_template_revisions WHERE currency != 'EUR'"
+                )
+                .get_result::<CountRow>(&mut connection)
+                .expect("non-EUR templates")
+                .count,
+                0,
+                "{} silent EUR templates",
+                fixture.name
+            );
+        }
+        assert_eq!(
+            diesel::sql_query(
+                "SELECT COUNT(*) AS count FROM application_format WHERE format = 'multi-currency-v1'"
+            )
+            .get_result::<CountRow>(&mut connection)
+            .expect("application format")
+            .count,
+            1,
+            "{} application format",
+            fixture.name
+        );
 
         if fixture.name == "v0007_budget_lifecycle" {
             let paused_column_count = diesel::sql_query(
@@ -175,7 +209,10 @@ fn fixture_data_snapshot(
     if table_exists(connection, "budgets") {
         let budget_query = if matches!(
             fixture_name,
-            "v0007_budget_lifecycle" | "v0008_domain_alerts" | "v0009_recurring_transactions"
+            "v0007_budget_lifecycle"
+                | "v0008_domain_alerts"
+                | "v0009_recurring_transactions"
+                | "v0010_multi_currency"
         ) {
             "SELECT quote(id) || '|' || quote(name) || '|' || quote(cadence) || '|' ||
              quote(measurement_mode) || '|' || quote(base_allowance) || '|' ||
@@ -224,7 +261,10 @@ fn fixture_data_snapshot(
     }
 
     if table_exists(connection, "domain_alerts") {
-        let domain_alert_query = if fixture_name == "v0009_recurring_transactions" {
+        let domain_alert_query = if matches!(
+            fixture_name,
+            "v0009_recurring_transactions" | "v0010_multi_currency"
+        ) {
             "SELECT quote(id) || '|' || quote(producer_key) || '|' || quote(occurrence_key) ||
              '|' || quote(severity) || '|' || quote(title) || '|' || quote(body) || '|' ||
              quote(destination) || '|' || quote(data) || '|' || quote(created_at) || '|' ||

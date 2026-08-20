@@ -236,6 +236,8 @@ fn seed_initial_configuration(
         measurement_mode: budget_row.measurement_mode,
         rollover_mode: budget_row.rollover_mode,
         warning_percentage: budget_row.warning_percentage,
+        allowance_currency: crate::valuations::current_allowance_currency(conn)
+            .map_err(StorageError::from)?,
     };
     diesel::insert_into(budget_configurations::table)
         .values(&configuration)
@@ -277,9 +279,7 @@ fn load_latest_persisted_period(
     else {
         return Ok(None);
     };
-    super::persistence::period_from_rows(configuration, result)
-        .map(Some)
-        .map_err(StorageError::CoreError)
+    super::persistence::period_from_rows(conn, configuration, result).map(Some)
 }
 
 fn repair_from_frontier(
@@ -343,7 +343,8 @@ fn repair_from_frontier(
         validate_period_boundaries(&configuration, cadence)?;
         let period =
             calculate_configuration(conn, &configuration, &categories, previous_period.as_ref())?;
-        let result = result_row(id, &period);
+        let generation = crate::valuations::active_generation(conn).map_err(StorageError::from)?;
+        let result = result_row(id, &period, &generation.id);
         upsert_period_result(conn, &result)?;
         previous_period = Some(period);
 
@@ -368,6 +369,7 @@ fn repair_from_frontier(
                 measurement_mode: configuration.measurement_mode.clone(),
                 rollover_mode: configuration.rollover_mode.clone(),
                 warning_percentage: configuration.warning_percentage,
+                allowance_currency: configuration.allowance_currency.clone(),
             };
             diesel::insert_into(budget_configurations::table)
                 .values(&next)

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use diesel::prelude::*;
 use zai_core::Result;
 use zai_core::features::transactions::models::{
-    DuplicateKeyCandidate, Transaction, TransactionSearchFilters,
+    DuplicateKeyCandidate, Transaction, TransactionListItem, TransactionSearchFilters,
 };
 use zai_core::query::{PaginatedData, Sort};
 
@@ -12,6 +12,7 @@ use super::models::TransactionRow;
 use super::query::{
     apply_transaction_filters, apply_transaction_sort, count_transactions, transactions_base_query,
 };
+use super::rate_revisions::{transaction_detail, transaction_list_items};
 use super::repository::TransactionsRepository;
 use crate::blocking::run_blocking;
 use crate::connection::get_connection;
@@ -25,7 +26,7 @@ pub(super) async fn get_transactions(
     per_page: i64,
     filters: Option<TransactionSearchFilters<'_>>,
     sort: Option<Sort>,
-) -> Result<PaginatedData<Transaction>> {
+) -> Result<PaginatedData<TransactionListItem>> {
     let pool = Arc::clone(&repository.pool);
     let owned_query = filters.as_ref().and_then(|f| f.query.map(str::to_owned));
     let owned_categories = filters
@@ -74,7 +75,7 @@ pub(super) async fn get_transactions(
             .load_page::<TransactionRow>(conn)
             .into_core()?;
 
-        let data = page_rows.into_iter().map(Transaction::from).collect();
+        let data = transaction_list_items(conn, page_rows)?;
 
         Ok(PaginatedData {
             data,
@@ -101,7 +102,7 @@ pub(super) async fn get_transaction(
             .first::<TransactionRow>(&mut conn)
             .into_core()?;
 
-        Ok(result.into())
+        transaction_detail(&mut conn, result)
     })
     .await
 }

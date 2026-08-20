@@ -119,9 +119,47 @@ describe("budgetSchema", () => {
         netBudgetSpending: 1000,
         remainingAllowance: 9000,
         status: "onTrack",
+        complete: true,
+        currency: "EUR",
       },
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("accepts incomplete current period with null claimed fields", () => {
+    const result = budgetSchema.safeParse({
+      id: "budget-1",
+      name: "Incomplete budget",
+      revision: 1,
+      paused: false,
+      categoryIds: [],
+      cadence: "month",
+      measurementMode: "spending",
+      baseAllowance: 10000,
+      rolloverMode: "off",
+      warningPercentage: 80,
+      currentPeriod: {
+        start: "2026-07-01T00:00:00",
+        end: "2026-08-01T00:00:00",
+        baseAllowance: 10000,
+        effectiveAllowance: null,
+        netBudgetSpending: 2500,
+        remainingAllowance: null,
+        status: null,
+        complete: false,
+        currency: "USD",
+      },
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.currentPeriod.status).toBeNull();
+      expect(result.data.currentPeriod.effectiveAllowance).toBeNull();
+      expect(result.data.currentPeriod.remainingAllowance).toBeNull();
+      expect(result.data.currentPeriod.complete).toBe(false);
+      expect(result.data.currentPeriod.currency).toBe("USD");
+      expect(result.data.currentPeriod.netBudgetSpending).toBe(2500);
+    }
   });
 });

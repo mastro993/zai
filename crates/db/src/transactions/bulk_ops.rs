@@ -17,6 +17,7 @@ use crate::transaction_categories::models::TransactionCategoryRow;
 use super::import_dedup;
 use super::models::TransactionRow;
 use super::query::{apply_transaction_filters, apply_transaction_sort, transactions_base_query};
+use super::rate_revisions::load_export_rate_fields;
 
 pub(crate) fn get_filtered_transaction_ids(
     conn: &mut SqliteConnection,
@@ -58,10 +59,11 @@ pub(crate) fn export_transactions_csv(
         .into_core()?;
 
     let category_lookup = load_category_lookup(conn, &rows)?;
-    let csv_rows = rows
-        .iter()
-        .map(|row| to_csv_row(row, &category_lookup))
-        .collect::<Vec<_>>();
+    let rate_fields = load_export_rate_fields(conn, &rows)?;
+    let mut csv_rows = Vec::with_capacity(rows.len());
+    for row in &rows {
+        csv_rows.push(to_csv_row(row, &category_lookup, &rate_fields)?);
+    }
 
     Ok(format_transactions_csv(&csv_rows))
 }
@@ -95,7 +97,8 @@ pub(crate) fn find_existing_duplicate_keys(
         .map(|transaction| {
             duplicate_key(
                 transaction.transaction_date,
-                transaction.amount,
+                i32::try_from(transaction.amount).unwrap_or(i32::MAX),
+                &transaction.currency,
                 transaction.description.as_deref(),
             )
         })
@@ -107,6 +110,7 @@ pub(crate) fn find_existing_duplicate_keys(
             let key = duplicate_key(
                 candidate.transaction_date,
                 candidate.amount,
+                &candidate.currency,
                 candidate.description.as_deref(),
             );
             existing_keys.contains(&key).then_some(key)
@@ -196,13 +200,38 @@ fn category_columns(
 fn to_csv_row<'a>(
     row: &'a TransactionRow,
     categories_by_id: &HashMap<String, TransactionCategoryRow>,
-) -> CsvTransactionRow<'a> {
-    CsvTransactionRow {
+    rate_fields: &HashMap<String, super::rate_revisions::ExportRateFields>,
+) -> Result<CsvTransactionRow<'a>> {
+    let fields = rate_fields.get(&row.id);
+    let (exchange_rate, formula_version, complete) = match fields {
+        Some(fields) => (
+            fields.revision.clone(),
+            fields.formula_version,
+            fields.complete,
+        ),
+        None => (
+            zai_core::features::transactions::models::TransactionExchangeRateRevision::identity(
+                &row.currency,
+                row.transaction_date,
+            ),
+            zai_core::money::CONVERSION_FORMULA_VERSION,
+            false,
+        ),
+    };
+    Ok(CsvTransactionRow {
         transaction_date: row.transaction_date,
-        amount: row.amount,
+        amount_minor: i32::try_from(row.amount).map_err(|_| {
+            zai_core::Error::InvalidData(
+                "Transaction amount exceeds supported export range".to_string(),
+            )
+        })?,
+        currency: row.currency.as_str(),
         transaction_type: row.transaction_type.as_str(),
         description: row.description.as_deref(),
         notes: row.notes.as_deref(),
         category: category_columns(row.transaction_category_id.as_deref(), categories_by_id),
-    }
+        exchange_rate,
+        formula_version,
+        complete,
+    })
 }

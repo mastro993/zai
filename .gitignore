@@ -47,10 +47,6 @@ apps/frontend/.tanstack/
 .pnpm-store
 .cache
 
-# Playwright
-test-results/
-playwright-report/
-
 # Worktrees
 .worktrees
 

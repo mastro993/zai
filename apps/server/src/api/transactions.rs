@@ -5,15 +5,18 @@ use axum::{
     extract::rejection::JsonRejection,
     extract::{FromRequest, Path, Query, Request, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::{any, get, post},
 };
 use chrono::NaiveDateTime;
 use serde::Deserialize;
 use zai_app::ServiceContext;
-use zai_core::features::transaction_categories::models::NewTransactionCategory;
 use zai_core::features::transactions::models::{
     DuplicateKeyCandidate, NewTransaction, Transaction, TransactionCsvExportResponse,
-    TransactionSearchFilters, TransactionUpdate,
+    TransactionListItem, TransactionSearchFilters, TransactionUpdate,
+};
+use zai_core::features::transactions::{
+    BoundImportPreview, CommitTransactionImportRequest, CommitTransactionImportResponse,
+    PreviewTransactionImportRequest,
 };
 use zai_core::query::{PaginatedData, Sort};
 
@@ -128,29 +131,23 @@ struct TransactionPayload {
     id: Option<String>,
     description: Option<String>,
     amount: i32,
+    currency: String,
     transaction_date: NaiveDateTime,
     transaction_type: String,
     transaction_category_id: Option<String>,
     notes: Option<String>,
+    #[serde(default)]
+    manual_exchange_rate: Option<String>,
+    #[serde(default)]
+    confirm_manual_rate_replacement: bool,
+    #[serde(default)]
+    retry_rate_lookup: bool,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct BulkDeleteBody {
     transaction_ids: Vec<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ImportTransactionsBody {
-    transactions: Vec<NewTransaction>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ImportBatchBody {
-    categories: Vec<NewTransactionCategory>,
-    transactions: Vec<NewTransaction>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -306,8 +303,14 @@ pub fn router() -> Router<Arc<ServiceContext>> {
         .route("/export", post(export_transactions_csv))
         .route("/duplicate-keys", post(find_existing_duplicate_keys))
         .route("/bulk-delete", post(bulk_delete_transactions))
-        .route("/import", post(import_transactions))
-        .route("/import-batch", post(import_transaction_batch))
+        .route("/import/preview", post(preview_transaction_import))
+        .route(
+            "/import/previews/{token}",
+            get(get_transaction_import_preview),
+        )
+        .route("/import/commit", post(commit_transaction_import))
+        .route("/import", any(removed_public_import_route))
+        .route("/import-batch", any(removed_public_import_route))
         .route(
             "/{transaction_id}",
             get(get_transaction)
@@ -319,7 +322,7 @@ pub fn router() -> Router<Arc<ServiceContext>> {
 async fn list_transactions(
     State(context): State<Arc<ServiceContext>>,
     ValidatedListQuery(query): ValidatedListQuery,
-) -> TransactionResult<Json<PaginatedData<Transaction>>> {
+) -> TransactionResult<Json<PaginatedData<TransactionListItem>>> {
     let filters = list_query_to_filters(&query)?;
     let sort = list_query_to_sort(&query);
 
@@ -414,10 +417,12 @@ async fn create_transaction(
         id: payload.id,
         description: payload.description,
         amount: payload.amount,
+        currency: payload.currency,
         transaction_date: payload.transaction_date,
         transaction_type: payload.transaction_type,
         transaction_category_id: payload.transaction_category_id,
         notes: payload.notes,
+        manual_exchange_rate: payload.manual_exchange_rate,
     };
 
     context
@@ -438,10 +443,14 @@ async fn update_transaction(
         id: transaction_id,
         description: payload.description,
         amount: payload.amount,
+        currency: payload.currency,
         transaction_date: payload.transaction_date,
         transaction_type: payload.transaction_type,
         transaction_category_id: payload.transaction_category_id,
         notes: payload.notes,
+        manual_exchange_rate: payload.manual_exchange_rate,
+        confirm_manual_rate_replacement: payload.confirm_manual_rate_replacement,
+        retry_rate_lookup: payload.retry_rate_lookup,
     };
 
     context
@@ -467,7 +476,7 @@ async fn delete_transaction(
 async fn bulk_delete_transactions(
     State(context): State<Arc<ServiceContext>>,
     body: Result<Json<BulkDeleteBody>, JsonRejection>,
-) -> TransactionResult<Json<Vec<Transaction>>> {
+) -> TransactionResult<Json<Vec<TransactionListItem>>> {
     let Json(payload) = parse_json(body)?;
     let transaction_id_refs = payload.transaction_ids.iter().map(String::as_str).collect();
 
@@ -479,30 +488,46 @@ async fn bulk_delete_transactions(
         .map_err(|error| command_error("Failed to delete transactions", error))
 }
 
-async fn import_transactions(
-    State(context): State<Arc<ServiceContext>>,
-    body: Result<Json<ImportTransactionsBody>, JsonRejection>,
-) -> TransactionResult<Json<Vec<Transaction>>> {
-    let Json(payload) = parse_json(body)?;
-
-    context
-        .transactions_service()
-        .import_transactions(payload.transactions)
-        .await
-        .map(Json)
-        .map_err(|error| command_error("Failed to import transactions", error))
+async fn removed_public_import_route() -> StatusCode {
+    StatusCode::NOT_FOUND
 }
 
-async fn import_transaction_batch(
+async fn preview_transaction_import(
     State(context): State<Arc<ServiceContext>>,
-    body: Result<Json<ImportBatchBody>, JsonRejection>,
-) -> TransactionResult<Json<Vec<Transaction>>> {
+    body: Result<Json<PreviewTransactionImportRequest>, JsonRejection>,
+) -> TransactionResult<Json<BoundImportPreview>> {
     let Json(payload) = parse_json(body)?;
-
-    context
-        .transactions_service()
-        .import_transactions_with_categories(payload.categories, payload.transactions)
+    let preview = context
+        .transaction_import_service()
+        .preview(payload)
         .await
-        .map(|(_, transactions)| Json(transactions))
-        .map_err(|error| command_error("Failed to import transaction batch", error))
+        .map_err(|error| command_error("Failed to preview import", error))?;
+    if preview.job.status == zai_core::features::currency::CurrencyJobStatus::Running {
+        context.spawn_currency_job_drive();
+    }
+    Ok(Json(preview))
+}
+
+async fn get_transaction_import_preview(
+    State(context): State<Arc<ServiceContext>>,
+    Path(token): Path<String>,
+) -> TransactionResult<Json<BoundImportPreview>> {
+    context
+        .transaction_import_service()
+        .get_preview(&token)
+        .map(Json)
+        .map_err(|error| command_error("Failed to load import preview", error))
+}
+
+async fn commit_transaction_import(
+    State(context): State<Arc<ServiceContext>>,
+    body: Result<Json<CommitTransactionImportRequest>, JsonRejection>,
+) -> TransactionResult<Json<CommitTransactionImportResponse>> {
+    let Json(payload) = parse_json(body)?;
+    context
+        .transaction_import_service()
+        .commit(payload)
+        .await
+        .map(Json)
+        .map_err(|error| command_error("Failed to commit import", error))
 }

@@ -22,6 +22,7 @@ fn template_from(amount: i32) -> RecurringTemplateInput {
     RecurringTemplateInput {
         description: "Rent".into(),
         amount,
+        currency: "EUR".into(),
         transaction_type: "expense".into(),
         transaction_category_id: None,
         notes: Some("keep".into()),
@@ -35,6 +36,7 @@ async fn insert_transaction(
     amount: i32,
 ) {
     let row: TransactionRow = NewTransaction {
+        currency: "EUR".to_string(),
         id: Some(id.to_string()),
         description: Some("Rent".into()),
         amount,
@@ -42,6 +44,7 @@ async fn insert_transaction(
         transaction_type: "expense".into(),
         transaction_category_id: None,
         notes: Some("keep".into()),
+        manual_exchange_rate: None,
     }
     .into();
     repo.writer()

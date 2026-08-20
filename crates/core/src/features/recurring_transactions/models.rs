@@ -206,6 +206,7 @@ pub struct RecurringTemplateRevision {
     pub effective_until_local: Option<NaiveDateTime>,
     pub description: String,
     pub amount: i32,
+    pub currency: String,
     pub transaction_type: String,
     pub transaction_category_id: Option<String>,
     pub notes: Option<String>,

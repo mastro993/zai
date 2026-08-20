@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::money::CurrencyCode;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
@@ -37,6 +38,16 @@ fn validate_amount(amount: i32) -> Result<(), Error> {
     Ok(())
 }
 
+fn validate_currency(code: &str) -> Result<(), Error> {
+    match CurrencyCode::parse(code) {
+        Ok(_) => Ok(()),
+        Err(Error::InvalidData(message)) if message.starts_with("Unsupported currency code") => {
+            Err(Error::UnsupportedCurrency(code.trim().to_ascii_uppercase()))
+        }
+        Err(error) => Err(error),
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionSearchFilters<'a> {
@@ -49,16 +60,87 @@ pub struct TransactionSearchFilters<'a> {
     pub end_date: Option<NaiveDateTime>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RateVariant {
+    Identity,
+    Automatic,
+    Manual,
+    Pending,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RateOrigin {
+    Supplied,
+    Manual,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionExchangeRateRevision {
+    pub variant: RateVariant,
+    pub rate_date: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_observation_date: Option<String>,
+    pub source_currency: String,
+    pub reference_currency: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub original_decimal: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coefficient: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scale: Option<u32>,
+    pub origin: RateOrigin,
+}
+
+impl TransactionExchangeRateRevision {
+    pub fn identity(currency: &str, rate_date: NaiveDateTime) -> Self {
+        Self {
+            variant: RateVariant::Identity,
+            rate_date: rate_date.date().format("%Y-%m-%d").to_string(),
+            source_observation_date: None,
+            source_currency: currency.to_string(),
+            reference_currency: currency.to_string(),
+            original_decimal: Some("1".to_string()),
+            coefficient: Some(1),
+            scale: Some(0),
+            origin: RateOrigin::Supplied,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionListItem {
+    pub id: String,
+    pub description: Option<String>,
+    pub transaction_date: NaiveDateTime,
+    pub transaction_type: String,
+    pub transaction_category_id: Option<String>,
+    pub notes: Option<String>,
+    pub amount: i32,
+    pub currency: String,
+    pub converted_amount: Option<i32>,
+    pub converted_currency: String,
+    pub complete: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     pub id: String,
     pub description: Option<String>,
     pub amount: i32,
+    pub currency: String,
     pub transaction_date: NaiveDateTime,
     pub transaction_type: String,
     pub transaction_category_id: Option<String>,
     pub notes: Option<String>,
+    pub exchange_rate: TransactionExchangeRateRevision,
+    pub converted_amount: Option<i32>,
+    pub converted_currency: String,
+    pub complete: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,15 +150,19 @@ pub struct NewTransaction {
     pub id: Option<String>,
     pub description: Option<String>,
     pub amount: i32,
+    pub currency: String,
     pub transaction_date: NaiveDateTime,
     pub transaction_type: String,
     pub transaction_category_id: Option<String>,
     pub notes: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manual_exchange_rate: Option<String>,
 }
 
 impl NewTransaction {
     pub fn validate(&self) -> Result<(), Error> {
         validate_amount(self.amount)?;
+        validate_currency(&self.currency)?;
         validate_transaction_type(&self.transaction_type)
     }
 }
@@ -87,10 +173,17 @@ pub struct TransactionUpdate {
     pub id: String,
     pub description: Option<String>,
     pub amount: i32,
+    pub currency: String,
     pub transaction_date: NaiveDateTime,
     pub transaction_type: String,
     pub transaction_category_id: Option<String>,
     pub notes: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manual_exchange_rate: Option<String>,
+    #[serde(default)]
+    pub confirm_manual_rate_replacement: bool,
+    #[serde(default)]
+    pub retry_rate_lookup: bool,
 }
 
 impl TransactionUpdate {
@@ -101,6 +194,7 @@ impl TransactionUpdate {
             ));
         }
         validate_amount(self.amount)?;
+        validate_currency(&self.currency)?;
         validate_transaction_type(&self.transaction_type)
     }
 }
@@ -108,7 +202,7 @@ impl TransactionUpdate {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionsSearchResponse {
-    pub data: Vec<Transaction>,
+    pub data: Vec<TransactionListItem>,
     pub total_row_count: i64,
 }
 
@@ -117,6 +211,7 @@ pub struct TransactionsSearchResponse {
 pub struct DuplicateKeyCandidate {
     pub transaction_date: NaiveDateTime,
     pub amount: i32,
+    pub currency: String,
     pub description: Option<String>,
 }
 
@@ -135,40 +230,50 @@ mod tests {
             .expect("sample date")
     }
 
+    fn new_txn(transaction_type: &str, amount: i32) -> NewTransaction {
+        NewTransaction {
+            id: None,
+            description: Some("Lunch".to_string()),
+            amount,
+            currency: "EUR".to_string(),
+            transaction_date: sample_date(),
+            transaction_type: transaction_type.to_string(),
+            transaction_category_id: None,
+            notes: None,
+            manual_exchange_rate: None,
+        }
+    }
+
+    fn update_txn(transaction_type: &str, amount: i32) -> TransactionUpdate {
+        TransactionUpdate {
+            id: "txn-1".to_string(),
+            description: Some("Salary".to_string()),
+            amount,
+            currency: "EUR".to_string(),
+            transaction_date: sample_date(),
+            transaction_type: transaction_type.to_string(),
+            transaction_category_id: None,
+            notes: None,
+            manual_exchange_rate: None,
+            confirm_manual_rate_replacement: false,
+            retry_rate_lookup: false,
+        }
+    }
+
     #[test]
     fn new_transaction_validation_accepts_allowed_types() {
         for transaction_type in ["expense", "income"] {
-            let transaction = NewTransaction {
-                id: None,
-                description: Some("Lunch".to_string()),
-                amount: 1200,
-                transaction_date: sample_date(),
-                transaction_type: transaction_type.to_string(),
-                transaction_category_id: None,
-                notes: None,
-            };
-
-            transaction.validate().expect("validate");
+            new_txn(transaction_type, 1200)
+                .validate()
+                .expect("validate");
         }
     }
 
     #[test]
     fn new_transaction_validation_rejects_invalid_types() {
         for transaction_type in ["", "transfer", "EXPENSE", " expense "] {
-            let transaction = NewTransaction {
-                id: None,
-                description: Some("Lunch".to_string()),
-                amount: 1200,
-                transaction_date: sample_date(),
-                transaction_type: transaction_type.to_string(),
-                transaction_category_id: None,
-                notes: None,
-            };
-
-            let result = transaction.validate();
-
             assert!(
-                result.is_err(),
+                new_txn(transaction_type, 1200).validate().is_err(),
                 "transaction type {transaction_type:?} must be rejected"
             );
         }
@@ -177,37 +282,17 @@ mod tests {
     #[test]
     fn transaction_update_validation_accepts_allowed_types() {
         for transaction_type in ["expense", "income"] {
-            let transaction = TransactionUpdate {
-                id: "txn-1".to_string(),
-                description: Some("Salary".to_string()),
-                amount: 5000,
-                transaction_date: sample_date(),
-                transaction_type: transaction_type.to_string(),
-                transaction_category_id: None,
-                notes: None,
-            };
-
-            transaction.validate().expect("validate");
+            update_txn(transaction_type, 5000)
+                .validate()
+                .expect("validate");
         }
     }
 
     #[test]
     fn transaction_update_validation_rejects_invalid_types() {
         for transaction_type in ["", "transfer", "EXPENSE", " expense "] {
-            let transaction = TransactionUpdate {
-                id: "txn-1".to_string(),
-                description: Some("Salary".to_string()),
-                amount: 5000,
-                transaction_date: sample_date(),
-                transaction_type: transaction_type.to_string(),
-                transaction_category_id: None,
-                notes: None,
-            };
-
-            let result = transaction.validate();
-
             assert!(
-                result.is_err(),
+                update_txn(transaction_type, 5000).validate().is_err(),
                 "transaction type {transaction_type:?} must be rejected"
             );
         }
@@ -215,32 +300,20 @@ mod tests {
 
     #[test]
     fn new_transaction_validation_rejects_negative_amounts() {
-        let transaction = NewTransaction {
-            id: None,
-            description: None,
-            amount: -1,
-            transaction_date: sample_date(),
-            transaction_type: "expense".to_string(),
-            transaction_category_id: None,
-            notes: None,
-        };
-
-        assert!(transaction.validate().is_err());
+        assert!(new_txn("expense", -1).validate().is_err());
     }
 
     #[test]
     fn transaction_update_validation_rejects_negative_amounts() {
-        let transaction = TransactionUpdate {
-            id: "txn-1".to_string(),
-            description: None,
-            amount: -1,
-            transaction_date: sample_date(),
-            transaction_type: "expense".to_string(),
-            transaction_category_id: None,
-            notes: None,
-        };
+        assert!(update_txn("expense", -1).validate().is_err());
+    }
 
-        assert!(transaction.validate().is_err());
+    #[test]
+    fn new_transaction_validation_rejects_unsupported_currency() {
+        let mut transaction = new_txn("expense", 100);
+        transaction.currency = "ZZZ".to_string();
+        let error = transaction.validate().expect_err("unsupported");
+        assert!(matches!(error, Error::UnsupportedCurrency(code) if code == "ZZZ"));
     }
 
     #[test]

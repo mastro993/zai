@@ -23,7 +23,7 @@
 ## Checklist
 
 - [ ] `pnpm check` passes locally
-- [ ] Relevant tests pass (including `pnpm test:e2e:web` when transport or web behavior changes)
+- [ ] Relevant unit, integration, contract, and native smoke tests pass
 - [ ] Privacy reviewed — no real financial data, credentials, secrets, or unredacted logs in code, fixtures, or attachments
 - [ ] Documentation updated when behavior, setup, or commands change
 - [ ] Database migrations documented when schema changes affect existing local data

@@ -1,6 +1,7 @@
 import { DownloadIcon, TransactionHistoryIcon, UploadIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { toast } from "@/components/toaster/toast";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
@@ -223,7 +224,9 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
               actions.togglePage(controller.transactions, selectAll);
             }}
             onSelectAllMatching={actions.selectAllMatchingTransactions}
-            onEdit={actions.openFormDrawer}
+            onEdit={(transactionId) => {
+              void actions.openEditForm(transactionId);
+            }}
             onAdopt={(transaction, trigger) => {
               void actions.openAdoptDrawer(transaction, trigger);
             }}
@@ -256,6 +259,21 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
           }
         }}
       />
+
+      <ConfirmationDialog
+        open={actions.pendingManualRate !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            actions.setPendingManualRate(null);
+          }
+        }}
+        title="Replace the current exchange rate?"
+        description={`This stores a manual exchange rate of ${actions.pendingManualRate?.manualExchangeRate ?? ""}. The previous supplied or manual origin is replaced and stays visible as manual.`}
+      >
+        <Button size="sm" onClick={() => void actions.confirmManualRateReplacement()}>
+          Use manual rate
+        </Button>
+      </ConfirmationDialog>
 
       <TransactionBulkDeleteDialog
         selectedCount={actions.selectedCount}

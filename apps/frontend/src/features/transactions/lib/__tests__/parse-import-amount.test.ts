@@ -38,6 +38,14 @@ describe("parseImportAmount", () => {
     expect(parseImportAmount("0,00")).toEqual({ ok: true, cents: 0, signed: 0 });
   });
 
+  it("parses zero-decimal currencies as whole minor units", () => {
+    expect(parseImportAmount("1200", 0)).toEqual({ ok: true, cents: 1200, signed: 1200 });
+  });
+
+  it("parses three-decimal currencies", () => {
+    expect(parseImportAmount("1.250", 3)).toEqual({ ok: true, cents: 1250, signed: 1.25 });
+  });
+
   it("enforces the backend minor-unit boundary", () => {
     expect(parseImportAmount("21474836.47")).toEqual({
       ok: true,

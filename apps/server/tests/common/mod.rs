@@ -61,6 +61,22 @@ pub async fn setup_app(
         initialize_context_with_clock(app_data_dir.path(), Arc::new(FixedCalendarClock))
             .expect("shared context should initialize"),
     );
+    context
+        .currency_service()
+        .complete_initial_setup("EUR")
+        .expect("confirm EUR setup");
+    (create_router(Arc::clone(&context)), context, app_data_dir)
+}
+
+#[allow(dead_code)]
+pub async fn setup_app_without_currency_setup(
+    prefix: &str,
+) -> (axum::Router, Arc<zai_app::ServiceContext>, TempAppDataDir) {
+    let app_data_dir = TempAppDataDir::new(prefix);
+    let context = Arc::new(
+        initialize_context_with_clock(app_data_dir.path(), Arc::new(FixedCalendarClock))
+            .expect("shared context should initialize"),
+    );
     (create_router(Arc::clone(&context)), context, app_data_dir)
 }
 
@@ -122,4 +138,75 @@ pub async fn request_json_with_headers(
     };
 
     (status, json)
+}
+
+#[allow(dead_code)]
+pub async fn import_categories(app: &axum::Router, categories: Value) -> (StatusCode, Value) {
+    request_json(
+        app,
+        "POST",
+        "/api/categories/import",
+        Some(json!({ "categories": categories })),
+    )
+    .await
+}
+
+#[allow(dead_code)]
+pub async fn preview_transaction_import(
+    app: &axum::Router,
+    file_digest: &str,
+    has_currency_column: bool,
+    confirmed_transaction_currency: Option<&str>,
+    rows: Value,
+) -> (StatusCode, Value) {
+    let mut body = json!({
+        "fileDigest": file_digest,
+        "hasCurrencyColumn": has_currency_column,
+        "rows": rows,
+    });
+    if let Some(code) = confirmed_transaction_currency {
+        body["confirmedTransactionCurrency"] = json!(code);
+    }
+    request_json(app, "POST", "/api/transactions/import/preview", Some(body)).await
+}
+
+#[allow(dead_code)]
+pub async fn commit_transaction_import(
+    app: &axum::Router,
+    token: &str,
+    file_digest: &str,
+) -> (StatusCode, Value) {
+    request_json(
+        app,
+        "POST",
+        "/api/transactions/import/commit",
+        Some(json!({
+            "token": token,
+            "fileDigest": file_digest,
+        })),
+    )
+    .await
+}
+
+#[allow(dead_code)]
+pub async fn preview_and_commit_import(
+    app: &axum::Router,
+    file_digest: &str,
+    has_currency_column: bool,
+    confirmed_transaction_currency: Option<&str>,
+    rows: Value,
+) -> (StatusCode, Value) {
+    let (status, preview) = preview_transaction_import(
+        app,
+        file_digest,
+        has_currency_column,
+        confirmed_transaction_currency,
+        rows,
+    )
+    .await;
+    if status != StatusCode::OK {
+        return (status, preview);
+    }
+    let token = preview["token"].as_str().expect("preview token");
+    commit_transaction_import(app, token, file_digest).await
 }

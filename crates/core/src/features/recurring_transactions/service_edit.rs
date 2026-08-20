@@ -20,6 +20,7 @@ impl RecurringTransactionsService {
         &self,
         input: UpdateRecurringTransaction,
     ) -> Result<RecurringMutationOutcome> {
+        self.require_money()?;
         self.update_inner(input).await
     }
 
@@ -62,6 +63,7 @@ impl RecurringTransactionsService {
         let description_changed = normalize_template_description(&open_template.description)
             != normalize_template_description(&input.template.description);
         let non_description_template_changed = open_template.amount != input.template.amount
+            || open_template.currency != input.template.currency
             || open_template.transaction_type != input.template.transaction_type
             || open_template.transaction_category_id != input.template.transaction_category_id
             || open_template.notes != input.template.notes;
@@ -182,6 +184,7 @@ impl RecurringTransactionsService {
     }
 
     pub async fn adopt(&self, input: AdoptRecurringTransaction) -> Result<RecurringAdoptOutcome> {
+        self.require_money()?;
         self.adopt_inner(input).await
     }
 

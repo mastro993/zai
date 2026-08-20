@@ -5,10 +5,12 @@ fn sample_transaction(description: &str) -> NewTransaction {
         id: Some(Uuid::new_v4().to_string()),
         description: Some(description.to_string()),
         amount: 1000,
+        currency: "EUR".to_string(),
         transaction_date: chrono::Utc::now().naive_utc(),
         transaction_type: "expense".to_string(),
         transaction_category_id: None,
         notes: None,
+        manual_exchange_rate: None,
     }
 }
 
@@ -17,10 +19,12 @@ fn populated_transaction(category_id: Option<String>) -> NewTransaction {
         id: Some(Uuid::new_v4().to_string()),
         description: Some("Lunch".to_string()),
         amount: 1200,
+        currency: "EUR".to_string(),
         transaction_date: chrono::Utc::now().naive_utc(),
         transaction_type: "expense".to_string(),
         transaction_category_id: category_id,
         notes: Some("with friends".to_string()),
+        manual_exchange_rate: None,
     }
 }
 
@@ -48,10 +52,14 @@ fn update_transaction(
         id: created.id.clone(),
         description,
         amount: created.amount,
+        currency: created.currency.clone(),
         transaction_date: created.transaction_date,
         transaction_type: created.transaction_type.clone(),
         transaction_category_id,
         notes,
+        manual_exchange_rate: None,
+        confirm_manual_rate_replacement: false,
+        retry_rate_lookup: false,
     }
 }
 
@@ -329,4 +337,116 @@ async fn pooled_transaction_read_does_not_starve_current_thread_runtime() {
         .await
         .expect("join")
         .expect("blocking work should complete");
+}
+
+#[tokio::test]
+async fn create_same_currency_returns_identity_detail_and_list_includes_original_money() {
+    let temp_db = TempDb::new();
+    let repo = setup_test_repo(temp_db.path());
+    let created = repo
+        .create_transaction(sample_transaction("Coffee"))
+        .await
+        .expect("create");
+
+    assert_eq!(created.currency, "EUR");
+    assert_eq!(
+        created.exchange_rate.variant,
+        zai_core::features::transactions::models::RateVariant::Identity
+    );
+    assert_eq!(created.converted_amount, Some(created.amount));
+    assert_eq!(created.converted_currency, "EUR");
+    assert!(created.complete);
+
+    let page = repo
+        .get_transactions(1, 10, None, None)
+        .await
+        .expect("list");
+    assert_eq!(page.data.len(), 1);
+    assert_eq!(page.data[0].amount, created.amount);
+    assert_eq!(page.data[0].currency, created.currency);
+    assert_eq!(page.data[0].converted_amount, Some(created.amount));
+    assert_eq!(page.data[0].converted_currency, "EUR");
+    assert!(page.data[0].complete);
+}
+
+#[tokio::test]
+async fn amount_only_update_keeps_identity_and_revalues() {
+    let temp_db = TempDb::new();
+    let repo = setup_test_repo(temp_db.path());
+    let created = repo
+        .create_transaction(sample_transaction("Coffee"))
+        .await
+        .expect("create");
+
+    let updated = repo
+        .update_transaction(TransactionUpdate {
+            id: created.id.clone(),
+            description: created.description.clone(),
+            amount: 2500,
+            currency: created.currency.clone(),
+            transaction_date: created.transaction_date,
+            transaction_type: created.transaction_type.clone(),
+            transaction_category_id: created.transaction_category_id.clone(),
+            notes: created.notes.clone(),
+            manual_exchange_rate: None,
+            confirm_manual_rate_replacement: false,
+            retry_rate_lookup: false,
+        })
+        .await
+        .expect("update");
+
+    assert_eq!(
+        updated.exchange_rate.variant,
+        zai_core::features::transactions::models::RateVariant::Identity
+    );
+    assert_eq!(updated.converted_amount, Some(2500));
+    assert!(updated.complete);
+}
+
+#[tokio::test]
+async fn missing_cross_currency_rate_leaves_pending_incomplete_list_row() {
+    let temp_db = TempDb::new();
+    let repo = setup_test_repo(temp_db.path());
+    {
+        let conn = &mut get_connection(&repo.pool).expect("connection");
+        diesel::sql_query(
+            "INSERT INTO enabled_currencies (code, enabled_at, disabled_at) \
+             VALUES ('USD', datetime('now'), NULL)",
+        )
+        .execute(conn)
+        .expect("enable USD");
+    }
+
+    let mut payload = sample_transaction("Hotel");
+    payload.currency = "USD".to_string();
+    let created = repo.create_transaction(payload).await.expect("create USD");
+
+    assert_eq!(
+        created.exchange_rate.variant,
+        zai_core::features::transactions::models::RateVariant::Pending
+    );
+    assert!(!created.complete);
+    assert_eq!(created.converted_amount, None);
+
+    let page = repo
+        .get_transactions(1, 10, None, None)
+        .await
+        .expect("list");
+    assert!(!page.data[0].complete);
+    assert_eq!(page.data[0].amount, created.amount);
+    assert_eq!(page.data[0].currency, "USD");
+    assert_eq!(page.data[0].converted_amount, None);
+}
+
+#[tokio::test]
+async fn create_with_currency_that_is_not_enabled_fails() {
+    let temp_db = TempDb::new();
+    let repo = setup_test_repo(temp_db.path());
+    let mut payload = sample_transaction("Hotel");
+    payload.currency = "USD".to_string();
+    let error = repo
+        .create_transaction(payload)
+        .await
+        .expect_err("not enabled");
+    assert_eq!(error.code(), zai_core::ErrorCode::CurrencyNotEnabled);
 }

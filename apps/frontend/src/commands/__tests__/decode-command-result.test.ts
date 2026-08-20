@@ -7,6 +7,12 @@ import { CommandError } from "../errors";
 import { decodeCommandValue } from "../decode-command-result";
 import { budgetSchema } from "@/features/budgets/types/budget";
 import { domainAlertListPageSchema } from "@/features/alerts/types/domain-alert";
+import {
+  currencyBootstrapSchema,
+  currencyJobSchema,
+  currencySettingsRowSchema,
+  supportedCurrencySchema,
+} from "@/features/currency/types/currency";
 
 describe("decodeCommandValue", () => {
   it("accepts valid budget payloads", () => {
@@ -29,6 +35,8 @@ describe("decodeCommandValue", () => {
         netBudgetSpending: 0,
         remainingAllowance: 10000,
         status: "onTrack",
+        complete: true,
+        currency: "EUR",
       },
     };
 
@@ -67,6 +75,56 @@ describe("decodeCommandValue", () => {
       domainAlertListPageSchema,
     );
     expect(Result.isFailure(invalid)).toBe(true);
+  });
+
+  it("decodes currency bootstrap, catalog, settings, and setup job payloads", () => {
+    const bootstrap = decodeCommandValue(
+      "get_currency_bootstrap",
+      { setupComplete: false, defaultCurrency: null },
+      currencyBootstrapSchema,
+    );
+    expect(Result.isSuccess(bootstrap)).toBe(true);
+
+    const catalog = decodeCommandValue(
+      "get_supported_currencies",
+      [{ code: "EUR", name: "Euro" }],
+      supportedCurrencySchema.array(),
+    );
+    expect(Result.isSuccess(catalog)).toBe(true);
+
+    const settings = decodeCommandValue(
+      "get_currencies",
+      [
+        {
+          code: "EUR",
+          name: "Euro",
+          status: "enabled",
+          coverageFrom: null,
+          coverageTo: null,
+          lastRefresh: null,
+          refreshStatus: "idle",
+          missingPeriods: [],
+          usedByRecurring: false,
+          isDefault: true,
+        },
+      ],
+      currencySettingsRowSchema.array(),
+    );
+    expect(Result.isSuccess(settings)).toBe(true);
+
+    const job = decodeCommandValue(
+      "complete_initial_currency_setup",
+      {
+        jobId: "job-1",
+        type: "setup",
+        status: "succeeded",
+        stageCurrent: 1,
+        stageTotal: 1,
+        currencyCode: "EUR",
+      },
+      currencyJobSchema,
+    );
+    expect(Result.isSuccess(job)).toBe(true);
   });
 
   it("accepts numeric alert count responses", () => {

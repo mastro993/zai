@@ -6,9 +6,10 @@ use diesel::sqlite::SqliteConnection;
 use zai_core::Result;
 use zai_core::features::budgets::alerts::BudgetAlertMode;
 use zai_core::features::domain_alerts::{CommittedOutcome, publish_created_alerts};
-use zai_core::features::transactions::models::Transaction;
+use zai_core::features::transactions::models::{Transaction, TransactionListItem};
 
 use super::models::TransactionRow;
+use super::rate_revisions::{transaction_detail, transaction_list_items};
 use super::repository::TransactionsRepository;
 use crate::budgets::alerts::{emit_budget_transition_alerts, snapshot_active_budgets};
 use crate::budgets::timeline::{BudgetPeriodTimeline, SourceChange};
@@ -38,6 +39,8 @@ pub(super) async fn delete_transaction(
                     .first::<TransactionRow>(conn)
                     .into_storage()?;
 
+                let detail = transaction_detail(conn, existing.clone())
+                    .map_err(crate::errors::StorageError::from)?;
                 diesel::update(transactions::table.find(&transaction_id))
                     .set(transactions::deleted_at.eq(deleted_at))
                     .execute(conn)
@@ -64,7 +67,7 @@ pub(super) async fn delete_transaction(
                     &before,
                     &after,
                 )?;
-                Ok(CommittedOutcome::with_alert_outcomes(deleted.into(), alerts))
+                Ok(CommittedOutcome::with_alert_outcomes(detail, alerts))
             },
         )
         .await?;
@@ -75,7 +78,7 @@ pub(super) async fn delete_transaction(
 pub(super) async fn delete_transactions(
     repository: &TransactionsRepository,
     ids: Vec<&str>,
-) -> Result<Vec<Transaction>> {
+) -> Result<Vec<TransactionListItem>> {
     let owned_ids = ids.iter().map(|&s| s.to_string()).collect::<Vec<String>>();
     let clock = Arc::clone(&repository.clock);
     let publisher = Arc::clone(&repository.alert_publisher);
@@ -84,7 +87,7 @@ pub(super) async fn delete_transactions(
         .writer
         .exec(
             move |conn: &mut SqliteConnection| -> crate::errors::Result<
-                CommittedOutcome<Vec<Transaction>>,
+                CommittedOutcome<Vec<TransactionListItem>>,
             > {
                 let now = clock.sample();
                 let before = snapshot_active_budgets(conn, now)?;
@@ -94,6 +97,9 @@ pub(super) async fn delete_transactions(
                     .filter(transactions::id.eq_any(&owned_ids))
                     .load::<TransactionRow>(conn)
                     .into_storage()?;
+
+                let deleted_transactions = transaction_list_items(conn, existing.clone())
+                    .map_err(crate::errors::StorageError::from)?;
 
                 diesel::update(transactions::table.filter(transactions::id.eq_any(&owned_ids)))
                     .set(transactions::deleted_at.eq(deleted_at))
@@ -106,8 +112,6 @@ pub(super) async fn delete_transactions(
                     .load::<TransactionRow>(conn)
                     .into_storage()?;
 
-                let deleted_transactions: Vec<Transaction> =
-                    deleted.iter().cloned().map(Transaction::from).collect();
                 BudgetPeriodTimeline::reconcile(
                     conn,
                     SourceChange::Transactions {

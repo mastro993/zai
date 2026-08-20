@@ -255,6 +255,8 @@ describe("alerts controller lifecycle", () => {
           netBudgetSpending: 0,
           remainingAllowance: 10000,
           status: "onTrack",
+          complete: true,
+          currency: "EUR",
         },
       }),
     );

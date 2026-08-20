@@ -8,6 +8,7 @@ pub(crate) mod import_dedup;
 pub(crate) mod models;
 mod mutations;
 pub(crate) mod query;
+pub(crate) mod rate_revisions;
 mod read;
 mod repository;
 

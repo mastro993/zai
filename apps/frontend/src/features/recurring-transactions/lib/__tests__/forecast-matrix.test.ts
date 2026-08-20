@@ -33,6 +33,7 @@ describe("buildForecastMatrix", () => {
       throughLocal: "2027-01-22T10:00:00",
       horizonMonths: 6,
       complete: true,
+      currency: "EUR",
       sourceErrors: [],
       periods: [
         period({
@@ -77,6 +78,7 @@ describe("buildForecastMatrix", () => {
         throughLocal: "2027-01-22T10:00:00",
         horizonMonths: 3,
         complete: true,
+        currency: "EUR",
         periods: [],
         sourceErrors: [],
       }),

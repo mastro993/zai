@@ -18,10 +18,12 @@ import {
   deleteTransaction,
   deleteTransactions,
   getFilteredTransactionIds,
+  getTransaction,
   type TransactionFilters,
   updateTransaction,
 } from "../commands/transactions";
-import type { Transaction, TransactionFormValues } from "../types/model";
+import { setLastUsedTransactionCurrency } from "../lib/last-used-currency";
+import type { Transaction, TransactionFormValues, TransactionListItem } from "../types/model";
 import type { TransactionFormMode } from "../types/transaction-types";
 import { useTransactionSelection } from "./use-transaction-selection";
 
@@ -29,13 +31,13 @@ interface TransactionActionsController {
   activeFilters: TransactionFilters | undefined;
   refreshList: (includeCategories?: boolean) => Promise<void>;
   setErrorMessage: (message: string | null) => void;
-  transactions: Array<Transaction>;
+  transactions: Array<TransactionListItem>;
 }
 
 export function useTransactionActions(controller: TransactionActionsController) {
   const [formMode, setFormMode] = useState<TransactionFormMode | null>(null);
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<TransactionListItem | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -46,6 +48,7 @@ export function useTransactionActions(controller: TransactionActionsController) 
   const [adoptTransaction, setAdoptTransaction] = useState<Transaction | null>(null);
   const [isAdoptDrawerOpen, setIsAdoptDrawerOpen] = useState(false);
   const [editProvenance, setEditProvenance] = useState<TransactionRecurringProvenance | null>(null);
+  const [pendingManualRate, setPendingManualRate] = useState<TransactionFormValues | null>(null);
   const adoptButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const selection = useTransactionSelection(controller.transactions);
@@ -55,29 +58,41 @@ export function useTransactionActions(controller: TransactionActionsController) 
     syncFilterFingerprint(controller.activeFilters);
   }, [controller.activeFilters, syncFilterFingerprint]);
 
-  const openFormDrawer = (mode: TransactionFormMode) => {
+  const openFormDrawer = (mode: { type: "create" }) => {
     setFormMode(mode);
     setEditProvenance(null);
     setIsFormDrawerOpen(true);
-    if (mode.type === "edit") {
-      void getTransactionRecurringProvenance(mode.transaction.id).then((result) => {
-        if (Result.isFailure(result)) {
-          toast.error("Could not load recurring link", {
-            description: result.error.message,
-          });
-          return;
-        }
-        setEditProvenance(result.value);
-      });
-    }
   };
 
-  const openDeleteDialog = (transaction: Transaction) => {
+  const openEditForm = async (transactionId: string) => {
+    const result = await getTransaction(transactionId);
+    if (Result.isFailure(result)) {
+      toast.error("Failed to load transaction", { description: result.error.message });
+      return;
+    }
+
+    setFormMode({ type: "edit", transaction: result.value });
+    setEditProvenance(null);
+    setIsFormDrawerOpen(true);
+    const provenance = await getTransactionRecurringProvenance(transactionId);
+    if (Result.isFailure(provenance)) {
+      toast.error("Could not load recurring link", {
+        description: provenance.error.message,
+      });
+      return;
+    }
+    setEditProvenance(provenance.value);
+  };
+
+  const openDeleteDialog = (transaction: TransactionListItem) => {
     setPendingDelete(transaction);
     setIsDeleteDialogOpen(true);
   };
 
-  const openAdoptDrawer = async (transaction: Transaction, trigger?: HTMLButtonElement | null) => {
+  const openAdoptDrawer = async (
+    transaction: TransactionListItem,
+    trigger?: HTMLButtonElement | null,
+  ) => {
     adoptButtonRef.current = trigger ?? null;
     if (!transaction.description?.trim()) {
       toast.error("Add a description to this transaction before adopting it.");
@@ -94,7 +109,12 @@ export function useTransactionActions(controller: TransactionActionsController) 
       toast.error("Transaction already belongs to a recurring schedule");
       return;
     }
-    setAdoptTransaction(transaction);
+    const detail = await getTransaction(transaction.id);
+    if (Result.isFailure(detail)) {
+      toast.error("Failed to load transaction", { description: detail.error.message });
+      return;
+    }
+    setAdoptTransaction(detail.value);
     setIsAdoptDrawerOpen(true);
   };
 
@@ -109,22 +129,42 @@ export function useTransactionActions(controller: TransactionActionsController) 
     return result;
   };
 
-  const submitTransaction = async (values: TransactionFormValues) => {
+  const finishWrite = async (editingId: string | null, currency: string) => {
+    setLastUsedTransactionCurrency(currency);
+    setPendingManualRate(null);
+    setIsFormDrawerOpen(false);
+    await controller.refreshList();
+    toast.success(editingId ? "Transaction updated" : "Transaction created");
+  };
+
+  const submitTransaction = async (
+    values: TransactionFormValues,
+    confirmManualRateReplacement = false,
+  ) => {
     const editingId = formMode?.type === "edit" ? formMode.transaction.id : null;
     const result = editingId
-      ? await updateTransaction(editingId, values)
+      ? await updateTransaction(editingId, values, { confirmManualRateReplacement })
       : await createTransaction(values);
 
     if (Result.isFailure(result)) {
+      if (result.error.code === "manualRateReplacementRequired") {
+        setPendingManualRate(values);
+        return;
+      }
       toast.error(editingId ? "Failed to update transaction" : "Failed to create transaction", {
         description: result.error.message,
       });
       return;
     }
 
-    setIsFormDrawerOpen(false);
-    await controller.refreshList();
-    toast.success(editingId ? "Transaction updated" : "Transaction created");
+    await finishWrite(editingId, values.currency);
+  };
+
+  const confirmManualRateReplacement = async () => {
+    if (!pendingManualRate) {
+      return;
+    }
+    await submitTransaction(pendingManualRate, true);
   };
 
   const exportTransactionCsv = async () => {
@@ -155,7 +195,7 @@ export function useTransactionActions(controller: TransactionActionsController) 
     setIsExporting(false);
   };
 
-  const removeTransaction = async (transaction: Transaction) => {
+  const removeTransaction = async (transaction: TransactionListItem) => {
     setIsDeleting(true);
     const result = await deleteTransaction(transaction.id);
 
@@ -219,6 +259,7 @@ export function useTransactionActions(controller: TransactionActionsController) 
     ...selection,
     adoptButtonRef,
     adoptTransaction,
+    confirmManualRateReplacement,
     editProvenance,
     exportTransactionCsv,
     formMode,
@@ -233,8 +274,10 @@ export function useTransactionActions(controller: TransactionActionsController) 
     isSelectingAllMatching,
     openAdoptDrawer,
     openDeleteDialog,
+    openEditForm,
     openFormDrawer,
     pendingDelete,
+    pendingManualRate,
     refreshList: controller.refreshList,
     removeSelectedTransactions,
     removeTransaction,
@@ -247,6 +290,7 @@ export function useTransactionActions(controller: TransactionActionsController) 
     setIsFormDrawerOpen,
     setIsImportDialogOpen,
     setPendingDelete,
+    setPendingManualRate,
     submitAdopt,
     submitTransaction,
   };

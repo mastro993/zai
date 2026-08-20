@@ -79,10 +79,12 @@ async fn history_advances_empty_periods_and_applies_rollover_modes() {
             id: Some("january-spending".to_string()),
             description: None,
             amount: 30,
+            currency: "EUR".to_string(),
             transaction_date: january,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
@@ -99,9 +101,9 @@ async fn history_advances_empty_periods_and_applies_rollover_modes() {
     assert_eq!(history.total_pages, 1);
     assert_eq!(history.data.len(), 3);
     assert_eq!(history.data[0].start.month(), 3);
-    assert_eq!(history.data[1].effective_allowance, 170);
-    assert_eq!(history.data[2].effective_allowance, 100);
-    assert_eq!(history.data[2].remaining_allowance, 70);
+    assert_eq!(history.data[1].effective_allowance, Some(170));
+    assert_eq!(history.data[2].effective_allowance, Some(100));
+    assert_eq!(history.data[2].remaining_allowance, Some(70));
 
     let mut conn = SqliteConnection::establish(temp_db.path()).expect("database connection");
     sql_query(
@@ -206,6 +208,7 @@ async fn confirmed_category_role_change_rebuilds_historical_rollover_suffix() {
     for (id, amount, transaction_type) in [("expense", 30, "expense"), ("refund", 10, "income")] {
         transactions
             .create_transaction(NewTransaction {
+                currency: "EUR".to_string(),
                 id: Some(id.to_string()),
                 description: None,
                 amount,
@@ -213,6 +216,7 @@ async fn confirmed_category_role_change_rebuilds_historical_rollover_suffix() {
                 transaction_type: transaction_type.to_string(),
                 transaction_category_id: Some(category.id.clone()),
                 notes: None,
+                manual_exchange_rate: None,
             })
             .await
             .expect("transaction");
@@ -260,9 +264,9 @@ async fn confirmed_category_role_change_rebuilds_historical_rollover_suffix() {
         .expect("repaired history");
 
     assert_eq!(history.data[2].net_budget_spending, 30);
-    assert_eq!(history.data[2].remaining_allowance, 70);
-    assert_eq!(history.data[1].effective_allowance, 170);
-    assert_eq!(history.data[0].effective_allowance, 270);
+    assert_eq!(history.data[2].remaining_allowance, Some(70));
+    assert_eq!(history.data[1].effective_allowance, Some(170));
+    assert_eq!(history.data[0].effective_allowance, Some(270));
 }
 
 #[tokio::test]
@@ -294,10 +298,12 @@ async fn paused_budget_still_advances_periods_and_rollover() {
             id: Some("paused-january-spending".to_string()),
             description: None,
             amount: 30,
+            currency: "EUR".to_string(),
             transaction_date: january,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");
@@ -318,6 +324,99 @@ async fn paused_budget_still_advances_periods_and_rollover() {
     assert!(paused.paused);
     assert_eq!(history.data.len(), 3);
     assert_eq!(history.data[0].start.month(), 3);
-    assert_eq!(history.data[1].effective_allowance, 170);
-    assert_eq!(history.data[2].remaining_allowance, 70);
+    assert_eq!(history.data[1].effective_allowance, Some(170));
+    assert_eq!(history.data[2].remaining_allowance, Some(70));
+}
+
+#[tokio::test]
+async fn incomplete_predecessor_blocks_rollover_and_off_mode_still_claims_later_periods() {
+    let temp_db = TempDb::new();
+    let january = NaiveDate::from_ymd_opt(2026, 1, 15)
+        .unwrap()
+        .and_hms_opt(12, 0, 0)
+        .unwrap();
+    let clock = Arc::new(ManualClock {
+        now: std::sync::Mutex::new(january),
+    });
+    let (budgets, transactions, _) = setup_with_clock(&temp_db, clock.clone());
+    let mut budget = new_budget("blocked-rollover", "Blocked rollover", 100);
+    budget.rollover_mode = Some(BudgetRolloverMode::PreviousPeriodOnly);
+    budgets.create_budget(budget).await.expect("budget");
+    let mut off = new_budget("off-rollover", "Off rollover", 100);
+    off.rollover_mode = Some(BudgetRolloverMode::Off);
+    budgets.create_budget(off).await.expect("off budget");
+    transactions
+        .create_transaction(NewTransaction {
+            id: Some("jan-foreign".to_string()),
+            description: None,
+            amount: 30,
+            currency: "EUR".to_string(),
+            transaction_date: january,
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+            manual_exchange_rate: None,
+        })
+        .await
+        .expect("transaction");
+
+    let mut conn = SqliteConnection::establish(temp_db.path()).expect("conn");
+    sql_query("UPDATE transactions SET currency = 'USD' WHERE id = 'jan-foreign'")
+        .execute(&mut conn)
+        .expect("usd");
+    sql_query(
+        "UPDATE transaction_exchange_rate_revisions \
+         SET variant = 'pending', original_decimal = NULL, coefficient = NULL, scale = NULL \
+         WHERE transaction_id = 'jan-foreign'",
+    )
+    .execute(&mut conn)
+    .expect("pending");
+    let row = {
+        use crate::schema::transactions;
+        use diesel::prelude::*;
+        transactions::table
+            .filter(transactions::id.eq("jan-foreign"))
+            .first::<crate::transactions::models::TransactionRow>(&mut conn)
+            .expect("row")
+    };
+    crate::valuations::upsert_transaction_valuation(&mut conn, &row).expect("valuation");
+    crate::budgets::timeline::rebuild_all_results(&mut conn).expect("rebuild");
+
+    *clock.now.lock().expect("clock lock") = NaiveDate::from_ymd_opt(2026, 3, 15)
+        .unwrap()
+        .and_hms_opt(12, 0, 0)
+        .unwrap();
+    let history = budgets
+        .get_budget_history("blocked-rollover", 1, 10)
+        .await
+        .expect("history");
+    assert_eq!(history.data.len(), 3);
+    assert!(history.data.iter().all(|period| !period.complete));
+    assert!(
+        history
+            .data
+            .iter()
+            .all(|period| period.status.is_none() && period.effective_allowance.is_none())
+    );
+
+    let off_history = budgets
+        .get_budget_history("off-rollover", 1, 10)
+        .await
+        .expect("off history");
+    let january_off = off_history
+        .data
+        .iter()
+        .find(|period| period.start.month() == 1)
+        .expect("january");
+    let march_off = off_history
+        .data
+        .iter()
+        .find(|period| period.start.month() == 3)
+        .expect("march");
+    assert!(!january_off.complete);
+    assert!(march_off.complete);
+    assert_eq!(
+        march_off.status,
+        Some(zai_core::features::budgets::models::BudgetStatus::OnTrack)
+    );
 }

@@ -172,17 +172,23 @@ fn fulfill_generated_occurrence(
         id: Some(transaction_id.clone()),
         description: Some(template.description.clone()),
         amount: template.amount,
+        currency: template.currency.clone(),
         transaction_date: scheduled_local,
         transaction_type: template.transaction_type.clone(),
         transaction_category_id: template.transaction_category_id.clone(),
         notes: template.notes.clone(),
+        manual_exchange_rate: None,
     };
-    let transaction_row: TransactionRow = new_transaction.into();
+    let transaction_row = TransactionRow::from_new(new_transaction);
 
     diesel::insert_into(transactions::table)
         .values(&transaction_row)
         .execute(conn)
         .into_storage()?;
+    crate::transactions::rate_revisions::apply_create_rate(conn, &transaction_row, None)
+        .map_err(StorageError::from)?;
+    crate::valuations::upsert_transaction_valuation(conn, &transaction_row)
+        .map_err(StorageError::from)?;
 
     #[cfg(any(test, feature = "failpoints"))]
     {

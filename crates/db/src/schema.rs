@@ -18,7 +18,8 @@ diesel::table! {
     transactions (id) {
         id -> Text,
         description -> Nullable<Text>,
-        amount -> Integer,
+        amount -> BigInt,
+        currency -> Text,
         transaction_date -> Timestamp,
         transaction_type -> Text,
         transaction_category_id -> Nullable<Text>,
@@ -41,6 +42,7 @@ diesel::table! {
         measurement_mode -> Text,
         rollover_mode -> Text,
         warning_percentage -> Nullable<Integer>,
+        allowance_currency -> Text,
     }
 }
 
@@ -50,9 +52,11 @@ diesel::table! {
         period_start -> Timestamp,
         period_end -> Timestamp,
         net_budget_spending -> BigInt,
-        effective_allowance -> BigInt,
-        remaining_allowance -> BigInt,
-        status -> Text,
+        effective_allowance -> Nullable<BigInt>,
+        remaining_allowance -> Nullable<BigInt>,
+        status -> Nullable<Text>,
+        generation_id -> Text,
+        complete -> Bool,
     }
 }
 
@@ -130,7 +134,8 @@ diesel::table! {
         effective_from_local -> Timestamp,
         effective_until_local -> Nullable<Timestamp>,
         description -> Text,
-        amount -> Integer,
+        amount -> BigInt,
+        currency -> Text,
         transaction_type -> Text,
         transaction_category_id -> Nullable<Text>,
         notes -> Nullable<Text>,
@@ -196,6 +201,167 @@ diesel::joinable!(recurring_generation_failures -> recurring_schedule_revisions 
 diesel::joinable!(recurring_generation_failures -> domain_alerts (generation_failure_alert_id));
 diesel::joinable!(recurring_template_revisions -> transaction_categories (transaction_category_id));
 
+diesel::table! {
+    application_format (id) {
+        id -> Integer,
+        format -> Text,
+        activated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    currency_settings (id) {
+        id -> Integer,
+        default_currency -> Text,
+        setup_completed_at -> Nullable<Timestamp>,
+        default_currency_revision -> Integer,
+        provider_disclosure_accepted_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    enabled_currencies (code) {
+        code -> Text,
+        enabled_at -> Timestamp,
+        disabled_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    currency_jobs (id) {
+        id -> Text,
+        job_type -> Text,
+        status -> Text,
+        currency_code -> Nullable<Text>,
+        stage_current -> Integer,
+        stage_total -> Integer,
+        error_code -> Nullable<Text>,
+        error_message -> Nullable<Text>,
+        generation_id -> Nullable<Text>,
+        error_details -> Nullable<Text>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    transaction_exchange_rate_revisions (id) {
+        id -> Text,
+        transaction_id -> Text,
+        sequence -> Integer,
+        variant -> Text,
+        rate_date -> Nullable<Timestamp>,
+        original_decimal -> Nullable<Text>,
+        coefficient -> Nullable<BigInt>,
+        scale -> Nullable<Integer>,
+        formula_version -> Integer,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::joinable!(transaction_exchange_rate_revisions -> transactions (transaction_id));
+
+diesel::table! {
+    provider_contracts (id) {
+        id -> Text,
+        provider -> Text,
+        version -> Integer,
+        base_currency -> Text,
+        series_identity -> Text,
+        value_date_time_zone -> Text,
+        formula_version -> Integer,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    provider_rate_sets (id) {
+        id -> Text,
+        provider_contract_id -> Text,
+        revision_identity -> Text,
+        payload_digest -> Text,
+        accepted_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    provider_rate_observations (id) {
+        id -> Text,
+        rate_set_id -> Text,
+        currency -> Text,
+        series_id -> Text,
+        value_date -> Text,
+        original_decimal -> Text,
+        coefficient -> BigInt,
+        scale -> Integer,
+        attribution -> Text,
+    }
+}
+
+diesel::table! {
+    provider_heads (id) {
+        id -> Integer,
+        rate_set_id -> Text,
+        switched_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    provider_refresh_state (id) {
+        id -> Integer,
+        provider_contract_id -> Text,
+        last_attempt_at -> Nullable<Timestamp>,
+        last_success_at -> Nullable<Timestamp>,
+        failure_class -> Nullable<Text>,
+        retry_count -> Integer,
+        last_etag -> Nullable<Text>,
+        last_updated_after -> Nullable<Text>,
+    }
+}
+
+diesel::joinable!(provider_rate_sets -> provider_contracts (provider_contract_id));
+diesel::joinable!(provider_rate_observations -> provider_rate_sets (rate_set_id));
+diesel::joinable!(provider_heads -> provider_rate_sets (rate_set_id));
+diesel::joinable!(provider_refresh_state -> provider_contracts (provider_contract_id));
+
+diesel::table! {
+    valuation_generations (id) {
+        id -> Text,
+        kind -> Text,
+        target_currency -> Text,
+        prior_currency -> Nullable<Text>,
+        default_currency_revision -> Integer,
+        status -> Text,
+        created_at -> Timestamp,
+        activated_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    valuation_heads (kind) {
+        kind -> Text,
+        generation_id -> Text,
+        switched_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    transaction_valuations (generation_id, transaction_id) {
+        generation_id -> Text,
+        transaction_id -> Text,
+        transaction_date -> Timestamp,
+        converted_amount -> Nullable<BigInt>,
+        converted_currency -> Text,
+        complete -> Bool,
+        rate_revision_id -> Nullable<Text>,
+    }
+}
+
+diesel::joinable!(valuation_heads -> valuation_generations (generation_id));
+diesel::joinable!(transaction_valuations -> valuation_generations (generation_id));
+diesel::joinable!(transaction_valuations -> transactions (transaction_id));
+diesel::joinable!(budget_period_results -> valuation_generations (generation_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     transaction_categories,
     transactions,
@@ -209,4 +375,17 @@ diesel::allow_tables_to_appear_in_same_query!(
     recurring_occurrence_heads,
     recurring_occurrences,
     recurring_generation_failures,
+    application_format,
+    currency_settings,
+    enabled_currencies,
+    currency_jobs,
+    transaction_exchange_rate_revisions,
+    provider_contracts,
+    provider_rate_sets,
+    provider_rate_observations,
+    provider_heads,
+    provider_refresh_state,
+    valuation_generations,
+    valuation_heads,
+    transaction_valuations,
 );

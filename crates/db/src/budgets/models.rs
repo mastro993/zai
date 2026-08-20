@@ -36,6 +36,7 @@ pub struct BudgetConfigurationRow {
     pub measurement_mode: String,
     pub rollover_mode: String,
     pub warning_percentage: Option<i32>,
+    pub allowance_currency: String,
 }
 
 #[derive(Queryable, Insertable, Debug, Clone)]
@@ -47,15 +48,68 @@ pub struct BudgetPeriodResultRow {
     pub period_start: NaiveDateTime,
     pub period_end: NaiveDateTime,
     pub net_budget_spending: i64,
-    pub effective_allowance: i64,
-    pub remaining_allowance: i64,
-    pub status: String,
+    pub effective_allowance: Option<i64>,
+    pub remaining_allowance: Option<i64>,
+    pub status: Option<String>,
+    pub generation_id: String,
+    pub complete: bool,
+}
+
+pub fn claimed_period_fields(
+    result: &BudgetPeriodResultRow,
+) -> zai_core::Result<(Option<BudgetStatus>, Option<i64>, Option<i64>)> {
+    if !result.complete {
+        return Ok((None, None, None));
+    }
+    let status = match result.status.as_deref() {
+        Some("onTrack") => BudgetStatus::OnTrack,
+        Some("warning") => BudgetStatus::Warning,
+        Some("overspent") => BudgetStatus::Overspent,
+        _ => {
+            return Err(zai_core::Error::Repository(
+                "Invalid budget status".to_string(),
+            ));
+        }
+    };
+    let effective = result.effective_allowance.ok_or_else(|| {
+        zai_core::Error::Repository("Complete period missing effective allowance".to_string())
+    })?;
+    let remaining = result.remaining_allowance.ok_or_else(|| {
+        zai_core::Error::Repository("Complete period missing remaining allowance".to_string())
+    })?;
+    Ok((Some(status), Some(effective), Some(remaining)))
+}
+
+pub fn map_period(
+    result: &BudgetPeriodResultRow,
+    displayed_base: i64,
+    currency: String,
+) -> zai_core::Result<BudgetPeriod> {
+    if result.period_start >= result.period_end {
+        return Err(zai_core::Error::Repository(
+            "Invalid budget period boundaries".to_string(),
+        ));
+    }
+    let (status, effective_allowance, remaining_allowance) = claimed_period_fields(result)?;
+    Ok(BudgetPeriod {
+        start: result.period_start,
+        end: result.period_end,
+        base_allowance: displayed_base,
+        effective_allowance,
+        net_budget_spending: result.net_budget_spending,
+        remaining_allowance,
+        status,
+        complete: result.complete,
+        currency,
+    })
 }
 
 pub fn build_budget(
     budget: BudgetRow,
     configuration: BudgetConfigurationRow,
     result: BudgetPeriodResultRow,
+    displayed_base: i64,
+    currency: String,
 ) -> zai_core::Result<Budget> {
     if configuration.period_start >= configuration.period_end
         || result.period_start >= result.period_end
@@ -78,18 +132,9 @@ pub fn build_budget(
         .rollover_mode
         .parse::<BudgetRolloverMode>()
         .map_err(|_| zai_core::Error::Repository("Invalid budget rollover mode".to_string()))?;
-    let status = match result.status.as_str() {
-        "onTrack" => BudgetStatus::OnTrack,
-        "warning" => BudgetStatus::Warning,
-        "overspent" => BudgetStatus::Overspent,
-        _ => {
-            return Err(zai_core::Error::Repository(
-                "Invalid budget status".to_string(),
-            ));
-        }
-    };
     let category_ids = serde_json::from_str(&configuration.category_ids)
         .map_err(|_| zai_core::Error::Repository("Invalid budget category scope".to_string()))?;
+    let current_period = map_period(&result, displayed_base, currency)?;
 
     Ok(Budget {
         id: budget.id,
@@ -99,17 +144,9 @@ pub fn build_budget(
         category_ids,
         cadence,
         measurement_mode,
-        base_allowance: configuration.base_allowance,
+        base_allowance: displayed_base,
         rollover_mode,
         warning_percentage: configuration.warning_percentage,
-        current_period: BudgetPeriod {
-            start: result.period_start,
-            end: result.period_end,
-            base_allowance: configuration.base_allowance,
-            effective_allowance: result.effective_allowance,
-            net_budget_spending: result.net_budget_spending,
-            remaining_allowance: result.remaining_allowance,
-            status,
-        },
+        current_period,
     })
 }

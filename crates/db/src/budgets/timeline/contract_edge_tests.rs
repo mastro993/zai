@@ -119,7 +119,7 @@ fn budget_created_reconcile_catches_up_from_row_only() {
     let TimelineInspectEntry::Current(budget) = inspect.entries[0].clone() else {
         panic!("expected current");
     };
-    assert_eq!(budget.current_period.status, BudgetStatus::OnTrack);
+    assert_eq!(budget.current_period.status, Some(BudgetStatus::OnTrack));
 }
 
 #[test]

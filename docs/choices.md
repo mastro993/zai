@@ -1,8 +1,178 @@
 # Choices
 
+## 2026-08-20 — Currency settings row label is ISO, name, symbol
+
+- Currency column: `{ISO} {name} ({symbol})`. Symbol from `currencyDisplaySymbol`. Name + parens muted.
+
+## 2026-08-20 — Transaction list shows original amount for cross-currency rows
+
+- List DTO includes original Money (`amount`, `currency`) plus converted fields. Supersedes convert-only list from #376.
+- Amount cell: when transaction currency ≠ default, converted on top, original muted below (no parens) via `formatCurrencyFromMinor` (`currencyDisplay: "narrowSymbol"`). Same-currency rows stay converted only.
+- Incomplete cross-currency: `Incomplete` on top, original muted below.
+
+## 2026-08-20 — Conversion-rate quotes keep full decimal precision
+
+- Quote is `target_leg / source_leg` as CanonicalRate, up to 18 significant digits, half-even on the next digit.
+- Do not convert 1 source unit to target Money. That rounds to ISO minor units (JPY→EUR 0.00536 → 0.01).
+- Stored automatic `original_decimal` and converted-amount math keep the unrounded quote.
+- UI display (form placeholder, transaction detail) rounds the rate to 6 fractional digits, half-up, then localizes.
+
+## 2026-08-20 — Conversion-rate UI shows 6 fractional digits
+
+- Display-only. Backend, export, typed manual input, and converted-amount math stay full precision.
+- `formatConversionRateDisplay`: round half-up to 6 places, trim trailing zeros, locale decimal separator.
+
+## 2026-08-20 — Transaction form conversion-rate field
+
+- Cross-currency amount helper drops rate/date/origin copy. Converted amount stays under Amount.
+- Converted amount shows only when currency ≠ default. FieldDescription under Amount input: `Converted amount: {formatted}`. Pending = `h-[1em] w-[14em]` skeleton covering the label too (`aria-label="Converted amount"`).
+- Non-default currency always shows empty "Conversion rate" input. Placeholder is `1 SRC = rate TGT on locale-date` (both ISO, locale decimal + date).
+- Typed value = manual override. Empty = selected-date rate (locked revision on amount-only edit, else quote).
+- Currency change clears typed rate. Date change does not.
+
+## 2026-08-20 — ECB updatedAfter 404 is not-modified
+
+- Incremental refresh sends `updatedAfter`. ECB returns **404 No Series** when nothing new — not 304.
+- Classify that 404 as `NotModified`. Bare 404 on initial fetch stays `httpStatus`.
+- `record_not_modified` clears `failure_class` / retry_count. `updatedAfter` stored as whole-second RFC3339.
+
+## 2026-08-20 — Per-currency refresh progress meter
+
+- `currency-state` v1 adds `refreshProgress { current, total }`. Does not GET-reconcile; UI applies locally.
+- Provider fetch emits counts (0/n … n/n). Settings row meter: live counts, else add-job stages, else durable status.
+- Retry now optimistic `0/0` (indeterminate) until first event.
+
+## 2026-08-20 — Mute reqwest TRACE on currency refresh
+
+- `tauri_plugin_log` default level is Trace. reqwest's default retry policy logs `shouldn't retry!` on every successful GET.
+- Debug builds: Debug. Release: Info. `reqwest` / `hyper` / `hyper_util` / `h2` / `rustls` / `tower` stay Warn.
+- Keep reqwest default retry (HTTP/2 protocol NACKs). One `provider_refresh class=… elapsed_ms=…` info line per refresh.
+
+## 2026-08-20
+
+- **Manual rates written in the active generation quote that generation's target.** `prior_currency` is only for restating older revisions. After EUR→RUB→EUR a new RUB (or USD) recovery must convert to EUR, not to `prior` RUB/USD — same-currency manuals are identity and are not stored.
+- **Import wizard resets file state on each open.** Reopening after a successful import must show "Select a CSV file", not the previous CSV's Change row.
+
+## 2026-08-18 — [Budget and alert results in the active valuation generation](https://github.com/mastro993/zai/issues/395)
+
+Seams from the ticket (no re-grill):
+
+- Budget reads expose active-generation amounts; incomplete periods null `status` / `effectiveAllowance` / `remainingAllowance`
+- Authored allowance restates at period-start rate; displayed `baseAllowance` follows the new default
+- Rollover uses converted predecessor results; incomplete predecessor blocks dependent periods (Off is not blocked)
+- Pause does not rewrite period math; resume emits at most one current complete-period Warning/Overspent
+- Default-currency activation keeps closed-period alerts and re-evaluates the current period once
+- Alert rich data uses the active generation target currency; `BUDGET_STATUS_CURRENCY` deleted
+- Statistics buckets query the same transaction valuation cache; incomplete bucket = known sum + incomplete
+- Command-contract-parity + existing budget/alert harnesses on the new shapes
+
+Agent defaults:
+
+- Stack on #393 / #394. Do not land on `main`.
+- Incomplete never claims OnTrack/Warning/Overspent or remaining/effective allowance. Known converted `netBudgetSpending` still shows.
+- Occurrence key stays `v1:{budgetId}:{periodStart}:{status}` (no currency). Resume + existing current alert → no second alert.
+- No second aggregate cache. Net worth stays a stub.
+
+## 2026-08-18 — [Currency addition, disable, default-currency change, and Currency settings](https://github.com/mastro993/zai/issues/392)
+
+Seams from the ticket (no re-grill):
+
+- `CurrencyService` public add/disable/change-default/cancel/quote/drive
+- Command-contract-parity + server contract harness
+- Zod decode of new command results
+- Vitest for Ledger Currency settings
+
+Agent defaults:
+
+- Stack on #391. Do not land on `main`.
+- Add and default-change return the started running job; `drive_running_job` completes it. Cancel before activate leaves the old default.
+- First ECB enable without `confirmProviderDisclosure` fails `providerDisclosureRequired`. Frontend shows the disclosure then retries.
+- Re-enable is `start_currency_addition` on a disabled/failed row.
+- Live refresh is supervisor-owned (process start + 15m + Tauri `Resumed`). Not a job. Retry now calls the same refresh mutex.
+- Persistent refresh failure that leaves enabled non-EUR rows failed/incomplete is one Warning episode. Recovery resolves it. A failed refresh that still has coverage is settings status only.
+
+## 2026-08-18 — [Initial currency setup and currency-state](https://github.com/mastro993/zai/issues/391)
+
+Seams from the ticket (no re-grill):
+
+- Command-contract-parity + server contract harness for bootstrap, catalog, settings, setup, job/status, `currency-state`
+- Zod decode of every new command result
+- Vitest for Inspector initial currency setup
+- Core units for bootstrap null-default, setupRequired, unknown event versions
+
+Agent defaults:
+
+- Stack on valuation generations (#390). Do not land on `main`.
+- Feature folder stays `features/currency` (already on the stack).
+- Bootstrap hides the silent EUR default until setup (`defaultCurrency: null`).
+- Catalog and bootstrap work before setup. Settings list / get-currency fail `setupRequired`.
+- Setup is a durable `currency_jobs` row. EUR / same-currency confirm runs in the request and returns the finished job.
+- One running job via partial unique index. Second start fails `currencyJobConflict`.
+- Locale suggestion is frontend-only: `Intl.Locale.maximize().region` plus a compact region map, else EUR if the guess is unsupported.
+- Inspector setup is a full-screen first-use gate in the root shell. No new route. Workspace prototype stays unshipped.
+
+## 2026-08-18 — [Valuation generations and set-based budget results](https://github.com/mastro993/zai/issues/390)
+
+Seams from 374/377/390 (no re-grill):
+
+- `zai_core::features::valuations` public API: period completeness, authored-allowance restatement, projection convert
+- `crates/db` valuation repository: generation build/activate, cache upsert, set-based `SUM`/`COUNT`
+- Repository structural: indexes, immutability triggers, atomic head switch, statement counts, `EXPLAIN QUERY PLAN`
+
+Agent defaults:
+
+- One actual valuation generation head. Projection uses provider-rate head, not a second transaction cache
+- Cache rows denormalize `transaction_date` so generation/date `SUM` is set-based
+- Ready/superseded generation rows are immutable; building + active stay writable
+- Default-currency change: build complete inactive generation, then one writer tx switches heads
+- `BudgetPeriod.complete` added; wire status/allowance stay numbers until PR 6 nulls them. Incomplete persist as SQL NULL
+- Unknown rollover carry never becomes 0: dependent suffix is incomplete
+- Authored allowance restates at period-start rate of transaction-exchange-rate class
+- Migration `0012`. No new released fixture (0010 still upgrades)
+
+## 2026-08-18 — [Private ECB provider cache with privacy canaries](https://github.com/mastro993/zai/issues/389)
+
+Seams from 373/377/389 (no re-grill):
+
+- `zai_core::features::exchange_rates` public API: request plan, payload validate, refresh service
+- `ExchangeRateCache` repository publish/read
+- Privacy canaries + public-surface inventory (same shape as recurring)
+
+Agent defaults:
+
+- Host allow-list is only `data-api.ecb.europa.eu`
+- User-Agent is `Zai/{CARGO_PKG_VERSION}`
+- Approved series = 29 ECB daily FX currencies in manifest v1 (RUB suspended; BGN omitted, not in v1)
+- History boundary `1999-01-04`; initial load = calendar-year chunks
+- Refresh uses `updatedAfter` then merges into last-known-good before validate
+- Persist ECB-vs-EUR legs only; EUR cross rates computed locally
+- No supervisor auto-start this PR (no request without later consent)
+- Publication deadline approximated as 15:00 UTC (CET winter)
+- Refresh `updatedAfter` is the last successful sync RFC3339, not HTTP Last-Modified
+- Refresh sends stored ETag as `If-None-Match`
+- Same payload digest after merge is `NotModified` (no second insert)
+
+## 2026-08-18 — [Currency schema, silent EUR migration, and fail-closed money commands](https://github.com/mastro993/zai/issues/388)
+
+Seams reused from 377/388 (no re-grill):
+
+- Released-schema fixture upgrade matrix + new `v0010` fixture
+- Connect-path backup, transactional migrate, rollback, format check
+- Command/HTTP money gate (`setupRequired`)
+- Post-setup amount-only writes expand to default-currency identity Money
+
+Agent defaults:
+
+- Format capability is `application_format.format = multi-currency-v1`
+- Backup is `VACUUM INTO` `{db}.pre-multi-currency` before 0010
+- Silent EUR sets enabled default + identity rates; `setup_completed_at` stays null
+- Minimal sync `complete_initial_currency_setup` (job-based setup stays PR 5)
+- Gate lives on money services (allow-all in unit fakes); repos stay ungated
+- Persist `BIGINT`; wire/authored DTOs stay `i32`
+
 ## 2026-08-18
 
-- **PR CI also targets `feat/**`.** `ci.yml` and `e2e.yml` run on PRs into `main` and `feat/**`. Long-lived feat stacks (e.g. `feat/multi-currency`) get the same gate as `main`. `feat/**` not `feat/*` so nested feat names still match. Benchmarks stay `push` to `main` only.
+- **PR CI also targets `feat/**`.** `ci.yml` runs on PRs into `main` and `feat/**`. Long-lived feat stacks (e.g. `feat/multi-currency`) get the same gate as `main`. `feat/**` not `feat/*` so nested feat names still match. Benchmarks stay `push` to `main` only.
 
 ## 2026-08-17
 
@@ -18,7 +188,7 @@
 
 ## 2026-08-17 — [Define multi-currency API, command, and event parity contract](https://github.com/mastro993/zai/issues/376)
 
-User-locked: durable currency jobs; list DTOs convert-only; mapped-row bound import preview; backend manual-rate confirmation; same-release fail-closed; setup gates all money reads/writes.
+User-locked: durable currency jobs; mapped-row bound import preview; backend manual-rate confirmation; same-release fail-closed; setup gates all money reads/writes. List convert-only superseded 2026-08-20 (original Money on list DTO).
 
 Agent defaults:
 
@@ -26,7 +196,7 @@ Agent defaults:
 - One `currency-state` event channel. Refresh publication is `stateChanged`, not a job.
 - Disable-currency warning is frontend-only.
 - Wire Money stays a JSON number. Authored cap remains `i32::MAX` minor units. Persist `i64`.
-- `create`/`update`/`get` transaction return the detail DTO. List stays converted + completeness.
+- `create`/`update`/`get` transaction return the detail DTO. List includes original Money plus converted + completeness (superseded convert-only; see 2026-08-20 list original-amount choice).
 - Last-used transaction currency stays session memory.
 
 ## 2026-08-17 — [Define multi-currency production verification and rollout contract](https://github.com/mastro993/zai/issues/377)
@@ -43,7 +213,7 @@ User-locked: all four grill recommendations.
 User-locked: all three grill recommendations (A/A/A).
 
 - Merge surface: long-lived `feat/multi-currency` stack. `main` stays pre-currency. One merge when the release gate is green. That merge is the atomic version. Unused core does not land on `main` early.
-- Eight stacked PRs: Money+manifest → schema/EUR/fixtures → ECB+privacy → valuation generations → currency lifecycle API → existing money DTOs → bound import/export → frontend+e2e+smoke+benchmark.
+- Eight stacked PRs: Money+manifest → schema/EUR/fixtures → ECB+privacy → valuation generations → currency lifecycle API → existing money DTOs → bound import/export → frontend+native smoke+benchmark.
 - Living sequence: `docs/multi-currency-handoff.md`. Implementer may split a listed PR. Dropping a listed seam or landing it on `main` early blocks ship.
 
 ## 2026-08-17 — `/to-specs` for [Wayfind production-ready multi-currency support](https://github.com/mastro993/zai/issues/367)
@@ -51,7 +221,7 @@ User-locked: all three grill recommendations (A/A/A).
 Agent defaults (no re-grill; contracts already accepted):
 
 - One spec, not eight. `/to-spec` synthesizes the product+contract source of truth. The eight-PR stack stays the execution sequence.
-- Test seams = families already locked in [Define multi-currency production verification and rollout contract](https://github.com/mastro993/zai/issues/377). Highest existing first: Playwright lifecycle, native smoke, command-contract-parity, privacy canaries, released-schema fixtures, repository structural, core units, frontend Vitest, failure-recovery, post-`main` benchmark.
+- Test seams = families already locked in [Define multi-currency production verification and rollout contract](https://github.com/mastro993/zai/issues/377). Highest existing first: native smoke, command-contract-parity, privacy canaries, released-schema fixtures, repository structural, core units, frontend Vitest, failure-recovery, post-`main` benchmark.
 - Published [Implement production-ready multi-currency support](https://github.com/mastro993/zai/issues/385) with `ready-for-agent`. Map 367 stays open until the atomic merge.
 
 ## 2026-08-18
@@ -61,3 +231,14 @@ Agent defaults (no re-grill; contracts already accepted):
 - **Anti-slop migration shipped with the install.** Stop hook requires `pnpm check`. Findings were fixed, not suppressed: `satisfies` / named contracts, zod + `asWire*` instead of `typeof`/`unknown`, `setCommandTransports` + file-capability adapters instead of `vi.mock`, `schema.parse` fixtures instead of `as T`.
 - **Tauri plugin ESM exports are not spyable** (`configurable: false`). File-capability tests inject `{ web, tauri }` adapters; real `tauriSelectCsvImportFile` / `tauriDownloadTextFile` / Tauri `listen` are called only to assert fail-closed outside Tauri.
 - **Table-driven web-request `as never` replaced with `check<T>(build, args, expected)`.** Dropped type-lie cases (`items: "bad"`, invalid enum keys). Kept empty id / revision 0.
+
+## 2026-08-18 — [Exact Money, ISO manifest, and checked conversion](https://github.com/mastro993/zai/issues/387)
+
+Seams (from the ticket + 370/372): `zai_core::money` public API only. No schema, commands, UI.
+
+- **Manifest v1** pins SIX List One `2026-01-01` and CLDR 48.2. 155 fiat candidates. Generator: `scripts/generate-currency-manifest.py`.
+- **VED `valid_from` = 2021-10-01** from ISO 4217 Amendment 170. CLDR 48.2 lists VED as `tender=false` with no `from`.
+- **Wire/authored cap** is `i32::MAX` via `Money::from_authored` / `try_to_wire_minor_units`. Persist constructor accepts `i64`.
+- **`num-bigint` 0.4.8** for conversion intermediates. Round half-even once at the target ISO digits. No `f64`.
+- **Automatic legs share a `rate_set_id`.** Same value date is not enough; unexplained cross rates stay forbidden.
+- **CLDR pin URL is the raw `supplementalData.xml`** that matches `CLDR_SHA256`, not the GitHub HTML blob page.

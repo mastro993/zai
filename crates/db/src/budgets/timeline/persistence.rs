@@ -1,21 +1,19 @@
 use super::calculate::{
-    calculate_configuration, count_missing_periods, invalid_budget, load_category_hierarchy,
-    next_period, parse_cadence, status_string, validate_period_boundaries,
+    calculate_configuration, count_missing_periods, displayed_allowance, invalid_budget,
+    load_category_hierarchy, next_period, parse_cadence, status_string, validate_period_boundaries,
 };
 use crate::budgets::models::{
-    BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget,
+    BudgetConfigurationRow, BudgetPeriodResultRow, BudgetRow, build_budget, map_period,
 };
 use crate::errors::{IntoStorage, StorageError};
 use crate::schema::{budget_configurations, budget_period_results, budgets};
+use crate::valuations::current_allowance_currency;
 use chrono::NaiveDateTime;
 use diesel::OptionalExtension;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use zai_core::Error;
-use zai_core::Result;
-use zai_core::features::budgets::models::{
-    Budget, BudgetCadence, BudgetPeriod, BudgetStatus, current_period,
-};
+use zai_core::features::budgets::models::{Budget, BudgetCadence, BudgetPeriod, current_period};
 
 pub(super) struct AdvanceInput {
     pub id: String,
@@ -58,42 +56,54 @@ pub(super) fn load_previous_period(
         .filter(budget_configurations::period_start.eq(result.period_start))
         .first::<BudgetConfigurationRow>(conn)
         .into_storage()?;
-    period_from_rows(configuration, result)
-        .map(Some)
-        .map_err(StorageError::CoreError)
+    period_from_rows(conn, configuration, result).map(Some)
 }
 
 pub(crate) fn period_from_rows(
+    conn: &mut SqliteConnection,
     configuration: BudgetConfigurationRow,
     result: BudgetPeriodResultRow,
-) -> Result<BudgetPeriod> {
+) -> crate::errors::Result<BudgetPeriod> {
+    let currency = current_allowance_currency(conn).map_err(StorageError::from)?;
+    period_from_rows_with_currency(conn, configuration, result, &currency)
+}
+
+pub(crate) fn period_from_rows_with_currency(
+    conn: &mut SqliteConnection,
+    configuration: BudgetConfigurationRow,
+    result: BudgetPeriodResultRow,
+    currency: &str,
+) -> crate::errors::Result<BudgetPeriod> {
     if configuration.period_start >= configuration.period_end
         || result.period_start >= result.period_end
         || configuration.period_start != result.period_start
         || configuration.period_end != result.period_end
     {
-        return Err(Error::Repository(
+        return Err(StorageError::CoreError(Error::Repository(
             "Invalid budget period boundaries".to_string(),
-        ));
+        )));
     }
-    let status = match result.status.as_str() {
-        "onTrack" => BudgetStatus::OnTrack,
-        "warning" => BudgetStatus::Warning,
-        "overspent" => BudgetStatus::Overspent,
-        _ => return Err(Error::Repository("Invalid budget status".to_string())),
-    };
-    Ok(BudgetPeriod {
-        start: result.period_start,
-        end: result.period_end,
-        base_allowance: configuration.base_allowance,
-        effective_allowance: result.effective_allowance,
-        net_budget_spending: result.net_budget_spending,
-        remaining_allowance: result.remaining_allowance,
-        status,
-    })
+    let displayed_base = displayed_allowance(conn, &configuration, result.complete, currency)?;
+    map_period(&result, displayed_base, currency.to_string()).map_err(StorageError::CoreError)
 }
 
-pub(super) fn result_row(id: &str, period: &BudgetPeriod) -> BudgetPeriodResultRow {
+fn assemble_budget(
+    conn: &mut SqliteConnection,
+    budget: BudgetRow,
+    configuration: BudgetConfigurationRow,
+    result: BudgetPeriodResultRow,
+) -> crate::errors::Result<Budget> {
+    let currency = current_allowance_currency(conn).map_err(StorageError::from)?;
+    let displayed_base = displayed_allowance(conn, &configuration, result.complete, &currency)?;
+    build_budget(budget, configuration, result, displayed_base, currency)
+        .map_err(StorageError::CoreError)
+}
+
+pub(super) fn result_row(
+    id: &str,
+    period: &BudgetPeriod,
+    generation_id: &str,
+) -> BudgetPeriodResultRow {
     BudgetPeriodResultRow {
         budget_id: id.to_string(),
         period_start: period.start,
@@ -101,7 +111,9 @@ pub(super) fn result_row(id: &str, period: &BudgetPeriod) -> BudgetPeriodResultR
         net_budget_spending: period.net_budget_spending,
         effective_allowance: period.effective_allowance,
         remaining_allowance: period.remaining_allowance,
-        status: status_string(period.status),
+        status: period.status.map(status_string),
+        generation_id: generation_id.to_string(),
+        complete: period.complete,
     }
 }
 
@@ -120,6 +132,8 @@ pub(super) fn upsert_period_result(
         budget_period_results::effective_allowance.eq(result.effective_allowance),
         budget_period_results::remaining_allowance.eq(result.remaining_allowance),
         budget_period_results::status.eq(&result.status),
+        budget_period_results::generation_id.eq(&result.generation_id),
+        budget_period_results::complete.eq(result.complete),
     ))
     .execute(conn)
     .into_storage()?;
@@ -164,6 +178,8 @@ pub(super) fn advance_timeline(
             measurement_mode: budget.measurement_mode.clone(),
             rollover_mode: budget.rollover_mode.clone(),
             warning_percentage: budget.warning_percentage,
+            allowance_currency: crate::valuations::current_allowance_currency(conn)
+                .map_err(StorageError::from)?,
         };
         diesel::insert_into(budget_configurations::table)
             .values(&configuration)
@@ -180,6 +196,7 @@ pub(super) fn advance_timeline(
     validate_period_boundaries(&configuration, cadence)?;
     let missing_periods = count_missing_periods(&configuration, current_start, cadence)?;
     let categories = load_category_hierarchy(conn)?;
+    let generation = crate::valuations::active_generation(conn).map_err(StorageError::from)?;
     let mut previous_period = load_previous_period(conn, &id, configuration.period_start)?;
     let mut current_result = None;
 
@@ -203,6 +220,7 @@ pub(super) fn advance_timeline(
                 measurement_mode: configuration.measurement_mode.clone(),
                 rollover_mode: configuration.rollover_mode.clone(),
                 warning_percentage: configuration.warning_percentage,
+                allowance_currency: configuration.allowance_currency.clone(),
             });
             if configuration.period_start == period_start
                 && !existing_configurations
@@ -219,7 +237,7 @@ pub(super) fn advance_timeline(
 
         let period =
             calculate_configuration(conn, &configuration, &categories, previous_period.as_ref())?;
-        let result = result_row(&id, &period);
+        let result = result_row(&id, &period, &generation.id);
         upsert_period_result(conn, &result)?;
         previous_period = Some(period);
 
@@ -234,7 +252,19 @@ pub(super) fn advance_timeline(
             "Budget current period could not be materialized".to_string(),
         ))
     })?;
-    build_budget(budget, configuration, result).map_err(StorageError::CoreError)
+    assemble_budget(conn, budget, configuration, result)
+}
+
+pub(crate) fn rebuild_all_results(conn: &mut SqliteConnection) -> crate::errors::Result<()> {
+    let ids = budgets::table
+        .filter(budgets::deleted_at.is_null())
+        .select(budgets::id)
+        .load::<String>(conn)
+        .into_storage()?;
+    for id in ids {
+        rebuild_derived(conn, &id)?;
+    }
+    Ok(())
 }
 
 pub(super) fn rebuild_derived(conn: &mut SqliteConnection, id: &str) -> crate::errors::Result<()> {
@@ -258,12 +288,13 @@ pub(super) fn rebuild_derived(conn: &mut SqliteConnection, id: &str) -> crate::e
         .into_storage()?;
 
     let categories = load_category_hierarchy(conn)?;
+    let generation = crate::valuations::active_generation(conn).map_err(StorageError::from)?;
     let mut previous_period = None;
     for configuration in configurations {
         validate_period_boundaries(&configuration, cadence)?;
         let period =
             calculate_configuration(conn, &configuration, &categories, previous_period.as_ref())?;
-        let result = result_row(id, &period);
+        let result = result_row(id, &period, &generation.id);
         diesel::insert_into(budget_period_results::table)
             .values(&result)
             .execute(conn)
@@ -293,9 +324,10 @@ pub(super) fn refresh_current_configuration(
     validate_period_boundaries(&configuration, cadence)?;
     let categories = load_category_hierarchy(conn)?;
     let previous_period = load_previous_period(conn, id, configuration.period_start)?;
+    let generation = crate::valuations::active_generation(conn).map_err(StorageError::from)?;
     let period =
         calculate_configuration(conn, &configuration, &categories, previous_period.as_ref())?;
-    let result = result_row(id, &period);
+    let result = result_row(id, &period, &generation.id);
     upsert_period_result(conn, &result)?;
-    build_budget(budget_row, configuration, result).map_err(StorageError::CoreError)
+    assemble_budget(conn, budget_row, configuration, result)
 }

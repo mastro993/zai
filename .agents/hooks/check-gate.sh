@@ -34,7 +34,7 @@ is_check_relevant_path() {
     Cargo.toml|Cargo.lock|deny.toml|clippy.toml|lefthook.yml) return 0 ;;
     rust-toolchain|rust-toolchain.toml|rust-toolchain.*) return 0 ;;
     tsconfig.json|tsconfig.*.json) return 0 ;;
-    playwright.config.*|vitest.config.*) return 0 ;;
+    vitest.config.*) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -97,6 +97,9 @@ TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
 set +e
+# Cloud Agent Node is 22.14 and cannot import tools/oxlint/anti-slop/*.ts
+# without type-stripping. GitHub CI uses Node LTS (24) and does not need this.
+export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--experimental-strip-types --no-warnings"
 pnpm check >"$TMP" 2>&1
 CODE=$?
 set -e

@@ -1,11 +1,8 @@
 use crate::errors::Result;
-use crate::features::transaction_categories::models::{
-    NewTransactionCategory, TransactionCategory,
-};
-use crate::features::transaction_categories::service::normalize_import_categories;
+use crate::features::currency::{AllowCurrencySetup, CurrencySetupGate};
 use crate::features::transactions::models::{
-    DuplicateKeyCandidate, NewTransaction, Transaction, TransactionSearchFilters,
-    TransactionUpdate, validate_list_paging,
+    DuplicateKeyCandidate, NewTransaction, Transaction, TransactionListItem,
+    TransactionSearchFilters, TransactionUpdate, validate_list_paging,
 };
 use crate::features::transactions::traits::{
     TransactionsRepositoryTrait, TransactionsServiceTrait,
@@ -16,11 +13,20 @@ use uuid::Uuid;
 
 pub struct TransactionsService {
     repository: Arc<dyn TransactionsRepositoryTrait>,
+    currency_setup: Arc<dyn CurrencySetupGate>,
 }
 
 impl TransactionsService {
     pub fn new(repository: Arc<dyn TransactionsRepositoryTrait>) -> Self {
-        Self { repository }
+        Self {
+            repository,
+            currency_setup: Arc::new(AllowCurrencySetup),
+        }
+    }
+
+    pub fn with_currency_setup(mut self, currency_setup: Arc<dyn CurrencySetupGate>) -> Self {
+        self.currency_setup = currency_setup;
+        self
     }
 }
 
@@ -32,7 +38,8 @@ impl TransactionsServiceTrait for TransactionsService {
         per_page: i64,
         filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
-    ) -> Result<PaginatedData<Transaction>> {
+    ) -> Result<PaginatedData<TransactionListItem>> {
+        self.currency_setup.require_setup()?;
         validate_list_paging(page, per_page)?;
         self.repository
             .get_transactions(page, per_page, filters, sort)
@@ -40,6 +47,7 @@ impl TransactionsServiceTrait for TransactionsService {
     }
 
     async fn get_transaction(&self, id: &str) -> Result<Transaction> {
+        self.currency_setup.require_setup()?;
         self.repository.get_transaction(id).await
     }
 
@@ -48,6 +56,7 @@ impl TransactionsServiceTrait for TransactionsService {
         filters: Option<TransactionSearchFilters<'_>>,
         sort: Option<Sort>,
     ) -> Result<Vec<String>> {
+        self.currency_setup.require_setup()?;
         self.repository
             .get_filtered_transaction_ids(filters, sort)
             .await
@@ -58,6 +67,7 @@ impl TransactionsServiceTrait for TransactionsService {
         filters: Option<TransactionSearchFilters<'_>>,
         transaction_ids: Option<Vec<String>>,
     ) -> Result<String> {
+        self.currency_setup.require_setup()?;
         self.repository
             .export_transactions_csv(filters, transaction_ids)
             .await
@@ -67,12 +77,14 @@ impl TransactionsServiceTrait for TransactionsService {
         &self,
         candidates: Vec<DuplicateKeyCandidate>,
     ) -> Result<Vec<String>> {
+        self.currency_setup.require_setup()?;
         self.repository
             .find_existing_duplicate_keys(candidates)
             .await
     }
 
     async fn create_transaction(&self, mut new_transaction: NewTransaction) -> Result<Transaction> {
+        self.currency_setup.require_setup()?;
         new_transaction.validate()?;
         ensure_transaction_id(&mut new_transaction);
         self.repository.create_transaction(new_transaction).await
@@ -82,53 +94,19 @@ impl TransactionsServiceTrait for TransactionsService {
         &self,
         transaction_update: TransactionUpdate,
     ) -> Result<Transaction> {
+        self.currency_setup.require_setup()?;
         transaction_update.validate()?;
         self.repository.update_transaction(transaction_update).await
     }
 
     async fn delete_transaction(&self, id: &str) -> Result<Transaction> {
+        self.currency_setup.require_setup()?;
         self.repository.delete_transaction(id).await
     }
 
-    async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<Transaction>> {
+    async fn delete_transactions(&self, ids: Vec<&str>) -> Result<Vec<TransactionListItem>> {
+        self.currency_setup.require_setup()?;
         self.repository.delete_transactions(ids).await
-    }
-
-    async fn import_transactions(
-        &self,
-        mut transactions: Vec<NewTransaction>,
-    ) -> Result<Vec<Transaction>> {
-        if transactions.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        for transaction in &mut transactions {
-            transaction.validate()?;
-            ensure_transaction_id(transaction);
-        }
-
-        self.repository.import_transactions(transactions).await
-    }
-
-    async fn import_transactions_with_categories(
-        &self,
-        categories: Vec<NewTransactionCategory>,
-        mut transactions: Vec<NewTransaction>,
-    ) -> Result<(Vec<TransactionCategory>, Vec<Transaction>)> {
-        let mut categories = normalize_import_categories(categories)?;
-        for category in &mut categories {
-            if category.id.as_deref().is_none_or(|id| id.trim().is_empty()) {
-                category.id = Some(Uuid::new_v4().to_string());
-            }
-        }
-        for transaction in &mut transactions {
-            transaction.validate()?;
-            ensure_transaction_id(transaction);
-        }
-
-        self.repository
-            .import_transactions_with_categories(categories, transactions)
-            .await
     }
 }
 
@@ -146,8 +124,34 @@ fn ensure_transaction_id(transaction: &mut NewTransaction) {
 mod tests {
     use super::*;
     use crate::errors::Error;
+    use crate::features::transaction_categories::models::{
+        NewTransactionCategory, TransactionCategory,
+    };
     use crate::features::transactions::dedup::duplicate_key;
-    use crate::features::transactions::models::DuplicateKeyCandidate;
+    use crate::features::transactions::import_models::BoundImportCommitRequest;
+    use crate::features::transactions::models::{
+        DuplicateKeyCandidate, TransactionExchangeRateRevision,
+    };
+
+    fn identity_detail(transaction: NewTransaction) -> Transaction {
+        let currency = transaction.currency;
+        let exchange_rate =
+            TransactionExchangeRateRevision::identity(&currency, transaction.transaction_date);
+        Transaction {
+            id: transaction.id.unwrap_or_default(),
+            description: transaction.description,
+            amount: transaction.amount,
+            currency: currency.clone(),
+            transaction_date: transaction.transaction_date,
+            transaction_type: transaction.transaction_type,
+            transaction_category_id: transaction.transaction_category_id,
+            notes: transaction.notes,
+            exchange_rate,
+            converted_amount: Some(transaction.amount),
+            converted_currency: currency,
+            complete: true,
+        }
+    }
     use chrono::NaiveDateTime;
     use std::sync::Mutex;
 
@@ -182,7 +186,7 @@ mod tests {
             _per_page: i64,
             _filters: Option<TransactionSearchFilters<'_>>,
             _sort: Option<Sort>,
-        ) -> Result<PaginatedData<Transaction>> {
+        ) -> Result<PaginatedData<TransactionListItem>> {
             *self.list_calls.lock().unwrap() += 1;
             Err(Error::InvalidData("unused in test".to_string()))
         }
@@ -227,6 +231,7 @@ mod tests {
                     let key = duplicate_key(
                         candidate.transaction_date,
                         candidate.amount,
+                        &candidate.currency,
                         candidate.description.as_deref(),
                     );
                     existing_set.contains(&key).then_some(key)
@@ -252,7 +257,7 @@ mod tests {
             Err(Error::InvalidData("unused in test".to_string()))
         }
 
-        async fn delete_transactions(&self, _ids: Vec<&str>) -> Result<Vec<Transaction>> {
+        async fn delete_transactions(&self, _ids: Vec<&str>) -> Result<Vec<TransactionListItem>> {
             Err(Error::InvalidData("unused in test".to_string()))
         }
 
@@ -272,6 +277,7 @@ mod tests {
                     duplicate_key(
                         transaction.transaction_date,
                         transaction.amount,
+                        &transaction.currency,
                         transaction.description.as_deref(),
                     )
                 })
@@ -282,18 +288,11 @@ mod tests {
                 let key = duplicate_key(
                     transaction.transaction_date,
                     transaction.amount,
+                    &transaction.currency,
                     transaction.description.as_deref(),
                 );
                 if seen_keys.insert(key) {
-                    let row = Transaction {
-                        id: transaction.id.unwrap_or_default(),
-                        description: transaction.description,
-                        amount: transaction.amount,
-                        transaction_date: transaction.transaction_date,
-                        transaction_type: transaction.transaction_type,
-                        transaction_category_id: transaction.transaction_category_id,
-                        notes: transaction.notes,
-                    };
+                    let row = identity_detail(transaction);
                     existing.push(row.clone());
                     imported.push(row);
                 }
@@ -310,24 +309,40 @@ mod tests {
             let imported = self.import_transactions(transactions).await?;
             Ok((Vec::new(), imported))
         }
+
+        async fn commit_bound_import(
+            &self,
+            request: BoundImportCommitRequest,
+        ) -> Result<Vec<Transaction>> {
+            let transactions = request
+                .rows
+                .into_iter()
+                .map(|row| row.transaction)
+                .collect();
+            self.import_transactions(transactions).await
+        }
     }
 
     #[tokio::test]
     async fn import_transactions_skips_duplicates_on_second_import() {
-        let repository = Arc::new(FakeRepository::default());
-        let service = TransactionsService::new(repository);
+        let repository = FakeRepository::default();
         let payload = vec![NewTransaction {
             id: None,
             description: Some(" Groceries ".to_string()),
             amount: 1250,
+            currency: "EUR".to_string(),
             transaction_date: parse_datetime("2026-01-15T08:30:00"),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         }];
 
-        let first = service.import_transactions(payload.clone()).await.unwrap();
-        let second = service.import_transactions(payload).await.unwrap();
+        let first = repository
+            .import_transactions(payload.clone())
+            .await
+            .unwrap();
+        let second = repository.import_transactions(payload).await.unwrap();
 
         assert_eq!(first.len(), 1);
         assert_eq!(second.len(), 0);
@@ -335,27 +350,30 @@ mod tests {
 
     #[tokio::test]
     async fn import_transactions_skips_duplicates_against_existing_same_day_key() {
-        let existing = vec![Transaction {
-            id: "existing".to_string(),
+        let existing = vec![identity_detail(NewTransaction {
+            id: Some("existing".to_string()),
             description: Some("groceries".to_string()),
             amount: 1250,
+            currency: "EUR".to_string(),
             transaction_date: parse_datetime("2026-01-15T20:45:00"),
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
-        }];
-        let repository = Arc::new(FakeRepository::with_existing(existing));
-        let service = TransactionsService::new(repository);
+            manual_exchange_rate: None,
+        })];
+        let repository = FakeRepository::with_existing(existing);
 
-        let imported = service
+        let imported = repository
             .import_transactions(vec![NewTransaction {
                 id: None,
                 description: Some(" Groceries ".to_string()),
                 amount: 1250,
+                currency: "EUR".to_string(),
                 transaction_date: parse_datetime("2026-01-15T08:30:00"),
                 transaction_type: "expense".to_string(),
                 transaction_category_id: None,
                 notes: None,
+                manual_exchange_rate: None,
             }])
             .await
             .unwrap();
@@ -419,6 +437,7 @@ mod tests {
             .push(duplicate_key(
                 parse_datetime("2026-01-15T08:30:00"),
                 1250,
+                "EUR",
                 Some("groceries"),
             ));
         let service = TransactionsService::new(repository);
@@ -428,11 +447,13 @@ mod tests {
                 DuplicateKeyCandidate {
                     transaction_date: parse_datetime("2026-01-15T20:45:00"),
                     amount: 1250,
+                    currency: "EUR".to_string(),
                     description: Some(" Groceries ".to_string()),
                 },
                 DuplicateKeyCandidate {
                     transaction_date: parse_datetime("2026-01-16T08:30:00"),
                     amount: 900,
+                    currency: "EUR".to_string(),
                     description: Some("Coffee".to_string()),
                 },
             ])
@@ -440,6 +461,28 @@ mod tests {
             .expect("duplicate keys");
 
         assert_eq!(keys.len(), 1);
-        assert_eq!(keys[0], "2026-01-15\u{0000}1250\u{0000}groceries");
+        assert_eq!(
+            keys[0],
+            "2026-01-15\u{0000}1250\u{0000}EUR\u{0000}groceries"
+        );
+    }
+
+    struct RejectSetup;
+
+    impl CurrencySetupGate for RejectSetup {
+        fn require_setup(&self) -> crate::Result<()> {
+            Err(Error::SetupRequired)
+        }
+    }
+
+    #[tokio::test]
+    async fn money_commands_fail_setup_required_before_financial_read() {
+        let service = TransactionsService::new(Arc::new(FakeRepository::default()))
+            .with_currency_setup(Arc::new(RejectSetup));
+        let error = service
+            .get_transaction("txn-1")
+            .await
+            .expect_err("setup required");
+        assert_eq!(error.code(), crate::ErrorCode::SetupRequired);
     }
 }

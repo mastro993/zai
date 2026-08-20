@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Result } from "@praha/byethrow";
 
 import { resetCommandTransports, setCommandTransports } from "@/commands/shared";
-import { transactionSchema } from "@/features/transactions/types/model";
+import { sampleTransaction } from "@/features/transactions/types/sample";
 
 import type { RecurringFormValues } from "../../types/recurring-transaction";
 import { RECURRING_COMMANDS } from "../registry";
@@ -89,6 +89,7 @@ describe("recurring Tauri command adapter", () => {
       totalOccurrences: "2",
       description: "Native smoke recurring",
       amount: 1200,
+      currency: "EUR",
       transactionType: "expense",
       transactionCategoryId: undefined,
       notes: undefined,
@@ -110,6 +111,7 @@ describe("recurring Tauri command adapter", () => {
         template: {
           description: "Native smoke recurring",
           amount: 1200,
+          currency: "EUR",
           transactionType: "expense",
           transactionCategoryId: null,
           notes: null,
@@ -160,6 +162,7 @@ describe("recurring Tauri command adapter", () => {
       totalOccurrences: "",
       description: "Indefinite recurring",
       amount: 1200,
+      currency: "EUR",
       transactionType: "expense",
       transactionCategoryId: undefined,
       notes: undefined,
@@ -176,7 +179,7 @@ describe("recurring Tauri command adapter", () => {
 
   it("builds adoption template from source transaction", async () => {
     invokeMock.mockResolvedValue({});
-    const transaction = transactionSchema.parse({
+    const transaction = sampleTransaction({
       id: "transaction-1",
       description: " Rent ",
       amount: 120000,
@@ -194,6 +197,7 @@ describe("recurring Tauri command adapter", () => {
       totalOccurrences: "12",
       description: "Rent",
       amount: 120000,
+      currency: "EUR",
       transactionType: "income",
       transactionCategoryId: "housing",
       notes: "Paid by bank transfer",
@@ -210,6 +214,7 @@ describe("recurring Tauri command adapter", () => {
         template: {
           description: "Rent",
           amount: 120000,
+          currency: "EUR",
           transactionType: "income",
           transactionCategoryId: "housing",
           notes: "Paid by bank transfer",

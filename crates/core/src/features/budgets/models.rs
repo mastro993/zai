@@ -173,10 +173,12 @@ pub struct BudgetPeriod {
     pub start: NaiveDateTime,
     pub end: NaiveDateTime,
     pub base_allowance: i64,
-    pub effective_allowance: i64,
+    pub effective_allowance: Option<i64>,
     pub net_budget_spending: i64,
-    pub remaining_allowance: i64,
-    pub status: BudgetStatus,
+    pub remaining_allowance: Option<i64>,
+    pub status: Option<BudgetStatus>,
+    pub complete: bool,
+    pub currency: String,
 }
 
 pub type BudgetPeriodHistory = PaginatedData<BudgetPeriod>;
@@ -347,7 +349,11 @@ pub fn calculate_period_with_rollover(
             .base_allowance
             .checked_sub(previous.net_budget_spending)
             .ok_or_else(|| Error::CalculationOverflow("Budget calculation overflow".to_string()))?,
-        (BudgetRolloverMode::Cumulative, Some(previous)) => previous.remaining_allowance,
+        (BudgetRolloverMode::Cumulative, Some(previous)) => {
+            previous.remaining_allowance.ok_or_else(|| {
+                Error::InvalidData("Incomplete predecessor cannot contribute rollover".to_string())
+            })?
+        }
     };
     let effective_allowance = base_allowance
         .checked_add(carry)
@@ -385,10 +391,12 @@ pub fn calculate_period_with_rollover(
         start,
         end,
         base_allowance,
-        effective_allowance,
+        effective_allowance: Some(effective_allowance),
         net_budget_spending,
-        remaining_allowance,
-        status,
+        remaining_allowance: Some(remaining_allowance),
+        status: Some(status),
+        complete: true,
+        currency: String::new(),
     })
 }
 

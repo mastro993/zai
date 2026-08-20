@@ -1,5 +1,6 @@
 #![allow(dead_code, unused_imports)]
 
+mod currency;
 mod helpers;
 mod normalize;
 mod recurring;
@@ -11,7 +12,7 @@ use axum::http::StatusCode;
 use serde_json::Value;
 use zai_app::ServiceContext;
 
-use crate::common::{TempAppDataDir, request_json};
+use crate::common::{TempAppDataDir, request_json, setup_app_without_currency_setup};
 
 pub use seeds::{
     category_payload, seed_alert, seed_category, seed_transaction, seed_transaction_at,
@@ -26,6 +27,15 @@ pub struct ContractHarness {
 
 pub async fn setup_contract(prefix: &str) -> ContractHarness {
     let (router, context, dir) = crate::common::setup_app(prefix).await;
+    ContractHarness {
+        context,
+        router,
+        _dir: dir,
+    }
+}
+
+pub async fn setup_unconfirmed_contract(prefix: &str) -> ContractHarness {
+    let (router, context, dir) = setup_app_without_currency_setup(prefix).await;
     ContractHarness {
         context,
         router,

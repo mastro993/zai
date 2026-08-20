@@ -33,10 +33,12 @@ fn budget_input() -> ProjectionBudgetInput {
                 start: dt(2026, 1, 1, 0, 0),
                 end: dt(2026, 2, 1, 0, 0),
                 base_allowance: 10_000,
-                effective_allowance: 10_000,
+                effective_allowance: Some(10_000),
                 net_budget_spending: 0,
-                remaining_allowance: 10_000,
-                status: BudgetStatus::OnTrack,
+                remaining_allowance: Some(10_000),
+                status: Some(BudgetStatus::OnTrack),
+                complete: true,
+                currency: "EUR".to_string(),
             },
         },
         scope_category_ids: Vec::new(),
@@ -60,6 +62,7 @@ fn template(
         effective_until_local: effective_until,
         description: description.to_string(),
         amount: 100,
+        currency: "EUR".to_string(),
         transaction_type: "expense".to_string(),
         transaction_category_id: None,
         notes: None,
@@ -125,6 +128,7 @@ fn project(sources: Vec<ProjectionSourceInput>) -> BudgetProjectionResult {
         category_hierarchy: Vec::new(),
         actual_spending: Default::default(),
         focus_recurring_transaction_id: None,
+        rates: super::ProjectionRateContext::default(),
     })
     .unwrap()
 }

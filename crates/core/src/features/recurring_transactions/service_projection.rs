@@ -14,6 +14,7 @@ impl RecurringTransactionsService {
         &self,
         query: BudgetProjectionQuery,
     ) -> Result<BudgetProjectionResult> {
+        self.require_money()?;
         self.compute_projection(query).await
     }
 
@@ -177,6 +178,7 @@ mod tests {
                 through_local: observed_local,
                 horizon_months: 1,
                 complete: false,
+                currency: "EUR".to_string(),
                 periods: Vec::new(),
                 source_errors: vec![ProjectionSourceError {
                     kind: ProjectionSourceErrorKind::GenerationBlocked,

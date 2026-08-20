@@ -283,10 +283,12 @@ async fn tombstoned_budget_is_excluded_from_category_safeguards_and_repair() {
             id: Some("after-tombstone".to_string()),
             description: None,
             amount: 500,
+            currency: "EUR".to_string(),
             transaction_date: january,
             transaction_type: "expense".to_string(),
             transaction_category_id: None,
             notes: None,
+            manual_exchange_rate: None,
         })
         .await
         .expect("transaction");

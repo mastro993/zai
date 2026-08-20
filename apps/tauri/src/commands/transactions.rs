@@ -5,10 +5,13 @@ use log::debug;
 use serde::Deserialize;
 use tauri::State;
 use zai_app::ServiceContext;
-use zai_core::features::transaction_categories::models::NewTransactionCategory;
 use zai_core::features::transactions::models::{
     DuplicateKeyCandidate, NewTransaction, Transaction, TransactionCsvExportResponse,
-    TransactionSearchFilters, TransactionUpdate,
+    TransactionListItem, TransactionSearchFilters, TransactionUpdate,
+};
+use zai_core::features::transactions::{
+    BoundImportPreview, CommitTransactionImportRequest, CommitTransactionImportResponse,
+    PreviewTransactionImportRequest,
 };
 use zai_core::query::{PaginatedData, Sort};
 
@@ -111,7 +114,7 @@ pub async fn get_transactions(
     filters: Option<TransactionSearchFiltersDto>,
     sort: Option<Sort>,
     state: State<'_, Arc<ServiceContext>>,
-) -> CommandResult<PaginatedData<Transaction>> {
+) -> CommandResult<PaginatedData<TransactionListItem>> {
     debug!("Getting transactions ...");
     let filters = filters
         .as_ref()
@@ -179,7 +182,7 @@ pub async fn delete_transaction(
 pub async fn delete_transactions(
     transaction_ids: Vec<String>,
     state: State<'_, Arc<ServiceContext>>,
-) -> CommandResult<Vec<Transaction>> {
+) -> CommandResult<Vec<TransactionListItem>> {
     debug!("Deleting {} transactions ...", transaction_ids.len());
     let transaction_id_refs = transaction_ids.iter().map(String::as_str).collect();
     state
@@ -190,33 +193,40 @@ pub async fn delete_transactions(
 }
 
 #[tauri::command]
-pub async fn import_transactions(
-    transactions: Vec<NewTransaction>,
+pub async fn preview_transaction_import(
+    request: PreviewTransactionImportRequest,
     state: State<'_, Arc<ServiceContext>>,
-) -> CommandResult<Vec<Transaction>> {
-    debug!("Importing {} transactions ...", transactions.len());
-    state
-        .transactions_service()
-        .import_transactions(transactions)
+) -> CommandResult<BoundImportPreview> {
+    let preview = state
+        .transaction_import_service()
+        .preview(request)
         .await
-        .map_err(|error| command_error("Failed to import transactions", error))
+        .map_err(|error| command_error("Failed to preview import", error))?;
+    if preview.job.status == zai_core::features::currency::CurrencyJobStatus::Running {
+        state.spawn_currency_job_drive();
+    }
+    Ok(preview)
 }
 
 #[tauri::command]
-pub async fn import_transaction_batch(
-    categories: Vec<NewTransactionCategory>,
-    transactions: Vec<NewTransaction>,
+pub async fn get_transaction_import_preview(
+    token: String,
     state: State<'_, Arc<ServiceContext>>,
-) -> CommandResult<Vec<Transaction>> {
-    debug!(
-        "Importing transaction batch with {} categories and {} transactions ...",
-        categories.len(),
-        transactions.len()
-    );
+) -> CommandResult<BoundImportPreview> {
     state
-        .transactions_service()
-        .import_transactions_with_categories(categories, transactions)
+        .transaction_import_service()
+        .get_preview(&token)
+        .map_err(|error| command_error("Failed to load import preview", error))
+}
+
+#[tauri::command]
+pub async fn commit_transaction_import(
+    request: CommitTransactionImportRequest,
+    state: State<'_, Arc<ServiceContext>>,
+) -> CommandResult<CommitTransactionImportResponse> {
+    state
+        .transaction_import_service()
+        .commit(request)
         .await
-        .map(|(_, imported_transactions)| imported_transactions)
-        .map_err(|error| command_error("Failed to import transaction batch", error))
+        .map_err(|error| command_error("Failed to commit import", error))
 }

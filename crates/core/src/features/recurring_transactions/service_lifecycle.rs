@@ -9,11 +9,18 @@ use super::service::RecurringTransactionsService;
 use super::traits::RecurringOccurrenceProcessor;
 use crate::{Error, Result};
 
+pub(super) enum RecurringLifecycleApplyStatus {
+    Succeeded,
+    AlreadyApplied,
+    Unchanged { reason: String },
+}
+
 impl RecurringTransactionsService {
     pub async fn pause(
         &self,
         input: RecurringLifecycleUpdate,
     ) -> Result<RecurringLifecycleOutcome> {
+        self.require_money()?;
         self.apply_lifecycle(RecurringLifecycleCommand::Pause, input)
             .await
     }
@@ -44,6 +51,33 @@ impl RecurringTransactionsService {
         command: RecurringLifecycleCommand,
         update: RecurringLifecycleUpdate,
     ) -> Result<RecurringLifecycleOutcome> {
+        let recurring_transaction_id = update.recurring_transaction_id.clone();
+        match self.apply_lifecycle_status(command, update).await? {
+            RecurringLifecycleApplyStatus::Succeeded => {
+                let document = if command == RecurringLifecycleCommand::Delete {
+                    self.compose_delete_ack(&recurring_transaction_id).await?
+                } else {
+                    self.get_document(&recurring_transaction_id).await?
+                };
+                Ok(RecurringLifecycleOutcome::Succeeded { document })
+            }
+            RecurringLifecycleApplyStatus::AlreadyApplied => {
+                let document = self.get_document(&recurring_transaction_id).await?;
+                Ok(RecurringLifecycleOutcome::AlreadyApplied { document })
+            }
+            RecurringLifecycleApplyStatus::Unchanged { reason } => {
+                let document = self.get_document(&recurring_transaction_id).await?;
+                Ok(RecurringLifecycleOutcome::Unchanged { document, reason })
+            }
+        }
+    }
+
+    pub(super) async fn apply_lifecycle_status(
+        &self,
+        command: RecurringLifecycleCommand,
+        update: RecurringLifecycleUpdate,
+    ) -> Result<RecurringLifecycleApplyStatus> {
+        self.require_money()?;
         update.validate_revision()?;
         let observed_local = self.clock.sample();
 
@@ -61,8 +95,7 @@ impl RecurringTransactionsService {
 
         if recurring.revision != update.expected_revision {
             if recurring.lifecycle == command.target_lifecycle() {
-                let document = self.get_document(&recurring.id).await?;
-                return Ok(RecurringLifecycleOutcome::AlreadyApplied { document });
+                return Ok(RecurringLifecycleApplyStatus::AlreadyApplied);
             }
             return Err(Error::RevisionConflict {
                 current_revision: i64::from(recurring.revision),
@@ -70,9 +103,7 @@ impl RecurringTransactionsService {
         }
 
         if !transition_allowed(recurring.lifecycle, command) {
-            let document = self.get_document(&recurring.id).await?;
-            return Ok(RecurringLifecycleOutcome::Unchanged {
-                document,
+            return Ok(RecurringLifecycleApplyStatus::Unchanged {
                 reason: UNCHANGED_INVALID_TRANSITION.to_string(),
             });
         }
@@ -84,9 +115,7 @@ impl RecurringTransactionsService {
             )
         {
             if self.source_generation_blocked(&recurring.id).await? {
-                let document = self.get_document(&recurring.id).await?;
-                return Ok(RecurringLifecycleOutcome::Unchanged {
-                    document,
+                return Ok(RecurringLifecycleApplyStatus::Unchanged {
                     reason: UNCHANGED_GENERATION_BLOCKED.to_string(),
                 });
             }
@@ -95,16 +124,12 @@ impl RecurringTransactionsService {
             if recurring.lifecycle == RecurringLifecycle::Active {
                 self.catch_up_through_observation(observed_local).await?;
                 if self.source_generation_blocked(&recurring.id).await? {
-                    let document = self.get_document(&recurring.id).await?;
-                    return Ok(RecurringLifecycleOutcome::Unchanged {
-                        document,
+                    return Ok(RecurringLifecycleApplyStatus::Unchanged {
                         reason: UNCHANGED_GENERATION_BLOCKED.to_string(),
                     });
                 }
                 if self.source_still_due(&recurring.id, observed_local).await? {
-                    let document = self.get_document(&recurring.id).await?;
-                    return Ok(RecurringLifecycleOutcome::Unchanged {
-                        document,
+                    return Ok(RecurringLifecycleApplyStatus::Unchanged {
                         reason: UNCHANGED_GENERATION_BLOCKED.to_string(),
                     });
                 }
@@ -119,12 +144,9 @@ impl RecurringTransactionsService {
             .await?;
         if !transition_allowed(current.lifecycle, command) {
             if current.lifecycle == command.target_lifecycle() {
-                let document = self.get_document(&current.id).await?;
-                return Ok(RecurringLifecycleOutcome::AlreadyApplied { document });
+                return Ok(RecurringLifecycleApplyStatus::AlreadyApplied);
             }
-            let document = self.get_document(&current.id).await?;
-            return Ok(RecurringLifecycleOutcome::Unchanged {
-                document,
+            return Ok(RecurringLifecycleApplyStatus::Unchanged {
                 reason: UNCHANGED_INVALID_TRANSITION.to_string(),
             });
         }
@@ -139,21 +161,16 @@ impl RecurringTransactionsService {
 
         if command == RecurringLifecycleCommand::Delete {
             self.request_processing_wake();
-            return Ok(RecurringLifecycleOutcome::Succeeded {
-                document: self
-                    .compose_delete_ack(&update.recurring_transaction_id)
-                    .await?,
-            });
+            return Ok(RecurringLifecycleApplyStatus::Succeeded);
         }
 
-        let document = self.get_document(&update.recurring_transaction_id).await?;
         if matches!(
             command,
             RecurringLifecycleCommand::Resume | RecurringLifecycleCommand::Pause
         ) {
             self.request_processing_wake();
         }
-        Ok(RecurringLifecycleOutcome::Succeeded { document })
+        Ok(RecurringLifecycleApplyStatus::Succeeded)
     }
 
     async fn catch_up_through_observation(

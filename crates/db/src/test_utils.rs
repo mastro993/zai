@@ -49,6 +49,7 @@ impl Drop for TempDb {
     fn drop(&mut self) {
         Self::remove_sidecar(&self.path, "-wal");
         Self::remove_sidecar(&self.path, "-shm");
+        Self::remove_sidecar(&self.path, ".pre-multi-currency");
         if self.path.exists() {
             let _ = fs::remove_file(&self.path);
         }
