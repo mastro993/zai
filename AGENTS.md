@@ -120,3 +120,35 @@ Use the default Matt Pocock triage label vocabulary. See `docs/agents/triage-lab
 ### Domain docs
 
 Use single-context domain docs. See `docs/agents/domain.md`.
+
+---
+
+## Cursor Cloud specific instructions
+
+Use **web mode** in Cursor Cloud. Desktop Tauri (`pnpm dev:tauri`) needs GTK/WebKit and a local window session; it is not the default here.
+
+### Runtime
+
+- Start with `pnpm dev:web` (the environment `start` script copies `.env.web.example` when `.env.web` is missing).
+- Frontend (Vite): `http://127.0.0.1:1420`
+- API (Axum `zai-server`): `http://127.0.0.1:3000`
+- Health check: `GET http://127.0.0.1:3000/health` → `{"status":"ok"}`
+- SQLite data directory: `.local/zai-web-data` when using the example env file
+
+The API binds loopback only. Do not set `ZAI_BIND_ADDR` to a non-loopback address.
+
+### Toolchain
+
+The workspace uses Rust edition 2024, which needs Rust 1.85+. Install the `stable` toolchain with `rustfmt` and `clippy`. System packages match CI: `libsqlite3-dev`, `libssl-dev`, `libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev`, `patchelf`, and `pkg-config`. Install them noninteractively (`DEBIAN_FRONTEND=noninteractive`, `Dpkg::Options::=--force-confold`) so `fuse.conf` prompts do not hang.
+
+`.cursor/environment.json` runs those steps, then `pnpm install --frozen-lockfile --ignore-scripts` and `cargo build -p zai-server`.
+
+### Checks
+
+```sh
+curl -sS http://127.0.0.1:3000/health
+pnpm --filter frontend test
+cargo test -p zai-server
+```
+
+`pnpm check:backend` is the full workspace clippy and test suite. Use it before a PR, not as the boot smoke test.

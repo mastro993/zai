@@ -1,3 +1,4 @@
 {
-  "install": "bash .cursor/install.sh"
+  "install": "bash .cursor/install.sh",
+  "start": "test -f .env.web || cp .env.web.example .env.web\npnpm dev:web"
 }
