@@ -1,5 +1,35 @@
 # Choices
 
+## 2026-08-20 — Currency settings row label is ISO, name, symbol
+
+- Currency column: `{ISO} {name} ({symbol})`. Symbol from `currencyDisplaySymbol`. Name + parens muted.
+
+## 2026-08-20 — Transaction list shows original amount for cross-currency rows
+
+- List DTO includes original Money (`amount`, `currency`) plus converted fields. Supersedes convert-only list from #376.
+- Amount cell: when transaction currency ≠ default, converted on top, original muted below (no parens) via `formatCurrencyFromMinor` (`currencyDisplay: "narrowSymbol"`). Same-currency rows stay converted only.
+- Incomplete cross-currency: `Incomplete` on top, original muted below.
+
+## 2026-08-20 — Conversion-rate quotes keep full decimal precision
+
+- Quote is `target_leg / source_leg` as CanonicalRate, up to 18 significant digits, half-even on the next digit.
+- Do not convert 1 source unit to target Money. That rounds to ISO minor units (JPY→EUR 0.00536 → 0.01).
+- Stored automatic `original_decimal` and converted-amount math keep the unrounded quote.
+- UI display (form placeholder, transaction detail) rounds the rate to 6 fractional digits, half-up, then localizes.
+
+## 2026-08-20 — Conversion-rate UI shows 6 fractional digits
+
+- Display-only. Backend, export, typed manual input, and converted-amount math stay full precision.
+- `formatConversionRateDisplay`: round half-up to 6 places, trim trailing zeros, locale decimal separator.
+
+## 2026-08-20 — Transaction form conversion-rate field
+
+- Cross-currency amount helper drops rate/date/origin copy. Converted amount stays under Amount.
+- Converted amount shows only when currency ≠ default. FieldDescription under Amount input: `Converted amount: {formatted}`. Pending = `h-[1em] w-[14em]` skeleton covering the label too (`aria-label="Converted amount"`).
+- Non-default currency always shows empty "Conversion rate" input. Placeholder is `1 SRC = rate TGT on locale-date` (both ISO, locale decimal + date).
+- Typed value = manual override. Empty = selected-date rate (locked revision on amount-only edit, else quote).
+- Currency change clears typed rate. Date change does not.
+
 ## 2026-08-20 — ECB updatedAfter 404 is not-modified
 
 - Incremental refresh sends `updatedAfter`. ECB returns **404 No Series** when nothing new — not 304.
@@ -158,7 +188,7 @@ Agent defaults:
 
 ## 2026-08-17 — [Define multi-currency API, command, and event parity contract](https://github.com/mastro993/zai/issues/376)
 
-User-locked: durable currency jobs; list DTOs convert-only; mapped-row bound import preview; backend manual-rate confirmation; same-release fail-closed; setup gates all money reads/writes.
+User-locked: durable currency jobs; mapped-row bound import preview; backend manual-rate confirmation; same-release fail-closed; setup gates all money reads/writes. List convert-only superseded 2026-08-20 (original Money on list DTO).
 
 Agent defaults:
 
@@ -166,7 +196,7 @@ Agent defaults:
 - One `currency-state` event channel. Refresh publication is `stateChanged`, not a job.
 - Disable-currency warning is frontend-only.
 - Wire Money stays a JSON number. Authored cap remains `i32::MAX` minor units. Persist `i64`.
-- `create`/`update`/`get` transaction return the detail DTO. List stays converted + completeness.
+- `create`/`update`/`get` transaction return the detail DTO. List includes original Money plus converted + completeness (superseded convert-only; see 2026-08-20 list original-amount choice).
 - Last-used transaction currency stays session memory.
 
 ## 2026-08-17 — [Define multi-currency production verification and rollout contract](https://github.com/mastro993/zai/issues/377)

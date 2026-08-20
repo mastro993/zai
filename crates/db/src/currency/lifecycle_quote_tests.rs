@@ -1,0 +1,56 @@
+use super::quote_on;
+use crate::connection::{create_pool, get_connection, run_migrations};
+use crate::exchange_rates::ExchangeRateRepository;
+use crate::test_utils::TempDb;
+use crate::write_actor::spawn_writer;
+use chrono::{TimeZone, Utc};
+use zai_core::features::currency::QuoteVariant;
+use zai_core::features::exchange_rates::{
+    APPROVED_ECB_CURRENCIES, ExchangeRateCache, SyncMetadata, parse_ecb_csv, validate_complete_set,
+};
+use zai_core::money::CurrencyCode;
+
+fn jpy_csv() -> String {
+    let mut body = String::from("CURRENCY,TIME_PERIOD,OBS_VALUE\n");
+    for code in APPROVED_ECB_CURRENCIES {
+        let value = if *code == "JPY" { "186.5" } else { "1.25" };
+        body.push_str(&format!("{code},2026-08-17,{value}\n"));
+    }
+    body
+}
+
+#[tokio::test]
+async fn quote_on_yen_to_euro_keeps_sub_cent_rate() {
+    let temp_db = TempDb::new();
+    let pool = create_pool(std::path::Path::new(temp_db.path())).expect("pool");
+    run_migrations(&pool).expect("migrations");
+    let writer = spawn_writer(pool.as_ref().clone()).expect("writer");
+    let repo = ExchangeRateRepository::new(pool.clone(), writer);
+    let parsed = parse_ecb_csv(&jpy_csv()).expect("parse");
+    let set = validate_complete_set(&parsed, None, "set-jpy".to_string()).expect("set");
+    repo.publish(
+        set,
+        SyncMetadata {
+            updated_after: None,
+            etag: None,
+        },
+        Utc.with_ymd_and_hms(2026, 8, 18, 12, 0, 0).unwrap(),
+    )
+    .await
+    .expect("publish");
+
+    let mut connection = get_connection(&pool).expect("conn");
+    let quote = quote_on(
+        &mut connection,
+        CurrencyCode::parse("JPY").expect("JPY"),
+        CurrencyCode::parse("EUR").expect("EUR"),
+        chrono::NaiveDate::from_ymd_opt(2026, 8, 17).expect("date"),
+        "2026-08-17",
+    )
+    .expect("quote");
+
+    assert_eq!(quote.variant, QuoteVariant::Automatic);
+    let rate = quote.rate.expect("rate");
+    assert_ne!(rate, "0.01");
+    assert!(rate.starts_with("0.00536193"), "{rate}");
+}

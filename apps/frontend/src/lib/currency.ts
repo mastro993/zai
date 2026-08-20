@@ -31,6 +31,7 @@ const getCurrencyFormatter = (currency: string) => {
   const formatter = new Intl.NumberFormat(undefined, {
     style: "currency",
     currency,
+    currencyDisplay: "narrowSymbol",
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   });
@@ -48,4 +49,28 @@ const getCurrencyFormatter = (currency: string) => {
 export const formatCurrencyFromMinor = (minorUnits: number, currency: string) => {
   const digits = isoFractionDigits(currency);
   return getCurrencyFormatter(currency).format(minorUnits / 10 ** digits);
+};
+
+export const currencyDisplaySymbol = (currency: string) => {
+  const symbolResult = Result.try({
+    try: () => {
+      const parts = new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency,
+        currencyDisplay: "narrowSymbol",
+      }).formatToParts(0);
+      return parts.find((part) => part.type === "currency")?.value ?? currency;
+    },
+    catch: (): string => currency,
+  });
+
+  return Result.isSuccess(symbolResult) ? symbolResult.value : currency;
+};
+
+export const localizeDecimalString = (value: string) => {
+  const decimalSeparator =
+    new Intl.NumberFormat(undefined).formatToParts(1.1).find((part) => part.type === "decimal")
+      ?.value ?? ".";
+
+  return value.includes(".") ? value.replace(".", decimalSeparator) : value;
 };

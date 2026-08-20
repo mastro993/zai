@@ -14,6 +14,8 @@ mod convert_tests;
 mod coverage_tests;
 #[cfg(test)]
 mod manifest_tests;
+#[cfg(test)]
+mod rate_tests;
 
 pub use amount::{Money, WIRE_MAX_MINOR_UNITS, format_minor_units};
 pub use convert::{Conversion, convert};

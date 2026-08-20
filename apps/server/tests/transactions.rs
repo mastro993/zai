@@ -240,8 +240,8 @@ async fn bulk_delete_transactions_returns_deleted_rows() {
     let rows = deleted.as_array().expect("array");
     assert_eq!(rows.len(), 2);
     for row in rows {
-        assert!(row.get("amount").is_none());
-        assert!(row.get("currency").is_none());
+        assert_eq!(row["amount"], 100);
+        assert_eq!(row["currency"], "EUR");
         assert!(row.get("exchangeRate").is_none());
         assert!(row.get("convertedAmount").is_some());
         assert!(row.get("convertedCurrency").is_some());

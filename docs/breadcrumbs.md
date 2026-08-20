@@ -1,7 +1,16 @@
 # Breadcrumbs
 
+## 2026-08-21
+
+- Transaction list amount cell: converted on top, original muted below, no parens.
+
 ## 2026-08-20
 
+- Amounts use `currencyDisplay: "narrowSymbol"` so list original is `(56,00 $)` not `(56,00 USD)`. Conversion-rate placeholder uses ISO both sides (`1 JPY = 0,005392 EUR on …`). Pending converted-amount skeleton covers the "Converted amount:" label too.
+- Currency settings table: currency column is `ISO name (symbol)` (name + symbol muted).
+- Transaction list DTO now carries original Money (`amount`, `currency`). Cross-currency rows render `({original}) {converted}` in the amount cell; same-currency stays converted only.
+- Quote of 1 JPY→EUR rounded to EUR cents (`0.01`) then stored/previewed. 1000 JPY → 10 EUR. Quote now `target_leg / source_leg` with 18 sig digits. 186.5 JPY/EUR → `0.00536193…`, 1000 JPY → 5.36 EUR. UI shows that rate at 6 fractional digits (`0.005362`).
+- Transaction form: drop amount "Automatic rate" copy. Non-default currency gets empty Conversion rate input; placeholder shows date rate (`1 SEK = 0,089568 € on 20/08/2026` shape). Typed override, clear reverts to date rate. Converted amount only when FX needed, under Amount label as `Converted amount: …` (pending = skeleton).
 - Currency Retry now console flood: `shouldn't retry!` is reqwest TRACE on success, not a Zai retry gate. Filtered HTTP-stack logs; emit `provider_refresh` info line.
 - Settings refresh column: per-row Progress meter. Backend `refreshProgress` events; no per-tick GET reconcile.
 - Incremental ECB refresh 404 (no new series since `updatedAfter`) was classed `httpStatus` → Retry/add looked failed. Treat as not-modified.

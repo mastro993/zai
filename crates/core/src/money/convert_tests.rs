@@ -124,6 +124,19 @@ fn convert_automatic_uses_iso_digits_for_zero_decimal_yen() {
 }
 
 #[test]
+fn convert_automatic_1000_yen_to_euro_is_536_cents() {
+    // 1000 JPY / 186.5 JPY/EUR = 5.36193… EUR → 536 cents, not 10.00.
+    let conversion = convert(
+        money(1000, "JPY"),
+        code("EUR"),
+        &automatic("JPY", "186.5", "EUR", "1"),
+    )
+    .unwrap();
+
+    assert_eq!(conversion.converted.unwrap().minor_units(), 536);
+}
+
+#[test]
 fn convert_automatic_uses_iso_digits_for_three_decimal_dinar() {
     // 12.34 EUR * 0.410 BHD/EUR = 5.0594 BHD → 5059 fils.
     let conversion = convert(
@@ -256,34 +269,6 @@ fn convert_overflow_fails_closed() {
     .expect_err("overflow");
 
     assert!(matches!(error, Error::CalculationOverflow(_)));
-}
-
-#[test]
-fn canonical_rate_rejects_zero_and_non_decimal_input() {
-    assert!(CanonicalRate::parse("0").is_err());
-    assert!(CanonicalRate::parse("0.00").is_err());
-    assert!(CanonicalRate::parse("-1.2").is_err());
-    assert!(CanonicalRate::parse("1.2.3").is_err());
-    assert!(CanonicalRate::parse("1e2").is_err());
-}
-
-#[test]
-fn canonical_rate_inverse_of_one_is_one() {
-    assert_eq!(
-        CanonicalRate::one()
-            .inverse()
-            .expect("inverse")
-            .original_decimal(),
-        "1"
-    );
-}
-
-#[test]
-fn canonical_rate_inverse_of_two_is_one_half() {
-    assert_eq!(
-        rate("2").inverse().expect("inverse").original_decimal(),
-        "0.5"
-    );
 }
 
 #[test]

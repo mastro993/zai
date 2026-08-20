@@ -229,6 +229,30 @@ describe("TransactionDetailScreen pending recovery", () => {
     expect(screen.getByText(/Supplied/)).toBeTruthy();
   });
 
+  it("rounds a long conversion rate to six fractional digits", async () => {
+    await renderDetail(
+      sampleTransaction({
+        id: "tx-jpy",
+        description: "Suica",
+        amount: 1000,
+        currency: "JPY",
+        convertedAmount: 536,
+        convertedCurrency: "EUR",
+        exchangeRate: {
+          variant: "automatic",
+          rateDate: "2026-07-01",
+          sourceCurrency: "JPY",
+          referenceCurrency: "EUR",
+          originalDecimal: "0.00536193",
+          origin: "supplied",
+        },
+      }),
+    );
+
+    expect(screen.getByText(/0.005362/)).toBeTruthy();
+    expect(screen.queryByText(/0.00536193/)).toBeNull();
+  });
+
   it("retries a pending rate lookup", async () => {
     vi.spyOn(transactions, "updateTransaction").mockResolvedValue(Result.succeed(completeUsd));
 
@@ -266,9 +290,8 @@ describe("TransactionDetailScreen pending recovery", () => {
 
     await renderDetail(completeUsd);
     fireEvent.click(screen.getByRole("button", { name: "Edit transaction" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Adjust rate" })).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "Adjust rate" }));
-    fireEvent.change(screen.getByLabelText("Manual exchange rate"), { target: { value: "0.95" } });
+    await waitFor(() => expect(screen.getByLabelText("Conversion rate")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText("Conversion rate"), { target: { value: "0.95" } });
     fireEvent.click(screen.getByRole("button", { name: "Save transaction" }));
 
     await waitFor(() =>

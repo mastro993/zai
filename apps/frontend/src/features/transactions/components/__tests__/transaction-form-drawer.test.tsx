@@ -13,6 +13,9 @@ import {
   resetLastUsedTransactionCurrency,
   setLastUsedTransactionCurrency,
 } from "../../lib/last-used-currency";
+import { formatCurrencyFromMinor } from "@/lib/currency";
+
+import { convertedMinorFromRate } from "../../lib/transaction-write";
 import { sampleTransaction } from "../../types/sample";
 import { TransactionFormDrawer } from "../transaction-form-drawer";
 
@@ -158,23 +161,80 @@ describe("TransactionFormDrawer", () => {
 
     fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "10.00" } });
 
+    const converted = formatCurrencyFromMinor(
+      convertedMinorFromRate(1000, "USD", "EUR", "0.92") ?? 0,
+      "EUR",
+    );
+
     await waitFor(() => {
-      expect(screen.getByText(/at 0.92 on 2026-07-09/)).toBeTruthy();
+      expect(screen.getByText(`Converted amount: ${converted}`)).toBeTruthy();
     });
+    expect(screen.queryByText("Converted amount pending.")).toBeNull();
+    expect(screen.queryByText(/Automatic rate/)).toBeNull();
+    expect(screen.queryByText(/at 0.92 on 2026-07-09/)).toBeNull();
   });
 
-  it("hides Adjust rate for the default currency", async () => {
-    await renderForm();
-
-    expect(screen.queryByRole("button", { name: "Adjust rate" })).toBeNull();
-  });
-
-  it("lets the person enter a manual rate", async () => {
+  it("shows a skeleton while the converted amount is pending", async () => {
+    vi.spyOn(currencyCommands, "getTransactionExchangeRateQuote").mockImplementation(
+      () => new Promise(() => undefined),
+    );
     setLastUsedTransactionCurrency("USD");
     await renderForm();
 
-    fireEvent.click(screen.getByRole("button", { name: "Adjust rate" }));
-    expect(screen.getByLabelText("Manual exchange rate")).toBeTruthy();
+    expect(screen.queryByText(/Converted amount:/)).toBeNull();
+    expect(screen.getByRole("status", { name: "Converted amount" })).toBeTruthy();
+    const skeleton = document.querySelector('[data-slot="skeleton"]');
+    expect(skeleton).not.toBeNull();
+    expect(skeleton?.classList.contains("h-[1em]")).toBe(true);
+    expect(skeleton?.classList.contains("w-[14em]")).toBe(true);
+  });
+
+  it("hides Conversion rate for the default currency", async () => {
+    await renderForm();
+
+    expect(screen.queryByLabelText("Conversion rate")).toBeNull();
+    expect(screen.queryByText(/Converted amount:/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Adjust rate" })).toBeNull();
+  });
+
+  it("shows an empty conversion-rate field with the date-rate placeholder", async () => {
+    setLastUsedTransactionCurrency("USD");
+    await renderForm();
+
+    const rateInput = screen.getByLabelText("Conversion rate");
+    expect(rateInput).toHaveProperty("value", "");
+
+    await waitFor(() => {
+      const placeholder = rateInput.getAttribute("placeholder") ?? "";
+      expect(placeholder.startsWith("1 USD = ")).toBe(true);
+      expect(placeholder).toContain("0.92");
+      expect(placeholder).toContain(" EUR on ");
+    });
+  });
+
+  it("uses a typed conversion rate and reverts to the date rate when cleared", async () => {
+    setLastUsedTransactionCurrency("USD");
+    await renderForm();
+
+    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "10.00" } });
+
+    const autoConverted = formatCurrencyFromMinor(
+      convertedMinorFromRate(1000, "USD", "EUR", "0.92") ?? 0,
+      "EUR",
+    );
+    await waitFor(() => {
+      expect(screen.getByText(`Converted amount: ${autoConverted}`)).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText("Conversion rate"), { target: { value: "1.00" } });
+    expect(
+      screen.getByText(
+        `Converted amount: ${formatCurrencyFromMinor(convertedMinorFromRate(1000, "USD", "EUR", "1.00") ?? 0, "EUR")}`,
+      ),
+    ).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Conversion rate"), { target: { value: "" } });
+    expect(screen.getByText(`Converted amount: ${autoConverted}`)).toBeTruthy();
   });
 
   it("falls back to the default when last-used currency is disabled", async () => {
@@ -220,7 +280,10 @@ describe("TransactionFormDrawer", () => {
     await waitFor(() => expect(screen.getByLabelText("Amount")).toBeTruthy());
 
     await waitFor(() => {
-      expect(screen.getByText(/at 0.85 on 2026-07-01/)).toBeTruthy();
+      const placeholder =
+        screen.getByLabelText("Conversion rate").getAttribute("placeholder") ?? "";
+      expect(placeholder.startsWith("1 USD = ")).toBe(true);
+      expect(placeholder).toContain("0.85");
     });
     expect(currencyCommands.getTransactionExchangeRateQuote).not.toHaveBeenCalled();
   });

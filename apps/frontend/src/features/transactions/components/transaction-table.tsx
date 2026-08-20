@@ -13,8 +13,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { formatCurrencyFromMinor } from "@/lib/currency";
-
 import {
   getCategoryDisplayColor,
   getCategoryDisplayName,
@@ -24,6 +22,7 @@ import {
   shouldShowSelectAllMatching,
   type PageCheckboxState,
 } from "../lib/transaction-selection";
+import { transactionListAmountParts } from "../lib/transaction-list-amount";
 import { toDateTimeInputValue } from "../lib/transaction";
 import type { TransactionListItem } from "../types/model";
 import type { TransactionCategory } from "@/features/categories/types/model";
@@ -51,6 +50,19 @@ type TransactionTableProps = {
   onAdopt: (transaction: TransactionListItem, trigger: HTMLButtonElement | null) => void;
   onDelete: (transaction: TransactionListItem) => void;
 };
+
+function TransactionAmountCell({ transaction }: { transaction: TransactionListItem }) {
+  const { original, display } = transactionListAmountParts(transaction);
+
+  return (
+    <TableCell className="whitespace-nowrap p-3 text-right tabular-nums">
+      <span className="flex flex-col items-end gap-0.5">
+        <span className="font-semibold">{display}</span>
+        {original ? <span className="text-muted-foreground">{original}</span> : null}
+      </span>
+    </TableCell>
+  );
+}
 
 function HeaderCheckbox({
   pageCheckboxState,
@@ -206,14 +218,7 @@ function TransactionTable({
                     <span className="text-muted-foreground">Uncategorized</span>
                   )}
                 </TableCell>
-                <TableCell className="whitespace-nowrap p-3 text-right tabular-nums">
-                  {transaction.complete && transaction.convertedAmount !== null
-                    ? formatCurrencyFromMinor(
-                        transaction.convertedAmount,
-                        transaction.convertedCurrency,
-                      )
-                    : "Incomplete"}
-                </TableCell>
+                <TransactionAmountCell transaction={transaction} />
                 <TableCell className="max-w-0 p-3">
                   <span
                     className={cn(
