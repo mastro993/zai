@@ -39,6 +39,10 @@ pub enum CurrencyStateEvent {
         stage_total: u32,
         state: CurrencyJobFinishState,
     },
+    RefreshProgress {
+        current: u32,
+        total: u32,
+    },
     StateChanged,
 }
 
@@ -168,6 +172,33 @@ mod tests {
                 || lower.contains("category")
                 || lower.contains("note")
         }));
+    }
+
+    #[test]
+    fn serializes_refresh_progress_counts_only() {
+        let payload = serialize_currency_state_event(&CurrencyStateEvent::RefreshProgress {
+            current: 3,
+            total: 28,
+        })
+        .expect("serialize");
+        let json: serde_json::Value = serde_json::from_str(&payload).expect("json");
+        assert_eq!(json["version"], 1);
+        assert_eq!(json["type"], "refreshProgress");
+        assert_eq!(json["current"], 3);
+        assert_eq!(json["total"], 28);
+        let keys = json
+            .as_object()
+            .expect("object")
+            .keys()
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            keys,
+            ["current", "total", "type", "version"]
+                .into_iter()
+                .map(ToOwned::to_owned)
+                .collect()
+        );
     }
 
     #[test]

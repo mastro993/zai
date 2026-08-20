@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, SecondsFormat, Utc};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -90,15 +90,25 @@ impl ExchangeRateService {
     }
 
     pub async fn refresh(&self) -> RefreshOutcome {
+        self.refresh_with_progress(|_, _| {}).await
+    }
+
+    pub async fn refresh_with_progress<F>(&self, mut on_progress: F) -> RefreshOutcome
+    where
+        F: FnMut(u32, u32) + Send,
+    {
         let _guard = self.inflight.lock().await;
         let started = Instant::now();
         let now = self.clock.now();
-        let outcome = self.refresh_locked(now).await;
+        let outcome = self.refresh_locked(now, &mut on_progress).await;
         let elapsed_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
         with_elapsed(outcome, elapsed_ms)
     }
 
-    async fn refresh_locked(&self, now: DateTime<Utc>) -> RefreshOutcome {
+    async fn refresh_locked<F>(&self, now: DateTime<Utc>, on_progress: &mut F) -> RefreshOutcome
+    where
+        F: FnMut(u32, u32) + Send,
+    {
         let previous = match self.cache.current_set().await {
             Ok(value) => value,
             Err(_) => return failed(FailureClass::Internal, 0),
@@ -112,22 +122,30 @@ impl ExchangeRateService {
         } else {
             vec![build_refresh_request(&metadata)]
         };
+        let total = u32::try_from(requests.len()).unwrap_or(u32::MAX);
+        on_progress(0, total);
         let mut parsed = Vec::new();
         let mut next_metadata = metadata;
+        let mut completed = 0_u32;
         for request in requests {
             match self.fetch_one(&request, &mut next_metadata, now).await {
                 FetchStep::Continue(chunk) => parsed.extend(chunk),
                 FetchStep::NotModified if previous.is_some() && parsed.is_empty() => {
-                    return RefreshOutcome::NotModified { elapsed_ms: 0 };
+                    on_progress(total, total);
+                    return self.persist_not_modified(now).await;
                 }
                 FetchStep::NotModified => {}
                 FetchStep::Failed(class) => {
+                    completed = completed.saturating_add(1);
+                    on_progress(completed, total);
                     return self.persist_failure(class, now).await;
                 }
             }
+            completed = completed.saturating_add(1);
+            on_progress(completed, total);
         }
         if parsed.is_empty() && previous.is_some() {
-            return RefreshOutcome::NotModified { elapsed_ms: 0 };
+            return self.persist_not_modified(now).await;
         }
         match validate_complete_set(&parsed, previous.as_ref(), Uuid::new_v4().to_string()) {
             Ok(set)
@@ -135,7 +153,7 @@ impl ExchangeRateService {
                     .as_ref()
                     .is_some_and(|current| current.payload_digest == set.payload_digest) =>
             {
-                RefreshOutcome::NotModified { elapsed_ms: 0 }
+                self.persist_not_modified(now).await
             }
             Ok(set) => match self.cache.publish(set, next_metadata, now).await {
                 Ok(()) => RefreshOutcome::Published {
@@ -155,6 +173,13 @@ impl ExchangeRateService {
         }
     }
 
+    async fn persist_not_modified(&self, now: DateTime<Utc>) -> RefreshOutcome {
+        match self.cache.record_not_modified(now).await {
+            Ok(()) => RefreshOutcome::NotModified { elapsed_ms: 0 },
+            Err(_) => failed(FailureClass::Internal, 0),
+        }
+    }
+
     async fn fetch_one(
         &self,
         request: &ProviderRequest,
@@ -169,7 +194,7 @@ impl ExchangeRateService {
                     if let Some(etag) = payload.etag {
                         metadata.etag = Some(etag);
                     }
-                    metadata.updated_after = Some(now.to_rfc3339());
+                    metadata.updated_after = Some(now.to_rfc3339_opts(SecondsFormat::Secs, true));
                     FetchStep::Continue(chunk)
                 }
                 Err(class) => FetchStep::Failed(class),

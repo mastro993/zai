@@ -61,6 +61,12 @@ impl RecordingProvider {
         *provider.result.try_lock().expect("result") = ProviderFetchResult::Failed(class);
         provider
     }
+
+    fn not_modified() -> Self {
+        let provider = Self::payload();
+        *provider.result.try_lock().expect("result") = ProviderFetchResult::NotModified;
+        provider
+    }
 }
 
 #[async_trait]
@@ -139,6 +145,11 @@ impl ExchangeRateCache for MemoryCache {
         Ok(())
     }
 
+    async fn record_not_modified(&self, _attempted_at: DateTime<Utc>) -> crate::Result<()> {
+        self.failures.lock().await.clear();
+        Ok(())
+    }
+
     async fn observation(
         &self,
         currency: CurrencyCode,
@@ -166,6 +177,17 @@ async fn initial_refresh_publishes_complete_set_from_cache_first_reads() {
     assert!(!outcome.log_line().contains("1.25"));
     let set = service.current_set().await.unwrap().expect("published");
     assert_eq!(set.observations.len(), APPROVED_ECB_CURRENCIES.len());
+}
+
+#[tokio::test]
+async fn conditional_empty_refresh_is_not_modified() {
+    let cache = Arc::new(MemoryCache::seeded());
+    cache.failures.lock().await.push(FailureClass::HttpStatus);
+    let provider = Arc::new(RecordingProvider::not_modified());
+    let service = ExchangeRateService::new(provider, cache.clone(), Arc::new(FixedClock));
+    let outcome = service.refresh().await;
+    assert!(matches!(outcome, RefreshOutcome::NotModified { .. }));
+    assert!(cache.failures.lock().await.is_empty());
 }
 
 #[tokio::test]
@@ -223,4 +245,23 @@ async fn one_provider_request_in_flight_at_a_time() {
     };
     let _ = tokio::join!(first, second);
     assert_eq!(provider.max_inflight.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn refresh_reports_progress_for_each_provider_request() {
+    let cache = Arc::new(MemoryCache::empty());
+    let provider = Arc::new(RecordingProvider::payload());
+    let service = ExchangeRateService::new(provider, cache, Arc::new(FixedClock));
+    let ticks = std::sync::Mutex::new(Vec::<(u32, u32)>::new());
+    let outcome = service
+        .refresh_with_progress(|current, total| {
+            ticks.lock().expect("ticks").push((current, total));
+        })
+        .await;
+    assert!(matches!(outcome, RefreshOutcome::Published { .. }));
+    let ticks = ticks.into_inner().expect("ticks");
+    let total = 2026 - 1999 + 1;
+    assert_eq!(ticks.first().copied(), Some((0, total)));
+    assert_eq!(ticks.last().copied(), Some((total, total)));
+    assert_eq!(ticks.len(), usize::try_from(total).expect("total") + 1);
 }

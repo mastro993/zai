@@ -1,5 +1,23 @@
 # Choices
 
+## 2026-08-20 — ECB updatedAfter 404 is not-modified
+
+- Incremental refresh sends `updatedAfter`. ECB returns **404 No Series** when nothing new — not 304.
+- Classify that 404 as `NotModified`. Bare 404 on initial fetch stays `httpStatus`.
+- `record_not_modified` clears `failure_class` / retry_count. `updatedAfter` stored as whole-second RFC3339.
+
+## 2026-08-20 — Per-currency refresh progress meter
+
+- `currency-state` v1 adds `refreshProgress { current, total }`. Does not GET-reconcile; UI applies locally.
+- Provider fetch emits counts (0/n … n/n). Settings row meter: live counts, else add-job stages, else durable status.
+- Retry now optimistic `0/0` (indeterminate) until first event.
+
+## 2026-08-20 — Mute reqwest TRACE on currency refresh
+
+- `tauri_plugin_log` default level is Trace. reqwest's default retry policy logs `shouldn't retry!` on every successful GET.
+- Debug builds: Debug. Release: Info. `reqwest` / `hyper` / `hyper_util` / `h2` / `rustls` / `tower` stay Warn.
+- Keep reqwest default retry (HTTP/2 protocol NACKs). One `provider_refresh class=… elapsed_ms=…` info line per refresh.
+
 ## 2026-08-20
 
 - **Manual rates written in the active generation quote that generation's target.** `prior_currency` is only for restating older revisions. After EUR→RUB→EUR a new RUB (or USD) recovery must convert to EUR, not to `prior` RUB/USD — same-currency manuals are identity and are not stored.

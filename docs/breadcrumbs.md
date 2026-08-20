@@ -1,5 +1,11 @@
 # Breadcrumbs
 
+## 2026-08-20
+
+- Currency Retry now console flood: `shouldn't retry!` is reqwest TRACE on success, not a Zai retry gate. Filtered HTTP-stack logs; emit `provider_refresh` info line.
+- Settings refresh column: per-row Progress meter. Backend `refreshProgress` events; no per-tick GET reconcile.
+- Incremental ECB refresh 404 (no new series since `updatedAfter`) was classed `httpStatus` → Retry/add looked failed. Treat as not-modified.
+
 ## 2026-08-17
 
 - Claimed [Prototype currency settings and transaction currency controls](https://github.com/mastro993/zai/issues/371) under [Wayfind production-ready multi-currency support](https://github.com/mastro993/zai/issues/367).

@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import { asWireString } from "@/lib/wire";
 
+import { CurrencyRefreshMeter } from "../components/currency-refresh-meter";
 import { useCurrencyBootstrap } from "../hooks/use-currency-bootstrap";
 import type { CurrencySettingsRow } from "../types/currency";
 
@@ -38,16 +39,12 @@ const statusLabel = (status: CurrencySettingsRow["status"]) => {
   return "Disabled";
 };
 
-const refreshLabel = (row: CurrencySettingsRow) => {
-  const stamp = row.lastRefresh ? ` · ${row.lastRefresh}` : "";
-  return `${row.refreshStatus}${stamp}`;
-};
-
 export function CurrencySettingsScreen({ focusRates = false }: { focusRates?: boolean }) {
   const {
     catalog,
     currencies,
     currentJob,
+    refreshProgress,
     addCurrency,
     disableCurrency,
     changeDefault,
@@ -87,7 +84,7 @@ export function CurrencySettingsScreen({ focusRates = false }: { focusRates?: bo
   };
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end gap-2">
         <Field className="w-56">
           <FieldLabel htmlFor="currency-add">Add currency</FieldLabel>
@@ -178,7 +175,13 @@ export function CurrencySettingsScreen({ focusRates = false }: { focusRates?: bo
                     ? `${item.coverageFrom} to ${item.coverageTo}`
                     : "Waiting"}
               </TableCell>
-              <TableCell className="text-xs">{refreshLabel(item)}</TableCell>
+              <TableCell>
+                <CurrencyRefreshMeter
+                  row={item}
+                  job={currentJob}
+                  refreshProgress={refreshProgress}
+                />
+              </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger
@@ -219,7 +222,7 @@ export function CurrencySettingsScreen({ focusRates = false }: { focusRates?: bo
           type="button"
           variant="outline"
           size="sm"
-          disabled={retrying}
+          disabled={retrying || refreshProgress !== null}
           onClick={() => {
             setRetrying(true);
             void retryRefresh().finally(() => setRetrying(false));

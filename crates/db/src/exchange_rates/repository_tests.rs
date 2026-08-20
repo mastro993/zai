@@ -90,6 +90,47 @@ async fn failed_refresh_preserves_last_known_good_head() {
 }
 
 #[tokio::test]
+async fn not_modified_clears_failure_and_keeps_head() {
+    let (temp_db, repo) = setup();
+    let first = accepted_set("set-good");
+    repo.publish(
+        first.clone(),
+        SyncMetadata {
+            updated_after: Some("2026-08-20T15:14:56Z".to_string()),
+            etag: None,
+        },
+        Utc.with_ymd_and_hms(2026, 8, 20, 15, 14, 56).unwrap(),
+    )
+    .await
+    .expect("publish");
+    repo.record_failure(
+        FailureClass::HttpStatus,
+        Utc.with_ymd_and_hms(2026, 8, 20, 16, 3, 0).unwrap(),
+    )
+    .await
+    .expect("failure");
+    repo.record_not_modified(Utc.with_ymd_and_hms(2026, 8, 20, 16, 4, 0).unwrap())
+        .await
+        .expect("not modified");
+    let loaded = repo.current_set().await.unwrap().expect("kept");
+    assert_eq!(loaded.id, "set-good");
+    let mut connection = SqliteConnection::establish(temp_db.path()).expect("conn");
+    #[derive(QueryableByName)]
+    struct FailureRow {
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+        failure_class: Option<String>,
+        #[diesel(sql_type = diesel::sql_types::Integer)]
+        retry_count: i32,
+    }
+    let row =
+        sql_query("SELECT failure_class, retry_count FROM provider_refresh_state WHERE id = 1")
+            .get_result::<FailureRow>(&mut connection)
+            .expect("row");
+    assert_eq!(row.failure_class, None);
+    assert_eq!(row.retry_count, 0);
+}
+
+#[tokio::test]
 async fn accepted_sets_and_observations_are_immutable() {
     let (temp_db, repo) = setup();
     repo.publish(

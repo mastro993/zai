@@ -96,7 +96,7 @@ impl<E: HttpExecutor> ExchangeRateProvider for EcbHttpAdapter<E> {
         }
         match self.executor.execute(request).await {
             Err(class) => ProviderFetchResult::Failed(class),
-            Ok(raw) => classify_response(raw),
+            Ok(raw) => classify_response(request, raw),
         }
     }
 }
@@ -105,12 +105,13 @@ fn is_allow_listed(request: &ProviderRequest) -> bool {
     request.host == ECB_HOST && request.url().starts_with("https://data-api.ecb.europa.eu/")
 }
 
-fn classify_response(raw: RawHttpResponse) -> ProviderFetchResult {
+fn classify_response(request: &ProviderRequest, raw: RawHttpResponse) -> ProviderFetchResult {
     if raw.body.len() > MAX_BODY_BYTES {
         return ProviderFetchResult::Failed(FailureClass::TooLarge);
     }
     match raw.status {
         304 => ProviderFetchResult::NotModified,
+        404 if request_has_updated_after(request) => ProviderFetchResult::NotModified,
         200 => match String::from_utf8(raw.body) {
             Ok(body) => ProviderFetchResult::Payload(ProviderPayload {
                 body,
@@ -120,8 +121,15 @@ fn classify_response(raw: RawHttpResponse) -> ProviderFetchResult {
             Err(_) => ProviderFetchResult::Failed(FailureClass::Validation),
         },
         300..=399 => ProviderFetchResult::Failed(FailureClass::Redirect),
-        _ => ProviderFetchResult::Failed(FailureClass::HttpStatus),
+        status => {
+            log::warn!("provider_fetch class=httpStatus status={status}");
+            ProviderFetchResult::Failed(FailureClass::HttpStatus)
+        }
     }
+}
+
+fn request_has_updated_after(request: &ProviderRequest) -> bool {
+    request.query.iter().any(|(key, _)| key == "updatedAfter")
 }
 
 fn classify_reqwest(error: reqwest::Error) -> FailureClass {
@@ -260,5 +268,41 @@ mod tests {
                     && !name.eq_ignore_ascii_case("authorization"))
         );
         assert!(!captured.url().contains("424242"));
+    }
+
+    #[tokio::test]
+    async fn updated_after_404_is_not_modified() {
+        let adapter = EcbHttpAdapter::new(FakeExecutor {
+            response: Ok(RawHttpResponse {
+                status: 404,
+                body: b"{\"title\":\"Not Found\"}".to_vec(),
+                etag: None,
+                last_modified: None,
+            }),
+            captured: std::sync::Mutex::new(None),
+        });
+        assert_eq!(
+            adapter.fetch(&request()).await,
+            ProviderFetchResult::NotModified
+        );
+    }
+
+    #[tokio::test]
+    async fn initial_404_is_http_status() {
+        let adapter = EcbHttpAdapter::new(FakeExecutor {
+            response: Ok(RawHttpResponse {
+                status: 404,
+                body: b"{\"title\":\"Not Found\"}".to_vec(),
+                etag: None,
+                last_modified: None,
+            }),
+            captured: std::sync::Mutex::new(None),
+        });
+        let mut initial = request();
+        initial.query.retain(|(key, _)| key != "updatedAfter");
+        assert_eq!(
+            adapter.fetch(&initial).await,
+            ProviderFetchResult::Failed(FailureClass::HttpStatus)
+        );
     }
 }

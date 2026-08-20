@@ -4,7 +4,7 @@ mod macos_traffic_lights;
 use dotenvy::dotenv;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, Runtime};
-use tauri_plugin_log::log::error;
+use tauri_plugin_log::log::{LevelFilter, error};
 use zai_app::bootstrap_context;
 use zai_core::features::currency::{
     CURRENCY_STATE_EVENT_NAME, CurrencyStateEvent, CurrencyStateEventBus,
@@ -265,6 +265,19 @@ pub fn run() {
             .plugin(
                 tauri_plugin_log::Builder::new()
                     .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(10))
+                    .level(if cfg!(debug_assertions) {
+                        LevelFilter::Debug
+                    } else {
+                        LevelFilter::Info
+                    })
+                    // reqwest's default retry policy traces "shouldn't retry!" on every
+                    // successful GET. ECB history refresh is one request per year.
+                    .level_for("reqwest", LevelFilter::Warn)
+                    .level_for("hyper", LevelFilter::Warn)
+                    .level_for("hyper_util", LevelFilter::Warn)
+                    .level_for("h2", LevelFilter::Warn)
+                    .level_for("rustls", LevelFilter::Warn)
+                    .level_for("tower", LevelFilter::Warn)
                     .build(),
             ),
     )

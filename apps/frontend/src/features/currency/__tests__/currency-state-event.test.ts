@@ -16,6 +16,7 @@ describe("currency-state event contract", () => {
       { version: 1, type: "future" },
       { version: 2, type: "stateChanged" },
       { version: 1, type: "stateChanged", jobId: "job-1" },
+      { version: 1, type: "refreshProgress", current: -1, total: 1 },
     ]) {
       expect(currencyStateEventSchema.safeParse(fixture).success).toBe(false);
     }

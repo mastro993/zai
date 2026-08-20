@@ -16,6 +16,7 @@ import {
   startDefaultCurrencyChange,
 } from "../commands/currency";
 import { deviceLocaleTag, localeSuggestedCurrency } from "../lib/locale-suggested-currency";
+import type { RefreshProgressView } from "../lib/currency-refresh-meter";
 import type {
   CurrencyBootstrap,
   CurrencyJob,
@@ -34,6 +35,7 @@ interface CurrencyBootstrapContextValue {
   catalog: SupportedCurrency[];
   currencies: CurrencySettingsRow[];
   currentJob: CurrencyJob | null;
+  refreshProgress: RefreshProgressView | null;
   suggestedCurrency: string;
   errorMessage: string | null;
   confirmSetup: (code: string) => Result.ResultAsync<CurrencyJob, CommandError>;
@@ -60,6 +62,7 @@ export function CurrencyBootstrapProvider({ children }: { children: ReactNode })
   const [catalog, setCatalog] = useState<SupportedCurrency[]>([]);
   const [currencies, setCurrencies] = useState<CurrencySettingsRow[]>([]);
   const [currentJob, setCurrentJob] = useState<CurrencyJob | null>(null);
+  const [refreshProgress, setRefreshProgress] = useState<RefreshProgressView | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const reconcile = useCallback(async () => {
@@ -108,6 +111,15 @@ export function CurrencyBootstrapProvider({ children }: { children: ReactNode })
   useCurrencyStateLiveEvents({
     onReconcile: reconcile,
     onReady: reconcile,
+    onEvent: (event) => {
+      if (event.type === "refreshProgress") {
+        setRefreshProgress({ current: event.current, total: event.total });
+        return;
+      }
+      if (event.type === "stateChanged" || event.type === "finished") {
+        setRefreshProgress(null);
+      }
+    },
     onReconciliationFailure: (error) => {
       setErrorMessage(error.message);
       setReady(true);
@@ -165,7 +177,10 @@ export function CurrencyBootstrapProvider({ children }: { children: ReactNode })
   );
 
   const retryRefresh = useCallback(async () => {
-    return afterMutation(await retryExchangeRateRefresh());
+    setRefreshProgress({ current: 0, total: 0 });
+    const result = await afterMutation(await retryExchangeRateRefresh());
+    setRefreshProgress(null);
+    return result;
   }, [afterMutation]);
 
   const suggestedCurrency = useMemo(() => {
@@ -184,6 +199,7 @@ export function CurrencyBootstrapProvider({ children }: { children: ReactNode })
       catalog,
       currencies,
       currentJob,
+      refreshProgress,
       suggestedCurrency,
       errorMessage,
       confirmSetup,
@@ -204,6 +220,7 @@ export function CurrencyBootstrapProvider({ children }: { children: ReactNode })
       currencies,
       currentJob,
       disableCurrency,
+      refreshProgress,
       errorMessage,
       ready,
       retryRefresh,

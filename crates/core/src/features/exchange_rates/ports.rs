@@ -40,6 +40,7 @@ pub trait ExchangeRateCache: Send + Sync {
         class: FailureClass,
         attempted_at: DateTime<Utc>,
     ) -> crate::Result<()>;
+    async fn record_not_modified(&self, attempted_at: DateTime<Utc>) -> crate::Result<()>;
     async fn observation(
         &self,
         currency: crate::money::CurrencyCode,
