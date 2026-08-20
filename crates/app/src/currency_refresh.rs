@@ -143,3 +143,135 @@ pub async fn apply_refresh_outcome(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::apply_refresh_outcome;
+    use crate::initialize_context;
+    use diesel::prelude::*;
+    use diesel::sql_query;
+    use diesel::sqlite::SqliteConnection;
+    use std::{
+        env, fs,
+        path::{Path, PathBuf},
+    };
+    use uuid::Uuid;
+    use zai_core::features::currency::CURRENCY_REFRESH_FAILURE_PRODUCER_KEY;
+    use zai_core::features::domain_alerts::{DomainAlertsServiceTrait, ListDomainAlertsQuery};
+    use zai_core::features::exchange_rates::{FailureClass, RefreshOutcome};
+
+    struct TempAppDataDir {
+        path: PathBuf,
+    }
+
+    impl TempAppDataDir {
+        fn new() -> Self {
+            Self {
+                path: env::temp_dir().join(format!("zai-app-refresh-{}", Uuid::new_v4())),
+            }
+        }
+
+        fn path(&self) -> &Path {
+            &self.path
+        }
+    }
+
+    impl Drop for TempAppDataDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
+    }
+
+    fn mark_provider_refresh_failed(db_path: &Path) {
+        let mut connection =
+            SqliteConnection::establish(db_path.to_string_lossy().as_ref()).expect("open sqlite");
+        sql_query(
+            "UPDATE provider_refresh_state \
+             SET last_attempt_at = datetime('now'), failure_class = 'httpStatus', retry_count = 2 \
+             WHERE id = 1",
+        )
+        .execute(&mut connection)
+        .expect("mark refresh failed");
+    }
+
+    async fn open_refresh_alerts(service: &dyn DomainAlertsServiceTrait) -> usize {
+        let page = service
+            .list_alerts(ListDomainAlertsQuery {
+                cursor: None,
+                limit: None,
+                read_state: None,
+                severities: None,
+            })
+            .await
+            .expect("list alerts");
+        page.items
+            .into_iter()
+            .filter(|alert| {
+                alert.producer_key == CURRENCY_REFRESH_FAILURE_PRODUCER_KEY
+                    && alert.resolved_at.is_none()
+            })
+            .count()
+    }
+
+    #[tokio::test]
+    async fn apply_refresh_outcome_creates_one_alert_and_resolves_on_success() {
+        let app_data_dir = TempAppDataDir::new();
+        let context = initialize_context(app_data_dir.path()).expect("context");
+        context
+            .currency_service()
+            .complete_initial_setup("EUR")
+            .expect("confirm EUR");
+        context
+            .currency_service()
+            .start_currency_addition("RUB", false)
+            .expect("start RUB");
+        context
+            .currency_service()
+            .drive_running_job()
+            .expect("enable RUB");
+
+        mark_provider_refresh_failed(&app_data_dir.path().join("zai.db"));
+
+        apply_refresh_outcome(
+            context.currency_service().as_ref(),
+            context.domain_alerts_repository.as_ref(),
+            &RefreshOutcome::Failed {
+                class: FailureClass::HttpStatus,
+                elapsed_ms: 12,
+            },
+        )
+        .await
+        .expect("first fail");
+        assert_eq!(
+            open_refresh_alerts(context.domain_alerts_service().as_ref()).await,
+            1
+        );
+
+        apply_refresh_outcome(
+            context.currency_service().as_ref(),
+            context.domain_alerts_repository.as_ref(),
+            &RefreshOutcome::Failed {
+                class: FailureClass::HttpStatus,
+                elapsed_ms: 18,
+            },
+        )
+        .await
+        .expect("second fail");
+        assert_eq!(
+            open_refresh_alerts(context.domain_alerts_service().as_ref()).await,
+            1
+        );
+
+        apply_refresh_outcome(
+            context.currency_service().as_ref(),
+            context.domain_alerts_repository.as_ref(),
+            &RefreshOutcome::NotModified { elapsed_ms: 4 },
+        )
+        .await
+        .expect("resolve");
+        assert_eq!(
+            open_refresh_alerts(context.domain_alerts_service().as_ref()).await,
+            0
+        );
+    }
+}

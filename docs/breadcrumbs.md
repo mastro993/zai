@@ -31,3 +31,7 @@
 - Migrated assigned frontend test batch off `vi.mock` / unguarded `as T` / `unknown` params. Oxlint `--deny-warnings` + Vitest green on those 21 files.
 - Opened local `feat/multi-currency` at current `main` (`6015578`). Implementing [Exact Money, ISO manifest, and checked conversion](https://github.com/mastro993/zai/issues/387) on this worktree branch; stack target is that long-lived branch, not `main`.
 - Pushed `feat/multi-currency` and opened [PR 399](https://github.com/mastro993/zai/pull/399) onto that stack for #387. Not `main`.
+
+## 2026-08-20
+
+- Implementing [Currency Playwright journeys, native smoke, and benchmark](https://github.com/mastro993/zai/issues/397) on `feat/multi-currency` (PR 8 remainder). Do not land on `main`. Seams: web Playwright (`currency-setup` + `currency-journeys`), `native_currency_workflow_smoke`, `pnpm benchmark:currency` seed 377, failure-recovery unit names in the release gate. Deleted throwaway `currency-prototype`. Settings search is `{ focus?: "rates" }`.

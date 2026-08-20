@@ -185,6 +185,16 @@ add or keep green; the full list still ships only at the final merge.
 - Prototype scenes become tests. Throwaway `currency-prototype` does not ship.
 - Gate: frontend, end-to-end, failure-recovery, and completion-evidence
   commands in the release gate. Then merge to `main`.
+- Landed tests: `pnpm test:e2e:web` (`e2e/currency-setup.spec.ts`,
+  `e2e/currency-journeys.spec.ts`);
+  `cargo test -p zai --lib native_currency_workflow_smoke`;
+  `pnpm benchmark:currency` (seed `377`, not a PR gate);
+  `fail_before_activation_leaves_previous_default`,
+  `restart_after_failed_activation_changes_default`,
+  `cancelled_preview_cannot_commit`,
+  `placeholder_import_ids_are_replaced`,
+  `apply_refresh_outcome_creates_one_alert_and_resolves_on_success`.
+  `currency-prototype` deleted. Settings search is `{ focus?: "rates" }`.
 
 ## Starting facts on `main`
 

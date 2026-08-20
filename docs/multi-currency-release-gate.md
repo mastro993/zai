@@ -175,7 +175,25 @@ Web Playwright covers:
 - Existing lifecycle specs still pass after the e2e seed receives the silent
   EUR migration.
 
-No desktop Playwright. Native smoke covers Tauri IPC.
+Landed web names:
+
+- `e2e/currency-setup.spec.ts`:
+  `currency-initial-setup confirms locale suggestion and unblocks money writes`
+- `e2e/currency-journeys.spec.ts`:
+  `currency settings add, disable, and default-change`;
+  `transaction form remembers last-used currency and detail recovers pending rates`;
+  `incomplete budget period stays Incomplete with em dash amounts`;
+  `currencyless and currency-column imports prepare currencies`;
+  `stale import preview rebuilds after a default-currency change`;
+  `export csv keeps source currency and rate fields`;
+  `refresh-failure alert opens Currency settings focused on rates`
+
+Main Playwright keeps `ZAI_CONFIRM_DEFAULT_CURRENCY=EUR`. Initial setup runs
+from `playwright.currency-setup.config.ts` (ports 3001/1421, no confirm env)
+via `pnpm test:e2e:web`, only when unsharded or `--shard=1/2`.
+
+No desktop Playwright. Native smoke covers Tauri IPC. Landed:
+`native_currency_workflow_smoke`.
 
 ### Failure recovery
 
@@ -189,6 +207,16 @@ No desktop Playwright. Native smoke covers Tauri IPC.
 - Import crash or cancel commits nothing.
 - Migration crash retains the backup and refuses startup.
 - Failpoints plus a child-process crash test follow the recurring pattern.
+
+Landed names: `retry_pending_looks_up_again`,
+`apply_refresh_outcome_creates_one_alert_and_resolves_on_success`,
+`fail_before_activation_leaves_previous_default`,
+`restart_after_failed_activation_changes_default`,
+`cancelled_preview_cannot_commit`,
+`placeholder_import_ids_are_replaced`,
+`commit_rejects_stale_default_revision`,
+`migration_failure_after_backup_keeps_backup_and_refuses_open`,
+`migration_failure_after_migrate_restores_backup_and_refuses_open`.
 
 ### Import and export
 
@@ -243,8 +271,8 @@ cargo test -p zai --lib native_currency_workflow_smoke
 ```
 
 The native smoke requires the workspace `dist/index.html` stub when run
-alone; `pnpm check:backend` creates it as part of the backend gate. Update
-the exact smoke test name here when it lands.
+alone; `pnpm check:backend` creates it as part of the backend gate.
+Exact smoke name: `native_currency_workflow_smoke`.
 
 PR 2 evidence: `migration_currency_tests::*`,
 `released_schema_fixtures_upgrade_to_head` through `v0010_multi_currency`,

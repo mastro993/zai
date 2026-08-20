@@ -14,6 +14,7 @@ source line or branch coverage.
 | Transactions | Create, edit type/amount/category, delete, reload durability; recurring adoption and provenance navigation | `transaction-lifecycle.spec.ts`, `recurring-workflow.spec.ts`, `recurring-production-journey.spec.ts` |
 | Recurring transactions | Creation timing, catch-up, adoption, editing, lifecycle actions, bulk partial commits, refresh interruption, recovery, alerts, provenance, budget impact, forecast attribution, focus, reconnect | `recurring-*.spec.ts` |
 | Forecast | Matrix navigation, attribution drill-down across budget-period boundaries, incomplete state, focus return | `recurring-production-journey.spec.ts`, `recurring-workflow.spec.ts` |
+| Currency | Initial setup (locale confirm, money writes blocked until Continue); settings add/disable/re-enable/default-change; last-used form currency and pending detail recovery; incomplete budget em dash; currencyless and currency-column import prep; stale-preview rebuild; full-fidelity export; refresh-failure alert to Settings rates | `currency-setup.spec.ts`, `currency-journeys.spec.ts` |
 
 Most journeys use the real web stack. Alert-ledger tests mock alert routes to
 exercise isolated UI states deterministically. Network and concurrency tests
@@ -121,10 +122,13 @@ behavior.
 
 ## Explicit exclusions
 
-- CSV import and export journeys: parsing, mapping, and file-capability routing
-  remain covered by focused frontend tests.
-- Dashboard, Net Worth, and Settings product journeys.
-- Native Tauri behavior.
+- CSV import and export journeys beyond the currency prep, stale-preview, and
+  full-fidelity source-field cases in `currency-journeys.spec.ts`. Parsing,
+  mapping, and file-capability routing remain covered by focused frontend tests.
+- Dashboard and Net Worth product journeys. Settings appearance is untested;
+  Currency settings is covered by `currency-journeys.spec.ts`.
+- Native Tauri behavior (covered by `native_currency_workflow_smoke`, not
+  Playwright).
 - Source line or branch percentage targets.
 
 Add excluded journeys only when their cross-layer regression risk justifies

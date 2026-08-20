@@ -1,9 +1,13 @@
 use super::{
-    AlertEventEmitter, RecurringProcessingEmitter, forward_alert_events,
-    forward_recurring_processing_events,
+    AlertEventEmitter, CurrencyStateEmitter, RecurringProcessingEmitter, forward_alert_events,
+    forward_currency_state_events, forward_recurring_processing_events,
 };
 use serde_json::json;
 use tokio::sync::mpsc;
+use zai_core::features::currency::{
+    CurrencyJobType, CurrencyStateEvent, CurrencyStateEventBus, CurrencyStateEventPublisher,
+    deserialize_currency_state_event,
+};
 use zai_core::features::domain_alerts::{
     DomainAlertEvent, DomainAlertEventBus, DomainAlertEventPublisher,
     deserialize_domain_alert_event,
@@ -32,6 +36,12 @@ impl RecurringProcessingEmitter for FakeEmitter {
         let _ = self
             .sender
             .send(("recurring-processing".to_string(), payload));
+    }
+}
+
+impl CurrencyStateEmitter for FakeEmitter {
+    fn emit_currency_state_event(&self, payload: String) {
+        let _ = self.sender.send(("currency-state".to_string(), payload));
     }
 }
 
@@ -277,6 +287,101 @@ async fn native_recurring_workflow_smoke_boots_processes_and_resolves_links() {
             .len(),
         1
     );
+
+    native.shutdown().await;
+}
+
+#[tokio::test]
+async fn forwards_currency_state_events_to_one_application_wide_emitter() {
+    let bus = CurrencyStateEventBus::with_capacity(2);
+    let (sender, mut receiver) = mpsc::unbounded_channel();
+    let task = tokio::spawn(forward_currency_state_events(
+        FakeEmitter { sender },
+        bus.subscribe(),
+    ));
+
+    bus.publish(&CurrencyStateEvent::StateChanged)
+        .expect("event should publish");
+    let (name, payload) = receiver.recv().await.expect("forwarded event");
+
+    assert_eq!(name, "currency-state");
+    assert_eq!(
+        deserialize_currency_state_event(&payload).expect("forwarded event should decode"),
+        CurrencyStateEvent::StateChanged
+    );
+    task.abort();
+}
+
+#[tokio::test]
+async fn native_currency_workflow_smoke() {
+    const CANARY_DESCRIPTION: &str = "CANARY_DESC_MEMBERSHIP_ZX9";
+    const CANARY_CATEGORY: &str = "CANARY_CATEGORY_MEMBERSHIP_ZX9";
+    const CANARY_NOTE: &str = "CANARY_NOTE_ZX9";
+    const CANARY_AMOUNT: &str = "424242";
+    const CANARY_TX_ID: &str = "txn-canary-deadbeef";
+    const CANARY_HISTORY: &str = "2011-03-17";
+    const CANARY_RATE: &str = "1.0945321";
+    const CANARY_HTTP: &str = "error sending request for url (https://evil.example/secret)";
+
+    fn assert_absent(haystack: &str) {
+        for canary in [
+            CANARY_DESCRIPTION,
+            CANARY_CATEGORY,
+            CANARY_NOTE,
+            CANARY_AMOUNT,
+            CANARY_TX_ID,
+            CANARY_HISTORY,
+            CANARY_RATE,
+            CANARY_HTTP,
+        ] {
+            assert!(
+                !haystack.contains(canary),
+                "native currency smoke leaked canary {canary}"
+            );
+        }
+    }
+
+    let mut native = NativeHarness::new();
+
+    let job = native.invoke(
+        "start_currency_addition",
+        json!({
+            "code": "RUB",
+            "confirmProviderDisclosure": false
+        }),
+    );
+
+    let payload_1 = native.await_currency_state_payload().await;
+    assert_absent(&payload_1);
+    let started = deserialize_currency_state_event(&payload_1)
+        .expect("forwarded currency-state payload should decode");
+    let job_id = match started {
+        CurrencyStateEvent::Started {
+            job_id,
+            job_type: CurrencyJobType::AddCurrency,
+        } => job_id,
+        other => panic!("expected AddCurrency Started event, got {other:?}"),
+    };
+
+    let payload_2 = native.await_currency_state_payload().await;
+    assert_absent(&payload_2);
+    let next = deserialize_currency_state_event(&payload_2)
+        .expect("second forwarded currency-state payload should decode");
+    match next {
+        CurrencyStateEvent::Progress {
+            job_id: id,
+            job_type,
+            ..
+        } if id == job_id && job_type == CurrencyJobType::AddCurrency => {}
+        CurrencyStateEvent::Finished {
+            job_id: id,
+            job_type,
+            ..
+        } if id == job_id && job_type == CurrencyJobType::AddCurrency => {}
+        other => panic!("expected Progress/Finished for same AddCurrency job, got {other:?}"),
+    }
+
+    assert_absent(&job.to_string());
 
     native.shutdown().await;
 }

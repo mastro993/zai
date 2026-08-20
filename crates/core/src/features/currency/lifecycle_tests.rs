@@ -20,6 +20,7 @@ struct MemorySettings {
     missing_periods: HashMap<String, Vec<String>>,
     generation_ids: HashMap<String, String>,
     activated_default: Option<String>,
+    fail_activate: bool,
 }
 
 impl MemorySettings {
@@ -34,6 +35,7 @@ impl MemorySettings {
             missing_periods: HashMap::new(),
             generation_ids: HashMap::new(),
             activated_default: None,
+            fail_activate: false,
         }
     }
 }
@@ -184,6 +186,12 @@ impl CurrencySettingsPort for Mutex<MemorySettings> {
 
     fn activate_default_generation(&self, _generation_id: &str, currency_code: &str) -> Result<()> {
         let mut inner = self.lock().expect("lock");
+        if inner.fail_activate {
+            inner.fail_activate = false;
+            return Err(Error::InvalidData(
+                "injected default-generation activation failure".to_string(),
+            ));
+        }
         inner.default_currency = currency_code.to_string();
         inner.activated_default = Some(currency_code.to_string());
         Ok(())
@@ -387,6 +395,71 @@ fn cancel_before_activation_leaves_previous_default() {
             .default_currency
             .as_deref(),
         Some("EUR")
+    );
+}
+
+#[test]
+fn fail_before_activation_leaves_previous_default() {
+    let mut memory = MemorySettings::setup_complete();
+    memory.persisted.push(row("USD", false));
+    memory.fail_activate = true;
+    let (service, settings) = service_from(memory);
+    let job = service
+        .start_default_currency_change("USD")
+        .expect("start change");
+    service
+        .drive_running_job()
+        .expect_err("activation should fail");
+    assert_eq!(
+        service
+            .bootstrap()
+            .expect("bootstrap")
+            .default_currency
+            .as_deref(),
+        Some("EUR")
+    );
+    assert!(
+        settings
+            .lock()
+            .expect("lock")
+            .generation_ids
+            .contains_key(&job.job_id)
+    );
+}
+
+#[test]
+fn restart_after_failed_activation_changes_default() {
+    let mut memory = MemorySettings::setup_complete();
+    memory.persisted.push(row("USD", false));
+    memory.fail_activate = true;
+    let (service, _) = service_from(memory);
+    service
+        .start_default_currency_change("USD")
+        .expect("start change");
+    service
+        .drive_running_job()
+        .expect_err("first drive fails before activation");
+    assert_eq!(
+        service
+            .bootstrap()
+            .expect("bootstrap")
+            .default_currency
+            .as_deref(),
+        Some("EUR")
+    );
+
+    let restarted = service
+        .start_default_currency_change("USD")
+        .expect("restart change");
+    assert_eq!(restarted.status, CurrencyJobStatus::Running);
+    service.drive_running_job().expect("retry drive");
+    assert_eq!(
+        service
+            .bootstrap()
+            .expect("bootstrap")
+            .default_currency
+            .as_deref(),
+        Some("USD")
     );
 }
 

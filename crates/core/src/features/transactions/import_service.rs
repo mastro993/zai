@@ -261,7 +261,7 @@ fn ensure_transaction_id(transaction: &mut NewTransaction) {
     if transaction
         .id
         .as_deref()
-        .is_none_or(|id| id.trim().is_empty())
+        .is_none_or(|id| id.trim().is_empty() || id.starts_with("imp-"))
     {
         transaction.id = Some(Uuid::new_v4().to_string());
     }
@@ -280,6 +280,7 @@ mod tests {
         TransactionUpdate,
     };
     use crate::query::{PaginatedData, Sort};
+    use chrono::NaiveDateTime;
 
     #[derive(Default)]
     struct MemorySettings {
@@ -666,6 +667,69 @@ mod tests {
             .get_preview(&preview.token)
             .expect_err("failed preview pruned");
         assert!(matches!(error, Error::NotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn cancelled_preview_cannot_commit() {
+        let (service, settings, repository) = service();
+        settings.lock().expect("lock").disclosure_accepted = true;
+        let mut foreign = mapped_row();
+        foreign.currency = Some("USD".to_string());
+        let preview = service
+            .preview(PreviewTransactionImportRequest {
+                file_digest: "abc".to_string(),
+                has_currency_column: true,
+                confirmed_transaction_currency: None,
+                confirm_provider_disclosure: true,
+                rows: vec![foreign],
+            })
+            .await
+            .expect("preview");
+        assert_eq!(preview.job.status, CurrencyJobStatus::Running);
+
+        {
+            let mut inner = settings.lock().expect("lock");
+            if let Some(job) = inner
+                .jobs
+                .iter_mut()
+                .find(|job| job.job_id == preview.token)
+            {
+                job.status = CurrencyJobStatus::Cancelled;
+            }
+        }
+
+        let error = service
+            .commit(CommitTransactionImportRequest {
+                token: preview.token,
+                file_digest: "abc".to_string(),
+            })
+            .await
+            .expect_err("cancelled preview cannot commit");
+        assert!(matches!(error, Error::NotFound(_)));
+        assert_eq!(*repository.committed.lock().expect("lock"), 0);
+    }
+
+    #[test]
+    fn placeholder_import_ids_are_replaced() {
+        let mut transaction = NewTransaction {
+            id: Some("imp-2".to_string()),
+            description: Some("Groceries".to_string()),
+            amount: 1250,
+            currency: "EUR".to_string(),
+            transaction_date: NaiveDateTime::parse_from_str(
+                "2026-01-15 08:30:00",
+                "%Y-%m-%d %H:%M:%S",
+            )
+            .expect("date"),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+            manual_exchange_rate: None,
+        };
+        ensure_transaction_id(&mut transaction);
+        let id = transaction.id.expect("id");
+        assert!(!id.starts_with("imp-"));
+        assert!(!id.is_empty());
     }
 
     #[test]
