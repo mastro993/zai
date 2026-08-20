@@ -501,11 +501,6 @@ async fn preview_transaction_import(
         .transaction_import_service()
         .preview(payload)
         .await
-        .inspect_err(|error| {
-            if std::env::var_os("ZAI_E2E_DIAGNOSTICS").is_some() {
-                eprintln!("[DEBUG-import-preview] {error:?}");
-            }
-        })
         .map_err(|error| command_error("Failed to preview import", error))?;
     if preview.job.status == zai_core::features::currency::CurrencyJobStatus::Running {
         context.spawn_currency_job_drive();

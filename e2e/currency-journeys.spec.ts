@@ -27,9 +27,11 @@ const pickCsv = async (page: Page, file: { name: string; content: string }) => {
 
 test("currency settings add, disable, and default-change", async ({ page, request }) => {
   await openSettings(page);
-  await page.getByLabel("Add currency").click();
+  const rubRow = page.getByRole("row").filter({ hasText: /^RUB/ });
   const rubOption = page.getByRole("option", { name: /RUB / });
-  if ((await rubOption.count()) > 0) {
+  if ((await rubRow.count()) === 0) {
+    await page.getByLabel("Add currency").click();
+    await expect(rubOption).toBeVisible();
     await rubOption.click();
     await page.getByRole("button", { name: "Add", exact: true }).click();
     const disclosure = page.getByRole("dialog", { name: "Use European Central Bank rates?" });
@@ -39,10 +41,7 @@ test("currency settings add, disable, and default-change", async ({ page, reques
     if (await disclosure.isVisible()) {
       await disclosure.getByRole("button", { name: "Enable ECB rates" }).click();
     }
-  } else {
-    await page.keyboard.press("Escape");
   }
-  const rubRow = page.getByRole("row").filter({ hasText: /^RUB/ });
   await expect(rubRow).toContainText("Enabled", { timeout: 30_000 });
 
   await rubRow.getByRole("button", { name: "Menu" }).click();
