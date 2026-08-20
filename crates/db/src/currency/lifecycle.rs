@@ -9,10 +9,9 @@ use diesel::{OptionalExtension, RunQueryDsl, sqlite::SqliteConnection};
 use zai_core::features::budgets::traits::{CalendarClock, LocalCalendarClock};
 use zai_core::features::currency::{ExchangeRateQuote, QuoteVariant};
 use zai_core::features::exchange_rates::{
-    APPROVED_ECB_CURRENCIES, automatic_pair, is_approved_ecb_currency, legs_for_pair,
-    pair_attribution,
+    APPROVED_ECB_CURRENCIES, is_approved_ecb_currency, legs_for_pair, pair_attribution,
 };
-use zai_core::money::{CURRENT_MANIFEST, CurrencyCode, Money, convert};
+use zai_core::money::CurrencyCode;
 use zai_core::{Error, Result};
 
 #[derive(QueryableByName)]
@@ -226,21 +225,15 @@ pub fn quote_on(
     };
     match legs_for_pair(&set, source, target, parsed_date) {
         Ok((source_obs, target_obs)) => {
-            let pair = automatic_pair(&set.id, source_obs, target_obs)?;
-            let one = Money::new(
-                10_i64.pow(u32::from(CURRENT_MANIFEST.record(source).minor_unit_digits)),
-                source,
-            )?;
-            let conversion = convert(one, target, &pair)?;
-            let rate = conversion.converted.map(format_major_units);
+            let rate = target_obs.rate.checked_div(&source_obs.rate)?;
             Ok(ExchangeRateQuote {
                 source_currency: source.as_str().to_string(),
                 target_currency: target.as_str().to_string(),
                 rate_date: rate_date.to_string(),
                 variant: QuoteVariant::Automatic,
-                rate,
+                rate: Some(rate.original_decimal().to_string()),
                 attribution: Some(pair_attribution(source, target).to_string()),
-                complete: conversion.complete,
+                complete: true,
             })
         }
         Err(_) => Ok(pending_quote(source, target, rate_date)),
@@ -282,21 +275,6 @@ pub fn observation_bounds(
             _ => None,
         })
     })
-}
-
-fn format_major_units(money: Money) -> String {
-    let digits = usize::from(money.minor_unit_digits());
-    let minor = money.minor_units();
-    if digits == 0 {
-        return minor.to_string();
-    }
-    let scale = 10_i64.pow(digits as u32);
-    format!(
-        "{}.{:0width$}",
-        minor / scale,
-        minor % scale,
-        width = digits
-    )
 }
 
 fn pending_quote(source: CurrencyCode, target: CurrencyCode, rate_date: &str) -> ExchangeRateQuote {

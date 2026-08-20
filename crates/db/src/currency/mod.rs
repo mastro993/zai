@@ -4,6 +4,8 @@ pub mod failpoints;
 mod format;
 mod jobs;
 mod lifecycle;
+#[cfg(test)]
+mod lifecycle_quote_tests;
 mod settings;
 mod settings_port;
 mod setup;

@@ -20,7 +20,7 @@ import type { TransactionRecurringProvenance } from "@/features/recurring-transa
 import { updateTransaction } from "../commands/transactions";
 import { TransactionFormDrawer } from "../components/transaction-form-drawer";
 import { TransactionTypeBadge } from "../components/transaction-type-badge";
-import { formValuesFromTransaction } from "../lib/transaction-write";
+import { formatConversionRateDisplay, formValuesFromTransaction } from "../lib/transaction-write";
 import type { Transaction, TransactionFormValues } from "../types/model";
 
 const rateOriginLabel = (origin: Transaction["exchangeRate"]["origin"]) =>
@@ -147,7 +147,7 @@ export function TransactionDetailScreen({
                 <p className="text-xs text-muted-foreground">
                   {formatCurrencyFromMinor(transaction.amount, transaction.currency)}
                   {transaction.exchangeRate.originalDecimal
-                    ? ` · ${transaction.exchangeRate.originalDecimal}`
+                    ? ` · ${formatConversionRateDisplay(transaction.exchangeRate.originalDecimal)}`
                     : ""}
                   {` · ${transaction.exchangeRate.rateDate} · ${rateOriginLabel(transaction.exchangeRate.origin)}`}
                 </p>

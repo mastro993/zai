@@ -2,6 +2,7 @@
 
 ## 2026-08-20
 
+- Quote of 1 JPY→EUR rounded to EUR cents (`0.01`) then stored/previewed. 1000 JPY → 10 EUR. Quote now `target_leg / source_leg` with 18 sig digits. 186.5 JPY/EUR → `0.00536193…`, 1000 JPY → 5.36 EUR. UI shows that rate at 6 fractional digits (`0.005362`).
 - Transaction form: drop amount "Automatic rate" copy. Non-default currency gets empty Conversion rate input; placeholder shows date rate (`1 SEK = 0,089568 € on 20/08/2026` shape). Typed override, clear reverts to date rate. Converted amount only when FX needed, under Amount label as `Converted amount: …` (pending = skeleton).
 - Currency Retry now console flood: `shouldn't retry!` is reqwest TRACE on success, not a Zai retry gate. Filtered HTTP-stack logs; emit `provider_refresh` info line.
 - Settings refresh column: per-row Progress meter. Backend `refreshProgress` events; no per-tick GET reconcile.

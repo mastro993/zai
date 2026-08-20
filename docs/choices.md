@@ -1,5 +1,17 @@
 # Choices
 
+## 2026-08-20 — Conversion-rate quotes keep full decimal precision
+
+- Quote is `target_leg / source_leg` as CanonicalRate, up to 18 significant digits, half-even on the next digit.
+- Do not convert 1 source unit to target Money. That rounds to ISO minor units (JPY→EUR 0.00536 → 0.01).
+- Stored automatic `original_decimal` and converted-amount math keep the unrounded quote.
+- UI display (form placeholder, transaction detail) rounds the rate to 6 fractional digits, half-up, then localizes.
+
+## 2026-08-20 — Conversion-rate UI shows 6 fractional digits
+
+- Display-only. Backend, export, typed manual input, and converted-amount math stay full precision.
+- `formatConversionRateDisplay`: round half-up to 6 places, trim trailing zeros, locale decimal separator.
+
 ## 2026-08-20 — Transaction form conversion-rate field
 
 - Cross-currency amount helper drops rate/date/origin copy. Converted amount stays under Amount.

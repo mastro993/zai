@@ -229,6 +229,30 @@ describe("TransactionDetailScreen pending recovery", () => {
     expect(screen.getByText(/Supplied/)).toBeTruthy();
   });
 
+  it("rounds a long conversion rate to six fractional digits", async () => {
+    await renderDetail(
+      sampleTransaction({
+        id: "tx-jpy",
+        description: "Suica",
+        amount: 1000,
+        currency: "JPY",
+        convertedAmount: 536,
+        convertedCurrency: "EUR",
+        exchangeRate: {
+          variant: "automatic",
+          rateDate: "2026-07-01",
+          sourceCurrency: "JPY",
+          referenceCurrency: "EUR",
+          originalDecimal: "0.00536193",
+          origin: "supplied",
+        },
+      }),
+    );
+
+    expect(screen.getByText(/0.005362/)).toBeTruthy();
+    expect(screen.queryByText(/0.00536193/)).toBeNull();
+  });
+
   it("retries a pending rate lookup", async () => {
     vi.spyOn(transactions, "updateTransaction").mockResolvedValue(Result.succeed(completeUsd));
 
