@@ -82,6 +82,7 @@ jobs:
       CARGO_TERM_COLOR: always
       RUSTFLAGS: "-C debuginfo=0"
       PLAYWRIGHT_MAX_FAILURES: "1"
+      ZAI_E2E_DIAGNOSTICS: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
