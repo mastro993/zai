@@ -4,9 +4,6 @@ use zai_core::{DatabaseError, Error, ErrorCode, ErrorEnvelope};
 pub type ApiError = ErrorEnvelope;
 
 pub fn command_error(context: &str, error: Error) -> (StatusCode, Json<ApiError>) {
-    if std::env::var_os("ZAI_E2E_DIAGNOSTICS").is_some() && error.code() == ErrorCode::Internal {
-        eprintln!("[DEBUG-api-error] {context}: {error:?}");
-    }
     let status = status_for_error(&error);
     (status, Json(error.to_envelope(context)))
 }

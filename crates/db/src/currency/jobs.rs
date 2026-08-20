@@ -5,10 +5,17 @@ use diesel::RunQueryDsl;
 use diesel::prelude::QueryableByName;
 use diesel::sql_query;
 use diesel::sql_types::{Integer, Nullable, Text, Timestamp};
+use std::time::Duration;
 use zai_core::features::currency::{
     CurrencyJob, CurrencyJobRecord, CurrencyJobStatus, CurrencyJobType,
 };
-use zai_core::{Error, ErrorCode, ErrorEnvelope, Result};
+use zai_core::{DatabaseError, Error, ErrorCode, ErrorEnvelope, Result};
+
+const JOB_WRITE_RETRY_DELAYS: [Duration; 3] = [
+    Duration::from_millis(25),
+    Duration::from_millis(50),
+    Duration::from_millis(100),
+];
 
 #[derive(QueryableByName)]
 struct JobRow {
@@ -35,58 +42,62 @@ struct JobRow {
 }
 
 pub fn insert_job(pool: &DbPool, job: &CurrencyJob) -> Result<()> {
-    let mut connection = get_connection(pool)?;
-    let now = Utc::now().naive_utc();
-    let (error_code, error_message, error_details) = job_error_columns(job);
-    sql_query(
-        "INSERT INTO currency_jobs (\
-            id, job_type, status, currency_code, stage_current, stage_total, \
-            error_code, error_message, error_details, created_at, updated_at\
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    )
-    .bind::<Text, _>(&job.job_id)
-    .bind::<Text, _>(job_type_wire(job.job_type))
-    .bind::<Text, _>(job_status_wire(job.status))
-    .bind::<Nullable<Text>, _>(job.currency_code.as_deref())
-    .bind::<Integer, _>(i32::try_from(job.stage_current).unwrap_or(0))
-    .bind::<Integer, _>(i32::try_from(job.stage_total).unwrap_or(0))
-    .bind::<Nullable<Text>, _>(error_code)
-    .bind::<Nullable<Text>, _>(error_message)
-    .bind::<Nullable<Text>, _>(error_details)
-    .bind::<Timestamp, _>(now)
-    .bind::<Timestamp, _>(now)
-    .execute(&mut connection)
-    .map_err(|error| match crate::errors::StorageError::from(error) {
-        crate::errors::StorageError::QueryFailed(diesel::result::Error::DatabaseError(
-            diesel::result::DatabaseErrorKind::UniqueViolation,
-            _,
-        )) => Error::CurrencyJobConflict,
-        other => Error::from(other),
-    })?;
-    Ok(())
+    retry_busy(|| {
+        let mut connection = get_connection(pool)?;
+        let now = Utc::now().naive_utc();
+        let (error_code, error_message, error_details) = job_error_columns(job);
+        sql_query(
+            "INSERT INTO currency_jobs (\
+                id, job_type, status, currency_code, stage_current, stage_total, \
+                error_code, error_message, error_details, created_at, updated_at\
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind::<Text, _>(&job.job_id)
+        .bind::<Text, _>(job_type_wire(job.job_type))
+        .bind::<Text, _>(job_status_wire(job.status))
+        .bind::<Nullable<Text>, _>(job.currency_code.as_deref())
+        .bind::<Integer, _>(i32::try_from(job.stage_current).unwrap_or(0))
+        .bind::<Integer, _>(i32::try_from(job.stage_total).unwrap_or(0))
+        .bind::<Nullable<Text>, _>(error_code)
+        .bind::<Nullable<Text>, _>(error_message)
+        .bind::<Nullable<Text>, _>(error_details)
+        .bind::<Timestamp, _>(now)
+        .bind::<Timestamp, _>(now)
+        .execute(&mut connection)
+        .map_err(|error| match crate::errors::StorageError::from(error) {
+            crate::errors::StorageError::QueryFailed(diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UniqueViolation,
+                _,
+            )) => Error::CurrencyJobConflict,
+            other => Error::from(other),
+        })?;
+        Ok(())
+    })
 }
 
 pub fn update_job(pool: &DbPool, job: &CurrencyJob) -> Result<()> {
-    let mut connection = get_connection(pool)?;
-    let now = Utc::now().naive_utc();
-    let (error_code, error_message, error_details) = job_error_columns(job);
-    sql_query(
-        "UPDATE currency_jobs SET status = ?, stage_current = ?, stage_total = ?, \
-         currency_code = ?, error_code = ?, error_message = ?, error_details = ?, updated_at = ? \
-         WHERE id = ?",
-    )
-    .bind::<Text, _>(job_status_wire(job.status))
-    .bind::<Integer, _>(i32::try_from(job.stage_current).unwrap_or(0))
-    .bind::<Integer, _>(i32::try_from(job.stage_total).unwrap_or(0))
-    .bind::<Nullable<Text>, _>(job.currency_code.as_deref())
-    .bind::<Nullable<Text>, _>(error_code)
-    .bind::<Nullable<Text>, _>(error_message)
-    .bind::<Nullable<Text>, _>(error_details)
-    .bind::<Timestamp, _>(now)
-    .bind::<Text, _>(&job.job_id)
-    .execute(&mut connection)
-    .into_core()?;
-    Ok(())
+    retry_busy(|| {
+        let mut connection = get_connection(pool)?;
+        let now = Utc::now().naive_utc();
+        let (error_code, error_message, error_details) = job_error_columns(job);
+        sql_query(
+            "UPDATE currency_jobs SET status = ?, stage_current = ?, stage_total = ?, \
+             currency_code = ?, error_code = ?, error_message = ?, error_details = ?, updated_at = ? \
+             WHERE id = ?",
+        )
+        .bind::<Text, _>(job_status_wire(job.status))
+        .bind::<Integer, _>(i32::try_from(job.stage_current).unwrap_or(0))
+        .bind::<Integer, _>(i32::try_from(job.stage_total).unwrap_or(0))
+        .bind::<Nullable<Text>, _>(job.currency_code.as_deref())
+        .bind::<Nullable<Text>, _>(error_code)
+        .bind::<Nullable<Text>, _>(error_message)
+        .bind::<Nullable<Text>, _>(error_details)
+        .bind::<Timestamp, _>(now)
+        .bind::<Text, _>(&job.job_id)
+        .execute(&mut connection)
+        .into_core()?;
+        Ok(())
+    })
 }
 
 pub fn get_job(pool: &DbPool, job_id: &str) -> Result<Option<CurrencyJobRecord>> {
@@ -215,4 +226,35 @@ fn error_code_wire(code: ErrorCode) -> String {
 fn parse_error_code(value: &str) -> ErrorCode {
     serde_json::from_value(serde_json::Value::String(value.to_string()))
         .unwrap_or(ErrorCode::Internal)
+}
+
+fn retry_busy<T>(mut operation: impl FnMut() -> Result<T>) -> Result<T> {
+    for delay in JOB_WRITE_RETRY_DELAYS {
+        match operation() {
+            Err(Error::Database(DatabaseError::Busy)) => std::thread::sleep(delay),
+            result => return result,
+        }
+    }
+    operation()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn retry_busy_retries_transient_contention() {
+        let mut attempts = 0;
+        retry_busy(|| {
+            attempts += 1;
+            if attempts == 1 {
+                Err(Error::Database(DatabaseError::Busy))
+            } else {
+                Ok(())
+            }
+        })
+        .expect("retry should succeed");
+
+        assert_eq!(attempts, 2);
+    }
 }
