@@ -1,5 +1,9 @@
 # Choices
 
+## 2026-08-20
+
+- **Manual rates written in the active generation quote that generation's target.** `prior_currency` is only for restating older revisions. After EUR→RUB→EUR a new RUB (or USD) recovery must convert to EUR, not to `prior` RUB/USD — same-currency manuals are identity and are not stored.
+
 ## 2026-08-18 — [Budget and alert results in the active valuation generation](https://github.com/mastro993/zai/issues/395)
 
 Seams from the ticket (no re-grill):

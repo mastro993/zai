@@ -35,3 +35,4 @@
 ## 2026-08-20
 
 - Implementing [Currency Playwright journeys, native smoke, and benchmark](https://github.com/mastro993/zai/issues/397) on `feat/multi-currency` (PR 8 remainder). Do not land on `main`. Seams: web Playwright (`currency-setup` + `currency-journeys`), `native_currency_workflow_smoke`, `pnpm benchmark:currency` seed 377, failure-recovery unit names in the release gate. Deleted throwaway `currency-prototype`. Settings search is `{ focus?: "rates" }`.
+- Web E2E shard 1/2: pending recovery PUT 400 `Same-currency conversion requires an identity rate` after settings EUR→RUB→EUR. Manual rates written in the active generation quote that generation's target, not `prior_currency`.
