@@ -3,6 +3,7 @@
 ## 2026-08-20
 
 - **Manual rates written in the active generation quote that generation's target.** `prior_currency` is only for restating older revisions. After EUR→RUB→EUR a new RUB (or USD) recovery must convert to EUR, not to `prior` RUB/USD — same-currency manuals are identity and are not stored.
+- **Import wizard resets file state on each open.** Reopening after a successful import must show "Select a CSV file", not the previous CSV's Change row.
 
 ## 2026-08-18 — [Budget and alert results in the active valuation generation](https://github.com/mastro993/zai/issues/395)
 
