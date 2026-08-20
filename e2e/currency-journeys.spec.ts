@@ -176,7 +176,7 @@ test("stale import preview rebuilds after a default-currency change", async ({
   await page.getByRole("button", { name: "Import transactions" }).click();
   await pickCsv(page, {
     name: `stale-preview-${suffix}.csv`,
-    content: "date,amount,type,description\n2026-08-18,15.00,expense,Stale preview row\n",
+    content: `date,amount,type,description\n2026-08-18,15.00,expense,Stale preview row ${suffix}\n`,
   });
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByRole("button", { name: "Next" }).click();
@@ -184,8 +184,10 @@ test("stale import preview rebuilds after a default-currency change", async ({
 
   await changeDefaultCurrency(request, "RUB");
   await page.getByRole("button", { name: "Import 1 transactions" }).click();
-  await expect(page.getByText("Failed to import transactions")).toBeVisible();
+  const staleToast = page.getByRole("status").filter({ hasText: "Failed to import transactions" });
+  await expect(staleToast).toBeVisible();
   await expect(page.getByText("Import preview is stale and must be rebuilt")).toBeVisible();
+  await expect(staleToast).toHaveCount(0);
   await page.getByRole("button", { name: "Back" }).click();
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByRole("button", { name: "Import 1 transactions" }).click();

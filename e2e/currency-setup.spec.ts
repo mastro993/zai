@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { apiOrigin } from "./recurring-production-helpers";
+const apiOrigin = "http://127.0.0.1:3001";
 
 test("currency-initial-setup confirms locale suggestion and unblocks money writes", async ({
   page,
@@ -28,7 +28,7 @@ test("currency-initial-setup confirms locale suggestion and unblocks money write
 
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByRole("heading", { name: "Choose your default currency" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
+  await expect(page).toHaveURL(/\/dashboard$/);
 
   const created = await request.fetch(`${apiOrigin}/api/transactions`, {
     method: "POST",

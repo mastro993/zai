@@ -21,7 +21,7 @@ export default defineConfig({
   passWithNoTests: true,
   use: {
     ...devices["Desktop Chrome"],
-    baseURL: "http://127.0.0.1:1421",
+    baseURL: "http://127.0.0.1:1420",
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
     screenshot: "only-on-failure",
@@ -40,8 +40,8 @@ export default defineConfig({
       timeout: 180_000,
     },
     {
-      command: "pnpm --filter frontend dev:web -- --port 1421 --strictPort",
-      url: "http://127.0.0.1:1421",
+      command: "pnpm --filter frontend dev:web",
+      url: "http://127.0.0.1:1420",
       env: {
         VITE_ZAI_API_ORIGIN: "http://127.0.0.1:3001",
       },
