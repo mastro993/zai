@@ -5,7 +5,12 @@ import { Result } from "@praha/byethrow";
 import { CommandError } from "../errors";
 import { invokeDecodedCommand } from "../shared";
 import { buildWebRequestUrl } from "../web-transport";
-import { joinWebApiUrl, resolveWebApiBaseUrl, resolveWebApiOrigin } from "../web-api";
+import {
+  joinWebApiUrl,
+  resolveHealthUrl,
+  resolveWebApiBaseUrl,
+  resolveWebApiOrigin,
+} from "../web-api";
 import { createWebCommandTransport } from "../web-transport";
 import { CATEGORY_COMMANDS } from "@/features/categories/commands/registry";
 import { BUDGET_COMMANDS } from "@/features/budgets/commands/registry";
@@ -55,6 +60,10 @@ describe("web API config", () => {
 
   it("joins origin and API prefixes without duplicate slashes", () => {
     expect(joinWebApiUrl("http://127.0.0.1:3000", "api")).toBe("http://127.0.0.1:3000/api");
+  });
+
+  it("resolves health on the origin, not under /api", () => {
+    expect(resolveHealthUrl()).toBe("http://127.0.0.1:3000/health");
   });
 });
 

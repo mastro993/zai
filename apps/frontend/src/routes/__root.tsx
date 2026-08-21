@@ -38,6 +38,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/toaster/toaster";
+import { WebBackendGate } from "@/components/web-backend-gate";
+import { WebBackendPlaceholder } from "@/components/web-backend-splash";
 import { parseCommandBuildTarget, type CommandBuildTarget } from "@/commands/build-target";
 import { navigationItems, settingsItem } from "@/lib/navigation";
 import {
@@ -71,9 +73,11 @@ export function AppLayout() {
   }
 
   return (
-    <CurrencyBootstrapProvider>
-      <ApplicationShell buildTarget={buildTargetResult.value} />
-    </CurrencyBootstrapProvider>
+    <WebBackendGate enabled={buildTargetResult.value === "web"}>
+      <CurrencyBootstrapProvider>
+        <ApplicationShell buildTarget={buildTargetResult.value} />
+      </CurrencyBootstrapProvider>
+    </WebBackendGate>
   );
 }
 
@@ -85,11 +89,7 @@ function ApplicationShell({ buildTarget }: ApplicationShellProps) {
   const { ready, setupComplete } = useCurrencyBootstrap();
 
   if (!ready) {
-    return (
-      <main className="grid h-svh place-items-center bg-background text-foreground">
-        <p>Loading currency setup…</p>
-      </main>
-    );
+    return <WebBackendPlaceholder />;
   }
 
   if (!setupComplete) {
