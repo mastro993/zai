@@ -1,6 +1,6 @@
 use crate::connection::{DbPool, get_connection};
 use crate::errors::IntoCore;
-use crate::exchange_rates::current_accepted_set;
+use crate::exchange_rates::{current_accepted_set, quote_legs};
 use chrono::{NaiveDate, Utc};
 use diesel::prelude::QueryableByName;
 use diesel::sql_query;
@@ -9,7 +9,7 @@ use diesel::{OptionalExtension, RunQueryDsl, sqlite::SqliteConnection};
 use zai_core::features::budgets::traits::{CalendarClock, LocalCalendarClock};
 use zai_core::features::currency::{ExchangeRateQuote, QuoteVariant};
 use zai_core::features::exchange_rates::{
-    APPROVED_ECB_CURRENCIES, is_approved_ecb_currency, legs_for_pair, pair_attribution,
+    APPROVED_ECB_CURRENCIES, is_approved_ecb_currency, pair_attribution,
 };
 use zai_core::money::CurrencyCode;
 use zai_core::{Error, Result};
@@ -86,18 +86,32 @@ pub(crate) fn prove_coverage_on(
     }
     let currency = CurrencyCode::parse(currency_code)?;
     if !is_approved_ecb_currency(currency) {
-        return Ok(());
+        return Err(Error::IncompleteCoverage {
+            missing_periods: vec![format!("{currency_code} historical coverage")],
+        });
     }
-    let Some(set) = current_accepted_set(connection)? else {
+    let head = sql_query(
+        "SELECT COUNT(*) AS count FROM provider_heads WHERE id = 1 AND rate_set_id IS NOT NULL",
+    )
+    .get_result::<CountRow>(connection)
+    .into_core()?
+    .count;
+    if head == 0 {
         return Err(Error::IncompleteCoverage {
             missing_periods: vec!["ECB history unavailable".to_string()],
         });
-    };
-    let present = set
-        .observations
-        .iter()
-        .any(|observation| observation.currency.as_str() == currency_code);
-    if present {
+    }
+    let present = sql_query(
+        "SELECT COUNT(*) AS count \
+         FROM provider_heads h \
+         JOIN provider_rate_observations o ON o.rate_set_id = h.rate_set_id \
+         WHERE h.id = 1 AND o.currency = ?",
+    )
+    .bind::<Text, _>(currency_code)
+    .get_result::<CountRow>(connection)
+    .into_core()?
+    .count;
+    if present > 0 {
         Ok(())
     } else {
         Err(Error::IncompleteCoverage {
@@ -220,11 +234,8 @@ pub fn quote_on(
             complete: true,
         });
     }
-    let Some(set) = current_accepted_set(connection)? else {
-        return Ok(pending_quote(source, target, rate_date));
-    };
-    match legs_for_pair(&set, source, target, parsed_date) {
-        Ok((source_obs, target_obs)) => {
+    match quote_legs(connection, source, target, parsed_date)? {
+        Some((source_obs, target_obs, _)) => {
             let rate = target_obs.rate.checked_div(&source_obs.rate)?;
             Ok(ExchangeRateQuote {
                 source_currency: source.as_str().to_string(),
@@ -236,7 +247,7 @@ pub fn quote_on(
                 complete: true,
             })
         }
-        Err(_) => Ok(pending_quote(source, target, rate_date)),
+        None => Ok(pending_quote(source, target, rate_date)),
     }
 }
 

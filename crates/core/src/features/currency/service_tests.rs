@@ -4,6 +4,7 @@ use super::models::{
 };
 use super::service::{CurrencyService, CurrencySettingsPort, CurrencySetupState};
 use crate::features::currency::models::{CurrencyJob, CurrencyJobRecord, PersistedCurrency};
+use crate::features::exchange_rates::APPROVED_ECB_CURRENCIES;
 use crate::{Error, ErrorCode, Result};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -290,6 +291,13 @@ fn catalog_is_available_before_setup() {
             .any(|item| item.code == "EUR" && item.name == "Euro")
     );
     assert!(catalog.iter().any(|item| item.code == "USD"));
+    assert!(
+        catalog
+            .iter()
+            .all(|item| item.code != "AED" && item.code != "RUB"),
+        "catalog must only list currencies with ECB coverage"
+    );
+    assert_eq!(catalog.len(), 1 + APPROVED_ECB_CURRENCIES.len());
 }
 
 #[test]

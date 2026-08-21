@@ -234,17 +234,18 @@ pub fn run() {
                         }
                     };
 
-                    let alert_bus = bootstrapped.context.domain_alert_event_bus();
-                    let processing_bus = bootstrapped.context.recurring_processing_event_bus();
-                    let currency_bus = bootstrapped.context.currency_state_event_bus();
-                    let supervisor_handle = bootstrapped.context.recurring_processing_supervisor();
-                    let currency_refresh_handle =
-                        bootstrapped.context.currency_refresh_supervisor();
-                    handle.manage(Arc::new(bootstrapped.context));
+                    let context = Arc::new(bootstrapped.context);
+                    let alert_bus = context.domain_alert_event_bus();
+                    let processing_bus = context.recurring_processing_event_bus();
+                    let currency_bus = context.currency_state_event_bus();
+                    let supervisor_handle = context.recurring_processing_supervisor();
+                    let currency_refresh_handle = context.currency_refresh_supervisor();
+                    handle.manage(Arc::clone(&context));
                     handle.manage(supervisor_handle);
                     handle.manage(currency_refresh_handle);
                     let _ = bootstrapped.supervisor.spawn();
                     std::mem::drop(bootstrapped.currency_refresh.spawn());
+                    context.adopt_leftover_currency_jobs();
                     start_alert_event_forwarder(handle.clone(), alert_bus);
                     start_recurring_processing_forwarder(handle.clone(), processing_bus);
                     start_currency_state_forwarder(handle.clone(), currency_bus);

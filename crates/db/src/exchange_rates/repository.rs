@@ -125,6 +125,64 @@ pub(crate) fn current_accepted_set(
     load_current_set(connection)
 }
 
+pub(crate) fn quote_legs(
+    connection: &mut SqliteConnection,
+    source: CurrencyCode,
+    target: CurrencyCode,
+    value_date: NaiveDate,
+) -> Result<
+    Option<(
+        zai_core::money::RateObservation,
+        zai_core::money::RateObservation,
+        String,
+    )>,
+> {
+    let Some(set_id) = current_head_id(connection)? else {
+        return Ok(None);
+    };
+    let Some(source_leg) = stored_or_eur_observation(connection, source, value_date)? else {
+        return Ok(None);
+    };
+    let Some(target_leg) = stored_or_eur_observation(connection, target, value_date)? else {
+        return Ok(None);
+    };
+    Ok(Some((source_leg, target_leg, set_id)))
+}
+
+fn current_head_id(connection: &mut SqliteConnection) -> Result<Option<String>> {
+    let head = sql_query(
+        "SELECT s.id, s.revision_identity, s.payload_digest \
+         FROM provider_heads h \
+         JOIN provider_rate_sets s ON s.id = h.rate_set_id \
+         WHERE h.id = 1",
+    )
+    .get_result::<HeadIdRow>(connection)
+    .optional()
+    .into_core()?;
+    Ok(head.map(|row| row.id))
+}
+
+fn stored_or_eur_observation(
+    connection: &mut SqliteConnection,
+    currency: CurrencyCode,
+    value_date: NaiveDate,
+) -> Result<Option<zai_core::money::RateObservation>> {
+    if currency.as_str() == "EUR" {
+        return Ok(Some(
+            zai_core::features::exchange_rates::eur_identity_observation(value_date),
+        ));
+    }
+    Ok(
+        load_observation(connection, currency, value_date)?.map(|observation| {
+            zai_core::money::RateObservation {
+                currency: observation.currency,
+                value_date: observation.value_date,
+                rate: observation.rate,
+            }
+        }),
+    )
+}
+
 pub(crate) fn coverage_proof_digest(connection: &mut SqliteConnection) -> Result<String> {
     let head = sql_query(
         "SELECT s.id, s.revision_identity, s.payload_digest \

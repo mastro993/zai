@@ -204,6 +204,18 @@ mod tests {
         }
     }
 
+    fn insert_enabled_currency(db_path: &Path, code: &str) {
+        let mut connection =
+            SqliteConnection::establish(db_path.to_string_lossy().as_ref()).expect("open sqlite");
+        sql_query(
+            "INSERT INTO enabled_currencies (code, enabled_at, disabled_at) \
+             VALUES (?, datetime('now'), NULL)",
+        )
+        .bind::<diesel::sql_types::Text, _>(code)
+        .execute(&mut connection)
+        .expect("insert enabled currency");
+    }
+
     fn mark_provider_refresh_failed(db_path: &Path) {
         let mut connection =
             SqliteConnection::establish(db_path.to_string_lossy().as_ref()).expect("open sqlite");
@@ -243,15 +255,7 @@ mod tests {
             .currency_service()
             .complete_initial_setup("EUR")
             .expect("confirm EUR");
-        context
-            .currency_service()
-            .start_currency_addition("RUB", false)
-            .expect("start RUB");
-        context
-            .currency_service()
-            .drive_running_job()
-            .expect("enable RUB");
-
+        insert_enabled_currency(&app_data_dir.path().join("zai.db"), "USD");
         mark_provider_refresh_failed(&app_data_dir.path().join("zai.db"));
 
         apply_refresh_outcome(
