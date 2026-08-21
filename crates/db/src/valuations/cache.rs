@@ -6,7 +6,7 @@ use diesel::sql_query;
 use diesel::sql_types::{BigInt, Bool, Nullable, Text, Timestamp};
 use diesel::sqlite::SqliteConnection;
 use zai_core::Result;
-use zai_core::features::exchange_rates::{automatic_pair, legs_for_pair};
+use zai_core::features::exchange_rates::automatic_pair;
 use zai_core::money::{CanonicalRate, ConversionRate, CurrencyCode, Money, convert};
 
 use super::generation::active_generation;
@@ -166,14 +166,9 @@ fn pair_or_pending(
     let value_date = revision
         .and_then(|row| row.rate_date.map(|value| value.date()))
         .unwrap_or_else(|| chrono::Utc::now().date_naive());
-    let Some(accepted) = crate::exchange_rates::current_accepted_set(conn)? else {
-        return Ok(ConversionRate::Pending {
-            rate_date: value_date,
-        });
-    };
-    match legs_for_pair(&accepted, source, target, value_date) {
-        Ok((source_leg, target_leg)) => automatic_pair(&accepted.id, source_leg, target_leg),
-        Err(_) => Ok(ConversionRate::Pending {
+    match crate::exchange_rates::quote_legs(conn, source, target, value_date)? {
+        Some((source_leg, target_leg, set_id)) => automatic_pair(&set_id, source_leg, target_leg),
+        None => Ok(ConversionRate::Pending {
             rate_date: value_date,
         }),
     }

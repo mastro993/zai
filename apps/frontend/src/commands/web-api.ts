@@ -23,6 +23,8 @@ export const joinWebApiUrl = (origin: string, ...pathSegments: Array<string>): s
 export const resolveWebApiBaseUrl = (): string =>
   joinWebApiUrl(resolveWebApiOrigin(), WEB_API_PREFIX);
 
+export const resolveHealthUrl = (): string => joinWebApiUrl(resolveWebApiOrigin(), "health");
+
 export const resolveAlertsEventUrl = (): string =>
   joinWebApiUrl(resolveWebApiBaseUrl(), "alerts/events");
 

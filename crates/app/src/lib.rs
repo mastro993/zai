@@ -8,7 +8,7 @@ use zai_core::features::recurring_transactions::{
 };
 use zai_core::features::{
     budgets::{service::BudgetsService, traits::BudgetsServiceTrait},
-    currency::{CurrencyService, CurrencyStateEventBus},
+    currency::{CurrencyJobStatus, CurrencyService, CurrencyStateEventBus},
     domain_alerts::{DomainAlertsService, DomainAlertsServiceTrait},
     transaction_categories::{
         service::TransactionCategoriesService, traits::TransactionCategoriesServiceTrait,
@@ -124,13 +124,25 @@ impl ServiceContext {
                         )
                         .await;
                     }
-                    let _ = service.drive_running_job();
+                    let _ = tokio::task::spawn_blocking(move || service.drive_running_job()).await;
                 }
                 _ => {
-                    let _ = service.drive_running_job();
+                    let _ = tokio::task::spawn_blocking(move || service.drive_running_job()).await;
                 }
             }
         });
+    }
+
+    pub fn adopt_leftover_currency_jobs(&self) {
+        let running = self
+            .currency_service()
+            .status()
+            .ok()
+            .and_then(|status| status.job)
+            .is_some_and(|job| job.status == CurrencyJobStatus::Running);
+        if running {
+            self.spawn_currency_job_drive();
+        }
     }
 
     pub async fn retry_exchange_rate_refresh(&self) {
@@ -389,6 +401,126 @@ mod tests {
                 .await
                 .expect("cache read")
                 .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn adding_non_ecb_catalog_currency_does_not_enable_without_rates() {
+        use std::time::Duration;
+        use zai_core::ErrorCode;
+        use zai_core::features::currency::{
+            CurrencyJobStatus, CurrencyLifecycleStatus, QuoteVariant,
+        };
+
+        let app_data_dir = TempAppDataDir::new();
+        let context = initialize_context(app_data_dir.path()).expect("context");
+        context
+            .currency_service()
+            .complete_initial_setup("EUR")
+            .expect("confirm EUR");
+        context
+            .currency_service()
+            .start_currency_addition("AED", true)
+            .expect("start AED add");
+        context.spawn_currency_job_drive();
+
+        let job = tokio::time::timeout(Duration::from_secs(2), async {
+            loop {
+                let status = context.currency_service().status().expect("status");
+                if let Some(job) = status.job
+                    && job.status != CurrencyJobStatus::Running
+                {
+                    return job;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("add job should finish");
+
+        assert_ne!(
+            job.status,
+            CurrencyJobStatus::Succeeded,
+            "AED has no ECB series; addition must not succeed without rates"
+        );
+        assert_eq!(
+            job.error.as_ref().map(|error| error.code),
+            Some(ErrorCode::IncompleteCoverage)
+        );
+
+        let rows = context
+            .currency_service()
+            .list_settings()
+            .expect("settings");
+        assert!(
+            rows.iter()
+                .all(|row| row.code != "AED" || row.status != CurrencyLifecycleStatus::Enabled),
+            "AED must not become selectable without coverage"
+        );
+
+        let quote = context
+            .currency_service()
+            .quote("AED", "EUR", "2026-08-21")
+            .expect("quote");
+        assert_eq!(quote.variant, QuoteVariant::Pending);
+        assert!(quote.rate.is_none());
+        assert!(!quote.complete);
+    }
+
+    #[tokio::test]
+    async fn leftover_running_default_change_is_adopted() {
+        use diesel::prelude::*;
+        use diesel::sql_query;
+        use diesel::sqlite::SqliteConnection;
+        use std::time::Duration;
+        use zai_core::features::currency::CurrencyJobStatus;
+
+        let app_data_dir = TempAppDataDir::new();
+        let context = initialize_context(app_data_dir.path()).expect("context");
+        context
+            .currency_service()
+            .complete_initial_setup("EUR")
+            .expect("confirm EUR");
+        let mut connection =
+            SqliteConnection::establish(app_data_dir.path().join("zai.db").to_str().expect("path"))
+                .expect("open sqlite");
+        sql_query(
+            "INSERT INTO enabled_currencies (code, enabled_at, disabled_at) \
+             VALUES ('USD', datetime('now'), NULL)",
+        )
+        .execute(&mut connection)
+        .expect("enable USD");
+        drop(connection);
+
+        let job = context
+            .currency_service()
+            .start_default_currency_change("USD")
+            .expect("start change");
+        assert_eq!(job.status, CurrencyJobStatus::Running);
+
+        context.adopt_leftover_currency_jobs();
+        let finished = tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                let status = context.currency_service().status().expect("status");
+                if let Some(job) = status.job
+                    && job.status != CurrencyJobStatus::Running
+                {
+                    return job;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("leftover job should finish");
+        assert_eq!(finished.status, CurrencyJobStatus::Succeeded);
+        assert_eq!(
+            context
+                .currency_service()
+                .bootstrap()
+                .expect("bootstrap")
+                .default_currency
+                .as_deref(),
+            Some("USD")
         );
     }
 }

@@ -5,6 +5,7 @@ use super::models::{
     CurrencyLifecycleStatus, CurrencyRefreshStatus, CurrencySettingsRow, CurrencyStatusView,
     ExchangeRateQuote, PersistedCurrency, SupportedCurrency,
 };
+use crate::features::exchange_rates::APPROVED_ECB_CURRENCIES;
 use crate::money::{CURRENT_MANIFEST, CurrencyCode};
 use crate::{Error, ErrorEnvelope, Result};
 use std::sync::Arc;
@@ -76,11 +77,13 @@ impl CurrencyService {
     }
 
     pub fn supported_catalog(&self) -> Vec<SupportedCurrency> {
-        CURRENT_MANIFEST
-            .currencies()
-            .map(|record| SupportedCurrency {
-                code: record.code.as_str().to_string(),
-                name: record.name.to_string(),
+        std::iter::once("EUR")
+            .chain(APPROVED_ECB_CURRENCIES.iter().copied())
+            .filter_map(|code| {
+                CURRENT_MANIFEST.get(code).map(|record| SupportedCurrency {
+                    code: record.code.as_str().to_string(),
+                    name: record.name.to_string(),
+                })
             })
             .collect()
     }

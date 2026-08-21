@@ -130,6 +130,7 @@ pub async fn serve(config: ServerConfig) -> Result<(), ServerError> {
     let currency_refresh_handle = context.currency_refresh_supervisor();
     let _supervisor = bootstrapped.supervisor.spawn();
     std::mem::drop(bootstrapped.currency_refresh.spawn());
+    context.adopt_leftover_currency_jobs();
     let app = create_router(context);
     let listener = config.bind_listener().await?;
     axum::serve(listener, app)

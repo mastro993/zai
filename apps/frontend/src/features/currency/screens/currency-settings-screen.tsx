@@ -1,5 +1,5 @@
 import { Result } from "@praha/byethrow";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,13 @@ const statusLabel = (status: CurrencySettingsRow["status"]) => {
   return "Disabled";
 };
 
-export function CurrencySettingsScreen({ focusRates = false }: { focusRates?: boolean }) {
+export function CurrencySettingsScreen({
+  focusRates = false,
+  focusAdd = false,
+}: {
+  focusRates?: boolean;
+  focusAdd?: boolean;
+}) {
   const {
     catalog,
     currencies,
@@ -58,6 +64,13 @@ export function CurrencySettingsScreen({ focusRates = false }: { focusRates?: bo
   const [pendingDisclosure, setPendingDisclosure] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+
+  useEffect(() => {
+    if (!focusAdd) {
+      return;
+    }
+    document.getElementById("currency-add")?.focus();
+  }, [catalog, currencies, focusAdd]);
 
   const addable = useMemo(() => {
     const present = new Set(currencies.map((row) => row.code));
@@ -102,7 +115,7 @@ export function CurrencySettingsScreen({ focusRates = false }: { focusRates?: bo
               }
             }}
           >
-            <SelectTrigger id="currency-add" className="w-full">
+            <SelectTrigger id="currency-add" autoFocus={focusAdd} className="w-full">
               <SelectValue placeholder="Supported currency" />
             </SelectTrigger>
             <SelectContent>
