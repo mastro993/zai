@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 
+import { z } from "zod";
+
 import { ScreenBase } from "@/components/screen-base";
 import {
   Field,
@@ -12,19 +14,15 @@ import {
 } from "@/components/ui/field";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CurrencySettingsScreen } from "@/features/currency/screens/currency-settings-screen";
-import { asWireObject } from "@/lib/wire";
 
-export interface SettingsSearch {
-  focus?: "rates";
-}
+export const settingsSearchSchema = z.object({
+  focus: z.enum(["rates", "currencies"]).optional().catch(undefined),
+});
 
-const parseSettingsSearch = <TRaw,>(search: TRaw): SettingsSearch => {
-  const record = asWireObject(search);
-  return record?.focus === "rates" ? { focus: "rates" } : {};
-};
+export type SettingsSearch = z.output<typeof settingsSearchSchema>;
 
 export const Route = createFileRoute("/settings")({
-  validateSearch: parseSettingsSearch,
+  validateSearch: settingsSearchSchema,
   component: SettingsPage,
 });
 
@@ -60,7 +58,10 @@ function SettingsPage() {
               re-enable, and set-as-default stay in the row menu.
             </FieldDescription>
           </FieldContent>
-          <CurrencySettingsScreen focusRates={search.focus === "rates"} />
+          <CurrencySettingsScreen
+            focusRates={search.focus === "rates"}
+            focusAdd={search.focus === "currencies"}
+          />
         </Field>
       </FieldGroup>
     </ScreenBase>

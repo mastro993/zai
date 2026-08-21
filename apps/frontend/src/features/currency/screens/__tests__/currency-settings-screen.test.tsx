@@ -105,6 +105,19 @@ describe("CurrencySettingsScreen", () => {
     expect(screen.getByText("Use European Central Bank rates?")).toBeTruthy();
   });
 
+  it("focuses the add-currency control when opened from a picker", async () => {
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(() => undefined);
+    render(
+      <CurrencyBootstrapProvider>
+        <CurrencySettingsScreen focusAdd />
+      </CurrencyBootstrapProvider>,
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText("Add currency")).toBeTruthy();
+    });
+    expect(focusSpy).toHaveBeenCalled();
+  });
+
   it("retries refresh without clearing the table", async () => {
     renderSettings();
     await waitFor(() => {

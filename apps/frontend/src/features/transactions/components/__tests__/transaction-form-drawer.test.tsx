@@ -18,6 +18,7 @@ import { formatCurrencyFromMinor } from "@/lib/currency";
 import { convertedMinorFromRate } from "../../lib/transaction-write";
 import { sampleTransaction } from "../../types/sample";
 import { TransactionFormDrawer } from "../transaction-form-drawer";
+import { RouterHarness } from "@/features/currency/components/__tests__/router-harness";
 
 const currencies = [
   {
@@ -79,15 +80,17 @@ const stubCurrencyBootstrap = () => {
 
 const renderForm = async () => {
   const view = render(
-    <CurrencyBootstrapProvider>
-      <Drawer open swipeDirection="right">
-        <TransactionFormDrawer
-          mode={{ type: "create" }}
-          categories={[]}
-          onSubmit={vi.fn().mockResolvedValue(undefined)}
-        />
-      </Drawer>
-    </CurrencyBootstrapProvider>,
+    <RouterHarness>
+      <CurrencyBootstrapProvider>
+        <Drawer open swipeDirection="right">
+          <TransactionFormDrawer
+            mode={{ type: "create" }}
+            categories={[]}
+            onSubmit={vi.fn().mockResolvedValue(undefined)}
+          />
+        </Drawer>
+      </CurrencyBootstrapProvider>
+    </RouterHarness>,
   );
   await waitFor(() => expect(screen.getByLabelText("Amount")).toBeTruthy());
   return view;
@@ -146,6 +149,14 @@ describe("TransactionFormDrawer", () => {
 
     expect(screen.getByLabelText("Transaction currency")).toBeTruthy();
     expect(screen.getByLabelText("Transaction currency").textContent).toContain("EUR");
+  });
+
+  it("links add currency from the currency menu to settings", async () => {
+    await renderForm();
+
+    fireEvent.click(screen.getByLabelText("Transaction currency"));
+    const add = await screen.findByRole("link", { name: "Add currency +" });
+    expect(add.getAttribute("href")).toBe("/settings?focus=currencies");
   });
 
   it("preselects the last-used session currency", async () => {
@@ -267,15 +278,17 @@ describe("TransactionFormDrawer", () => {
     });
 
     render(
-      <CurrencyBootstrapProvider>
-        <Drawer open swipeDirection="right">
-          <TransactionFormDrawer
-            mode={{ type: "edit", transaction }}
-            categories={[]}
-            onSubmit={vi.fn().mockResolvedValue(undefined)}
-          />
-        </Drawer>
-      </CurrencyBootstrapProvider>,
+      <RouterHarness>
+        <CurrencyBootstrapProvider>
+          <Drawer open swipeDirection="right">
+            <TransactionFormDrawer
+              mode={{ type: "edit", transaction }}
+              categories={[]}
+              onSubmit={vi.fn().mockResolvedValue(undefined)}
+            />
+          </Drawer>
+        </CurrencyBootstrapProvider>
+      </RouterHarness>,
     );
     await waitFor(() => expect(screen.getByLabelText("Amount")).toBeTruthy());
 

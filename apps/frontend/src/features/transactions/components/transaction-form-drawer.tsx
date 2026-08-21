@@ -45,6 +45,7 @@ import {
   useTransactionConversion,
 } from "./transaction-form-conversion";
 import type { TransactionRecurringProvenance } from "@/features/recurring-transactions/types/recurring-transaction";
+import { AddCurrencySelectFooter } from "@/features/currency/components/add-currency-select-footer";
 import { useCurrencyBootstrap } from "@/features/currency/hooks/use-currency-bootstrap";
 import type { CurrencySettingsRow } from "@/features/currency/types/currency";
 
@@ -347,6 +348,7 @@ function TransactionFormDrawer({
                                   {item.value}
                                 </SelectItem>
                               ))}
+                              <AddCurrencySelectFooter />
                             </SelectGroup>
                           </SelectContent>
                         </Select>
