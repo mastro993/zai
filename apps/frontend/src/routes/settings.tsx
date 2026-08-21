@@ -54,8 +54,7 @@ function SettingsPage() {
           <FieldContent>
             <FieldTitle>Currencies</FieldTitle>
             <FieldDescription>
-              Default radio, coverage, and refresh live in this table. Add above. Disable,
-              re-enable, and set-as-default stay in the row menu.
+              Enabled currencies, coverage, and refresh. The default is used for converted amounts.
             </FieldDescription>
           </FieldContent>
           <CurrencySettingsScreen
