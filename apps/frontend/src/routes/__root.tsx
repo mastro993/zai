@@ -10,6 +10,7 @@ import {
   ApplicationTitleBarProvider,
 } from "@/components/application-title-bar";
 import { FixedSidebarTrigger } from "@/components/fixed-sidebar-trigger";
+import { PreWorkspaceWindowChrome, WindowControls } from "@/components/window-controls";
 import { NATIVE_BRAND_LEADING_INSET, WindowDragRegion } from "@/components/window-drag-region";
 import { AlertsControllerProvider } from "@/features/alerts/hooks/use-alerts-controller";
 import {
@@ -75,6 +76,7 @@ export function AppLayout() {
   return (
     <WebBackendGate enabled={buildTargetResult.value === "web"}>
       <CurrencyBootstrapProvider>
+        <WindowControls buildTarget={buildTargetResult.value} />
         <ApplicationShell buildTarget={buildTargetResult.value} />
       </CurrencyBootstrapProvider>
     </WebBackendGate>
@@ -89,11 +91,19 @@ function ApplicationShell({ buildTarget }: ApplicationShellProps) {
   const { ready, setupComplete } = useCurrencyBootstrap();
 
   if (!ready) {
-    return <WebBackendPlaceholder />;
+    return (
+      <PreWorkspaceWindowChrome buildTarget={buildTarget}>
+        <WebBackendPlaceholder />
+      </PreWorkspaceWindowChrome>
+    );
   }
 
   if (!setupComplete) {
-    return <InitialCurrencySetupScreen />;
+    return (
+      <PreWorkspaceWindowChrome buildTarget={buildTarget}>
+        <InitialCurrencySetupScreen />
+      </PreWorkspaceWindowChrome>
+    );
   }
 
   return <ApplicationWorkspace buildTarget={buildTarget} />;

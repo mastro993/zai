@@ -48,12 +48,17 @@ const REQUIRED_MAIN_PERMISSIONS: &[(&str, &str)] = &[
     ("core:event:default", "domain alert event listen"),
     (
         "core:window:allow-start-dragging",
-        "manual macOS title-bar dragging",
+        "manual desktop title-bar dragging",
     ),
     (
         "core:window:allow-toggle-maximize",
-        "manual macOS title-bar maximization",
+        "manual desktop title-bar maximization",
     ),
+    (
+        "core:window:allow-minimize",
+        "Linux client-side minimize control",
+    ),
+    ("core:window:allow-close", "Linux client-side close control"),
     ("dialog:allow-open", "CSV import file picker"),
     ("dialog:allow-save", "CSV export save dialog"),
     ("fs:allow-read-text-file", "dialog-selected CSV read"),
@@ -175,6 +180,52 @@ fn main_window_uses_native_overlay_chrome() {
     assert_eq!(main_window["hiddenTitle"], true);
     // Traffic-light Y is applied at runtime (macos_traffic_lights), not via config.
     assert!(main_window.get("trafficLightPosition").is_none());
+}
+
+#[test]
+fn linux_main_window_uses_client_side_chrome() {
+    let config_path = manifest_dir().join("tauri.linux.conf.json");
+    let source = fs::read_to_string(&config_path).expect("linux tauri config should exist");
+    let config: serde_json::Value =
+        serde_json::from_str(&source).expect("linux tauri config should parse");
+    let windows = config["app"]["windows"]
+        .as_array()
+        .expect("linux app windows should be configured");
+    let main_window = windows
+        .iter()
+        .find(|window| window["label"] == "main")
+        .expect("linux main window should be configured");
+
+    assert_eq!(main_window["decorations"], false);
+
+    let base_source = fs::read_to_string(manifest_dir().join("tauri.conf.json"))
+        .expect("tauri config should exist");
+    let base_config: serde_json::Value =
+        serde_json::from_str(&base_source).expect("tauri config should parse");
+    let base_windows = base_config["app"]["windows"]
+        .as_array()
+        .expect("app windows should be configured");
+    let base_window = base_windows
+        .iter()
+        .find(|window| window["label"] == "main")
+        .expect("main window should be configured");
+
+    let mut expected = base_window.clone();
+    expected["decorations"] = serde_json::Value::Bool(false);
+    assert_eq!(
+        main_window, &expected,
+        "linux window config should match the shared window except decorations"
+    );
+}
+
+#[test]
+fn linux_client_chrome_disables_native_decorations() {
+    let source = fs::read_to_string(manifest_dir().join("src/linux_client_chrome.rs"))
+        .expect("linux_client_chrome.rs should exist");
+    assert!(
+        source.contains("set_decorations(false)"),
+        "Linux startup should hide native GTK decorations"
+    );
 }
 
 #[test]

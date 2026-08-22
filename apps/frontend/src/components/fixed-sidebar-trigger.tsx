@@ -20,15 +20,14 @@ interface FixedSidebarTriggerProps {
 export function FixedSidebarTrigger({ buildTarget }: FixedSidebarTriggerProps) {
   const { isMobile, state } = useSidebar();
   const windowChrome = useMemo(() => createWindowChromeAdapter(buildTarget), [buildTarget]);
-  const hasNativeMacWindowChrome =
-    buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
+  const hasDesktopWindowChrome = buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
 
   const showFixedTrigger = isMobile || (buildTarget === "tauri" && state === "collapsed");
   if (!showFixedTrigger) {
     return null;
   }
 
-  const paddingLeft = hasNativeMacWindowChrome
+  const paddingLeft = hasDesktopWindowChrome
     ? `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP})`
     : "0.5rem";
 

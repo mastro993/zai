@@ -1,4 +1,5 @@
 mod commands;
+mod linux_client_chrome;
 mod macos_traffic_lights;
 
 use dotenvy::dotenv;
@@ -259,6 +260,7 @@ pub fn run() {
 
                 if let Some(main_window) = app.get_webview_window("main") {
                     macos_traffic_lights::install(&main_window);
+                    linux_client_chrome::install(&main_window);
                 }
 
                 Ok(())

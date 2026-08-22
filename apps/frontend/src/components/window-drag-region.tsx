@@ -4,7 +4,7 @@ import type { CommandBuildTarget } from "@/commands/build-target";
 import { createWindowChromeAdapter, type WindowChromeAdapter } from "@/lib/window-chrome";
 import { cn } from "@/lib/utils";
 
-/** Logical width reserved for macOS traffic lights (close / minimize / zoom). */
+/** Logical width reserved for traffic lights (close / minimize / zoom). */
 export const TRAFFIC_LIGHT_LEADING_WIDTH = "76px";
 /** Slot for the sidebar trigger (`size="icon-sm"` ≈ 32px). */
 export const SIDEBAR_TRIGGER_SLOT_WIDTH = "2rem";
@@ -40,7 +40,7 @@ interface WindowDragRegionProps {
 }
 
 /**
- * Empty strip that starts a window drag (and double-click maximize) on macOS Tauri.
+ * Empty strip that starts a window drag (and double-click maximize) on desktop Tauri.
  * Renders nothing when native window chrome is unavailable.
  */
 export function WindowDragRegion({
@@ -54,7 +54,7 @@ export function WindowDragRegion({
     [buildTarget],
   );
 
-  // Web builds never expose native drag; Tauri + non-mac also no-op via adapter.
+  // Web builds never expose native drag; unsupported desktop platforms no-op via adapter.
   if (buildTarget !== "tauri" || !windowChrome.supportsNativeWindowChrome) {
     return null;
   }
