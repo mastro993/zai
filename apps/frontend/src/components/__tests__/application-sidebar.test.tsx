@@ -101,7 +101,7 @@ describe("ApplicationSidebar", () => {
     await renderSidebar("/dashboard");
 
     expect(await screen.findByRole("link", { name: "Dashboard" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Settings" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Settings" }).hasAttribute("data-active")).toBe(false);
     expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Appearance" })).toBeNull();
   });
@@ -111,12 +111,17 @@ describe("ApplicationSidebar", () => {
 
     fireEvent.click(await screen.findByRole("link", { name: "Settings" }));
 
-    expect(await screen.findByRole("link", { name: "Appearance" })).toBeTruthy();
+    const back = await screen.findByRole("button", { name: "Back" });
+    const appearance = screen.getByRole("link", { name: "Appearance" });
+    const settings = screen.getByRole("link", { name: "Settings" });
+
+    expect(appearance).toBeTruthy();
     expect(screen.getByRole("link", { name: "Currencies" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
-    expect(screen.queryByText("Settings")).toBeNull();
+    expect(settings.hasAttribute("data-active")).toBe(true);
+    expect(
+      back.compareDocumentPosition(appearance) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("returns to the previous app screen from the back control", async () => {
