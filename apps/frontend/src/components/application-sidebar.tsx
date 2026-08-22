@@ -127,37 +127,26 @@ function AppNav({ pathname }: { pathname: string }) {
   );
 }
 
-function SettingsNav({ pathname, returnHref }: { pathname: string; returnHref: string }) {
+function SettingsNav({ pathname }: { pathname: string }) {
   return (
-    <>
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SettingsBackButton href={returnHref} />
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {settingsSections.map((section) => (
+            <SidebarMenuItem key={section.to}>
+              <SidebarMenuButton
+                isActive={pathname === section.to}
+                render={<Link to={section.to} preload="intent" />}
+                tooltip={section.title}
+              >
+                <HugeiconsIcon icon={section.icon} strokeWidth={2} />
+                <span>{section.title}</span>
+              </SidebarMenuButton>
             </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            {settingsSections.map((section) => (
-              <SidebarMenuItem key={section.to}>
-                <SidebarMenuButton
-                  isActive={pathname === section.to}
-                  render={<Link to={section.to} preload="intent" />}
-                  tooltip={section.title}
-                >
-                  <HugeiconsIcon icon={section.icon} strokeWidth={2} />
-                  <span>{section.title}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-    </>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
   );
 }
 
@@ -244,23 +233,23 @@ export function ApplicationSidebar({ buildTarget }: ApplicationSidebarProps) {
         <SidebarHeader className="h-12 shrink-0 gap-0 p-0">{chromeHeader}</SidebarHeader>
       )}
       <SidebarContent>
-        {isSettings ? (
-          <SettingsNav pathname={pathname} returnHref={returnHref} />
-        ) : (
-          <AppNav pathname={pathname} />
-        )}
+        {isSettings ? <SettingsNav pathname={pathname} /> : <AppNav pathname={pathname} />}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={isSettings}
-              render={<Link to={settingsItem.to} preload="intent" />}
-              tooltip={settingsItem.title}
-            >
-              <HugeiconsIcon icon={settingsItem.icon} strokeWidth={2} />
-              <span>{settingsItem.title}</span>
-            </SidebarMenuButton>
+            {isSettings ? (
+              <SettingsBackButton href={returnHref} />
+            ) : (
+              <SidebarMenuButton
+                isActive={false}
+                render={<Link to={settingsItem.to} preload="intent" />}
+                tooltip={settingsItem.title}
+              >
+                <HugeiconsIcon icon={settingsItem.icon} strokeWidth={2} />
+                <span>{settingsItem.title}</span>
+              </SidebarMenuButton>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
