@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { navigationItems, resolveScreenBreadcrumbs } from "../navigation";
+import { isSettingsPath, navigationItems, resolveScreenBreadcrumbs } from "../navigation";
 
 const cashFlowNavigation = navigationItems.find((item) => item.to === "/cash-flow");
 
@@ -8,6 +8,17 @@ describe("resolveScreenBreadcrumbs", () => {
   it("returns a single crumb for top-level routes", () => {
     expect(resolveScreenBreadcrumbs("/dashboard")).toEqual([{ label: "Dashboard" }]);
     expect(resolveScreenBreadcrumbs("/settings")).toEqual([{ label: "Settings" }]);
+  });
+
+  it("returns settings section crumbs under Settings", () => {
+    expect(resolveScreenBreadcrumbs("/settings/appearance")).toEqual([
+      { label: "Settings", href: "/settings" },
+      { label: "Appearance" },
+    ]);
+    expect(resolveScreenBreadcrumbs("/settings/currencies")).toEqual([
+      { label: "Settings", href: "/settings" },
+      { label: "Currencies" },
+    ]);
   });
 
   it("normalizes trailing slashes", () => {
@@ -31,6 +42,17 @@ describe("resolveScreenBreadcrumbs", () => {
 
   it("falls back to title-cased path segments", () => {
     expect(resolveScreenBreadcrumbs("/unknown-route")).toEqual([{ label: "Unknown Route" }]);
+  });
+});
+
+describe("isSettingsPath", () => {
+  it("matches settings home and section paths", () => {
+    expect(isSettingsPath("/settings")).toBe(true);
+    expect(isSettingsPath("/settings/")).toBe(true);
+    expect(isSettingsPath("/settings/appearance")).toBe(true);
+    expect(isSettingsPath("/settings/currencies")).toBe(true);
+    expect(isSettingsPath("/dashboard")).toBe(false);
+    expect(isSettingsPath("/settings-room")).toBe(false);
   });
 });
 

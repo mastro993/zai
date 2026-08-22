@@ -61,7 +61,7 @@ export function useAlertDestination({
       if (current.destination.type === "currencySettings") {
         closeLedger();
         await navigate({
-          to: "/settings",
+          to: "/settings/currencies",
           search: { focus: "rates" },
         });
         return;

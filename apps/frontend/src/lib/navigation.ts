@@ -1,5 +1,7 @@
 import {
   DashboardSquare01Icon,
+  DollarCircleIcon,
+  PaintBoardIcon,
   Settings01Icon,
   TransactionHistoryIcon,
   Wallet01Icon,
@@ -45,12 +47,24 @@ export const settingsItem = {
   icon: Settings01Icon,
 } as const;
 
+export const settingsSections = [
+  { title: "Appearance", to: "/settings/appearance", icon: PaintBoardIcon },
+  { title: "Currencies", to: "/settings/currencies", icon: DollarCircleIcon },
+] as const satisfies Array<NavigationItem>;
+
 const normalizePathname = (pathname: string) => {
   if (pathname.length > 1 && pathname.endsWith("/")) {
     return pathname.slice(0, -1);
   }
 
   return pathname;
+};
+
+export const isSettingsPath = (pathname: string) => {
+  const path = normalizePathname(pathname);
+  const settingsPath = normalizePathname(settingsItem.to);
+
+  return path === settingsPath || path.startsWith(`${settingsPath}/`);
 };
 
 const titleCaseSegment = (segment: string) =>
@@ -92,6 +106,14 @@ export const resolveScreenBreadcrumbs = (pathname: string): Array<BreadcrumbSegm
 
   if (path === settingsPath) {
     return [{ label: settingsItem.title }];
+  }
+
+  for (const section of settingsSections) {
+    const sectionPath = normalizePathname(section.to);
+
+    if (path === sectionPath) {
+      return [{ label: settingsItem.title, href: settingsItem.to }, { label: section.title }];
+    }
   }
 
   const segments = path.split("/").filter(Boolean);

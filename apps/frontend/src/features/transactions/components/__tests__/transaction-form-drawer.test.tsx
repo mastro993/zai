@@ -156,7 +156,7 @@ describe("TransactionFormDrawer", () => {
 
     fireEvent.click(screen.getByLabelText("Transaction currency"));
     const add = await screen.findByRole("link", { name: "Add currency +" });
-    expect(add.getAttribute("href")).toBe("/settings?focus=currencies");
+    expect(add.getAttribute("href")).toBe("/settings/currencies?focus=currencies");
   });
 
   it("preselects the last-used session currency", async () => {

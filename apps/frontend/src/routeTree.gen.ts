@@ -20,6 +20,9 @@ import { Route as CashFlowCategoriesRouteImport } from './routes/cash-flow.categ
 import { Route as CashFlowForecastRouteImport } from './routes/cash-flow.forecast'
 import { Route as CashFlowRecurringRouteImport } from './routes/cash-flow.recurring'
 import { Route as CashFlowTransactionsRouteImport } from './routes/cash-flow.transactions'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
+import { Route as SettingsCurrenciesRouteImport } from './routes/settings.currencies'
 import { Route as CashFlowBudgetsIndexRouteImport } from './routes/cash-flow.budgets.index'
 import { Route as CashFlowBudgetsBudgetIdRouteImport } from './routes/cash-flow.budgets.$budgetId'
 import { Route as CashFlowRecurringIndexRouteImport } from './routes/cash-flow.recurring.index'
@@ -82,6 +85,21 @@ const CashFlowTransactionsRoute = CashFlowTransactionsRouteImport.update({
   path: '/transactions',
   getParentRoute: () => CashFlowRoute,
 } as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsAppearanceRoute = SettingsAppearanceRouteImport.update({
+  id: '/appearance',
+  path: '/appearance',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsCurrenciesRoute = SettingsCurrenciesRouteImport.update({
+  id: '/currencies',
+  path: '/currencies',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const CashFlowBudgetsIndexRoute = CashFlowBudgetsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -121,13 +139,16 @@ export interface FileRoutesByFullPath {
   '/cash-flow': typeof CashFlowRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/net-worth': typeof NetWorthRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/cash-flow/budgets': typeof CashFlowBudgetsRouteWithChildren
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
   '/cash-flow/forecast': typeof CashFlowForecastRoute
   '/cash-flow/recurring': typeof CashFlowRecurringRouteWithChildren
   '/cash-flow/transactions': typeof CashFlowTransactionsRouteWithChildren
+  '/settings/appearance': typeof SettingsAppearanceRoute
+  '/settings/currencies': typeof SettingsCurrenciesRoute
   '/cash-flow/': typeof CashFlowIndexRoute
+  '/settings/': typeof SettingsIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
   '/cash-flow/recurring/$recurringTransactionId': typeof CashFlowRecurringRecurringTransactionIdRoute
   '/cash-flow/transactions/$transactionId': typeof CashFlowTransactionsTransactionIdRoute
@@ -139,10 +160,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/net-worth': typeof NetWorthRoute
-  '/settings': typeof SettingsRoute
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
   '/cash-flow/forecast': typeof CashFlowForecastRoute
+  '/settings/appearance': typeof SettingsAppearanceRoute
+  '/settings/currencies': typeof SettingsCurrenciesRoute
   '/cash-flow': typeof CashFlowIndexRoute
+  '/settings': typeof SettingsIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
   '/cash-flow/recurring/$recurringTransactionId': typeof CashFlowRecurringRecurringTransactionIdRoute
   '/cash-flow/transactions/$transactionId': typeof CashFlowTransactionsTransactionIdRoute
@@ -156,13 +179,16 @@ export interface FileRoutesById {
   '/cash-flow': typeof CashFlowRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/net-worth': typeof NetWorthRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/cash-flow/budgets': typeof CashFlowBudgetsRouteWithChildren
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
   '/cash-flow/forecast': typeof CashFlowForecastRoute
   '/cash-flow/recurring': typeof CashFlowRecurringRouteWithChildren
   '/cash-flow/transactions': typeof CashFlowTransactionsRouteWithChildren
+  '/settings/appearance': typeof SettingsAppearanceRoute
+  '/settings/currencies': typeof SettingsCurrenciesRoute
   '/cash-flow/': typeof CashFlowIndexRoute
+  '/settings/': typeof SettingsIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
   '/cash-flow/recurring/$recurringTransactionId': typeof CashFlowRecurringRecurringTransactionIdRoute
   '/cash-flow/transactions/$transactionId': typeof CashFlowTransactionsTransactionIdRoute
@@ -183,7 +209,10 @@ export interface FileRouteTypes {
     | '/cash-flow/forecast'
     | '/cash-flow/recurring'
     | '/cash-flow/transactions'
+    | '/settings/appearance'
+    | '/settings/currencies'
     | '/cash-flow/'
+    | '/settings/'
     | '/cash-flow/budgets/$budgetId'
     | '/cash-flow/recurring/$recurringTransactionId'
     | '/cash-flow/transactions/$transactionId'
@@ -195,10 +224,12 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/net-worth'
-    | '/settings'
     | '/cash-flow/categories'
     | '/cash-flow/forecast'
+    | '/settings/appearance'
+    | '/settings/currencies'
     | '/cash-flow'
+    | '/settings'
     | '/cash-flow/budgets/$budgetId'
     | '/cash-flow/recurring/$recurringTransactionId'
     | '/cash-flow/transactions/$transactionId'
@@ -217,7 +248,10 @@ export interface FileRouteTypes {
     | '/cash-flow/forecast'
     | '/cash-flow/recurring'
     | '/cash-flow/transactions'
+    | '/settings/appearance'
+    | '/settings/currencies'
     | '/cash-flow/'
+    | '/settings/'
     | '/cash-flow/budgets/$budgetId'
     | '/cash-flow/recurring/$recurringTransactionId'
     | '/cash-flow/transactions/$transactionId'
@@ -231,7 +265,7 @@ export interface RootRouteChildren {
   CashFlowRoute: typeof CashFlowRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   NetWorthRoute: typeof NetWorthRoute
-  SettingsRoute: typeof SettingsRoute
+  SettingsRoute: typeof SettingsRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -312,6 +346,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/cash-flow/transactions'
       preLoaderRoute: typeof CashFlowTransactionsRouteImport
       parentRoute: typeof CashFlowRoute
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/appearance': {
+      id: '/settings/appearance'
+      path: '/appearance'
+      fullPath: '/settings/appearance'
+      preLoaderRoute: typeof SettingsAppearanceRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/currencies': {
+      id: '/settings/currencies'
+      path: '/currencies'
+      fullPath: '/settings/currencies'
+      preLoaderRoute: typeof SettingsCurrenciesRouteImport
+      parentRoute: typeof SettingsRoute
     }
     '/cash-flow/budgets/': {
       id: '/cash-flow/budgets/'
@@ -422,12 +477,28 @@ const CashFlowRouteWithChildren = CashFlowRoute._addFileChildren(
   CashFlowRouteChildren,
 )
 
+interface SettingsRouteChildren {
+  SettingsAppearanceRoute: typeof SettingsAppearanceRoute
+  SettingsCurrenciesRoute: typeof SettingsCurrenciesRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsAppearanceRoute: SettingsAppearanceRoute,
+  SettingsCurrenciesRoute: SettingsCurrenciesRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CashFlowRoute: CashFlowRouteWithChildren,
   DashboardRoute: DashboardRoute,
   NetWorthRoute: NetWorthRoute,
-  SettingsRoute: SettingsRoute,
+  SettingsRoute: SettingsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
