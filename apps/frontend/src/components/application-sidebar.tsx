@@ -130,7 +130,6 @@ function AppNav({ pathname }: { pathname: string }) {
 function SettingsNav({ pathname }: { pathname: string }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Settings</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {settingsSections.map((section) => (

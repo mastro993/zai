@@ -116,6 +116,7 @@ describe("ApplicationSidebar", () => {
     expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+    expect(screen.queryByText("Settings")).toBeNull();
   });
 
   it("returns to the previous app screen from the back control", async () => {
