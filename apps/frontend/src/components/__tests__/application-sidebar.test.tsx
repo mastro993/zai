@@ -118,7 +118,8 @@ describe("ApplicationSidebar", () => {
     expect(appearance).toBeTruthy();
     expect(screen.getByRole("link", { name: "Currencies" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
-    expect(settings.hasAttribute("data-active")).toBe(true);
+    expect(settings.getAttribute("data-active")).toBe("");
+    expect(settings.getAttribute("aria-current")).toBe("page");
     expect(
       back.compareDocumentPosition(appearance) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
