@@ -105,8 +105,7 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
   const { isMobile, state } = useSidebar();
   const titleBarContextValue = useContext(titleBarContext);
   const windowChrome = useMemo(() => createWindowChromeAdapter(buildTarget), [buildTarget]);
-  const hasNativeMacWindowChrome =
-    buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
+  const hasDesktopWindowChrome = buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
   // Toggle is fixed to the window. Clear it only when the title bar sits under that
   // zone: mobile sheet, or Tauri offcanvas collapsed (no sidebar column).
   const needsFixedTriggerClearance = isMobile || (buildTarget === "tauri" && state === "collapsed");
@@ -114,7 +113,7 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
 
   const leadingStyle = {
     paddingLeft: needsFixedTriggerClearance
-      ? hasNativeMacWindowChrome
+      ? hasDesktopWindowChrome
         ? NATIVE_CHROME_LEADING_INSET
         : WEB_CHROME_LEADING_INSET
       : "1rem",

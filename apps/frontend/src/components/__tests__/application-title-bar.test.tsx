@@ -72,8 +72,11 @@ describe("ApplicationTitleBar", () => {
     vi.spyOn(screenBreadcrumbs, "useScreenBreadcrumbs").mockReturnValue([{ label: "Dashboard" }]);
     vi.spyOn(windowChrome, "createWindowChromeAdapter").mockReturnValue({
       supportsNativeWindowChrome: true,
+      usesCustomWindowControls: false,
       startDragging,
       toggleMaximize,
+      minimize: vi.fn(),
+      close: vi.fn(),
     });
   });
 
