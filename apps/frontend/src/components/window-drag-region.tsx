@@ -8,20 +8,15 @@ import { cn } from "@/lib/utils";
 export const TRAFFIC_LIGHT_LEADING_WIDTH = "76px";
 /** Slot for the sidebar trigger (`size="icon-sm"` ≈ 32px). */
 export const SIDEBAR_TRIGGER_SLOT_WIDTH = "2rem";
-/** Gap between traffic lights and the first chrome control (brand or toggle). */
+/** Gap between traffic lights and the sidebar toggle. */
 export const TRAFFIC_LIGHT_TO_TRIGGER_GAP = "0.5rem";
-/** Gap between logo and sidebar toggle when expanded. */
-export const BRAND_TO_TRIGGER_GAP = "0.5rem";
 /** Gap used when the title bar must clear lights + toggle (mobile / offcanvas). */
 export const TRIGGER_TO_CONTENT_GAP = "0.5rem";
 
-/** Brand starts after traffic lights (toggle sits after brand when expanded). */
-export const NATIVE_BRAND_LEADING_INSET = `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP})`;
+/** Toggle starts after traffic lights on overlay-chrome desktops. */
+export const NATIVE_TOGGLE_LEADING_INSET = `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP})`;
 
-/** Brand starts after small pad on web (no traffic lights). */
-export const WEB_BRAND_LEADING_INSET = "0.5rem";
-
-/** Title-bar inset when fixed toggle is after traffic lights (native mac). */
+/** Title-bar inset when fixed toggle is after traffic lights. */
 export const NATIVE_CHROME_LEADING_INSET = `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP} + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_CONTENT_GAP})`;
 
 /** Title-bar inset when fixed toggle is at the left (web / mobile). */
