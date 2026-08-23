@@ -1,5 +1,12 @@
 // @vitest-environment jsdom
 
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
@@ -17,15 +24,34 @@ import * as windowChrome from "@/lib/window-chrome";
 const startDragging = vi.fn();
 const toggleMaximize = vi.fn();
 
-const renderTitleBar = (buildTarget: "tauri" | "web", actions?: ReactNode) =>
-  render(
-    <SidebarProvider>
-      <ApplicationTitleBarProvider>
-        <ApplicationTitleBar buildTarget={buildTarget} />
-        <ApplicationTitleBarActions>{actions}</ApplicationTitleBarActions>
-      </ApplicationTitleBarProvider>
-    </SidebarProvider>,
-  );
+const renderTitleBar = async (
+  buildTarget: "tauri" | "web",
+  actions?: ReactNode,
+  sidebarOpen = true,
+) => {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <SidebarProvider defaultOpen={sidebarOpen}>
+        <ApplicationTitleBarProvider>
+          <ApplicationTitleBar buildTarget={buildTarget} />
+          <ApplicationTitleBarActions>{actions}</ApplicationTitleBarActions>
+        </ApplicationTitleBarProvider>
+      </SidebarProvider>
+    ),
+  });
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => null,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+
+  await router.load();
+  render(<RouterProvider router={router} />);
+};
 
 describe("ApplicationTitleBar", () => {
   beforeEach(() => {
@@ -57,8 +83,8 @@ describe("ApplicationTitleBar", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps breadcrumbs, alerts, and route actions visible in web mode", () => {
-    renderTitleBar("web", <button type="button">Route action</button>);
+  it("keeps breadcrumbs, alerts, and route actions visible in web mode", async () => {
+    await renderTitleBar("web", <button type="button">Route action</button>);
 
     expect(screen.getByRole("banner").getAttribute("data-build-target")).toBe("web");
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeTruthy();
@@ -66,13 +92,18 @@ describe("ApplicationTitleBar", () => {
     expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
     expect(screen.getByRole("button", { name: "Alerts" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Route action" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go back" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go forward" })).toBeTruthy();
+    expect(
+      screen.getByRole("banner").querySelector('[data-slot="title-bar-history-separator"]'),
+    ).toBeNull();
     expect(
       screen.getByRole("banner").querySelector('[data-slot="title-bar-drag-region"]'),
     ).toBeNull();
   });
 
-  it("aligns expanded title-bar breadcrumbs with page content", () => {
-    renderTitleBar("tauri", <button type="button">Route action</button>);
+  it("aligns expanded title-bar breadcrumbs with page content", async () => {
+    await renderTitleBar("tauri", <button type="button">Route action</button>);
     const banner = screen.getByRole("banner");
     const leading = banner.querySelector<HTMLElement>('[data-slot="title-bar-leading"]');
     const dragRegion = banner.querySelector<HTMLElement>('[data-slot="title-bar-drag-region"]');
@@ -103,18 +134,14 @@ describe("ApplicationTitleBar", () => {
     expect(toggleMaximize).toHaveBeenCalledTimes(1);
   });
 
-  it("clears fixed traffic-light + toggle chrome when the sidebar is collapsed on desktop", () => {
-    render(
-      <SidebarProvider defaultOpen={false}>
-        <ApplicationTitleBarProvider>
-          <ApplicationTitleBar buildTarget="tauri" />
-        </ApplicationTitleBarProvider>
-      </SidebarProvider>,
-    );
+  it("clears fixed traffic-light + toggle chrome when the sidebar is collapsed on desktop", async () => {
+    await renderTitleBar("tauri", undefined, false);
 
-    const leading = screen
-      .getByRole("banner")
-      .querySelector<HTMLElement>('[data-slot="title-bar-leading"]');
+    const banner = screen.getByRole("banner");
+    const leading = banner.querySelector<HTMLElement>('[data-slot="title-bar-leading"]');
+    const history = banner.querySelector('[data-slot="navigation-history-buttons"]');
+    const separator = banner.querySelector('[data-slot="title-bar-history-separator"]');
+    const breadcrumbs = banner.querySelector('[data-slot="title-bar-breadcrumbs"]');
 
     // jsdom may reorder calc() terms; assert the chrome pieces are present.
     const padding = leading?.style.paddingLeft ?? "";
@@ -122,5 +149,9 @@ describe("ApplicationTitleBar", () => {
     expect(padding).toContain("76px");
     expect(padding).toContain("0.5rem");
     expect(padding).toContain("2rem");
+    expect(history).not.toBeNull();
+    expect(separator).not.toBeNull();
+    expect(history?.nextElementSibling).toBe(separator);
+    expect(separator?.nextElementSibling).toBe(breadcrumbs);
   });
 });
