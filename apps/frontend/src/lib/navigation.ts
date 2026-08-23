@@ -47,10 +47,18 @@ export const settingsItem = {
   icon: Settings01Icon,
 } as const;
 
-export const settingsSections = [
-  { title: "Appearance", to: "/settings/appearance", icon: PaintBoardIcon },
-  { title: "Currencies", to: "/settings/currencies", icon: DollarCircleIcon },
-] as const satisfies Array<NavigationItem>;
+export const settingsGroups = [
+  {
+    label: "General",
+    items: [{ title: "Appearance", to: "/settings/appearance", icon: PaintBoardIcon }],
+  },
+  {
+    label: "Finance",
+    items: [{ title: "Currencies", to: "/settings/currencies", icon: DollarCircleIcon }],
+  },
+] satisfies Array<{ label: string; items: Array<NavigationItem> }>;
+
+export const settingsSections = settingsGroups.flatMap((group) => group.items);
 
 const normalizePathname = (pathname: string) => {
   if (pathname.length > 1 && pathname.endsWith("/")) {

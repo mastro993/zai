@@ -144,7 +144,7 @@ describe("ApplicationSidebar", () => {
 
     expect(await screen.findByRole("link", { name: "Dashboard" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Settings" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Back to app" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Appearance" })).toBeNull();
   });
 
@@ -155,22 +155,59 @@ describe("ApplicationSidebar", () => {
 
     expect(await screen.findByRole("link", { name: "Appearance" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Currencies" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Back to app" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
     expect(screen.queryByText("Settings")).toBeNull();
+  });
+
+  it("keeps the web logo and puts Back to app in the Settings footer slot", async () => {
+    await renderSidebar("/dashboard");
+
+    fireEvent.click(await screen.findByRole("link", { name: "Settings" }));
+
+    const chromeHeader = document.querySelector('[data-slot="sidebar-chrome-header"]');
+    const footer = document.querySelector('[data-slot="sidebar-footer"]');
+    const brand = document.querySelector('[data-slot="sidebar-brand"][data-wordmark="true"]');
+    const back = await screen.findByRole("button", { name: "Back to app" });
+
+    expect(brand?.textContent).toContain("Zai");
+    expect(chromeHeader?.contains(brand)).toBe(true);
+    expect(chromeHeader?.contains(back)).toBe(false);
+    expect(footer?.contains(back)).toBe(true);
+    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+    expect(screen.getByText("General")).toBeTruthy();
+    expect(screen.getByText("Finance")).toBeTruthy();
+  });
+
+  it("keeps the desktop logo and puts Back to app in the footer slot", async () => {
+    mockWindowChrome(true);
+    await renderSidebar("/dashboard", "tauri");
+
+    fireEvent.click(await screen.findByRole("link", { name: "Settings" }));
+
+    const header = document.querySelector('[data-slot="sidebar-header"]');
+    const footer = document.querySelector('[data-slot="sidebar-footer"]');
+    const brand = document.querySelector('[data-slot="sidebar-brand"][data-wordmark="true"]');
+    const back = await screen.findByRole("button", { name: "Back to app" });
+
+    expect(brand?.textContent).toContain("Zai");
+    expect(header?.contains(brand)).toBe(true);
+    expect(header?.contains(back)).toBe(false);
+    expect(footer?.contains(back)).toBe(true);
+    expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
   });
 
   it("returns to the previous app screen from the back control", async () => {
     await renderSidebar("/dashboard");
 
     fireEvent.click(await screen.findByRole("link", { name: "Settings" }));
-    expect(await screen.findByRole("button", { name: "Back" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Back to app" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back to app" }));
 
     expect(await screen.findByRole("link", { name: "Settings" })).toBeTruthy();
     expect(screen.getByText("Dashboard page")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Back to app" })).toBeNull();
   });
 });

@@ -11,6 +11,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -21,7 +22,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { isSettingsPath, navigationItems, settingsItem, settingsSections } from "@/lib/navigation";
+import { isSettingsPath, navigationItems, settingsGroups, settingsItem } from "@/lib/navigation";
 import { createWindowChromeAdapter } from "@/lib/window-chrome";
 import { cn } from "@/lib/utils";
 
@@ -126,24 +127,29 @@ function AppNav({ pathname }: { pathname: string }) {
 
 function SettingsNav({ pathname }: { pathname: string }) {
   return (
-    <SidebarGroup>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {settingsSections.map((section) => (
-            <SidebarMenuItem key={section.to}>
-              <SidebarMenuButton
-                isActive={pathname === section.to}
-                render={<Link to={section.to} preload="intent" />}
-                tooltip={section.title}
-              >
-                <HugeiconsIcon icon={section.icon} strokeWidth={2} />
-                <span>{section.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
+    <>
+      {settingsGroups.map((group) => (
+        <SidebarGroup key={group.label}>
+          <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {group.items.map((section) => (
+                <SidebarMenuItem key={section.to}>
+                  <SidebarMenuButton
+                    isActive={pathname === section.to}
+                    render={<Link to={section.to} preload="intent" />}
+                    tooltip={section.title}
+                  >
+                    <HugeiconsIcon icon={section.icon} strokeWidth={2} />
+                    <span>{section.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      ))}
+    </>
   );
 }
 
@@ -152,14 +158,42 @@ function SettingsBackButton({ href }: { href: string }) {
 
   return (
     <SidebarMenuButton
-      tooltip="Back"
+      tooltip="Back to app"
+      className="text-muted-foreground"
       onClick={() => {
         router.history.push(href);
       }}
     >
       <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
-      <span>Back</span>
+      <span>Back to app</span>
     </SidebarMenuButton>
+  );
+}
+
+function WebSidebarChrome({ isExpanded, itemPad }: { isExpanded: boolean; itemPad: string }) {
+  return (
+    <div
+      data-slot="sidebar-chrome-header"
+      className={cn(
+        "relative flex h-12 w-full items-center",
+        isExpanded ? "justify-between" : "justify-center",
+      )}
+      style={{
+        paddingLeft: itemPad,
+        paddingRight: itemPad,
+      }}
+    >
+      {isExpanded ? (
+        <>
+          <SidebarBrandMark />
+          <div className="relative z-10 flex size-8 shrink-0 items-center justify-center">
+            <SidebarTrigger />
+          </div>
+        </>
+      ) : (
+        <CollapsedSidebarChrome />
+      )}
+    </div>
   );
 }
 
@@ -200,34 +234,11 @@ export function ApplicationSidebar({ buildTarget }: ApplicationSidebarProps) {
           />
         </div>
       ) : null}
-      <SidebarHeader
-        className={cn("shrink-0 gap-0", hasDesktopWindowChrome ? "px-2 py-1" : "h-12 p-0")}
-      >
+      <SidebarHeader className={cn("shrink-0 gap-0", hasDesktopWindowChrome ? "px-2 py-1" : "p-0")}>
         {hasDesktopWindowChrome ? (
           <SidebarBrandMark />
         ) : (
-          <div
-            data-slot="sidebar-chrome-header"
-            className={cn(
-              "relative flex h-12 w-full items-center",
-              isExpanded ? "justify-between" : "justify-center",
-            )}
-            style={{
-              paddingLeft: itemPad,
-              paddingRight: itemPad,
-            }}
-          >
-            {isExpanded ? (
-              <>
-                <SidebarBrandMark />
-                <div className="relative z-10 flex size-8 shrink-0 items-center justify-center">
-                  <SidebarTrigger />
-                </div>
-              </>
-            ) : (
-              <CollapsedSidebarChrome />
-            )}
-          </div>
+          <WebSidebarChrome isExpanded={isExpanded} itemPad={itemPad} />
         )}
       </SidebarHeader>
       <SidebarContent>
