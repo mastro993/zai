@@ -1,17 +1,16 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 import type { CommandBuildTarget } from "@/commands/build-target";
-import { NATIVE_BRAND_LEADING_INSET, WindowDragRegion } from "@/components/window-drag-region";
+import { WindowDragRegion } from "@/components/window-drag-region";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -23,6 +22,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { isSettingsPath, navigationItems, settingsItem, settingsSections } from "@/lib/navigation";
+import { createWindowChromeAdapter } from "@/lib/window-chrome";
 import { cn } from "@/lib/utils";
 
 interface ApplicationSidebarProps {
@@ -40,9 +40,7 @@ function SidebarBrandMark({ className }: { className?: string }) {
         className,
       )}
     >
-      {/* Optical nudge: text-lg metrics sit slightly high in the 48px strip. */}
-      <span className="flex translate-y-[0.5px] items-center gap-0 leading-none">
-        {/* size-8 matches icon menu buttons in the rail. */}
+      <span className="flex items-center gap-0 leading-none">
         <span className="flex size-8 shrink-0 items-center justify-center text-lg leading-none font-semibold text-primary">
           財
         </span>
@@ -66,11 +64,11 @@ function CollapsedSidebarChrome() {
         data-slot="sidebar-brand"
         data-wordmark="false"
         aria-hidden
-        className="pointer-events-none absolute inset-0 flex translate-y-[0.5px] items-center justify-center text-lg leading-none font-semibold text-primary transition-[opacity,transform] duration-200 ease-out group-hover/collapsed-chrome:scale-95 group-hover/collapsed-chrome:opacity-0 group-focus-within/collapsed-chrome:scale-95 group-focus-within/collapsed-chrome:opacity-0 motion-reduce:transition-none"
+        className="pointer-events-none absolute inset-0 flex items-center justify-center text-lg leading-none font-semibold text-primary transition-[opacity,transform] duration-200 ease-out group-hover/collapsed-chrome:scale-95 group-hover/collapsed-chrome:opacity-0 group-focus-within/collapsed-chrome:scale-95 group-focus-within/collapsed-chrome:opacity-0 motion-reduce:transition-none"
       >
         財
       </span>
-      <div className="absolute inset-0 flex scale-95 items-center justify-center opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover/collapsed-chrome:scale-100 group-hover/collapsed-chrome:opacity-100 group-focus-within/collapsed-chrome:scale-100 group-focus-within/collapsed-chrome:opacity-100 motion-reduce:transition-none pointer-events-none group-hover/collapsed-chrome:pointer-events-auto group-focus-within/collapsed-chrome:pointer-events-auto">
+      <div className="pointer-events-none absolute inset-0 flex scale-95 items-center justify-center opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover/collapsed-chrome:pointer-events-auto group-hover/collapsed-chrome:scale-100 group-hover/collapsed-chrome:opacity-100 group-focus-within/collapsed-chrome:pointer-events-auto group-focus-within/collapsed-chrome:scale-100 group-focus-within/collapsed-chrome:opacity-100 motion-reduce:transition-none">
         <SidebarTrigger />
       </div>
     </div>
@@ -80,7 +78,6 @@ function CollapsedSidebarChrome() {
 function AppNav({ pathname }: { pathname: string }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Navigation</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {navigationItems.map((item) => {
@@ -181,57 +178,58 @@ export function ApplicationSidebar({ buildTarget }: ApplicationSidebarProps) {
     select: (state) => state.location.pathname,
   });
   const { state: sidebarState } = useSidebar();
+  const windowChrome = useMemo(() => createWindowChromeAdapter(buildTarget), [buildTarget]);
+  const hasDesktopWindowChrome = buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
   const isExpanded = sidebarState === "expanded";
   const isSettings = isSettingsPath(pathname);
   const returnHref = useAppReturnHref(pathname);
-  // Match SidebarGroup `p-2` (0.5rem) so chrome lines up with nav rows.
   const itemPad = "0.5rem";
-  const chromePaddingLeft = buildTarget === "tauri" ? NATIVE_BRAND_LEADING_INSET : itemPad;
-
-  const chromeHeader = (
-    <div
-      data-slot="sidebar-chrome-header"
-      className={cn(
-        "relative flex h-12 w-full shrink-0 items-center",
-        isExpanded ? "justify-between" : "justify-center",
-      )}
-      style={{
-        paddingLeft: isExpanded ? chromePaddingLeft : itemPad,
-        paddingRight: itemPad,
-      }}
-    >
-      {buildTarget === "tauri" ? (
-        <WindowDragRegion
-          buildTarget={buildTarget}
-          data-slot="sidebar-drag-region"
-          reserveTrafficLightInset
-          className="absolute inset-0"
-        />
-      ) : null}
-      {isExpanded ? (
-        <>
-          {/* Brand left, toggle right — spread across sidebar width. */}
-          <SidebarBrandMark />
-          <div className="relative z-10 flex size-8 shrink-0 items-center justify-center">
-            <SidebarTrigger />
-          </div>
-        </>
-      ) : (
-        <CollapsedSidebarChrome />
-      )}
-    </div>
-  );
 
   return (
     <Sidebar
       collapsible={buildTarget === "tauri" ? "offcanvas" : "icon"}
       data-mode={isSettings ? "settings" : "app"}
     >
-      {buildTarget === "tauri" ? (
-        chromeHeader
-      ) : (
-        <SidebarHeader className="h-12 shrink-0 gap-0 p-0">{chromeHeader}</SidebarHeader>
-      )}
+      {hasDesktopWindowChrome ? (
+        <div data-slot="sidebar-window-chrome" className="relative h-12 w-full shrink-0">
+          <WindowDragRegion
+            buildTarget={buildTarget}
+            data-slot="sidebar-drag-region"
+            reserveTrafficLightInset
+            className="absolute inset-0"
+          />
+        </div>
+      ) : null}
+      <SidebarHeader
+        className={cn("shrink-0 gap-0", hasDesktopWindowChrome ? "px-2 py-1" : "h-12 p-0")}
+      >
+        {hasDesktopWindowChrome ? (
+          <SidebarBrandMark />
+        ) : (
+          <div
+            data-slot="sidebar-chrome-header"
+            className={cn(
+              "relative flex h-12 w-full items-center",
+              isExpanded ? "justify-between" : "justify-center",
+            )}
+            style={{
+              paddingLeft: itemPad,
+              paddingRight: itemPad,
+            }}
+          >
+            {isExpanded ? (
+              <>
+                <SidebarBrandMark />
+                <div className="relative z-10 flex size-8 shrink-0 items-center justify-center">
+                  <SidebarTrigger />
+                </div>
+              </>
+            ) : (
+              <CollapsedSidebarChrome />
+            )}
+          </div>
+        )}
+      </SidebarHeader>
       <SidebarContent>
         {isSettings ? <SettingsNav pathname={pathname} /> : <AppNav pathname={pathname} />}
       </SidebarContent>

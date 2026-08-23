@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationSidebar } from "../application-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import * as windowChrome from "@/lib/window-chrome";
 
 const stubMatchMedia = () => {
   Object.defineProperty(window, "matchMedia", {
@@ -41,16 +42,27 @@ const stubMatchMedia = () => {
   });
 };
 
-const SidebarProbe = () => (
+const mockWindowChrome = (supportsNativeWindowChrome: boolean) => {
+  vi.spyOn(windowChrome, "createWindowChromeAdapter").mockReturnValue({
+    supportsNativeWindowChrome,
+    usesCustomWindowControls: false,
+    startDragging: vi.fn(),
+    toggleMaximize: vi.fn(),
+    minimize: vi.fn(),
+    close: vi.fn(),
+  });
+};
+
+const SidebarProbe = ({ buildTarget }: { buildTarget: "web" | "tauri" }) => (
   <SidebarProvider>
-    <ApplicationSidebar buildTarget="web" />
+    <ApplicationSidebar buildTarget={buildTarget} />
     <Outlet />
   </SidebarProvider>
 );
 
-const renderSidebar = async (initialEntry: string) => {
+const renderSidebar = async (initialEntry: string, buildTarget: "web" | "tauri" = "web") => {
   const rootRoute = createRootRoute({
-    component: SidebarProbe,
+    component: () => <SidebarProbe buildTarget={buildTarget} />,
   });
   const dashboardRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -95,6 +107,36 @@ describe("ApplicationSidebar", () => {
     cleanup();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("keeps the web toggle beside the logo when expanded", async () => {
+    mockWindowChrome(false);
+    await renderSidebar("/dashboard");
+
+    const header = document.querySelector('[data-slot="sidebar-chrome-header"]');
+    const brand = document.querySelector('[data-slot="sidebar-brand"][data-wordmark="true"]');
+    const toggle = screen.getByRole("button", { name: "Toggle Sidebar" });
+
+    expect(document.querySelector('[data-slot="sidebar-window-chrome"]')).toBeNull();
+    expect(header).not.toBeNull();
+    expect(brand?.textContent).toContain("Zai");
+    expect(header?.contains(brand)).toBe(true);
+    expect(header?.contains(toggle)).toBe(true);
+  });
+
+  it("puts the desktop logo below the traffic-light chrome, not beside the toggle", async () => {
+    mockWindowChrome(true);
+    await renderSidebar("/dashboard", "tauri");
+
+    const chrome = document.querySelector('[data-slot="sidebar-window-chrome"]');
+    const brand = document.querySelector('[data-slot="sidebar-brand"][data-wordmark="true"]');
+    const header = document.querySelector('[data-slot="sidebar-header"]');
+
+    expect(chrome).not.toBeNull();
+    expect(brand?.textContent).toContain("Zai");
+    expect(chrome?.contains(brand)).toBe(false);
+    expect(header?.contains(brand)).toBe(true);
+    expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
   });
 
   it("keeps app navigation and a settings footer control on the main workspace", async () => {

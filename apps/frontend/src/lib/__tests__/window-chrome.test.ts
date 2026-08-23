@@ -2,6 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createTauriWindowChromeAdapter, createWindowChromeAdapter } from "../window-chrome";
 
+const createWindow = () => ({
+  startDragging: vi.fn(() => Promise.resolve()),
+  toggleMaximize: vi.fn(() => Promise.resolve()),
+  minimize: vi.fn(() => Promise.resolve()),
+  close: vi.fn(() => Promise.resolve()),
+});
+
 describe("window chrome adapter", () => {
   it("keeps web builds native-window free", () => {
     const loadWindow = vi.fn();
@@ -9,7 +16,11 @@ describe("window chrome adapter", () => {
 
     adapter.startDragging();
     adapter.toggleMaximize();
+    adapter.minimize();
+    adapter.close();
 
+    expect(adapter.supportsNativeWindowChrome).toBe(false);
+    expect(adapter.usesCustomWindowControls).toBe(false);
     expect(loadWindow).not.toHaveBeenCalled();
   });
 
@@ -19,6 +30,8 @@ describe("window chrome adapter", () => {
 
     adapter.startDragging();
     adapter.toggleMaximize();
+    adapter.minimize();
+    adapter.close();
     await Promise.resolve();
 
     expect(loadWindow).not.toHaveBeenCalled();
@@ -35,16 +48,18 @@ describe("window chrome adapter", () => {
 
     adapter.startDragging();
     adapter.toggleMaximize();
+    adapter.minimize();
+    adapter.close();
     await Promise.resolve();
 
     expect(adapter.supportsNativeWindowChrome).toBe(false);
+    expect(adapter.usesCustomWindowControls).toBe(false);
     expect(loadWindow).not.toHaveBeenCalled();
   });
 
-  it("loads the Tauri window lazily and reuses it for approved actions", async () => {
-    const startDragging = vi.fn(() => Promise.resolve());
-    const toggleMaximize = vi.fn(() => Promise.resolve());
-    const loadWindow = vi.fn(() => Promise.resolve({ startDragging, toggleMaximize }));
+  it("loads the Tauri window lazily and reuses it for approved macOS actions", async () => {
+    const window = createWindow();
+    const loadWindow = vi.fn(() => Promise.resolve(window));
     const adapter = createTauriWindowChromeAdapter(
       loadWindow,
       () => true,
@@ -53,10 +68,41 @@ describe("window chrome adapter", () => {
 
     adapter.startDragging();
     adapter.toggleMaximize();
+    adapter.minimize();
+    adapter.close();
     await Promise.resolve();
 
+    expect(adapter.supportsNativeWindowChrome).toBe(true);
+    expect(adapter.usesCustomWindowControls).toBe(false);
     expect(loadWindow).toHaveBeenCalledTimes(1);
-    expect(startDragging).toHaveBeenCalledTimes(1);
-    expect(toggleMaximize).toHaveBeenCalledTimes(1);
+    expect(window.startDragging).toHaveBeenCalledTimes(1);
+    expect(window.toggleMaximize).toHaveBeenCalledTimes(1);
+    expect(window.minimize).toHaveBeenCalledTimes(1);
+    expect(window.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("enables Linux client-side chrome including custom window controls", async () => {
+    const window = createWindow();
+    const loadWindow = vi.fn(() => Promise.resolve(window));
+    const adapter = createWindowChromeAdapter(
+      "tauri",
+      loadWindow,
+      () => true,
+      () => "linux",
+    );
+
+    adapter.startDragging();
+    adapter.toggleMaximize();
+    adapter.minimize();
+    adapter.close();
+    await Promise.resolve();
+
+    expect(adapter.supportsNativeWindowChrome).toBe(true);
+    expect(adapter.usesCustomWindowControls).toBe(true);
+    expect(loadWindow).toHaveBeenCalledTimes(1);
+    expect(window.startDragging).toHaveBeenCalledTimes(1);
+    expect(window.toggleMaximize).toHaveBeenCalledTimes(1);
+    expect(window.minimize).toHaveBeenCalledTimes(1);
+    expect(window.close).toHaveBeenCalledTimes(1);
   });
 });

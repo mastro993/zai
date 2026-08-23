@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schema.tauri.app/config/1",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Zai",
+        "decorations": false,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "width": 1280,
+        "height": 960,
+        "minWidth": 480,
+        "minHeight": 720,
+        "useHttpsScheme": true
+      }
+    ]
+  }
+}
