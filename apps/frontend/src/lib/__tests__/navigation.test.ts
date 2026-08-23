@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { isSettingsPath, navigationItems, resolveScreenBreadcrumbs } from "../navigation";
+import {
+  isSettingsPath,
+  navigationItems,
+  resolveScreenBreadcrumbs,
+  settingsGroups,
+} from "../navigation";
 
 const cashFlowNavigation = navigationItems.find((item) => item.to === "/cash-flow");
 
@@ -53,6 +58,20 @@ describe("isSettingsPath", () => {
     expect(isSettingsPath("/settings/currencies")).toBe(true);
     expect(isSettingsPath("/dashboard")).toBe(false);
     expect(isSettingsPath("/settings-room")).toBe(false);
+  });
+});
+
+describe("settings groups", () => {
+  it("places Appearance under General and Currencies under Finance", () => {
+    expect(
+      settingsGroups.map((group) => ({
+        label: group.label,
+        titles: group.items.map((item) => item.title),
+      })),
+    ).toEqual([
+      { label: "General", titles: ["Appearance"] },
+      { label: "Finance", titles: ["Currencies"] },
+    ]);
   });
 });
 
