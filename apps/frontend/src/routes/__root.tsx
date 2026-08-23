@@ -4,11 +4,11 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import { Result } from "@praha/byethrow";
 import { useCallback, useEffect, useState } from "react";
 
+import { ApplicationSidebar } from "@/components/application-sidebar";
 import {
   ApplicationTitleBar,
   ApplicationTitleBarProvider,
 } from "@/components/application-title-bar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { FixedSidebarTrigger } from "@/components/fixed-sidebar-trigger";
 import { PreWorkspaceWindowChrome, WindowControls } from "@/components/window-controls";
 import { AlertsControllerProvider } from "@/features/alerts/hooks/use-alerts-controller";
@@ -109,7 +109,7 @@ function ApplicationWorkspace({ buildTarget }: ApplicationShellProps) {
       >
         <ApplicationTitleBarProvider>
           <FixedSidebarTrigger buildTarget={buildTarget} />
-          <AppSidebar buildTarget={buildTarget} />
+          <ApplicationSidebar buildTarget={buildTarget} />
           <SidebarInset className="min-h-0 overflow-hidden">
             <ApplicationTitleBar buildTarget={buildTarget} />
             <main className="flex min-h-0 flex-1 flex-col overflow-hidden">

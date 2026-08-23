@@ -1,8 +1,10 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { useMemo, useRef } from "react";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useMemo } from "react";
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 import type { CommandBuildTarget } from "@/commands/build-target";
+import { WindowDragRegion } from "@/components/window-drag-region";
 import {
   Sidebar,
   SidebarContent,
@@ -19,12 +21,11 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { WindowDragRegion } from "@/components/window-drag-region";
-import { navigationItems, settingsItem } from "@/lib/navigation";
+import { isSettingsPath, navigationItems, settingsItem, settingsSections } from "@/lib/navigation";
 import { createWindowChromeAdapter } from "@/lib/window-chrome";
 import { cn } from "@/lib/utils";
 
-interface AppSidebarProps {
+interface ApplicationSidebarProps {
   buildTarget: CommandBuildTarget;
 }
 
@@ -74,7 +75,105 @@ function CollapsedSidebarChrome() {
   );
 }
 
-export function AppSidebar({ buildTarget }: AppSidebarProps) {
+function AppNav({ pathname }: { pathname: string }) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {navigationItems.map((item) => {
+            const hasSubItems = "subItems" in item && item.subItems !== undefined;
+            const isActive =
+              pathname === item.to ||
+              (hasSubItems &&
+                item.subItems.some(
+                  (subItem) => pathname === subItem.to || pathname.startsWith(`${subItem.to}/`),
+                ));
+
+            return (
+              <SidebarMenuItem key={item.to}>
+                <SidebarMenuButton
+                  isActive={isActive}
+                  render={<Link to={item.to} preload="intent" />}
+                  tooltip={item.title}
+                >
+                  <HugeiconsIcon icon={item.icon} strokeWidth={2} />
+                  <span>{item.title}</span>
+                </SidebarMenuButton>
+                {hasSubItems ? (
+                  <SidebarMenuSub>
+                    {item.subItems.map((subItem) => (
+                      <SidebarMenuSubItem key={subItem.to}>
+                        <SidebarMenuSubButton
+                          isActive={
+                            pathname === subItem.to || pathname.startsWith(`${subItem.to}/`)
+                          }
+                          render={<Link to={subItem.to} preload="intent" />}
+                        >
+                          <span>{subItem.title}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                ) : null}
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
+function SettingsNav({ pathname }: { pathname: string }) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {settingsSections.map((section) => (
+            <SidebarMenuItem key={section.to}>
+              <SidebarMenuButton
+                isActive={pathname === section.to}
+                render={<Link to={section.to} preload="intent" />}
+                tooltip={section.title}
+              >
+                <HugeiconsIcon icon={section.icon} strokeWidth={2} />
+                <span>{section.title}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
+function SettingsBackButton({ href }: { href: string }) {
+  const router = useRouter();
+
+  return (
+    <SidebarMenuButton
+      tooltip="Back"
+      onClick={() => {
+        router.history.push(href);
+      }}
+    >
+      <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+      <span>Back</span>
+    </SidebarMenuButton>
+  );
+}
+
+function useAppReturnHref(pathname: string): string {
+  const returnHrefRef = useRef("/dashboard");
+
+  if (!isSettingsPath(pathname)) {
+    returnHrefRef.current = pathname.length > 0 ? pathname : "/dashboard";
+  }
+
+  return returnHrefRef.current;
+}
+
+export function ApplicationSidebar({ buildTarget }: ApplicationSidebarProps) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -82,10 +181,15 @@ export function AppSidebar({ buildTarget }: AppSidebarProps) {
   const windowChrome = useMemo(() => createWindowChromeAdapter(buildTarget), [buildTarget]);
   const hasDesktopWindowChrome = buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
   const isExpanded = sidebarState === "expanded";
+  const isSettings = isSettingsPath(pathname);
+  const returnHref = useAppReturnHref(pathname);
   const itemPad = "0.5rem";
 
   return (
-    <Sidebar collapsible={buildTarget === "tauri" ? "offcanvas" : "icon"}>
+    <Sidebar
+      collapsible={buildTarget === "tauri" ? "offcanvas" : "icon"}
+      data-mode={isSettings ? "settings" : "app"}
+    >
       {hasDesktopWindowChrome ? (
         <div data-slot="sidebar-window-chrome" className="relative h-12 w-full shrink-0">
           <WindowDragRegion
@@ -127,62 +231,23 @@ export function AppSidebar({ buildTarget }: AppSidebarProps) {
         )}
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigationItems.map((item) => {
-                const hasSubItems = "subItems" in item && item.subItems !== undefined;
-                const isActive =
-                  pathname === item.to ||
-                  (hasSubItems &&
-                    item.subItems.some(
-                      (subItem) => pathname === subItem.to || pathname.startsWith(`${subItem.to}/`),
-                    ));
-
-                return (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      render={<Link to={item.to} preload="intent" />}
-                      tooltip={item.title}
-                    >
-                      <HugeiconsIcon icon={item.icon} strokeWidth={2} />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                    {hasSubItems ? (
-                      <SidebarMenuSub>
-                        {item.subItems.map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.to}>
-                            <SidebarMenuSubButton
-                              isActive={
-                                pathname === subItem.to || pathname.startsWith(`${subItem.to}/`)
-                              }
-                              render={<Link to={subItem.to} preload="intent" />}
-                            >
-                              <span>{subItem.title}</span>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    ) : null}
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {isSettings ? <SettingsNav pathname={pathname} /> : <AppNav pathname={pathname} />}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={pathname === settingsItem.to}
-              render={<Link to={settingsItem.to} preload="intent" />}
-              tooltip={settingsItem.title}
-            >
-              <HugeiconsIcon icon={settingsItem.icon} strokeWidth={2} />
-              <span>{settingsItem.title}</span>
-            </SidebarMenuButton>
+            {isSettings ? (
+              <SettingsBackButton href={returnHref} />
+            ) : (
+              <SidebarMenuButton
+                isActive={false}
+                render={<Link to={settingsItem.to} preload="intent" />}
+                tooltip={settingsItem.title}
+              >
+                <HugeiconsIcon icon={settingsItem.icon} strokeWidth={2} />
+                <span>{settingsItem.title}</span>
+              </SidebarMenuButton>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
