@@ -110,6 +110,7 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
   // Toggle is fixed to the window. Clear it only when the title bar sits under that
   // zone: mobile sheet, or Tauri offcanvas collapsed (no sidebar column).
   const needsFixedTriggerClearance = isMobile || (buildTarget === "tauri" && state === "collapsed");
+  const showDesktopHistoryChrome = buildTarget === "tauri";
 
   const leadingStyle = {
     paddingLeft: needsFixedTriggerClearance
@@ -135,8 +136,8 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
           aria-hidden
         />
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <NavigationHistoryButtons />
-          {state === "collapsed" ? (
+          {showDesktopHistoryChrome ? <NavigationHistoryButtons /> : null}
+          {showDesktopHistoryChrome && state === "collapsed" ? (
             <Separator
               orientation="vertical"
               data-slot="title-bar-history-separator"

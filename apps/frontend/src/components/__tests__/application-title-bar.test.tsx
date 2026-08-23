@@ -92,8 +92,11 @@ describe("ApplicationTitleBar", () => {
     expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
     expect(screen.getByRole("button", { name: "Alerts" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Route action" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Go back" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Go forward" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Go forward" })).toBeNull();
+    expect(
+      screen.getByRole("banner").querySelector('[data-slot="navigation-history-buttons"]'),
+    ).toBeNull();
     expect(
       screen.getByRole("banner").querySelector('[data-slot="title-bar-history-separator"]'),
     ).toBeNull();
@@ -111,6 +114,9 @@ describe("ApplicationTitleBar", () => {
 
     // Expanded desktop: fixed toggle sits over the sidebar, not the content title bar.
     expect(leading?.style.paddingLeft).toBe("1rem");
+    expect(screen.getByRole("button", { name: "Go back" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go forward" })).toBeTruthy();
+    expect(banner.querySelector('[data-slot="title-bar-history-separator"]')).toBeNull();
     expect(banner.querySelector("[data-tauri-drag-region]")).toBeNull();
     expect(dragRegion).not.toBeNull();
     if (!dragRegion) {
@@ -153,5 +159,15 @@ describe("ApplicationTitleBar", () => {
     expect(separator).not.toBeNull();
     expect(history?.nextElementSibling).toBe(separator);
     expect(separator?.nextElementSibling).toBe(breadcrumbs);
+  });
+
+  it("keeps history chrome out of the web title bar when the sidebar is collapsed", async () => {
+    await renderTitleBar("web", undefined, false);
+
+    const banner = screen.getByRole("banner");
+    expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Go forward" })).toBeNull();
+    expect(banner.querySelector('[data-slot="navigation-history-buttons"]')).toBeNull();
+    expect(banner.querySelector('[data-slot="title-bar-history-separator"]')).toBeNull();
   });
 });
