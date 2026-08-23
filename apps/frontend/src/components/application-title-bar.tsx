@@ -10,11 +10,13 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { NavigationHistoryButtons } from "@/components/navigation-history-buttons";
 import {
   NATIVE_CHROME_LEADING_INSET,
   WEB_CHROME_LEADING_INSET,
   WindowDragRegion,
 } from "@/components/window-drag-region";
+import { Separator } from "@/components/ui/separator";
 import { useSidebar } from "@/components/ui/sidebar";
 import { AlertsBell } from "@/features/alerts/components/alerts-bell";
 import { useScreenBreadcrumbs } from "@/hooks/use-screen-breadcrumbs";
@@ -107,6 +109,7 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
   // Toggle is fixed to the window. Clear it only when the title bar sits under that
   // zone: mobile sheet, or Tauri offcanvas collapsed (no sidebar column).
   const needsFixedTriggerClearance = isMobile || (buildTarget === "tauri" && state === "collapsed");
+  const showDesktopHistoryChrome = buildTarget === "tauri";
 
   const leadingStyle = {
     paddingLeft: needsFixedTriggerClearance
@@ -131,14 +134,22 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
           style={leadingStyle}
           aria-hidden
         />
-        <div className="flex min-w-0 flex-1 items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {showDesktopHistoryChrome ? <NavigationHistoryButtons /> : null}
+          {showDesktopHistoryChrome && state === "collapsed" ? (
+            <Separator
+              orientation="vertical"
+              data-slot="title-bar-history-separator"
+              className="h-4 self-center"
+            />
+          ) : null}
           <div data-slot="title-bar-breadcrumbs" className="min-w-0 shrink-0">
             <ScreenBreadcrumbs />
           </div>
           <WindowDragRegion
             buildTarget={buildTarget}
             data-slot="title-bar-drag-region"
-            className="ml-2 min-w-2 flex-1"
+            className="min-w-2 flex-1"
           />
         </div>
       </div>
