@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { useMemo, type ReactNode } from "react";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -77,8 +78,17 @@ const stubAlertsController = (unreadCount = 0): AlertsControllerValue => ({
   unreadCountKnown: true,
 });
 
-const idleAlertsController = stubAlertsController(0);
-const unreadAlertsController = stubAlertsController(3);
+interface AlertsControllerStubProps {
+  unreadCount?: number;
+  children: ReactNode;
+}
+
+const AlertsControllerStub = ({ unreadCount = 0, children }: AlertsControllerStubProps) => {
+  const value = useMemo(() => stubAlertsController(unreadCount), [unreadCount]);
+  return (
+    <AlertsControllerContext.Provider value={value}>{children}</AlertsControllerContext.Provider>
+  );
+};
 
 interface OverlayProbeProps {
   buildTarget: "tauri" | "web";
@@ -87,13 +97,11 @@ interface OverlayProbeProps {
 }
 
 const OverlayProbe = ({ buildTarget, sidebarOpen, unreadCount }: OverlayProbeProps) => (
-  <AlertsControllerContext.Provider
-    value={unreadCount > 0 ? unreadAlertsController : idleAlertsController}
-  >
+  <AlertsControllerStub unreadCount={unreadCount}>
     <SidebarProvider defaultOpen={sidebarOpen}>
       <FixedSidebarTrigger buildTarget={buildTarget} />
     </SidebarProvider>
-  </AlertsControllerContext.Provider>
+  </AlertsControllerStub>
 );
 
 const renderOverlay = async (buildTarget: "tauri" | "web", sidebarOpen = true, unreadCount = 0) => {

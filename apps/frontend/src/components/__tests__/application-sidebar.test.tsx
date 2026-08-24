@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { useMemo, type ReactNode } from "react";
 import {
   Outlet,
   RouterProvider,
@@ -88,8 +89,17 @@ const stubAlertsController = (unreadCount = 0): AlertsControllerValue => ({
   unreadCountKnown: true,
 });
 
-const idleAlertsController = stubAlertsController(0);
-const unreadAlertsController = stubAlertsController(3);
+interface AlertsControllerStubProps {
+  unreadCount?: number;
+  children: ReactNode;
+}
+
+const AlertsControllerStub = ({ unreadCount = 0, children }: AlertsControllerStubProps) => {
+  const value = useMemo(() => stubAlertsController(unreadCount), [unreadCount]);
+  return (
+    <AlertsControllerContext.Provider value={value}>{children}</AlertsControllerContext.Provider>
+  );
+};
 
 interface SidebarProbeProps {
   buildTarget: "web" | "tauri";
@@ -98,14 +108,12 @@ interface SidebarProbeProps {
 }
 
 const SidebarProbe = ({ buildTarget, unreadCount = 0, sidebarOpen = true }: SidebarProbeProps) => (
-  <AlertsControllerContext.Provider
-    value={unreadCount > 0 ? unreadAlertsController : idleAlertsController}
-  >
+  <AlertsControllerStub unreadCount={unreadCount}>
     <SidebarProvider defaultOpen={sidebarOpen}>
       <ApplicationSidebar buildTarget={buildTarget} />
       <Outlet />
     </SidebarProvider>
-  </AlertsControllerContext.Provider>
+  </AlertsControllerStub>
 );
 
 const renderSidebar = async (
