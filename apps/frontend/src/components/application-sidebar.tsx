@@ -22,7 +22,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { isSettingsPath, navigationItems, settingsGroups, settingsItem } from "@/lib/navigation";
+import { isSettingsPath, navigationItems, settingsGroups } from "@/lib/navigation";
 import { createWindowChromeAdapter } from "@/lib/window-chrome";
 import { cn } from "@/lib/utils";
 
@@ -223,6 +223,7 @@ export function ApplicationSidebar({ buildTarget }: ApplicationSidebarProps) {
     <Sidebar
       collapsible={buildTarget === "tauri" ? "offcanvas" : "icon"}
       data-mode={isSettings ? "settings" : "app"}
+      className="top-0 bottom-8 h-auto group-data-[collapsible=offcanvas]:bottom-0 group-data-[collapsible=offcanvas]:h-svh"
     >
       {hasDesktopWindowChrome ? (
         <div data-slot="sidebar-window-chrome" className="relative h-12 w-full shrink-0">
@@ -244,24 +245,15 @@ export function ApplicationSidebar({ buildTarget }: ApplicationSidebarProps) {
       <SidebarContent>
         {isSettings ? <SettingsNav pathname={pathname} /> : <AppNav pathname={pathname} />}
       </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            {isSettings ? (
+      {isSettings ? (
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
               <SettingsBackButton href={returnHref} />
-            ) : (
-              <SidebarMenuButton
-                isActive={false}
-                render={<Link to={settingsItem.to} preload="intent" />}
-                tooltip={settingsItem.title}
-              >
-                <HugeiconsIcon icon={settingsItem.icon} strokeWidth={2} />
-                <span>{settingsItem.title}</span>
-              </SidebarMenuButton>
-            )}
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      ) : null}
     </Sidebar>
   );
 }

@@ -26,9 +26,9 @@ export function AlertsBell() {
       <Button
         ref={bellRef}
         type="button"
-        variant="outline"
-        size="icon-sm"
-        className="relative"
+        variant="ghost"
+        size="icon-xs"
+        className="relative text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
         aria-label={alertsBellLabel(unreadCount)}
         onClick={openLedger}
       >

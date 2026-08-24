@@ -87,18 +87,37 @@ process.on("SIGTERM", () => {
   void shutdown(0);
 });
 
+const isApiHealthy = async (origin) => {
+  try {
+    const response = await fetch(`${origin}/health`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!response.ok) {
+      return false;
+    }
+    const body = await response.json();
+    return body.status === "ok";
+  } catch {
+    return false;
+  }
+};
+
 console.log(`Zai web dev using data directory: ${dataDir}`);
 console.log(`API origin: ${apiOrigin}`);
 
-const server = run("cargo", ["run", "-p", "zai-server"]);
-const frontend = run("pnpm", ["--filter", "frontend", "dev:web"]);
+if (await isApiHealthy(apiOrigin)) {
+  console.log(`Reusing existing API at ${apiOrigin}`);
+} else {
+  const server = run("cargo", ["run", "-p", "zai-server"]);
+  server.on("exit", (code, signal) => {
+    if (signal) {
+      return;
+    }
+    void shutdown(code ?? 0);
+  });
+}
 
-server.on("exit", (code, signal) => {
-  if (signal) {
-    return;
-  }
-  void shutdown(code ?? 0);
-});
+const frontend = run("pnpm", ["--filter", "frontend", "dev:web"]);
 
 frontend.on("exit", (code, signal) => {
   if (signal) {
