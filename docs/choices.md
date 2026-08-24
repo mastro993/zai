@@ -5,6 +5,20 @@
 - Status bar `z-40` (was `z-[100001]`). Sidebar stays `z-10`. Drawer/dialog/sheet overlays stay `z-50` and cover the bar.
 - TanStack panel forced to `z-index: 30` so it still slides out from behind the bar.
 
+## 2026-08-24 — Notifications empty states use Empty
+
+- Header has no divider (`pb-4` only).
+- Unfiltered empty: Empty + Notification icon, title "No notifications", existing description.
+- Filtered empty: Empty + Filter icon, title "No matching notifications", "Clear filters" CTA.
+- Both empties use Empty's dashed frame (`border` + default `border-dashed`), inset with `mx-4 mb-4 w-auto` so `w-full` + margin does not overflow the drawer.
+
+## 2026-08-24 — Notifications filter is a header icon menu
+
+- Chip bar (State + Severity) replaced by a ghost `icon-sm` Filter button at the header's top right, after mark-all-read.
+- Menu: "Read" checkbox includes read notifications (`readState: "all"`). Severity stays as a radio group.
+- Default session filter is unread + all severities. Filter trigger uses `secondary` when not at that default.
+- Showing read is a view toggle, not a restrictive filter: empty copy stays the default, not "No alerts match these filters."
+
 ## 2026-08-24 — Notifications drawer header
 
 - Title is "Notifications". Unread count is a compact secondary badge (`font-mono font-bold text-primary`) next to the title, hidden at 0.

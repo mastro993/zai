@@ -23,6 +23,7 @@ import { AlertsLedgerDrawer } from "../components/alerts-ledger-drawer";
 import { AlertsControllerProvider, useAlertsController } from "../hooks/use-alerts-controller";
 import { alertsBellLabel, domainAlertSeverityLabel, formatAlertCreatedAt } from "../lib/format";
 import { isNavigableAlertDestination, isUnreadAlert, parseDomainAlertListPage } from "../lib/parse";
+import { DEFAULT_ALERT_SESSION_FILTERS, setAlertSessionFilters } from "../lib/session-filters";
 import type { DomainAlert } from "../types/domain-alert";
 
 const sampleAlert: DomainAlert = {
@@ -198,29 +199,43 @@ describe("alerts bell label", () => {
 });
 
 describe("alerts ledger filters", () => {
-  it("forwards read and severity changes", () => {
+  it("opens a filter menu and forwards read and severity changes", () => {
     const onReadStateChange = vi.fn();
     const onSeverityChange = vi.fn();
 
     render(
       <AlertsLedgerFilters
-        filters={{ readState: "all", severity: "all" }}
+        filters={{ readState: "unread", severity: "all" }}
         onReadStateChange={onReadStateChange}
         onSeverityChange={onSeverityChange}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Unread" }));
-    fireEvent.click(screen.getByRole("button", { name: "Critical" }));
+    fireEvent.click(screen.getByRole("button", { name: "Filter notifications" }));
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Read" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Critical" }));
 
-    expect(onReadStateChange).toHaveBeenCalledWith("unread");
+    expect(onReadStateChange).toHaveBeenCalledWith("all");
     expect(onSeverityChange).toHaveBeenCalledWith("critical");
+  });
+
+  it("marks the filter trigger as applied when showing read", () => {
+    render(
+      <AlertsLedgerFilters
+        filters={{ readState: "all", severity: "all" }}
+        onReadStateChange={vi.fn()}
+        onSeverityChange={vi.fn()}
+      />,
+    );
+
+    screen.getByRole("button", { name: "Filter notifications, filters applied" });
   });
 });
 
 describe("alerts controller lifecycle", () => {
   beforeEach(() => {
     stubMatchMedia();
+    setAlertSessionFilters(DEFAULT_ALERT_SESSION_FILTERS);
     vi.restoreAllMocks();
     vi.spyOn(alertsCommands, "listAlerts").mockResolvedValue(
       Result.succeed({ items: [], nextCursor: null }),
@@ -328,7 +343,16 @@ describe("alerts controller lifecycle", () => {
       expect(screen.getByRole("heading", { name: "Notifications" })).toBeTruthy();
     });
     expect(screen.queryByRole("button", { name: "Mark all read" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Filter notifications" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "No notifications" })).toBeTruthy();
+    expect(screen.getByText("Important tracked-finance changes appear here.")).toBeTruthy();
+    const emptyState = screen.getByRole("region", { name: "No notifications" });
+    expect(emptyState.classList.contains("border")).toBe(true);
+    expect(emptyState.classList.contains("border-dashed")).toBe(true);
     expect(screen.queryByText("0 unread alerts")).toBeNull();
+    expect(document.querySelector('[data-slot="drawer-header"]')?.className).not.toMatch(
+      /border-b/,
+    );
     expect(
       document.querySelector('[data-slot="drawer-popup"][data-swipe-direction="right"]'),
     ).not.toBeNull();
@@ -355,6 +379,33 @@ describe("alerts controller lifecycle", () => {
 
     await waitFor(() => {
       expect(alertsCommands.markAllAlertsRead).toHaveBeenCalledOnce();
+    });
+  });
+
+  it("shows a filtered empty state with a reset action", async () => {
+    await renderController();
+
+    fireEvent.click(screen.getByTestId("open-ledger"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "No notifications" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Filter notifications" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Critical" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "No matching notifications" })).toBeTruthy();
+    });
+    const filteredEmpty = screen.getByRole("region", { name: "No matching notifications" });
+    expect(filteredEmpty.classList.contains("border")).toBe(true);
+    expect(filteredEmpty.classList.contains("border-dashed")).toBe(true);
+    expect(screen.getByText("No alerts match these filters.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "No notifications" })).toBeTruthy();
     });
   });
 });

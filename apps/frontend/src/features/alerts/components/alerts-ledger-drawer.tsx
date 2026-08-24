@@ -1,4 +1,4 @@
-import { TickDouble01Icon } from "@hugeicons/core-free-icons";
+import { FilterIcon, Notification03Icon, TickDouble01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,14 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useAlertsController } from "../hooks/use-alerts-controller";
@@ -71,7 +79,7 @@ export function AlertsLedgerDrawer() {
         className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem] data-[swipe-axis=x]:w-[calc(100%-2rem)] sm:data-[swipe-axis=x]:w-96"
         finalFocus={bellRef}
       >
-        <DrawerHeader className="border-b border-border pb-4">
+        <DrawerHeader className="pb-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
               <DrawerTitle>Notifications</DrawerTitle>
@@ -85,22 +93,29 @@ export function AlertsLedgerDrawer() {
                 </Badge>
               ) : null}
             </div>
-            {showUnreadCount ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={markAllReadPending ? "Marking all read" : "Mark all read"}
-                disabled={markAllReadPending}
-                onClick={() => void markAllRead()}
-              >
-                {markAllReadPending ? (
-                  <Spinner />
-                ) : (
-                  <HugeiconsIcon icon={TickDouble01Icon} strokeWidth={2} />
-                )}
-              </Button>
-            ) : null}
+            <div className="flex shrink-0 items-center">
+              {showUnreadCount ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={markAllReadPending ? "Marking all read" : "Mark all read"}
+                  disabled={markAllReadPending}
+                  onClick={() => void markAllRead()}
+                >
+                  {markAllReadPending ? (
+                    <Spinner />
+                  ) : (
+                    <HugeiconsIcon icon={TickDouble01Icon} strokeWidth={2} />
+                  )}
+                </Button>
+              ) : null}
+              <AlertsLedgerFilters
+                filters={filters}
+                onReadStateChange={setReadStateFilter}
+                onSeverityChange={setSeverityFilter}
+              />
+            </div>
           </div>
           <DrawerDescription className="sr-only">
             {unreadCount === 1 ? "1 unread notification" : `${unreadCount} unread notifications`}
@@ -112,13 +127,7 @@ export function AlertsLedgerDrawer() {
           ) : null}
         </DrawerHeader>
 
-        <AlertsLedgerFilters
-          filters={filters}
-          onReadStateChange={setReadStateFilter}
-          onSeverityChange={setSeverityFilter}
-        />
-
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
           {isLoading ? <AlertsLedgerSkeleton /> : null}
 
           {showError ? (
@@ -133,18 +142,54 @@ export function AlertsLedgerDrawer() {
           ) : null}
 
           {showUnfilteredEmpty ? (
-            <p className="px-4 py-6 text-xs text-muted-foreground">
-              Important tracked-finance changes appear here.
-            </p>
+            <Empty
+              role="region"
+              aria-labelledby="alerts-empty-state-title"
+              className="mx-4 mb-4 w-auto border py-10"
+            >
+              <EmptyHeader className="gap-1.5">
+                <EmptyMedia variant="icon">
+                  <HugeiconsIcon icon={Notification03Icon} strokeWidth={2} aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle
+                  id="alerts-empty-state-title"
+                  role="heading"
+                  aria-level={3}
+                  className="text-base"
+                >
+                  No notifications
+                </EmptyTitle>
+                <EmptyDescription>Important tracked-finance changes appear here.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : null}
 
           {showFilteredEmpty ? (
-            <div className="flex flex-col gap-3 px-4 py-6">
-              <p className="text-xs text-muted-foreground">No alerts match these filters.</p>
-              <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            </div>
+            <Empty
+              role="region"
+              aria-labelledby="alerts-filtered-empty-state-title"
+              className="mx-4 mb-4 w-auto border py-10"
+            >
+              <EmptyHeader className="gap-1.5">
+                <EmptyMedia variant="icon">
+                  <HugeiconsIcon icon={FilterIcon} strokeWidth={2} aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle
+                  id="alerts-filtered-empty-state-title"
+                  role="heading"
+                  aria-level={3}
+                  className="text-base"
+                >
+                  No matching notifications
+                </EmptyTitle>
+                <EmptyDescription>No alerts match these filters.</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              </EmptyContent>
+            </Empty>
           ) : null}
 
           {!isLoading && items.length > 0

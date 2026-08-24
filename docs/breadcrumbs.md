@@ -5,6 +5,8 @@
 - Status bar `z-40` so drawer/dialog backdrops cover it. TanStack panel `z-index: 30` — still slides from behind the bar.
 - Alerts ledger: Sheet → Drawer, right swipe, 1rem insets, 24rem. Same pattern as transaction form.
 - Notifications drawer header: drop unread sentence, title "Notifications", mono unread badge, ghost double-tick mark-all only when unread > 0.
+- Notifications filters: chip bar → Filter icon menu (top right). Default unread. "Read" toggle shows also-read. Severity stays in the menu.
+- Notifications drawer: drop header divider. Empty + shadcn Empty for no-notifications and filtered (Clear filters CTA).
 
 ## 2026-08-21
 
