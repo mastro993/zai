@@ -242,3 +242,12 @@ Seams (from the ticket + 370/372): `zai_core::money` public API only. No schema,
 - **`num-bigint` 0.4.8** for conversion intermediates. Round half-even once at the target ISO digits. No `f64`.
 - **Automatic legs share a `rate_set_id`.** Same value date is not enough; unexplained cross rates stay forbidden.
 - **CLDR pin URL is the raw `supplementalData.xml`** that matches `CLDR_SHA256`, not the GitHub HTML blob page.
+
+## 2026-08-24 — Status bar theme toggle follows-or-overrides system
+
+- Two-state control. Three-state model. See https://lea.verou.me/blog/2026/dark-mode-toggles/
+- Click flips the resolved UI.
+- Persist `"dark"` / `"light"` only when that result differs from the OS scheme.
+- When the result matches the OS, **remove** `zai-theme`. Do not persist `"system"` or a matching light/dark pin.
+- Evaluate match-vs-OS only on click. An OS change that later equals an override must keep the override.
+- Appearance settings stay the 3-way Light / Dark / System control.

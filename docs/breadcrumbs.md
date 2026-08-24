@@ -47,3 +47,7 @@
 - Migrated assigned frontend test batch off `vi.mock` / unguarded `as T` / `unknown` params. Oxlint `--deny-warnings` + Vitest green on those 21 files.
 - Opened local `feat/multi-currency` at current `main` (`6015578`). Implementing [Exact Money, ISO manifest, and checked conversion](https://github.com/mastro993/zai/issues/387) on this worktree branch; stack target is that long-lived branch, not `main`.
 - Pushed `feat/multi-currency` and opened [PR 399](https://github.com/mastro993/zai/pull/399) onto that stack for #387. Not `main`.
+
+## 2026-08-24
+
+- Status bar sun/moon: follow system ↔ pin opposite. `nextStatusBarTheme(resolved, system)` in `apps/frontend/src/lib/theme-toggle.ts`. Return-to-system **removes** `zai-theme` (Lea Verou: stored value None). Icon = current mode (sun light, moon dark). Appearance stays tri-state.

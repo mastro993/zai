@@ -14,12 +14,13 @@ import { Button } from "@/components/ui/button";
 import { AlertsBell } from "@/features/alerts/components/alerts-bell";
 import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
 import { settingsItem } from "@/lib/navigation";
+import { applyStatusBarTheme, nextStatusBarTheme } from "@/lib/theme-toggle";
 
 const statusBarControlClassName =
   "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground";
 
 function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme, systemTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -36,9 +37,13 @@ function ThemeToggle() {
       className={statusBarControlClassName}
       disabled={!mounted}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={() => {
+        const resolved = resolvedTheme === "dark" ? "dark" : "light";
+        const system = systemTheme === "dark" ? "dark" : "light";
+        applyStatusBarTheme(nextStatusBarTheme(resolved, system), setTheme);
+      }}
     >
-      <HugeiconsIcon icon={isDark ? Sun01Icon : Moon02Icon} strokeWidth={2} />
+      <HugeiconsIcon icon={isDark ? Moon02Icon : Sun01Icon} strokeWidth={2} />
     </Button>
   );
 }
