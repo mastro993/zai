@@ -2,7 +2,7 @@
   "name": "zai",
   "private": true,
   "license": "GPL-3.0-only",
-  "version": "0.0.1-alpha.1",
+  "version": "0.0.0-dev",
   "type": "module",
   "workspaces": [
     "apps/frontend"
@@ -26,7 +26,8 @@
     "check:frontend": "pnpm --filter frontend check",
     "check:backend:prepare": "mkdir -p dist && printf '<!doctype html><html><body></body></html>' > dist/index.html",
     "check:backend": "pnpm check:backend:prepare && cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo build -p zai-db --bin recurring-crash-child --features failpoints && cargo test --workspace",
-    "check": "pnpm check:frontend && pnpm check:backend",
+    "test:release-version": "node --test scripts/release-version.test.mjs",
+    "check": "pnpm test:release-version && pnpm check:frontend && pnpm check:backend",
     "benchmark:recurring": "node scripts/recurring-reference-runner.mjs",
     "benchmark:currency": "node scripts/currency-reference-runner.mjs"
   },
