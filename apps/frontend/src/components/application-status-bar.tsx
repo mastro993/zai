@@ -12,7 +12,7 @@ import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
 import { AlertsBell } from "@/features/alerts/components/alerts-bell";
-import { ABOUT_APP_VERSION } from "@/features/settings/lib/about-info";
+import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
 import { settingsItem } from "@/lib/navigation";
 
 const statusBarControlClassName =
@@ -63,6 +63,8 @@ function TanStackDevtoolsButton() {
 }
 
 export function ApplicationStatusBar() {
+  const appVersion = resolveAboutAppVersion(aboutPackageVersion());
+
   return (
     <footer
       data-slot="application-status-bar"
@@ -82,10 +84,10 @@ export function ApplicationStatusBar() {
         <ThemeToggle />
         <span
           className="flex min-w-0 items-center gap-1 px-1.5 text-xs leading-none text-muted-foreground tabular-nums"
-          aria-label={`Version ${ABOUT_APP_VERSION}`}
+          aria-label={`Version ${appVersion}`}
         >
           <HugeiconsIcon icon={Blockchain01Icon} strokeWidth={2} className="size-3 shrink-0" />
-          <span className="truncate leading-none">{ABOUT_APP_VERSION}</span>
+          <span className="truncate leading-none">{appVersion}</span>
         </span>
         {import.meta.env.DEV ? <TanStackDevtoolsButton /> : null}
       </div>

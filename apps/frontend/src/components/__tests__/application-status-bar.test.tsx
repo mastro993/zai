@@ -13,7 +13,7 @@ import { ThemeProvider } from "next-themes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationStatusBar } from "../application-status-bar";
-import { ABOUT_APP_VERSION } from "@/features/settings/lib/about-info";
+import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
 import * as alertsBell from "@/features/alerts/components/alerts-bell";
 
 const renderStatusBar = async (theme: "light" | "dark" = "light") => {
@@ -120,10 +120,11 @@ describe("ApplicationStatusBar", () => {
     await renderStatusBar();
 
     const bar = document.querySelector('[data-slot="application-status-bar"]');
-    const version = screen.getByLabelText(`Version ${ABOUT_APP_VERSION}`);
+    const appVersion = resolveAboutAppVersion(aboutPackageVersion());
+    const version = screen.getByLabelText(`Version ${appVersion}`);
     const alerts = screen.getByRole("button", { name: "Alerts" });
 
-    expect(version.textContent).toContain(ABOUT_APP_VERSION);
+    expect(version.textContent).toContain(appVersion);
     expect(bar?.contains(version)).toBe(true);
     expect(bar?.contains(alerts)).toBe(true);
     expect(version.compareDocumentPosition(alerts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -139,7 +140,8 @@ describe("ApplicationStatusBar", () => {
     await renderStatusBar();
 
     const bar = document.querySelector('[data-slot="application-status-bar"]');
-    const version = screen.getByLabelText(`Version ${ABOUT_APP_VERSION}`);
+    const appVersion = resolveAboutAppVersion(aboutPackageVersion());
+    const version = screen.getByLabelText(`Version ${appVersion}`);
     const devtools = screen.getByRole("button", { name: "TanStack Devtools" });
     const alerts = screen.getByRole("button", { name: "Alerts" });
 
