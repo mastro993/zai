@@ -35,6 +35,9 @@ jobs:
       - name: Run frontend checks
         run: pnpm check:frontend
 
+      - name: Run release-version tests
+        run: pnpm test:release-version
+
       - name: Build web frontend
         run: pnpm build:web
 

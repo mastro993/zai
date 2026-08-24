@@ -2,16 +2,16 @@
   "name": "frontend",
   "private": true,
   "license": "GPL-3.0-only",
-  "version": "0.0.1-alpha.1",
+  "version": "0.0.0-dev",
   "type": "module",
   "imports": {
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "VITE_ZAI_BUILD_TARGET=tauri vite dev",
+    "dev": "vite dev",
     "dev:web": "vite dev --mode web",
     "generate-routes": "tsr generate",
-    "build": "pnpm generate-routes && pnpm type-check && VITE_ZAI_BUILD_TARGET=tauri vite build",
+    "build": "pnpm generate-routes && pnpm type-check && vite build",
     "build:web": "pnpm generate-routes && pnpm type-check && vite build --mode web",
     "preview": "vite preview",
     "type-check": "tsc -b --noEmit",
@@ -21,7 +21,7 @@
     "format:check": "oxfmt src --check",
     "check:routes": "pnpm generate-routes && git diff --exit-code -- src/routeTree.gen.ts",
     "check": "pnpm format:check && pnpm lint && pnpm check:routes && pnpm type-check && pnpm test",
-    "test": "VITE_ZAI_BUILD_TARGET=tauri vitest run"
+    "test": "vitest run"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

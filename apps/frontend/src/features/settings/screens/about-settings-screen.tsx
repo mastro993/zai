@@ -8,12 +8,13 @@ import { AboutSettingsRow } from "../components/about-settings-row";
 import { SettingsSectionHeader } from "../components/settings-section-header";
 import {
   ABOUT_APP_IDENTIFIER,
-  ABOUT_APP_VERSION,
   ABOUT_LICENSE,
-  ABOUT_RELEASE_CHANNEL,
   ABOUT_TAURI_VERSION,
   UPDATE_CHECK_UNAVAILABLE_MESSAGE,
+  aboutPackageVersion,
+  resolveAboutAppVersion,
   resolveAboutBuildMode,
+  resolveAboutReleaseChannel,
 } from "../lib/about-info";
 
 function AboutSettingsDivider() {
@@ -21,6 +22,9 @@ function AboutSettingsDivider() {
 }
 
 export function AboutSettingsScreen() {
+  const packageVersion = aboutPackageVersion();
+  const appVersion = resolveAboutAppVersion(packageVersion);
+  const releaseChannel = resolveAboutReleaseChannel(packageVersion);
   const buildMode = resolveAboutBuildMode(import.meta.env.PROD);
 
   return (
@@ -30,13 +34,9 @@ export function AboutSettingsScreen() {
         <Card className="gap-0! py-0!">
           <CardContent className="px-0!">
             <ItemGroup className="gap-0">
-              <AboutSettingsRow title="App version" value={`Version ${ABOUT_APP_VERSION}`} />
+              <AboutSettingsRow title="App version" value={appVersion} />
               <AboutSettingsDivider />
-              <AboutSettingsRow
-                title="Release channel"
-                description="Alpha is the current channel. Main and Beta will appear when updates ship."
-                value={ABOUT_RELEASE_CHANNEL}
-              />
+              <AboutSettingsRow title="Release channel" value={releaseChannel} />
               <AboutSettingsDivider />
               <AboutSettingsRow
                 title="Check for a new version"
