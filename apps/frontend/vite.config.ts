@@ -13,6 +13,8 @@ const frontendPackage = JSON.parse(
 ) as { version: string };
 
 process.env.VITE_ZAI_APP_VERSION ??= frontendPackage.version;
+// cmd.exe cannot parse Unix `VAR=value cmd` prefixes used in npm scripts.
+process.env.VITE_ZAI_BUILD_TARGET ??= "tauri";
 
 export default defineConfig(({ mode }) => ({
   clearScreen: false,
