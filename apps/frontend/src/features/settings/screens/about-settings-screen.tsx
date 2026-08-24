@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { toast } from "@/components/toaster/toast";
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
@@ -17,8 +16,6 @@ import {
   resolveAboutBuildMode,
 } from "../lib/about-info";
 
-const FLUSH_CARD_STYLE = { "--card-spacing": "0px" } as CSSProperties;
-
 function AboutSettingsDivider() {
   return <div className="mx-4 h-px bg-border" />;
 }
@@ -30,8 +27,8 @@ export function AboutSettingsScreen() {
     <ScreenBase>
       <div className="flex max-w-3xl flex-col gap-6">
         <SettingsSectionHeader title="About" />
-        <Card style={FLUSH_CARD_STYLE}>
-          <CardContent>
+        <Card className="gap-0! py-0!">
+          <CardContent className="px-0!">
             <ItemGroup className="gap-0">
               <AboutSettingsRow title="App version" value={`Version ${ABOUT_APP_VERSION}`} />
               <AboutSettingsDivider />
@@ -57,8 +54,8 @@ export function AboutSettingsScreen() {
             </ItemGroup>
           </CardContent>
         </Card>
-        <Card style={FLUSH_CARD_STYLE}>
-          <CardContent>
+        <Card className="gap-0! py-0!">
+          <CardContent className="px-0!">
             <ItemGroup className="gap-0">
               <AboutSettingsRow title="Build mode" value={buildMode} />
               <AboutSettingsDivider />
