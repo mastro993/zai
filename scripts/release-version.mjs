@@ -101,10 +101,10 @@ const stableExistsForCore = (parsed, core) =>
 const betaCountForCore = (parsed, core) =>
   parsed.filter((tag) => tag.kind === "beta" && tag.core === core).length;
 
-export const resolveBetaRelease = ({ today, tags, headSha, tagShas }) => {
+export const resolveBetaRelease = ({ today, tags, headSha, tagShas, allowSameHead = false }) => {
   const parsed = parsedReleaseTags(tags);
   const lastBeta = maxParsed(parsed.filter((tag) => tag.kind === "beta"));
-  if (lastBeta && tagShas[lastBeta.tag] === headSha) {
+  if (!allowSameHead && lastBeta && tagShas[lastBeta.tag] === headSha) {
     return { ok: true, skip: true };
   }
 
@@ -229,9 +229,10 @@ const runGithubOutput = () => {
   const parsedBetas = parsedReleaseTags(tags).filter((tag) => tag.kind === "beta");
   const tagShas = Object.fromEntries(parsedBetas.map((tag) => [tag.tag, tagCommit(tag.tag, cwd)]));
 
+  const allowSameHead = process.env.RELEASE_ALLOW_SAME_HEAD === "true";
   const resolved =
     channel === "beta"
-      ? resolveBetaRelease({ today, tags, headSha, tagShas })
+      ? resolveBetaRelease({ today, tags, headSha, tagShas, allowSameHead })
       : resolveStableRelease({ today, tags });
 
   if (!resolved.ok) {
@@ -245,6 +246,7 @@ const runGithubOutput = () => {
       tag: "",
       prerelease: "false",
       notes: "",
+      sha: headSha,
     });
     return;
   }
@@ -262,6 +264,7 @@ const runGithubOutput = () => {
     tag: resolved.tag,
     prerelease: resolved.prerelease ? "true" : "false",
     notes,
+    sha: headSha,
   });
 };
 

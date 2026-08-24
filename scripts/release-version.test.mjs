@@ -94,6 +94,18 @@ describe("resolveBetaRelease", () => {
     assert.deepEqual(result, { ok: true, skip: true });
   });
 
+  it("mints the next N for the same HEAD when allowSameHead is set", () => {
+    const result = resolveBetaRelease({
+      today: "2026-08-24",
+      tags: ["v2026.8.24-beta.0"],
+      headSha: "aaa",
+      tagShas: { "v2026.8.24-beta.0": "aaa" },
+      allowSameHead: true,
+    });
+    assert.equal(result.version, "2026.8.24-beta.1");
+    assert.equal(result.skip, false);
+  });
+
   it("uses the next UTC date when that date already has a stable", () => {
     const result = resolveBetaRelease({
       today: "2026-08-24",

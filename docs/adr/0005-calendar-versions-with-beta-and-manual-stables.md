@@ -9,11 +9,14 @@ Beta ships are `YYYY.M.D-beta.N`. `N` starts at 0 for the first ship of
 that UTC date; later ships the same UTC day increment `N`. The next `N`
 comes from existing git tags for that date. A nightly job on `main` at
 05:00 UTC publishes a beta when HEAD has moved since the last beta tag;
-the same workflow can be dispatched for a retry. Stable ships are naked
-`YYYY.M.D`, cut only by manual dispatch from `main` HEAD. There is at
-most one stable per UTC date. A beta after that date's stable uses the
-next UTC date so SemVer still treats it as newer (`YYYY.M.D` is greater
-than `YYYY.M.D-beta.N`).
+the same workflow can be dispatched for a retry or extra ship. A
+scheduled run skips when HEAD is already the latest beta tag;
+dispatching channel `beta` mints the next `N` even for that same commit.
+Publish jobs build the commit SHA the version job captured, not a later
+`main` tip. Stable ships are naked `YYYY.M.D`, cut only by manual
+dispatch from `main` HEAD. There is at most one stable per UTC date. A
+beta after that date's stable uses the next UTC date so SemVer still
+treats it as newer (`YYYY.M.D` is greater than `YYYY.M.D-beta.N`).
 
 The committed tree stays `0.0.0-dev` and About shows `dev` for unstamped
 builds. CI stamps the calendar version onto release artifacts only.

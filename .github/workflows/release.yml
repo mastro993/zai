@@ -30,6 +30,7 @@ jobs:
       tag: ${{ steps.compute.outputs.tag }}
       prerelease: ${{ steps.compute.outputs.prerelease }}
       notes: ${{ steps.compute.outputs.notes }}
+      sha: ${{ steps.compute.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -49,6 +50,7 @@ jobs:
         name: Compute calendar version
         env:
           RELEASE_CHANNEL: ${{ github.event_name == 'schedule' && 'beta' || inputs.channel }}
+          RELEASE_ALLOW_SAME_HEAD: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
         run: node scripts/release-version.mjs github-output
 
       - name: Version summary
@@ -81,7 +83,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ needs.version.outputs.sha }}
 
       - name: Install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
