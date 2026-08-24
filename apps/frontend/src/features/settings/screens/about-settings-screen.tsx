@@ -3,7 +3,7 @@ import { toast } from "@/components/toaster/toast";
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ItemGroup, ItemSeparator } from "@/components/ui/item";
+import { ItemGroup } from "@/components/ui/item";
 
 import { AboutSettingsRow } from "../components/about-settings-row";
 import { SettingsSectionHeader } from "../components/settings-section-header";
@@ -20,11 +20,7 @@ import {
 const FLUSH_CARD_STYLE = { "--card-spacing": "0px" } as CSSProperties;
 
 function AboutSettingsDivider() {
-  return (
-    <div className="px-4">
-      <ItemSeparator className="my-0" />
-    </div>
-  );
+  return <div className="mx-4 h-px bg-border" />;
 }
 
 export function AboutSettingsScreen() {
