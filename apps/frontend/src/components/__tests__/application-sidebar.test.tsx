@@ -79,6 +79,11 @@ const renderSidebar = async (initialEntry: string, buildTarget: "web" | "tauri" 
     path: "appearance",
     component: () => <p>Appearance page</p>,
   });
+  const aboutRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: "about",
+    component: () => <p>About page</p>,
+  });
   const currenciesRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: "currencies",
@@ -87,7 +92,7 @@ const renderSidebar = async (initialEntry: string, buildTarget: "web" | "tauri" 
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       dashboardRoute,
-      settingsRoute.addChildren([appearanceRoute, currenciesRoute]),
+      settingsRoute.addChildren([appearanceRoute, aboutRoute, currenciesRoute]),
     ]),
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
   });
@@ -154,6 +159,7 @@ describe("ApplicationSidebar", () => {
     fireEvent.click(await screen.findByRole("link", { name: "Settings" }));
 
     expect(await screen.findByRole("link", { name: "Appearance" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "About" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Currencies" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Back to app" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();

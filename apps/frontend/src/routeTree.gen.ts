@@ -21,6 +21,7 @@ import { Route as CashFlowForecastRouteImport } from './routes/cash-flow.forecas
 import { Route as CashFlowRecurringRouteImport } from './routes/cash-flow.recurring'
 import { Route as CashFlowTransactionsRouteImport } from './routes/cash-flow.transactions'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SettingsAboutRouteImport } from './routes/settings.about'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
 import { Route as SettingsCurrenciesRouteImport } from './routes/settings.currencies'
 import { Route as CashFlowBudgetsIndexRouteImport } from './routes/cash-flow.budgets.index'
@@ -90,6 +91,11 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsAboutRoute = SettingsAboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsAppearanceRoute = SettingsAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/cash-flow/forecast': typeof CashFlowForecastRoute
   '/cash-flow/recurring': typeof CashFlowRecurringRouteWithChildren
   '/cash-flow/transactions': typeof CashFlowTransactionsRouteWithChildren
+  '/settings/about': typeof SettingsAboutRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/currencies': typeof SettingsCurrenciesRoute
   '/cash-flow/': typeof CashFlowIndexRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/net-worth': typeof NetWorthRoute
   '/cash-flow/categories': typeof CashFlowCategoriesRoute
   '/cash-flow/forecast': typeof CashFlowForecastRoute
+  '/settings/about': typeof SettingsAboutRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/currencies': typeof SettingsCurrenciesRoute
   '/cash-flow': typeof CashFlowIndexRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/cash-flow/forecast': typeof CashFlowForecastRoute
   '/cash-flow/recurring': typeof CashFlowRecurringRouteWithChildren
   '/cash-flow/transactions': typeof CashFlowTransactionsRouteWithChildren
+  '/settings/about': typeof SettingsAboutRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/currencies': typeof SettingsCurrenciesRoute
   '/cash-flow/': typeof CashFlowIndexRoute
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
     | '/cash-flow/forecast'
     | '/cash-flow/recurring'
     | '/cash-flow/transactions'
+    | '/settings/about'
     | '/settings/appearance'
     | '/settings/currencies'
     | '/cash-flow/'
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/net-worth'
     | '/cash-flow/categories'
     | '/cash-flow/forecast'
+    | '/settings/about'
     | '/settings/appearance'
     | '/settings/currencies'
     | '/cash-flow'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '/cash-flow/forecast'
     | '/cash-flow/recurring'
     | '/cash-flow/transactions'
+    | '/settings/about'
     | '/settings/appearance'
     | '/settings/currencies'
     | '/cash-flow/'
@@ -352,6 +364,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/settings/'
       preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/about': {
+      id: '/settings/about'
+      path: '/about'
+      fullPath: '/settings/about'
+      preLoaderRoute: typeof SettingsAboutRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/appearance': {
@@ -478,12 +497,14 @@ const CashFlowRouteWithChildren = CashFlowRoute._addFileChildren(
 )
 
 interface SettingsRouteChildren {
+  SettingsAboutRoute: typeof SettingsAboutRoute
   SettingsAppearanceRoute: typeof SettingsAppearanceRoute
   SettingsCurrenciesRoute: typeof SettingsCurrenciesRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsAboutRoute: SettingsAboutRoute,
   SettingsAppearanceRoute: SettingsAppearanceRoute,
   SettingsCurrenciesRoute: SettingsCurrenciesRoute,
   SettingsIndexRoute: SettingsIndexRoute,
