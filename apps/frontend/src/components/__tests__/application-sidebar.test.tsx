@@ -13,6 +13,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationSidebar } from "../application-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import {
+  AlertsControllerContext,
+  type AlertsControllerValue,
+} from "@/features/alerts/hooks/alerts-controller-context";
 import * as windowChrome from "@/lib/window-chrome";
 
 const stubMatchMedia = () => {
@@ -53,16 +57,65 @@ const mockWindowChrome = (supportsNativeWindowChrome: boolean) => {
   });
 };
 
-const SidebarProbe = ({ buildTarget }: { buildTarget: "web" | "tauri" }) => (
-  <SidebarProvider>
-    <ApplicationSidebar buildTarget={buildTarget} />
-    <Outlet />
-  </SidebarProvider>
+const stubAlertsController = (unreadCount = 0): AlertsControllerValue => ({
+  bellRef: { current: null },
+  clearFilters: () => undefined,
+  closeLedger: () => undefined,
+  destinationFeedback: null,
+  errorMessage: null,
+  filters: { readState: "all", severity: "all" },
+  hasActiveFilters: false,
+  isLedgerOpen: false,
+  ledgerFocusAlertId: null,
+  items: [],
+  lifecycleErrors: {},
+  lifecyclePendingId: null,
+  loadOlder: async () => undefined,
+  loadOlderError: null,
+  loadOlderStatus: "idle",
+  markAllRead: async () => undefined,
+  markAllReadError: null,
+  markAllReadPending: false,
+  nextCursor: null,
+  openAlert: async () => undefined,
+  openLedger: () => undefined,
+  refresh: async () => undefined,
+  refreshStatus: "ready",
+  setReadStateFilter: () => undefined,
+  setSeverityFilter: () => undefined,
+  toggleAlertReadState: async () => undefined,
+  unreadCount,
+  unreadCountKnown: true,
+});
+
+interface SidebarProbeProps {
+  buildTarget: "web" | "tauri";
+  unreadCount?: number;
+  sidebarOpen?: boolean;
+}
+
+const SidebarProbe = ({ buildTarget, unreadCount = 0, sidebarOpen = true }: SidebarProbeProps) => (
+  <AlertsControllerContext.Provider value={stubAlertsController(unreadCount)}>
+    <SidebarProvider defaultOpen={sidebarOpen}>
+      <ApplicationSidebar buildTarget={buildTarget} />
+      <Outlet />
+    </SidebarProvider>
+  </AlertsControllerContext.Provider>
 );
 
-const renderSidebar = async (initialEntry: string, buildTarget: "web" | "tauri" = "web") => {
+const renderSidebar = async (
+  initialEntry: string,
+  buildTarget: "web" | "tauri" = "web",
+  options?: { unreadCount?: number; sidebarOpen?: boolean },
+) => {
   const rootRoute = createRootRoute({
-    component: () => <SidebarProbe buildTarget={buildTarget} />,
+    component: () => (
+      <SidebarProbe
+        buildTarget={buildTarget}
+        unreadCount={options?.unreadCount}
+        sidebarOpen={options?.sidebarOpen}
+      />
+    ),
   });
   const dashboardRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -116,12 +169,53 @@ describe("ApplicationSidebar", () => {
     const header = document.querySelector('[data-slot="sidebar-chrome-header"]');
     const brand = document.querySelector('[data-slot="sidebar-brand"][data-wordmark="true"]');
     const toggle = screen.getByRole("button", { name: "Toggle Sidebar" });
+    const bell = screen.getByRole("button", { name: "Alerts, 0 unread" });
 
     expect(document.querySelector('[data-slot="sidebar-window-chrome"]')).toBeNull();
     expect(header).not.toBeNull();
     expect(brand?.textContent).toContain("Zai");
     expect(header?.contains(brand)).toBe(true);
     expect(header?.contains(toggle)).toBe(true);
+    expect(header?.contains(bell)).toBe(true);
+  });
+
+  it("puts the alerts bell in the desktop header next to the logo", async () => {
+    mockWindowChrome(true);
+    await renderSidebar("/dashboard", "tauri");
+
+    const header = document.querySelector('[data-slot="sidebar-header"]');
+    const brand = document.querySelector('[data-slot="sidebar-brand"][data-wordmark="true"]');
+    const bell = screen.getByRole("button", { name: "Alerts, 0 unread" });
+
+    expect(header?.contains(brand)).toBe(true);
+    expect(header?.contains(bell)).toBe(true);
+    expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
+  });
+
+  it("badges the web logo when the sidebar is collapsed with unread alerts", async () => {
+    mockWindowChrome(false);
+    await renderSidebar("/dashboard", "web", { unreadCount: 2, sidebarOpen: false });
+
+    const chrome = document.querySelector('[data-slot="sidebar-collapsed-chrome"]');
+    const badge = document.querySelector('[data-slot="unread-alerts-badge"]');
+
+    expect(screen.queryByRole("button", { name: "Alerts, 2 unread" })).toBeNull();
+    expect(chrome).not.toBeNull();
+    expect(badge).not.toBeNull();
+    expect(chrome?.contains(badge)).toBe(true);
+    expect(badge?.classList.contains("animate-pulse")).toBe(false);
+  });
+
+  it("badges the expanded bell without animation when alerts are unread", async () => {
+    mockWindowChrome(false);
+    await renderSidebar("/dashboard", "web", { unreadCount: 2 });
+
+    const bell = screen.getByRole("button", { name: "Alerts, 2 unread" });
+    const badge = bell.querySelector('[data-slot="unread-alerts-badge"]');
+
+    expect(badge).not.toBeNull();
+    expect(badge?.classList.contains("animate-pulse")).toBe(false);
+    expect(document.querySelector('[data-slot="sidebar-collapsed-chrome"]')).toBeNull();
   });
 
   it("puts the desktop logo below the traffic-light chrome, not beside the toggle", async () => {

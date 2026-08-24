@@ -6,6 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FixedSidebarTrigger } from "../fixed-sidebar-trigger";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { NATIVE_TOGGLE_LEADING_INSET } from "@/components/window-drag-region";
+import {
+  AlertsControllerContext,
+  type AlertsControllerValue,
+} from "@/features/alerts/hooks/alerts-controller-context";
 import * as windowChrome from "@/lib/window-chrome";
 
 const stubMatchMedia = () => {
@@ -30,6 +34,37 @@ const mockWindowChrome = (supportsNativeWindowChrome: boolean) => {
     close: vi.fn(),
   });
 };
+
+const stubAlertsController = (unreadCount = 0): AlertsControllerValue => ({
+  bellRef: { current: null },
+  clearFilters: () => undefined,
+  closeLedger: () => undefined,
+  destinationFeedback: null,
+  errorMessage: null,
+  filters: { readState: "all", severity: "all" },
+  hasActiveFilters: false,
+  isLedgerOpen: false,
+  ledgerFocusAlertId: null,
+  items: [],
+  lifecycleErrors: {},
+  lifecyclePendingId: null,
+  loadOlder: async () => undefined,
+  loadOlderError: null,
+  loadOlderStatus: "idle",
+  markAllRead: async () => undefined,
+  markAllReadError: null,
+  markAllReadPending: false,
+  nextCursor: null,
+  openAlert: async () => undefined,
+  openLedger: () => undefined,
+  refresh: async () => undefined,
+  refreshStatus: "ready",
+  setReadStateFilter: () => undefined,
+  setSeverityFilter: () => undefined,
+  toggleAlertReadState: async () => undefined,
+  unreadCount,
+  unreadCountKnown: true,
+});
 
 describe("FixedSidebarTrigger", () => {
   beforeEach(() => {
@@ -77,5 +112,35 @@ describe("FixedSidebarTrigger", () => {
     const host = document.querySelector<HTMLElement>('[data-slot="fixed-sidebar-trigger"]');
     expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeTruthy();
     expect(host?.style.paddingLeft).toBe("0.5rem");
+  });
+
+  it("badges the desktop expand toggle when collapsed with unread alerts", () => {
+    mockWindowChrome(false);
+    render(
+      <AlertsControllerContext.Provider value={stubAlertsController(3)}>
+        <SidebarProvider defaultOpen={false}>
+          <FixedSidebarTrigger buildTarget="tauri" />
+        </SidebarProvider>
+      </AlertsControllerContext.Provider>,
+    );
+
+    const host = document.querySelector('[data-slot="fixed-sidebar-trigger"]');
+    const badge = document.querySelector('[data-slot="unread-alerts-badge"]');
+    expect(host?.contains(badge)).toBe(true);
+    expect(badge?.classList.contains("animate-pulse")).toBe(false);
+  });
+
+  it("does not badge the desktop toggle when the sidebar is expanded", () => {
+    mockWindowChrome(true);
+    render(
+      <AlertsControllerContext.Provider value={stubAlertsController(3)}>
+        <SidebarProvider>
+          <FixedSidebarTrigger buildTarget="tauri" />
+        </SidebarProvider>
+      </AlertsControllerContext.Provider>,
+    );
+
+    expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeTruthy();
+    expect(document.querySelector('[data-slot="unread-alerts-badge"]')).toBeNull();
   });
 });

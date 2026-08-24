@@ -187,13 +187,13 @@ describe("alerts bell label", () => {
     expect(alertsBellLabel(3)).toBe("Alerts, 3 unread");
   });
 
-  it("renders the bell as an outlined icon button", async () => {
+  it("renders the bell as a ghost icon button", async () => {
     stubMatchMedia();
     await renderController(<AlertsBell />);
 
     const bell = await screen.findByRole("button", { name: "Alerts, 0 unread" });
-    expect(bell.classList.contains("border-border")).toBe(true);
-    expect(bell.classList.contains("bg-background")).toBe(true);
+    expect(bell.classList.contains("border-border")).toBe(false);
+    expect(bell.getAttribute("data-slot")).toBe("alerts-bell");
     expect(bell.textContent).toBe("");
   });
 });
@@ -332,5 +332,15 @@ describe("alerts controller lifecycle", () => {
       expect(markAll.disabled).toBe(true);
     });
     expect(alertsCommands.markAllAlertsRead).not.toHaveBeenCalled();
+  });
+
+  it("shows a static unread badge on the bell", async () => {
+    vi.mocked(alertsCommands.getUnreadAlertCount).mockResolvedValue(Result.succeed(3));
+    await renderController(<AlertsBell />);
+
+    const bell = await screen.findByRole("button", { name: "Alerts, 3 unread" });
+    const badge = bell.querySelector('[data-slot="unread-alerts-badge"]');
+    expect(badge).not.toBeNull();
+    expect(badge?.classList.contains("animate-pulse")).toBe(false);
   });
 });

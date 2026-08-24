@@ -17,7 +17,6 @@ import {
   ApplicationTitleBarProvider,
 } from "../application-title-bar";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import * as alertsBell from "@/features/alerts/components/alerts-bell";
 import * as screenBreadcrumbs from "@/hooks/use-screen-breadcrumbs";
 import * as windowChrome from "@/lib/window-chrome";
 
@@ -66,9 +65,6 @@ describe("ApplicationTitleBar", () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1024 });
     startDragging.mockReset();
     toggleMaximize.mockReset();
-    vi.spyOn(alertsBell, "AlertsBell").mockImplementation(() => (
-      <button type="button">Alerts</button>
-    ));
     vi.spyOn(screenBreadcrumbs, "useScreenBreadcrumbs").mockReturnValue([{ label: "Dashboard" }]);
     vi.spyOn(windowChrome, "createWindowChromeAdapter").mockReturnValue({
       supportsNativeWindowChrome: true,
@@ -86,14 +82,14 @@ describe("ApplicationTitleBar", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps breadcrumbs, alerts, and route actions visible in web mode", async () => {
+  it("keeps breadcrumbs and route actions visible in web mode", async () => {
     await renderTitleBar("web", <button type="button">Route action</button>);
 
     expect(screen.getByRole("banner").getAttribute("data-build-target")).toBe("web");
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeTruthy();
     // Toggle lives in FixedSidebarTrigger (shell), not the title bar.
     expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Alerts" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Alerts, 0 unread" })).toBeNull();
     expect(screen.getByRole("button", { name: "Route action" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Go forward" })).toBeNull();

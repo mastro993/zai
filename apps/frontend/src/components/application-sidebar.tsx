@@ -22,6 +22,9 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { AlertsBell } from "@/features/alerts/components/alerts-bell";
+import { AlertsLedgerSheet } from "@/features/alerts/components/alerts-ledger-sheet";
+import { UnreadAlertsBadge } from "@/features/alerts/components/unread-alerts-badge";
 import { isSettingsPath, navigationItems, settingsGroups, settingsItem } from "@/lib/navigation";
 import { createWindowChromeAdapter } from "@/lib/window-chrome";
 import { cn } from "@/lib/utils";
@@ -72,6 +75,7 @@ function CollapsedSidebarChrome() {
       <div className="pointer-events-none absolute inset-0 flex scale-95 items-center justify-center opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover/collapsed-chrome:pointer-events-auto group-hover/collapsed-chrome:scale-100 group-hover/collapsed-chrome:opacity-100 group-focus-within/collapsed-chrome:pointer-events-auto group-focus-within/collapsed-chrome:scale-100 group-focus-within/collapsed-chrome:opacity-100 motion-reduce:transition-none">
         <SidebarTrigger />
       </div>
+      <UnreadAlertsBadge />
     </div>
   );
 }
@@ -186,8 +190,11 @@ function WebSidebarChrome({ isExpanded, itemPad }: { isExpanded: boolean; itemPa
       {isExpanded ? (
         <>
           <SidebarBrandMark />
-          <div className="relative z-10 flex size-8 shrink-0 items-center justify-center">
-            <SidebarTrigger />
+          <div className="relative z-10 flex shrink-0 items-center">
+            <AlertsBell />
+            <div className="flex size-8 shrink-0 items-center justify-center">
+              <SidebarTrigger />
+            </div>
           </div>
         </>
       ) : (
@@ -220,48 +227,56 @@ export function ApplicationSidebar({ buildTarget }: ApplicationSidebarProps) {
   const itemPad = "0.5rem";
 
   return (
-    <Sidebar
-      collapsible={buildTarget === "tauri" ? "offcanvas" : "icon"}
-      data-mode={isSettings ? "settings" : "app"}
-    >
-      {hasDesktopWindowChrome ? (
-        <div data-slot="sidebar-window-chrome" className="relative h-12 w-full shrink-0">
-          <WindowDragRegion
-            buildTarget={buildTarget}
-            data-slot="sidebar-drag-region"
-            reserveTrafficLightInset
-            className="absolute inset-0"
-          />
-        </div>
-      ) : null}
-      <SidebarHeader className={cn("shrink-0 gap-0", hasDesktopWindowChrome ? "px-2 py-1" : "p-0")}>
+    <>
+      <Sidebar
+        collapsible={buildTarget === "tauri" ? "offcanvas" : "icon"}
+        data-mode={isSettings ? "settings" : "app"}
+      >
         {hasDesktopWindowChrome ? (
-          <SidebarBrandMark />
-        ) : (
-          <WebSidebarChrome isExpanded={isExpanded} itemPad={itemPad} />
-        )}
-      </SidebarHeader>
-      <SidebarContent>
-        {isSettings ? <SettingsNav pathname={pathname} /> : <AppNav pathname={pathname} />}
-      </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            {isSettings ? (
-              <SettingsBackButton href={returnHref} />
-            ) : (
-              <SidebarMenuButton
-                isActive={false}
-                render={<Link to={settingsItem.to} preload="intent" />}
-                tooltip={settingsItem.title}
-              >
-                <HugeiconsIcon icon={settingsItem.icon} strokeWidth={2} />
-                <span>{settingsItem.title}</span>
-              </SidebarMenuButton>
-            )}
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
+          <div data-slot="sidebar-window-chrome" className="relative h-12 w-full shrink-0">
+            <WindowDragRegion
+              buildTarget={buildTarget}
+              data-slot="sidebar-drag-region"
+              reserveTrafficLightInset
+              className="absolute inset-0"
+            />
+          </div>
+        ) : null}
+        <SidebarHeader
+          className={cn("shrink-0 gap-0", hasDesktopWindowChrome ? "px-2 py-1" : "p-0")}
+        >
+          {hasDesktopWindowChrome ? (
+            <div className="flex w-full items-center justify-between gap-1">
+              <SidebarBrandMark />
+              {isExpanded ? <AlertsBell /> : null}
+            </div>
+          ) : (
+            <WebSidebarChrome isExpanded={isExpanded} itemPad={itemPad} />
+          )}
+        </SidebarHeader>
+        <SidebarContent>
+          {isSettings ? <SettingsNav pathname={pathname} /> : <AppNav pathname={pathname} />}
+        </SidebarContent>
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              {isSettings ? (
+                <SettingsBackButton href={returnHref} />
+              ) : (
+                <SidebarMenuButton
+                  isActive={false}
+                  render={<Link to={settingsItem.to} preload="intent" />}
+                  tooltip={settingsItem.title}
+                >
+                  <HugeiconsIcon icon={settingsItem.icon} strokeWidth={2} />
+                  <span>{settingsItem.title}</span>
+                </SidebarMenuButton>
+              )}
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+      <AlertsLedgerSheet />
+    </>
   );
 }

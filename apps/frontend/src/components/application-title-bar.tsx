@@ -18,7 +18,6 @@ import {
 } from "@/components/window-drag-region";
 import { Separator } from "@/components/ui/separator";
 import { useSidebar } from "@/components/ui/sidebar";
-import { AlertsBell } from "@/features/alerts/components/alerts-bell";
 import { useScreenBreadcrumbs } from "@/hooks/use-screen-breadcrumbs";
 import { createWindowChromeAdapter } from "@/lib/window-chrome";
 import type { CommandBuildTarget } from "@/commands/build-target";
@@ -162,7 +161,6 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
           data-slot="title-bar-route-actions"
           className="flex flex-wrap items-center gap-2"
         />
-        <AlertsBell />
       </div>
     </header>
   );
