@@ -1,6 +1,7 @@
 import {
   DashboardSquare01Icon,
   DollarCircleIcon,
+  InformationCircleIcon,
   PaintBoardIcon,
   Settings01Icon,
   TransactionHistoryIcon,
@@ -50,7 +51,10 @@ export const settingsItem = {
 export const settingsGroups = [
   {
     label: "General",
-    items: [{ title: "Appearance", to: "/settings/appearance", icon: PaintBoardIcon }],
+    items: [
+      { title: "Appearance", to: "/settings/appearance", icon: PaintBoardIcon },
+      { title: "About", to: "/settings/about", icon: InformationCircleIcon },
+    ],
   },
   {
     label: "Finance",
