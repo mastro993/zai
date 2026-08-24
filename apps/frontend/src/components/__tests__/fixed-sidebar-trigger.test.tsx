@@ -1,11 +1,22 @@
 // @vitest-environment jsdom
 
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FixedSidebarTrigger } from "../fixed-sidebar-trigger";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { NATIVE_TOGGLE_LEADING_INSET } from "@/components/window-drag-region";
+import {
+  NATIVE_TOGGLE_LEADING_INSET,
+  TRAFFIC_LIGHT_TO_TRIGGER_GAP,
+  TRIGGER_TO_HISTORY_GAP,
+} from "@/components/window-drag-region";
 import {
   AlertsControllerContext,
   type AlertsControllerValue,
@@ -66,6 +77,30 @@ const stubAlertsController = (unreadCount = 0): AlertsControllerValue => ({
   unreadCountKnown: true,
 });
 
+const renderOverlay = async (buildTarget: "tauri" | "web", sidebarOpen = true, unreadCount = 0) => {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <AlertsControllerContext.Provider value={stubAlertsController(unreadCount)}>
+        <SidebarProvider defaultOpen={sidebarOpen}>
+          <FixedSidebarTrigger buildTarget={buildTarget} />
+        </SidebarProvider>
+      </AlertsControllerContext.Provider>
+    ),
+  });
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => null,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+
+  await router.load();
+  render(<RouterProvider router={router} />);
+};
+
 describe("FixedSidebarTrigger", () => {
   beforeEach(() => {
     stubMatchMedia();
@@ -77,52 +112,56 @@ describe("FixedSidebarTrigger", () => {
     vi.unstubAllGlobals();
   });
 
-  it("hides on expanded web so the sidebar header can host the toggle", () => {
+  it("hides on expanded web so the sidebar header can host the toggle", async () => {
     mockWindowChrome(false);
-    render(
-      <SidebarProvider>
-        <FixedSidebarTrigger buildTarget="web" />
-      </SidebarProvider>,
-    );
+    await renderOverlay("web");
 
     expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
   });
 
-  it("sits after the traffic lights on overlay-chrome desktops", () => {
+  it("sits after the traffic lights on overlay-chrome desktops, with history arrows right-aligned", async () => {
     mockWindowChrome(true);
-    render(
-      <SidebarProvider>
-        <FixedSidebarTrigger buildTarget="tauri" />
-      </SidebarProvider>,
-    );
+    await renderOverlay("tauri");
 
     const host = document.querySelector<HTMLElement>('[data-slot="fixed-sidebar-trigger"]');
+    const history = document.querySelector<HTMLElement>('[data-slot="window-chrome-history"]');
     expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go back" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go forward" })).toBeTruthy();
+    expect(host?.contains(screen.getByRole("button", { name: "Go back" }))).toBe(true);
     expect(host?.style.paddingLeft).toBe(NATIVE_TOGGLE_LEADING_INSET);
+    expect(host?.className).toContain("w-(--sidebar-width)");
+    expect(history?.className).toContain("ml-auto");
   });
 
-  it("keeps a left-edge toggle when the Tauri sidebar is offcanvas-collapsed", () => {
+  it("packs history closer to the toggle than the traffic-light inset when Tauri sidebar is offcanvas-collapsed", async () => {
     mockWindowChrome(false);
-    render(
-      <SidebarProvider defaultOpen={false}>
-        <FixedSidebarTrigger buildTarget="tauri" />
-      </SidebarProvider>,
-    );
+    await renderOverlay("tauri", false);
 
     const host = document.querySelector<HTMLElement>('[data-slot="fixed-sidebar-trigger"]');
+    const history = document.querySelector<HTMLElement>('[data-slot="window-chrome-history"]');
     expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeTruthy();
-    expect(host?.style.paddingLeft).toBe("0.5rem");
+    expect(screen.getByRole("button", { name: "Go back" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go forward" })).toBeTruthy();
+    expect(host?.style.paddingLeft).toBe(TRAFFIC_LIGHT_TO_TRIGGER_GAP);
+    expect(host?.style.gap).toBe(TRIGGER_TO_HISTORY_GAP);
+    expect(history?.className).not.toContain("ml-auto");
   });
 
-  it("badges the desktop expand toggle when collapsed with unread alerts", () => {
+  it("packs history closer to the toggle when overlay chrome is collapsed", async () => {
+    mockWindowChrome(true);
+    await renderOverlay("tauri", false);
+
+    const host = document.querySelector<HTMLElement>('[data-slot="fixed-sidebar-trigger"]');
+    expect(host?.style.paddingLeft).toBe(NATIVE_TOGGLE_LEADING_INSET);
+    expect(host?.style.gap).toBe(TRIGGER_TO_HISTORY_GAP);
+    expect(host?.className).not.toContain("w-(--sidebar-width)");
+  });
+
+  it("badges the desktop expand toggle when collapsed with unread alerts", async () => {
     mockWindowChrome(false);
-    render(
-      <AlertsControllerContext.Provider value={stubAlertsController(3)}>
-        <SidebarProvider defaultOpen={false}>
-          <FixedSidebarTrigger buildTarget="tauri" />
-        </SidebarProvider>
-      </AlertsControllerContext.Provider>,
-    );
+    await renderOverlay("tauri", false, 3);
 
     const host = document.querySelector('[data-slot="fixed-sidebar-trigger"]');
     const badge = document.querySelector('[data-slot="unread-alerts-badge"]');
@@ -130,15 +169,9 @@ describe("FixedSidebarTrigger", () => {
     expect(badge?.classList.contains("animate-pulse")).toBe(false);
   });
 
-  it("does not badge the desktop toggle when the sidebar is expanded", () => {
+  it("does not badge the desktop toggle when the sidebar is expanded", async () => {
     mockWindowChrome(true);
-    render(
-      <AlertsControllerContext.Provider value={stubAlertsController(3)}>
-        <SidebarProvider>
-          <FixedSidebarTrigger buildTarget="tauri" />
-        </SidebarProvider>
-      </AlertsControllerContext.Provider>,
-    );
+    await renderOverlay("tauri", true, 3);
 
     expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeTruthy();
     expect(document.querySelector('[data-slot="unread-alerts-badge"]')).toBeNull();

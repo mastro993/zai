@@ -1,19 +1,25 @@
 import { useMemo } from "react";
 
 import type { CommandBuildTarget } from "@/commands/build-target";
+import { NavigationHistoryButtons } from "@/components/navigation-history-buttons";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { NATIVE_TOGGLE_LEADING_INSET } from "@/components/window-drag-region";
+import {
+  NATIVE_TOGGLE_LEADING_INSET,
+  TRAFFIC_LIGHT_TO_TRIGGER_GAP,
+  TRIGGER_TO_HISTORY_GAP,
+} from "@/components/window-drag-region";
 import { UnreadAlertsBadge } from "@/features/alerts/components/unread-alerts-badge";
 import { createWindowChromeAdapter } from "@/lib/window-chrome";
+import { cn } from "@/lib/utils";
 
 interface FixedSidebarTriggerProps {
   buildTarget: CommandBuildTarget;
 }
 
 /**
- * Hosts the sidebar toggle when the sidebar header cannot:
+ * Hosts window-chrome controls when the sidebar header cannot:
  * mobile sheet, Tauri offcanvas collapsed, or desktop overlay chrome
- * (toggle sits after the traffic lights, not beside the logo).
+ * (toggle after traffic lights, history right-aligned when expanded).
  */
 export function FixedSidebarTrigger({ buildTarget }: FixedSidebarTriggerProps) {
   const { isMobile, state } = useSidebar();
@@ -26,19 +32,37 @@ export function FixedSidebarTrigger({ buildTarget }: FixedSidebarTriggerProps) {
     return null;
   }
 
-  const paddingLeft = hasDesktopWindowChrome ? NATIVE_TOGGLE_LEADING_INSET : "0.5rem";
+  const paddingLeft = hasDesktopWindowChrome
+    ? NATIVE_TOGGLE_LEADING_INSET
+    : TRAFFIC_LIGHT_TO_TRIGGER_GAP;
+  const spanSidebarChrome = hasDesktopWindowChrome && state === "expanded";
   const showCollapsedUnreadBadge = buildTarget === "tauri" && !isMobile && state === "collapsed";
 
   return (
     <div
       data-slot="fixed-sidebar-trigger"
-      className="pointer-events-none fixed top-0 left-0 z-40 flex h-12 items-center"
-      style={{ paddingLeft }}
+      className={cn(
+        "pointer-events-none fixed top-0 left-0 z-40 flex h-12 items-center",
+        spanSidebarChrome && "w-(--sidebar-width)",
+      )}
+      style={{
+        paddingLeft,
+        paddingRight: spanSidebarChrome ? TRAFFIC_LIGHT_TO_TRIGGER_GAP : undefined,
+        gap: spanSidebarChrome ? undefined : TRIGGER_TO_HISTORY_GAP,
+      }}
     >
       <div className="pointer-events-auto relative flex size-8 items-center justify-center">
         <SidebarTrigger />
         {showCollapsedUnreadBadge ? <UnreadAlertsBadge /> : null}
       </div>
+      {buildTarget === "tauri" ? (
+        <div
+          data-slot="window-chrome-history"
+          className={cn("pointer-events-auto", spanSidebarChrome && "ml-auto")}
+        >
+          <NavigationHistoryButtons />
+        </div>
+      ) : null}
     </div>
   );
 }
