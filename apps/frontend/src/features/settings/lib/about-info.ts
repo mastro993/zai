@@ -4,19 +4,19 @@ export const ABOUT_LICENSE = "GPL-3.0-only";
 export const ABOUT_TAURI_VERSION = "2.11.5";
 export const UPDATE_CHECK_UNAVAILABLE_MESSAGE = "Update checks are not available yet.";
 
-export type AboutReleaseChannel = "Beta" | "Stable";
+export type AboutReleaseChannel = "Dev" | "Beta" | "Stable";
 
 export const resolveAboutAppVersion = (packageVersion: string): string =>
   packageVersion === PLACEHOLDER_APP_VERSION ? "dev" : packageVersion;
 
-export const resolveAboutReleaseChannel = (packageVersion: string): AboutReleaseChannel | null => {
+export const resolveAboutReleaseChannel = (packageVersion: string): AboutReleaseChannel => {
   if (/-beta\.\d+$/.test(packageVersion)) {
     return "Beta";
   }
-  if (/^\d+\.\d+\.\d+$/.test(packageVersion)) {
+  if (packageVersion !== PLACEHOLDER_APP_VERSION && /^\d+\.\d+\.\d+$/.test(packageVersion)) {
     return "Stable";
   }
-  return null;
+  return "Dev";
 };
 
 export const resolveAboutBuildMode = (isProduction: boolean): "Production" | "Development" =>

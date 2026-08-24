@@ -20,12 +20,13 @@ describe("AboutSettingsScreen", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders version, build facts, and a mock update check without a channel on unstamped builds", () => {
+  it("renders version, channel, build facts, and a mock update check", () => {
     render(<AboutSettingsScreen />);
 
     expect(screen.getByRole("heading", { name: "About" })).toBeTruthy();
-    expect(screen.getByText("Version dev")).toBeTruthy();
-    expect(screen.queryByText("Release channel")).toBeNull();
+    expect(screen.getByText("dev")).toBeTruthy();
+    expect(screen.getByText("Release channel")).toBeTruthy();
+    expect(screen.getByText("Dev")).toBeTruthy();
     expect(screen.getByText("Development")).toBeTruthy();
     expect(screen.getByText(ABOUT_TAURI_VERSION)).toBeTruthy();
     expect(screen.getByText(ABOUT_APP_IDENTIFIER)).toBeTruthy();
@@ -39,7 +40,7 @@ describe("AboutSettingsScreen", () => {
 
     render(<AboutSettingsScreen />);
 
-    expect(screen.getByText("Version 2026.8.24-beta.0")).toBeTruthy();
+    expect(screen.getByText("2026.8.24-beta.0")).toBeTruthy();
     expect(screen.getByText("Release channel")).toBeTruthy();
     expect(screen.getByText("Beta")).toBeTruthy();
   });
@@ -49,7 +50,7 @@ describe("AboutSettingsScreen", () => {
 
     render(<AboutSettingsScreen />);
 
-    expect(screen.getByText("Version 2026.8.24")).toBeTruthy();
+    expect(screen.getByText("2026.8.24")).toBeTruthy();
     expect(screen.getByText("Stable")).toBeTruthy();
   });
 

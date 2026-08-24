@@ -18,10 +18,10 @@ dispatch from `main` HEAD. There is at most one stable per UTC date. A
 beta after that date's stable uses the next UTC date so SemVer still
 treats it as newer (`YYYY.M.D` is greater than `YYYY.M.D-beta.N`).
 
-The committed tree stays `0.0.0-dev` and About shows `dev` for unstamped
-builds. CI stamps the calendar version onto release artifacts only.
-Display equals the technical version. About channel is Beta on beta
-ships and Stable on stable ships. Git tags are `v` plus that version.
+The committed tree stays `0.0.0-dev`. About shows App version and Release
+channel as two rows. Unstamped builds use `dev` and Dev. Stamped ships
+use the technical version and Beta or Stable. CI stamps the calendar
+version onto release artifacts only. Git tags are `v` plus that version.
 Beta GitHub Releases are published prereleases; stables are published
 and not prerelease. A stable may ship with no prior beta. Release notes
 are `git log --oneline --no-merges` since the previous tag, any channel.

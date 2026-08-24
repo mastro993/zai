@@ -34,13 +34,9 @@ export function AboutSettingsScreen() {
         <Card className="gap-0! py-0!">
           <CardContent className="px-0!">
             <ItemGroup className="gap-0">
-              <AboutSettingsRow title="App version" value={`Version ${appVersion}`} />
-              {releaseChannel ? (
-                <>
-                  <AboutSettingsDivider />
-                  <AboutSettingsRow title="Release channel" value={releaseChannel} />
-                </>
-              ) : null}
+              <AboutSettingsRow title="App version" value={appVersion} />
+              <AboutSettingsDivider />
+              <AboutSettingsRow title="Release channel" value={releaseChannel} />
               <AboutSettingsDivider />
               <AboutSettingsRow
                 title="Check for a new version"

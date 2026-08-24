@@ -25,8 +25,8 @@ describe("resolveAboutAppVersion", () => {
 });
 
 describe("resolveAboutReleaseChannel", () => {
-  it("hides the channel for unstamped builds", () => {
-    expect(resolveAboutReleaseChannel("0.0.0-dev")).toBeNull();
+  it("labels unstamped builds as Dev", () => {
+    expect(resolveAboutReleaseChannel("0.0.0-dev")).toBe("Dev");
   });
 
   it("labels beta and stable ships", () => {
