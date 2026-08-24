@@ -2,7 +2,7 @@ import { toast } from "@/components/toaster/toast";
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ItemGroup, ItemSeparator } from "@/components/ui/item";
+import { ItemGroup } from "@/components/ui/item";
 
 import { AboutSettingsRow } from "../components/about-settings-row";
 import { SettingsSectionHeader } from "../components/settings-section-header";
@@ -25,15 +25,13 @@ export function AboutSettingsScreen() {
         <SettingsSectionHeader title="About" />
         <Card>
           <CardContent>
-            <ItemGroup className="gap-0">
+            <ItemGroup>
               <AboutSettingsRow title="App version" value={`Version ${ABOUT_APP_VERSION}`} />
-              <ItemSeparator />
               <AboutSettingsRow
                 title="Release channel"
                 description="Alpha is the current channel. Main and Beta will appear when updates ship."
                 value={ABOUT_RELEASE_CHANNEL}
               />
-              <ItemSeparator />
               <AboutSettingsRow
                 title="Check for a new version"
                 description={UPDATE_CHECK_UNAVAILABLE_MESSAGE}
@@ -52,13 +50,10 @@ export function AboutSettingsScreen() {
         </Card>
         <Card>
           <CardContent>
-            <ItemGroup className="gap-0">
+            <ItemGroup>
               <AboutSettingsRow title="Build mode" value={buildMode} />
-              <ItemSeparator />
               <AboutSettingsRow title="Tauri version" value={ABOUT_TAURI_VERSION} />
-              <ItemSeparator />
               <AboutSettingsRow title="App identifier" value={ABOUT_APP_IDENTIFIER} />
-              <ItemSeparator />
               <AboutSettingsRow title="License" value={ABOUT_LICENSE} />
             </ItemGroup>
           </CardContent>
