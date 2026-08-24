@@ -7,9 +7,7 @@ import { toast } from "@/components/toaster/toast";
 
 import {
   ABOUT_APP_IDENTIFIER,
-  ABOUT_APP_VERSION,
   ABOUT_LICENSE,
-  ABOUT_RELEASE_CHANNEL,
   ABOUT_TAURI_VERSION,
   UPDATE_CHECK_UNAVAILABLE_MESSAGE,
 } from "../../lib/about-info";
@@ -18,21 +16,41 @@ import { AboutSettingsScreen } from "../about-settings-screen";
 describe("AboutSettingsScreen", () => {
   afterEach(() => {
     cleanup();
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
-  it("renders version, channel, build facts, and a mock update check", () => {
+  it("renders version, build facts, and a mock update check without a channel on unstamped builds", () => {
     render(<AboutSettingsScreen />);
 
     expect(screen.getByRole("heading", { name: "About" })).toBeTruthy();
-    expect(screen.getByText(`Version ${ABOUT_APP_VERSION}`)).toBeTruthy();
-    expect(screen.getByText(ABOUT_RELEASE_CHANNEL)).toBeTruthy();
+    expect(screen.getByText("Version dev")).toBeTruthy();
+    expect(screen.queryByText("Release channel")).toBeNull();
     expect(screen.getByText("Development")).toBeTruthy();
     expect(screen.getByText(ABOUT_TAURI_VERSION)).toBeTruthy();
     expect(screen.getByText(ABOUT_APP_IDENTIFIER)).toBeTruthy();
     expect(screen.getByText(ABOUT_LICENSE)).toBeTruthy();
     expect(screen.getByText(UPDATE_CHECK_UNAVAILABLE_MESSAGE)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Check for updates" })).toBeTruthy();
+  });
+
+  it("shows the Beta channel for a stamped beta version", () => {
+    vi.stubEnv("VITE_ZAI_APP_VERSION", "2026.8.24-beta.0");
+
+    render(<AboutSettingsScreen />);
+
+    expect(screen.getByText("Version 2026.8.24-beta.0")).toBeTruthy();
+    expect(screen.getByText("Release channel")).toBeTruthy();
+    expect(screen.getByText("Beta")).toBeTruthy();
+  });
+
+  it("shows the Stable channel for a stamped stable version", () => {
+    vi.stubEnv("VITE_ZAI_APP_VERSION", "2026.8.24");
+
+    render(<AboutSettingsScreen />);
+
+    expect(screen.getByText("Version 2026.8.24")).toBeTruthy();
+    expect(screen.getByText("Stable")).toBeTruthy();
   });
 
   it("shows that update checks are not available when the mock button is pressed", () => {
