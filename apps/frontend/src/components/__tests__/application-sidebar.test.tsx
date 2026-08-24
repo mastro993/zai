@@ -144,7 +144,7 @@ describe("ApplicationSidebar", () => {
     expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
   });
 
-  it("keeps app navigation without a settings footer on the main workspace", async () => {
+  it("keeps app navigation without a settings back control on the main workspace", async () => {
     await renderSidebar("/dashboard");
 
     expect(await screen.findByRole("link", { name: "Dashboard" })).toBeTruthy();
@@ -176,40 +176,45 @@ describe("ApplicationSidebar", () => {
     expect(screen.queryByText("Settings")).toBeNull();
   });
 
-  it("keeps the web logo and puts Back to app in the Settings footer slot", async () => {
+  it("keeps the web logo and puts Back to app above the first settings section", async () => {
     const router = await renderSidebar("/dashboard");
 
     await router.navigate({ to: "/settings/appearance" });
 
     const chromeHeader = document.querySelector('[data-slot="sidebar-chrome-header"]');
-    const footer = document.querySelector('[data-slot="sidebar-footer"]');
+    const content = document.querySelector('[data-slot="sidebar-content"]');
     const brand = document.querySelector('[data-slot="sidebar-brand"][data-wordmark="true"]');
     const back = await screen.findByRole("button", { name: "Back to app" });
+    const general = screen.getByText("General");
 
     expect(brand?.textContent).toContain("Zai");
     expect(chromeHeader?.contains(brand)).toBe(true);
     expect(chromeHeader?.contains(back)).toBe(false);
-    expect(footer?.contains(back)).toBe(true);
+    expect(content?.contains(back)).toBe(true);
+    expect(document.querySelector('[data-slot="sidebar-footer"]')).toBeNull();
     expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
-    expect(screen.getByText("General")).toBeTruthy();
+    expect(back.compareDocumentPosition(general) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText("Finance")).toBeTruthy();
   });
 
-  it("keeps the desktop logo and puts Back to app in the footer slot", async () => {
+  it("keeps the desktop logo and puts Back to app above the first settings section", async () => {
     mockWindowChrome(true);
     const router = await renderSidebar("/dashboard", "tauri");
 
     await router.navigate({ to: "/settings/appearance" });
 
     const header = document.querySelector('[data-slot="sidebar-header"]');
-    const footer = document.querySelector('[data-slot="sidebar-footer"]');
+    const content = document.querySelector('[data-slot="sidebar-content"]');
     const brand = document.querySelector('[data-slot="sidebar-brand"][data-wordmark="true"]');
     const back = await screen.findByRole("button", { name: "Back to app" });
+    const general = screen.getByText("General");
 
     expect(brand?.textContent).toContain("Zai");
     expect(header?.contains(brand)).toBe(true);
     expect(header?.contains(back)).toBe(false);
-    expect(footer?.contains(back)).toBe(true);
+    expect(content?.contains(back)).toBe(true);
+    expect(document.querySelector('[data-slot="sidebar-footer"]')).toBeNull();
+    expect(back.compareDocumentPosition(general) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
   });
 

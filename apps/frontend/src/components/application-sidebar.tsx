@@ -8,7 +8,6 @@ import { WindowDragRegion } from "@/components/window-drag-region";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -125,9 +124,18 @@ function AppNav({ pathname }: { pathname: string }) {
   );
 }
 
-function SettingsNav({ pathname }: { pathname: string }) {
+function SettingsNav({ pathname, returnHref }: { pathname: string; returnHref: string }) {
   return (
     <>
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SettingsBackButton href={returnHref} />
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
       {settingsGroups.map((group) => (
         <SidebarGroup key={group.label}>
           <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
@@ -243,17 +251,12 @@ export function ApplicationSidebar({ buildTarget }: ApplicationSidebarProps) {
         )}
       </SidebarHeader>
       <SidebarContent>
-        {isSettings ? <SettingsNav pathname={pathname} /> : <AppNav pathname={pathname} />}
+        {isSettings ? (
+          <SettingsNav pathname={pathname} returnHref={returnHref} />
+        ) : (
+          <AppNav pathname={pathname} />
+        )}
       </SidebarContent>
-      {isSettings ? (
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SettingsBackButton href={returnHref} />
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      ) : null}
     </Sidebar>
   );
 }

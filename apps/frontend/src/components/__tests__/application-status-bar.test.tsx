@@ -115,6 +115,17 @@ describe("ApplicationStatusBar", () => {
     expect(await screen.findByText("Settings page")).toBeTruthy();
   });
 
+  it("does not highlight the settings control while settings is open", async () => {
+    await renderStatusBar();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    await screen.findByText("Settings page");
+
+    expect(screen.getByRole("button", { name: "Settings" }).className.split(/\s+/)).not.toContain(
+      "bg-sidebar-accent",
+    );
+  });
+
   it("pins dark when the system is light and Zai has no theme", async () => {
     await renderStatusBar({ system: "light" });
 
