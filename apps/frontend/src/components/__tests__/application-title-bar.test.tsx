@@ -115,10 +115,11 @@ describe("ApplicationTitleBar", () => {
     const dragRegion = banner.querySelector<HTMLElement>('[data-slot="title-bar-drag-region"]');
     const routeAction = screen.getByRole("button", { name: "Route action" });
 
-    // Expanded desktop: fixed toggle sits over the sidebar, not the content title bar.
+    // Expanded desktop: overlay chrome owns history; title bar only has breadcrumbs.
     expect(leading?.style.paddingLeft).toBe("1rem");
-    expect(screen.getByRole("button", { name: "Go back" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Go forward" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Go forward" })).toBeNull();
+    expect(banner.querySelector('[data-slot="navigation-history-buttons"]')).toBeNull();
     expect(banner.querySelector('[data-slot="title-bar-history-separator"]')).toBeNull();
     expect(banner.querySelector("[data-tauri-drag-region]")).toBeNull();
     expect(dragRegion).not.toBeNull();
@@ -148,20 +149,24 @@ describe("ApplicationTitleBar", () => {
 
     const banner = screen.getByRole("banner");
     const leading = banner.querySelector<HTMLElement>('[data-slot="title-bar-leading"]');
-    const history = banner.querySelector('[data-slot="navigation-history-buttons"]');
-    const separator = banner.querySelector('[data-slot="title-bar-history-separator"]');
     const breadcrumbs = banner.querySelector('[data-slot="title-bar-breadcrumbs"]');
 
-    // jsdom may reorder calc() terms; assert the chrome pieces are present.
+    // jsdom may reorder calc() terms; assert overlay chrome clearance (lights + toggle + history).
     const padding = leading?.style.paddingLeft ?? "";
     expect(padding.startsWith("calc(")).toBe(true);
     expect(padding).toContain("76px");
     expect(padding).toContain("0.5rem");
+    expect(padding).toContain("0.25rem");
     expect(padding).toContain("2rem");
-    expect(history).not.toBeNull();
+    expect(padding).toContain("3.5rem");
+    expect(banner.querySelector('[data-slot="navigation-history-buttons"]')).toBeNull();
+    const separator = banner.querySelector('[data-slot="title-bar-history-separator"]');
     expect(separator).not.toBeNull();
-    expect(history?.nextElementSibling).toBe(separator);
+    // data-vertical: beats Separator's data-vertical:self-stretch (plain self-center loses).
+    expect(separator?.className).toContain("data-vertical:h-4");
+    expect(separator?.className).toContain("data-vertical:self-center");
     expect(separator?.nextElementSibling).toBe(breadcrumbs);
+    expect(breadcrumbs).not.toBeNull();
   });
 
   it("keeps history chrome out of the web title bar when the sidebar is collapsed", async () => {
