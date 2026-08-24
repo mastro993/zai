@@ -54,4 +54,5 @@ objc2-app-kit = { version = "0.3.0", default-features = false, features = [
   "NSButton",
   "NSControl",
   "NSResponder",
+  "NSAnimationContext",
 ] }
