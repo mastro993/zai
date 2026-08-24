@@ -319,20 +319,42 @@ describe("alerts controller lifecycle", () => {
     expect(router.state.location.pathname).toBe("/");
   });
 
-  it("disables mark all read when no unread alerts remain", async () => {
+  it("hides mark all read when no unread notifications remain", async () => {
     await renderController();
 
     fireEvent.click(screen.getByTestId("open-ledger"));
 
     await waitFor(() => {
-      const markAll = screen.getByRole("button", { name: "Mark all read" });
-      expect(markAll).toBeInstanceOf(HTMLButtonElement);
-      if (!(markAll instanceof HTMLButtonElement)) return;
-      expect(markAll.disabled).toBe(true);
+      expect(screen.getByRole("heading", { name: "Notifications" })).toBeTruthy();
     });
+    expect(screen.queryByRole("button", { name: "Mark all read" })).toBeNull();
+    expect(screen.queryByText("0 unread alerts")).toBeNull();
     expect(
       document.querySelector('[data-slot="drawer-popup"][data-swipe-direction="right"]'),
     ).not.toBeNull();
     expect(alertsCommands.markAllAlertsRead).not.toHaveBeenCalled();
+  });
+
+  it("shows unread count and mark all read when unread notifications remain", async () => {
+    vi.mocked(alertsCommands.getUnreadAlertCount).mockResolvedValue(Result.succeed(2));
+    vi.mocked(alertsCommands.listAlerts).mockResolvedValue(
+      Result.succeed({ items: [sampleAlert], nextCursor: null }),
+    );
+
+    await renderController();
+
+    fireEvent.click(screen.getByTestId("open-ledger"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Notifications" })).toBeTruthy();
+      expect(document.querySelector('[data-slot="badge"]')?.textContent).toBe("2");
+      expect(screen.getByRole("button", { name: "Mark all read" })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Mark all read" }));
+
+    await waitFor(() => {
+      expect(alertsCommands.markAllAlertsRead).toHaveBeenCalledOnce();
+    });
   });
 });

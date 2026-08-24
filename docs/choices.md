@@ -5,6 +5,12 @@
 - Status bar `z-40` (was `z-[100001]`). Sidebar stays `z-10`. Drawer/dialog/sheet overlays stay `z-50` and cover the bar.
 - TanStack panel forced to `z-index: 30` so it still slides out from behind the bar.
 
+## 2026-08-24 — Notifications drawer header
+
+- Title is "Notifications". Unread count is a compact secondary badge (`font-mono font-bold text-primary`) next to the title, hidden at 0.
+- Visible "N unread alerts" copy removed; count stays in an `sr-only` description.
+- Mark all read is a ghost `icon-sm` (`TickDouble01Icon`), shown only when unread > 0.
+
 ## 2026-08-24 — Alerts ledger is a right Drawer with insets
 
 - Replaced Sheet with Drawer. `swipeDirection="right"`, `--drawer-inset:1rem`, transparent bleed. Same as transaction/budget/recurring drawers.

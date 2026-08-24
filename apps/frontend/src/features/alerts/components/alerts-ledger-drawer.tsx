@@ -1,3 +1,7 @@
+import { TickDouble01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -6,6 +10,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { Spinner } from "@/components/ui/spinner";
 
 import { useAlertsController } from "../hooks/use-alerts-controller";
 import { AlertRow } from "./alert-row";
@@ -49,6 +54,7 @@ export function AlertsLedgerDrawer() {
     refreshStatus === "ready" && items.length === 0 && !showError && !hasActiveFilters;
   const showFilteredEmpty =
     refreshStatus === "ready" && items.length === 0 && !showError && hasActiveFilters;
+  const showUnreadCount = unreadCountKnown && unreadCount > 0;
 
   return (
     <Drawer
@@ -61,28 +67,44 @@ export function AlertsLedgerDrawer() {
       swipeDirection="right"
     >
       <DrawerContent
-        aria-label="Alerts"
+        aria-label="Notifications"
         className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem] data-[swipe-axis=x]:w-[calc(100%-2rem)] sm:data-[swipe-axis=x]:w-96"
         finalFocus={bellRef}
       >
         <DrawerHeader className="border-b border-border pb-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <DrawerTitle>Alerts</DrawerTitle>
-              <DrawerDescription>
-                {unreadCount === 1 ? "1 unread alert" : `${unreadCount} unread alerts`}
-              </DrawerDescription>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <DrawerTitle>Notifications</DrawerTitle>
+              {showUnreadCount ? (
+                <Badge
+                  variant="secondary"
+                  aria-hidden
+                  className="min-w-5 px-1.5 font-mono text-[11px] font-bold text-primary tabular-nums"
+                >
+                  {unreadCount}
+                </Badge>
+              ) : null}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!unreadCountKnown || unreadCount === 0 || markAllReadPending}
-              onClick={() => void markAllRead()}
-            >
-              {markAllReadPending ? "Marking all read..." : "Mark all read"}
-            </Button>
+            {showUnreadCount ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={markAllReadPending ? "Marking all read" : "Mark all read"}
+                disabled={markAllReadPending}
+                onClick={() => void markAllRead()}
+              >
+                {markAllReadPending ? (
+                  <Spinner />
+                ) : (
+                  <HugeiconsIcon icon={TickDouble01Icon} strokeWidth={2} />
+                )}
+              </Button>
+            ) : null}
           </div>
+          <DrawerDescription className="sr-only">
+            {unreadCount === 1 ? "1 unread notification" : `${unreadCount} unread notifications`}
+          </DrawerDescription>
           {markAllReadError ? (
             <p className="pt-2 text-xs text-destructive" role="alert">
               {markAllReadError}
