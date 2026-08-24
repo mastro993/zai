@@ -8,18 +8,25 @@ import { cn } from "@/lib/utils";
 export const TRAFFIC_LIGHT_LEADING_WIDTH = "76px";
 /** Slot for the sidebar trigger (`size="icon-sm"` ≈ 32px). */
 export const SIDEBAR_TRIGGER_SLOT_WIDTH = "2rem";
-/** Gap between traffic lights and the sidebar toggle. */
+/** Two `icon-sm` history buttons (`size-7` ≈ 1.75rem each). */
+export const HISTORY_BUTTONS_SLOT_WIDTH = "3.5rem";
+/** Gap from traffic lights to the sidebar toggle. */
 export const TRAFFIC_LIGHT_TO_TRIGGER_GAP = "0.5rem";
-/** Gap used when the title bar must clear lights + toggle (mobile / offcanvas). */
-export const TRIGGER_TO_CONTENT_GAP = "0.5rem";
+/** Collapsed overlay: toggle sits closer to history than to the traffic lights. */
+export const TRIGGER_TO_HISTORY_GAP = "0.25rem";
+/** Gap after overlay chrome before title-bar content (separator / breadcrumbs). */
+export const TRIGGER_TO_CONTENT_GAP = TRAFFIC_LIGHT_TO_TRIGGER_GAP;
 
 /** Toggle starts after traffic lights on overlay-chrome desktops. */
 export const NATIVE_TOGGLE_LEADING_INSET = `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP})`;
 
-/** Title-bar inset when fixed toggle is after traffic lights. */
-export const NATIVE_CHROME_LEADING_INSET = `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP} + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_CONTENT_GAP})`;
+/** Title-bar inset: lights + gap + toggle + tight history gap + history + gap. */
+export const NATIVE_CHROME_LEADING_INSET = `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP} + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_HISTORY_GAP} + ${HISTORY_BUTTONS_SLOT_WIDTH} + ${TRIGGER_TO_CONTENT_GAP})`;
 
-/** Title-bar inset when fixed toggle is at the left (web / mobile). */
+/** Title-bar inset: gap + toggle + tight history gap + history + gap (Tauri, no traffic lights). */
+export const WEB_CHROME_WITH_HISTORY_LEADING_INSET = `calc(${TRAFFIC_LIGHT_TO_TRIGGER_GAP} + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_HISTORY_GAP} + ${HISTORY_BUTTONS_SLOT_WIDTH} + ${TRIGGER_TO_CONTENT_GAP})`;
+
+/** Title-bar inset when overlay chrome is toggle only (web / mobile). */
 export const WEB_CHROME_LEADING_INSET = `calc(0.5rem + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_CONTENT_GAP})`;
 
 const isPrimaryEmptyRegionPointer = (
