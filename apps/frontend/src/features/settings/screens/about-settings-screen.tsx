@@ -1,14 +1,13 @@
 import { toast } from "@/components/toaster/toast";
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ItemGroup, ItemSeparator } from "@/components/ui/item";
 
 import { AboutSettingsRow } from "../components/about-settings-row";
 import { SettingsSectionHeader } from "../components/settings-section-header";
 import {
   ABOUT_APP_IDENTIFIER,
-  ABOUT_APP_NAME,
   ABOUT_APP_VERSION,
   ABOUT_LICENSE,
   ABOUT_RELEASE_CHANNEL,
@@ -25,12 +24,6 @@ export function AboutSettingsScreen() {
       <div className="flex max-w-3xl flex-col gap-6">
         <SettingsSectionHeader title="About" />
         <Card>
-          <CardHeader className="border-b">
-            <CardTitle>Updates</CardTitle>
-            <CardDescription>
-              Keep {ABOUT_APP_NAME} up to date with the latest features and fixes.
-            </CardDescription>
-          </CardHeader>
           <CardContent>
             <ItemGroup className="gap-0">
               <AboutSettingsRow title="App version" value={`Version ${ABOUT_APP_VERSION}`} />
@@ -58,10 +51,6 @@ export function AboutSettingsScreen() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="border-b">
-            <CardTitle>Build</CardTitle>
-            <CardDescription>Runtime and package details for this installation.</CardDescription>
-          </CardHeader>
           <CardContent>
             <ItemGroup className="gap-0">
               <AboutSettingsRow title="Build mode" value={buildMode} />

@@ -25,8 +25,6 @@ describe("AboutSettingsScreen", () => {
     render(<AboutSettingsScreen />);
 
     expect(screen.getByRole("heading", { name: "About" })).toBeTruthy();
-    expect(screen.getByText("Updates")).toBeTruthy();
-    expect(screen.getByText("Build")).toBeTruthy();
     expect(screen.getByText(`Version ${ABOUT_APP_VERSION}`)).toBeTruthy();
     expect(screen.getByText(ABOUT_RELEASE_CHANNEL)).toBeTruthy();
     expect(screen.getByText("Development")).toBeTruthy();

@@ -1,4 +1,3 @@
-export const ABOUT_APP_NAME = "Zai";
 export const ABOUT_APP_VERSION = "0.0.1-alpha.1";
 export const ABOUT_APP_IDENTIFIER = "dev.fedemas.zai.app";
 export const ABOUT_LICENSE = "GPL-3.0-only";
