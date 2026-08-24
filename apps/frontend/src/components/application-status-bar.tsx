@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Blockchain01Icon,
@@ -11,9 +11,11 @@ import {
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { AlertsBell } from "@/features/alerts/components/alerts-bell";
 import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
-import { settingsItem } from "@/lib/navigation";
+import { isSettingsPath, settingsItem } from "@/lib/navigation";
+import { cn } from "@/lib/utils";
 
 const statusBarControlClassName =
   "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground";
@@ -64,11 +66,18 @@ function TanStackDevtoolsButton() {
 
 export function ApplicationStatusBar() {
   const appVersion = resolveAboutAppVersion(aboutPackageVersion());
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const settingsOpen = isSettingsPath(pathname);
 
   return (
     <footer
       data-slot="application-status-bar"
-      className="relative z-[100001] flex h-8 shrink-0 items-center justify-between border-t border-sidebar-border bg-sidebar px-2 text-sidebar-foreground"
+      className={cn(
+        "relative flex h-8 shrink-0 items-center justify-between border-t border-sidebar-border bg-sidebar px-2 text-sidebar-foreground",
+        settingsOpen ? "z-auto" : "z-[100001]",
+      )}
     >
       <div className="flex min-w-0 items-center gap-1.5">
         <Button
@@ -82,6 +91,11 @@ export function ApplicationStatusBar() {
           <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
         </Button>
         <ThemeToggle />
+        <Separator
+          orientation="vertical"
+          data-slot="status-bar-version-separator"
+          className="bg-sidebar-border data-vertical:h-3 data-vertical:self-center"
+        />
         <span
           className="flex min-w-0 items-center gap-1 px-1.5 text-xs leading-none text-muted-foreground tabular-nums"
           aria-label={`Version ${appVersion}`}

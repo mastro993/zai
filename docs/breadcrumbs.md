@@ -1,5 +1,9 @@
 # Breadcrumbs
 
+## 2026-08-24
+
+- Settings is no longer a full page that swaps the app sidebar. `/settings/*` opens a 90% viewport dialog. Left rail inside the modal keeps General/Finance sections. App chrome stays. Close returns to the previous screen.
+
 ## 2026-08-21
 
 - Transaction list amount cell: converted on top, original muted below, no parens.

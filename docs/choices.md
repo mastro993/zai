@@ -1,5 +1,11 @@
 # Choices
 
+## 2026-08-24 — Settings is a large dialog, not a page
+
+- `/settings/*` stays the URL. Layout is a Dialog at 90vw × 90dvh with the existing left section nav inside the modal.
+- App sidebar stays app nav while settings is open. Close (ESC, overlay, X) returns to the last non-settings path (default `/dashboard`).
+- Title bar crumbs freeze on that last app path so chrome behind the modal still reads as the page you came from.
+
 ## 2026-08-20 — Currency settings row label is ISO, name, symbol
 
 - Currency column: `{ISO} {name} ({symbol})`. Symbol from `currencyDisplaySymbol`. Name + parens muted.
