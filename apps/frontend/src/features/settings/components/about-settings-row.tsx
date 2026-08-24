@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Field, FieldContent, FieldDescription, FieldTitle } from "@/components/ui/field";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 
 interface AboutSettingsRowProps {
   title: string;
@@ -11,13 +11,15 @@ interface AboutSettingsRowProps {
 
 export function AboutSettingsRow({ title, description, value, children }: AboutSettingsRowProps) {
   return (
-    <Field orientation="responsive" className="items-start py-4 @md/field-group:items-center">
-      <FieldContent>
-        <FieldTitle>{title}</FieldTitle>
-        {description ? <FieldDescription>{description}</FieldDescription> : null}
-      </FieldContent>
-      {value ? <p className="shrink-0 text-sm text-muted-foreground">{value}</p> : null}
-      {children ? <div className="flex shrink-0 items-center">{children}</div> : null}
-    </Field>
+    <Item>
+      <ItemContent>
+        <ItemTitle>{title}</ItemTitle>
+        {description ? <ItemDescription>{description}</ItemDescription> : null}
+      </ItemContent>
+      <ItemActions>
+        {value ? <span className="text-muted-foreground">{value}</span> : null}
+        {children}
+      </ItemActions>
+    </Item>
   );
 }

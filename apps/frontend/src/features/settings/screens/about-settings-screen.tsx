@@ -1,7 +1,8 @@
 import { toast } from "@/components/toaster/toast";
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
-import { FieldGroup, FieldSeparator } from "@/components/ui/field";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ItemGroup, ItemSeparator } from "@/components/ui/item";
 
 import { AboutSettingsRow } from "../components/about-settings-row";
 import { SettingsSectionHeader } from "../components/settings-section-header";
@@ -21,45 +22,59 @@ export function AboutSettingsScreen() {
 
   return (
     <ScreenBase>
-      <FieldGroup className="max-w-3xl gap-10">
+      <div className="flex max-w-3xl flex-col gap-6">
         <SettingsSectionHeader title="About" />
-        <FieldGroup className="gap-0">
-          <AboutSettingsRow
-            title="App version"
-            description={`Keep ${ABOUT_APP_NAME} up to date with the latest features and fixes.`}
-            value={`Version ${ABOUT_APP_VERSION}`}
-          />
-          <FieldSeparator />
-          <AboutSettingsRow
-            title="Release channel"
-            description="Alpha is the current channel. Main and Beta will appear when updates ship."
-            value={ABOUT_RELEASE_CHANNEL}
-          />
-          <FieldSeparator />
-          <AboutSettingsRow
-            title="Check for a new version"
-            description={UPDATE_CHECK_UNAVAILABLE_MESSAGE}
-          >
-            <Button
-              type="button"
-              onClick={() => {
-                toast.info(UPDATE_CHECK_UNAVAILABLE_MESSAGE);
-              }}
-            >
-              Check for updates
-            </Button>
-          </AboutSettingsRow>
-        </FieldGroup>
-        <FieldGroup className="gap-0">
-          <AboutSettingsRow title="Build mode" value={buildMode} />
-          <FieldSeparator />
-          <AboutSettingsRow title="Tauri version" value={ABOUT_TAURI_VERSION} />
-          <FieldSeparator />
-          <AboutSettingsRow title="App identifier" value={ABOUT_APP_IDENTIFIER} />
-          <FieldSeparator />
-          <AboutSettingsRow title="License" value={ABOUT_LICENSE} />
-        </FieldGroup>
-      </FieldGroup>
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle>Updates</CardTitle>
+            <CardDescription>
+              Keep {ABOUT_APP_NAME} up to date with the latest features and fixes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ItemGroup className="gap-0">
+              <AboutSettingsRow title="App version" value={`Version ${ABOUT_APP_VERSION}`} />
+              <ItemSeparator />
+              <AboutSettingsRow
+                title="Release channel"
+                description="Alpha is the current channel. Main and Beta will appear when updates ship."
+                value={ABOUT_RELEASE_CHANNEL}
+              />
+              <ItemSeparator />
+              <AboutSettingsRow
+                title="Check for a new version"
+                description={UPDATE_CHECK_UNAVAILABLE_MESSAGE}
+              >
+                <Button
+                  type="button"
+                  onClick={() => {
+                    toast.info(UPDATE_CHECK_UNAVAILABLE_MESSAGE);
+                  }}
+                >
+                  Check for updates
+                </Button>
+              </AboutSettingsRow>
+            </ItemGroup>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle>Build</CardTitle>
+            <CardDescription>Runtime and package details for this installation.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ItemGroup className="gap-0">
+              <AboutSettingsRow title="Build mode" value={buildMode} />
+              <ItemSeparator />
+              <AboutSettingsRow title="Tauri version" value={ABOUT_TAURI_VERSION} />
+              <ItemSeparator />
+              <AboutSettingsRow title="App identifier" value={ABOUT_APP_IDENTIFIER} />
+              <ItemSeparator />
+              <AboutSettingsRow title="License" value={ABOUT_LICENSE} />
+            </ItemGroup>
+          </CardContent>
+        </Card>
+      </div>
     </ScreenBase>
   );
 }
