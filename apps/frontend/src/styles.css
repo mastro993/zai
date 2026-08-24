@@ -241,13 +241,15 @@
   }
 }
 
-/* ponytail: palm is unused; panel is z-index 99999. Status bar sits above it
-   (z-[100001]) so the panel slides out from behind the h-8 bar. Padding keeps
-   panel content from ending under the bar. */
+/* ponytail: palm is unused; panel default is z-index 99999. Keep it below the
+   status bar (z-40) so the panel slides out from behind the h-8 bar, and below
+   overlay z-50 so drawer/dialog backdrops cover the bar. Padding keeps panel
+   content from ending under the bar. */
 button[aria-label="Open TanStack Devtools"] {
   display: none !important;
 }
 
 #tanstack_devtools {
+  z-index: 30 !important;
   padding-bottom: 2rem;
 }

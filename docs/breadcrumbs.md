@@ -1,5 +1,10 @@
 # Breadcrumbs
 
+## 2026-08-24
+
+- Status bar `z-40` so drawer/dialog backdrops cover it. TanStack panel `z-index: 30` — still slides from behind the bar.
+- Alerts ledger: Sheet → Drawer, right swipe, 1rem insets, 24rem. Same pattern as transaction form.
+
 ## 2026-08-21
 
 - Transaction list amount cell: converted on top, original muted below, no parens.

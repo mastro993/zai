@@ -73,7 +73,7 @@ export function ApplicationStatusBar() {
   return (
     <footer
       data-slot="application-status-bar"
-      className="relative z-[100001] flex h-8 shrink-0 items-center justify-between border-t border-sidebar-border bg-sidebar px-2 text-sidebar-foreground"
+      className="relative z-40 flex h-8 shrink-0 items-center justify-between border-t border-sidebar-border bg-sidebar px-2 text-sidebar-foreground"
     >
       <div className="flex min-w-0 items-center gap-1.5">
         <Button

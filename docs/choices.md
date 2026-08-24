@@ -1,5 +1,15 @@
 # Choices
 
+## 2026-08-24 — Status bar stacks under overlay backdrops
+
+- Status bar `z-40` (was `z-[100001]`). Sidebar stays `z-10`. Drawer/dialog/sheet overlays stay `z-50` and cover the bar.
+- TanStack panel forced to `z-index: 30` so it still slides out from behind the bar.
+
+## 2026-08-24 — Alerts ledger is a right Drawer with insets
+
+- Replaced Sheet with Drawer. `swipeDirection="right"`, `--drawer-inset:1rem`, transparent bleed. Same as transaction/budget/recurring drawers.
+- Width: `w-[calc(100%-2rem)]` / `sm:w-96` (24rem). Dropped Sheet `28rem` and the header X; dismiss via overlay, swipe, or Escape. Focus returns to the bell.
+
 ## 2026-08-20 — Currency settings row label is ISO, name, symbol
 
 - Currency column: `{ISO} {name} ({symbol})`. Symbol from `currencyDisplaySymbol`. Name + parens muted.

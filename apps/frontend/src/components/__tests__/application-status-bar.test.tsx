@@ -102,7 +102,7 @@ describe("ApplicationStatusBar", () => {
     const bar = document.querySelector('[data-slot="application-status-bar"]');
     expect(bar).not.toBeNull();
     expect(bar?.className).toContain("bg-sidebar");
-    expect(bar?.className).toContain("z-[100001]");
+    expect(bar?.className).toContain("z-40");
     expect(bar?.className).toContain("border-t");
     expect(bar?.className).toContain("border-sidebar-border");
   });

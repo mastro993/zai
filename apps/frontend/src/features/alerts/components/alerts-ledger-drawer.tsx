@@ -1,19 +1,20 @@
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 import { useAlertsController } from "../hooks/use-alerts-controller";
 import { AlertRow } from "./alert-row";
 import { AlertsLedgerFilters } from "./alerts-ledger-filters";
 import { AlertsLedgerSkeleton } from "./alerts-ledger-skeleton";
 
-export function AlertsLedgerSheet() {
+export function AlertsLedgerDrawer() {
   const {
+    bellRef,
     clearFilters,
     closeLedger,
     destinationFeedback,
@@ -50,19 +51,27 @@ export function AlertsLedgerSheet() {
     refreshStatus === "ready" && items.length === 0 && !showError && hasActiveFilters;
 
   return (
-    <Sheet open={isLedgerOpen} onOpenChange={(open) => (open ? undefined : closeLedger())}>
-      <SheetContent
-        side="right"
-        className="!w-screen !max-w-none gap-0 p-0 sm:!w-[28rem] sm:!max-w-[28rem]"
+    <Drawer
+      open={isLedgerOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          closeLedger();
+        }
+      }}
+      swipeDirection="right"
+    >
+      <DrawerContent
         aria-label="Alerts"
+        className="[--drawer-bleed-background:transparent] [--drawer-inset:1rem] data-[swipe-axis=x]:w-[calc(100%-2rem)] sm:data-[swipe-axis=x]:w-96"
+        finalFocus={bellRef}
       >
-        <SheetHeader className="border-b border-border pr-14">
+        <DrawerHeader className="border-b border-border pb-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <SheetTitle>Alerts</SheetTitle>
-              <SheetDescription>
+              <DrawerTitle>Alerts</DrawerTitle>
+              <DrawerDescription>
                 {unreadCount === 1 ? "1 unread alert" : `${unreadCount} unread alerts`}
-              </SheetDescription>
+              </DrawerDescription>
             </div>
             <Button
               type="button"
@@ -79,7 +88,7 @@ export function AlertsLedgerSheet() {
               {markAllReadError}
             </p>
           ) : null}
-        </SheetHeader>
+        </DrawerHeader>
 
         <AlertsLedgerFilters
           filters={filters}
@@ -152,7 +161,7 @@ export function AlertsLedgerSheet() {
             </div>
           ) : null}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 }

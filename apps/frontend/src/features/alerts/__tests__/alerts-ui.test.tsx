@@ -19,7 +19,7 @@ import * as alertsCommands from "../commands/alerts";
 import { AlertRow } from "../components/alert-row";
 import { AlertsBell } from "../components/alerts-bell";
 import { AlertsLedgerFilters } from "../components/alerts-ledger-filters";
-import { AlertsLedgerSheet } from "../components/alerts-ledger-sheet";
+import { AlertsLedgerDrawer } from "../components/alerts-ledger-drawer";
 import { AlertsControllerProvider, useAlertsController } from "../hooks/use-alerts-controller";
 import { alertsBellLabel, domainAlertSeverityLabel, formatAlertCreatedAt } from "../lib/format";
 import { isNavigableAlertDestination, isUnreadAlert, parseDomainAlertListPage } from "../lib/parse";
@@ -93,7 +93,7 @@ function ControllerProbe() {
       <span data-testid="destination-feedback">
         {controller.destinationFeedback?.message ?? ""}
       </span>
-      <AlertsLedgerSheet />
+      <AlertsLedgerDrawer />
     </div>
   );
 }
@@ -330,6 +330,9 @@ describe("alerts controller lifecycle", () => {
       if (!(markAll instanceof HTMLButtonElement)) return;
       expect(markAll.disabled).toBe(true);
     });
+    expect(
+      document.querySelector('[data-slot="drawer-popup"][data-swipe-direction="right"]'),
+    ).not.toBeNull();
     expect(alertsCommands.markAllAlertsRead).not.toHaveBeenCalled();
   });
 });
