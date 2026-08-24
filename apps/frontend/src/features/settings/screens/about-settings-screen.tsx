@@ -19,6 +19,10 @@ import {
 
 const FLUSH_CARD_STYLE = { "--card-spacing": "0px" } as CSSProperties;
 
+function AboutSettingsDivider() {
+  return <ItemSeparator className="mx-4 my-0 data-horizontal:w-[calc(100%-2rem)]" />;
+}
+
 export function AboutSettingsScreen() {
   const buildMode = resolveAboutBuildMode(import.meta.env.PROD);
 
@@ -30,13 +34,13 @@ export function AboutSettingsScreen() {
           <CardContent>
             <ItemGroup className="gap-0">
               <AboutSettingsRow title="App version" value={`Version ${ABOUT_APP_VERSION}`} />
-              <ItemSeparator className="my-0" />
+              <AboutSettingsDivider />
               <AboutSettingsRow
                 title="Release channel"
                 description="Alpha is the current channel. Main and Beta will appear when updates ship."
                 value={ABOUT_RELEASE_CHANNEL}
               />
-              <ItemSeparator className="my-0" />
+              <AboutSettingsDivider />
               <AboutSettingsRow
                 title="Check for a new version"
                 description={UPDATE_CHECK_UNAVAILABLE_MESSAGE}
@@ -57,11 +61,11 @@ export function AboutSettingsScreen() {
           <CardContent>
             <ItemGroup className="gap-0">
               <AboutSettingsRow title="Build mode" value={buildMode} />
-              <ItemSeparator className="my-0" />
+              <AboutSettingsDivider />
               <AboutSettingsRow title="Tauri version" value={ABOUT_TAURI_VERSION} />
-              <ItemSeparator className="my-0" />
+              <AboutSettingsDivider />
               <AboutSettingsRow title="App identifier" value={ABOUT_APP_IDENTIFIER} />
-              <ItemSeparator className="my-0" />
+              <AboutSettingsDivider />
               <AboutSettingsRow title="License" value={ABOUT_LICENSE} />
             </ItemGroup>
           </CardContent>
