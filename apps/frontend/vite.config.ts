@@ -1,10 +1,18 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { configDefaults, defineConfig } from "vitest/config";
+
+const frontendPackage = JSON.parse(
+  readFileSync(fileURLToPath(new URL("./package.json", import.meta.url)), "utf8"),
+) as { version: string };
+
+process.env.VITE_ZAI_APP_VERSION ??= frontendPackage.version;
 
 export default defineConfig(({ mode }) => ({
   clearScreen: false,
