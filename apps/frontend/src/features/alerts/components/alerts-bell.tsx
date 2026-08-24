@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 import { alertsBellLabel } from "../lib/format";
 import { useAlertsController } from "../hooks/use-alerts-controller";
-import { AlertsLedgerSheet } from "./alerts-ledger-sheet";
+import { AlertsLedgerDrawer } from "./alerts-ledger-drawer";
 
 export function AlertsBell() {
   const { bellRef, openLedger, unreadCount } = useAlertsController();
@@ -43,7 +43,7 @@ export function AlertsBell() {
           />
         ) : null}
       </Button>
-      <AlertsLedgerSheet />
+      <AlertsLedgerDrawer />
     </>
   );
 }

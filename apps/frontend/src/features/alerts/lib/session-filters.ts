@@ -7,12 +7,12 @@ export interface AlertSessionFilters {
   severity: AlertSeverityFilter;
 }
 
-const defaultFilters: AlertSessionFilters = {
-  readState: "all",
+export const DEFAULT_ALERT_SESSION_FILTERS: AlertSessionFilters = {
+  readState: "unread",
   severity: "all",
 };
 
-let sessionFilters: AlertSessionFilters = { ...defaultFilters };
+let sessionFilters: AlertSessionFilters = { ...DEFAULT_ALERT_SESSION_FILTERS };
 
 export const getAlertSessionFilters = (): AlertSessionFilters => ({ ...sessionFilters });
 
@@ -20,5 +20,9 @@ export const setAlertSessionFilters = (filters: AlertSessionFilters): void => {
   sessionFilters = { ...filters };
 };
 
+export const isDefaultAlertSessionFilters = (filters: AlertSessionFilters): boolean =>
+  filters.readState === DEFAULT_ALERT_SESSION_FILTERS.readState &&
+  filters.severity === DEFAULT_ALERT_SESSION_FILTERS.severity;
+
 export const hasActiveAlertFilters = (filters: AlertSessionFilters): boolean =>
-  filters.readState !== "all" || filters.severity !== "all";
+  filters.readState === "read" || filters.severity !== DEFAULT_ALERT_SESSION_FILTERS.severity;

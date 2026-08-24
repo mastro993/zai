@@ -1,5 +1,35 @@
 # Choices
 
+## 2026-08-24 — Status bar stacks under overlay backdrops
+
+- Status bar `z-40` (was `z-[100001]`). Sidebar stays `z-10`. Drawer/dialog/sheet overlays stay `z-50` and cover the bar.
+- TanStack panel forced to `z-index: 30` so it still slides out from behind the bar.
+
+## 2026-08-24 — Notifications empty states use Empty
+
+- Header has no divider (`pb-4` only).
+- Unfiltered empty: Empty + Notification icon, title "No notifications", existing description.
+- Filtered empty: Empty + Filter icon, title "No matching notifications", "Clear filters" CTA.
+- Both empties use Empty's dashed frame (`border` + default `border-dashed`), inset with `mx-4 mb-4 w-auto` so `w-full` + margin does not overflow the drawer.
+
+## 2026-08-24 — Notifications filter is a header icon menu
+
+- Chip bar (State + Severity) replaced by a ghost `icon-sm` Filter button at the header's top right, after mark-all-read.
+- Menu: "Read" checkbox includes read notifications (`readState: "all"`). Severity stays as a radio group.
+- Default session filter is unread + all severities. Filter trigger uses `secondary` when not at that default.
+- Showing read is a view toggle, not a restrictive filter: empty copy stays the default, not "No alerts match these filters."
+
+## 2026-08-24 — Notifications drawer header
+
+- Title is "Notifications". Unread count is a compact secondary badge (`font-mono font-bold text-primary`) next to the title, hidden at 0.
+- Visible "N unread alerts" copy removed; count stays in an `sr-only` description.
+- Mark all read is a ghost `icon-sm` (`TickDouble01Icon`), shown only when unread > 0.
+
+## 2026-08-24 — Alerts ledger is a right Drawer with insets
+
+- Replaced Sheet with Drawer. `swipeDirection="right"`, `--drawer-inset:1rem`, transparent bleed. Same as transaction/budget/recurring drawers.
+- Width: `w-[calc(100%-2rem)]` / `sm:w-96` (24rem). Dropped Sheet `28rem` and the header X; dismiss via overlay, swipe, or Escape. Focus returns to the bell.
+
 ## 2026-08-20 — Currency settings row label is ISO, name, symbol
 
 - Currency column: `{ISO} {name} ({symbol})`. Symbol from `currencyDisplaySymbol`. Name + parens muted.
@@ -242,3 +272,12 @@ Seams (from the ticket + 370/372): `zai_core::money` public API only. No schema,
 - **`num-bigint` 0.4.8** for conversion intermediates. Round half-even once at the target ISO digits. No `f64`.
 - **Automatic legs share a `rate_set_id`.** Same value date is not enough; unexplained cross rates stay forbidden.
 - **CLDR pin URL is the raw `supplementalData.xml`** that matches `CLDR_SHA256`, not the GitHub HTML blob page.
+
+## 2026-08-24 — Status bar theme toggle follows-or-overrides system
+
+- Two-state control. Three-state model. See https://lea.verou.me/blog/2026/dark-mode-toggles/
+- Click flips the resolved UI.
+- Persist `"dark"` / `"light"` only when that result differs from the OS scheme.
+- When the result matches the OS, **remove** `zai-theme`. Do not persist `"system"` or a matching light/dark pin.
+- Evaluate match-vs-OS only on click. An OS change that later equals an override must keep the override.
+- Appearance settings stay the 3-way Light / Dark / System control.

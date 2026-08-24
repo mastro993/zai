@@ -6,6 +6,7 @@ import { buildListAlertsQuery } from "../lib/build-list-query";
 import { mergeReconciledAlertPage } from "../lib/merge-page";
 import { isUnreadAlert, parseDomainAlertListPage } from "../lib/parse";
 import {
+  DEFAULT_ALERT_SESSION_FILTERS,
   getAlertSessionFilters,
   setAlertSessionFilters,
   type AlertSessionFilters,
@@ -174,7 +175,7 @@ export function useAlertListController() {
   );
 
   const clearFilters = useCallback(() => {
-    void applyFilters({ readState: "all", severity: "all" });
+    void applyFilters({ ...DEFAULT_ALERT_SESSION_FILTERS });
   }, [applyFilters]);
 
   const loadOlder = useCallback(async () => {
