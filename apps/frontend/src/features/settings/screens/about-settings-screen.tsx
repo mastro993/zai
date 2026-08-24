@@ -20,7 +20,11 @@ import {
 const FLUSH_CARD_STYLE = { "--card-spacing": "0px" } as CSSProperties;
 
 function AboutSettingsDivider() {
-  return <ItemSeparator className="mx-4 my-0 data-horizontal:w-[calc(100%-2rem)]" />;
+  return (
+    <div className="px-4">
+      <ItemSeparator className="my-0" />
+    </div>
+  );
 }
 
 export function AboutSettingsScreen() {
