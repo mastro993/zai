@@ -17,10 +17,12 @@ than `YYYY.M.D-beta.N`).
 
 The committed tree stays `0.0.0-dev` and About shows `dev` for unstamped
 builds. CI stamps the calendar version onto release artifacts only.
-Display equals the technical version. Git tags are `v` plus that
-version. Beta GitHub Releases are published prereleases; stables are
-published and not prerelease. In-app update checks stay out of this
-decision.
+Display equals the technical version. About channel is Beta on beta
+ships and Stable on stable ships. Git tags are `v` plus that version.
+Beta GitHub Releases are published prereleases; stables are published
+and not prerelease. A stable may ship with no prior beta. Release notes
+are `git log` since the previous tag, any channel. In-app update checks
+stay out of this decision.
 
 Four-part `YYYY.M.D.N` was rejected because it is not valid SemVer.
 `-rc.N` was rejected because the product channel is Beta. Tolaria's
