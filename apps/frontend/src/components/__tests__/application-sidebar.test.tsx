@@ -144,19 +144,28 @@ describe("ApplicationSidebar", () => {
     expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
   });
 
-  it("keeps app navigation and a settings footer control on the main workspace", async () => {
+  it("keeps app navigation without a settings footer on the main workspace", async () => {
     await renderSidebar("/dashboard");
 
     expect(await screen.findByRole("link", { name: "Dashboard" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Settings" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Back to app" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Appearance" })).toBeNull();
   });
 
-  it("replaces app navigation with settings sections and a back control", async () => {
-    await renderSidebar("/dashboard");
+  it("sits above the status bar and overlays it while offcanvas is collapsed", async () => {
+    mockWindowChrome(true);
+    await renderSidebar("/dashboard", "tauri");
 
-    fireEvent.click(await screen.findByRole("link", { name: "Settings" }));
+    const container = document.querySelector('[data-slot="sidebar-container"]');
+    expect(container?.className).toContain("bottom-8");
+    expect(container?.className).toContain("group-data-[collapsible=offcanvas]:bottom-0");
+  });
+
+  it("replaces app navigation with settings sections and a back control", async () => {
+    const router = await renderSidebar("/dashboard");
+
+    await router.navigate({ to: "/settings/appearance" });
 
     expect(await screen.findByRole("link", { name: "Appearance" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "About" })).toBeTruthy();
@@ -168,9 +177,9 @@ describe("ApplicationSidebar", () => {
   });
 
   it("keeps the web logo and puts Back to app in the Settings footer slot", async () => {
-    await renderSidebar("/dashboard");
+    const router = await renderSidebar("/dashboard");
 
-    fireEvent.click(await screen.findByRole("link", { name: "Settings" }));
+    await router.navigate({ to: "/settings/appearance" });
 
     const chromeHeader = document.querySelector('[data-slot="sidebar-chrome-header"]');
     const footer = document.querySelector('[data-slot="sidebar-footer"]');
@@ -188,9 +197,9 @@ describe("ApplicationSidebar", () => {
 
   it("keeps the desktop logo and puts Back to app in the footer slot", async () => {
     mockWindowChrome(true);
-    await renderSidebar("/dashboard", "tauri");
+    const router = await renderSidebar("/dashboard", "tauri");
 
-    fireEvent.click(await screen.findByRole("link", { name: "Settings" }));
+    await router.navigate({ to: "/settings/appearance" });
 
     const header = document.querySelector('[data-slot="sidebar-header"]');
     const footer = document.querySelector('[data-slot="sidebar-footer"]');
@@ -205,14 +214,14 @@ describe("ApplicationSidebar", () => {
   });
 
   it("returns to the previous app screen from the back control", async () => {
-    await renderSidebar("/dashboard");
+    const router = await renderSidebar("/dashboard");
 
-    fireEvent.click(await screen.findByRole("link", { name: "Settings" }));
+    await router.navigate({ to: "/settings/appearance" });
     expect(await screen.findByRole("button", { name: "Back to app" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Back to app" }));
 
-    expect(await screen.findByRole("link", { name: "Settings" })).toBeTruthy();
+    expect(await screen.findByRole("link", { name: "Dashboard" })).toBeTruthy();
     expect(screen.getByText("Dashboard page")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Back to app" })).toBeNull();
   });

@@ -5,6 +5,7 @@ import { Result } from "@praha/byethrow";
 import { useCallback, useEffect, useState } from "react";
 
 import { ApplicationSidebar } from "@/components/application-sidebar";
+import { ApplicationStatusBar } from "@/components/application-status-bar";
 import {
   ApplicationTitleBar,
   ApplicationTitleBarProvider,
@@ -105,20 +106,22 @@ function ApplicationWorkspace({ buildTarget }: ApplicationShellProps) {
       <SidebarProvider
         open={sidebarOpen}
         onOpenChange={handleSidebarOpenChange}
-        className="h-svh overflow-hidden"
+        className="flex h-svh flex-col overflow-hidden"
       >
         <ApplicationTitleBarProvider>
-          <FixedSidebarTrigger buildTarget={buildTarget} />
-          <ApplicationSidebar buildTarget={buildTarget} />
-          <SidebarInset className="min-h-0 overflow-hidden">
-            <ApplicationTitleBar buildTarget={buildTarget} />
-            <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <Outlet />
-            </main>
-          </SidebarInset>
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            <FixedSidebarTrigger buildTarget={buildTarget} />
+            <ApplicationSidebar buildTarget={buildTarget} />
+            <SidebarInset className="min-h-0 overflow-hidden">
+              <ApplicationTitleBar buildTarget={buildTarget} />
+              <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <Outlet />
+              </main>
+            </SidebarInset>
+          </div>
+          <ApplicationStatusBar />
           <Toaster />
           <TanStackDevtools
-            config={{ position: "bottom-right" }}
             plugins={[
               {
                 name: "Tanstack Router",

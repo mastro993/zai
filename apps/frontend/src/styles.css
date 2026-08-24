@@ -240,3 +240,14 @@
     transition-duration: 0ms !important;
   }
 }
+
+/* ponytail: palm is unused; panel is z-index 99999. Status bar sits above it
+   (z-[100001]) so the panel slides out from behind the h-8 bar. Padding keeps
+   panel content from ending under the bar. */
+button[aria-label="Open TanStack Devtools"] {
+  display: none !important;
+}
+
+#tanstack_devtools {
+  padding-bottom: 2rem;
+}
