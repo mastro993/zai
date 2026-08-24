@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { toast } from "@/components/toaster/toast";
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,8 @@ import {
   resolveAboutBuildMode,
 } from "../lib/about-info";
 
+const FLUSH_CARD_STYLE = { "--card-spacing": "0px" } as CSSProperties;
+
 export function AboutSettingsScreen() {
   const buildMode = resolveAboutBuildMode(import.meta.env.PROD);
 
@@ -23,8 +26,8 @@ export function AboutSettingsScreen() {
     <ScreenBase>
       <div className="flex max-w-3xl flex-col gap-6">
         <SettingsSectionHeader title="About" />
-        <Card className="gap-0 py-0">
-          <CardContent className="px-0">
+        <Card style={FLUSH_CARD_STYLE}>
+          <CardContent>
             <ItemGroup className="gap-0">
               <AboutSettingsRow title="App version" value={`Version ${ABOUT_APP_VERSION}`} />
               <ItemSeparator className="my-0" />
@@ -50,8 +53,8 @@ export function AboutSettingsScreen() {
             </ItemGroup>
           </CardContent>
         </Card>
-        <Card className="gap-0 py-0">
-          <CardContent className="px-0">
+        <Card style={FLUSH_CARD_STYLE}>
+          <CardContent>
             <ItemGroup className="gap-0">
               <AboutSettingsRow title="Build mode" value={buildMode} />
               <ItemSeparator className="my-0" />
