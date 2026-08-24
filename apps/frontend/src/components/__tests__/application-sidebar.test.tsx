@@ -8,11 +8,12 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationSidebar } from "../application-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { SettingsReturnHrefProvider } from "@/features/settings/hooks/use-settings-return-href";
 import * as windowChrome from "@/lib/window-chrome";
 
 const stubMatchMedia = () => {
@@ -54,10 +55,12 @@ const mockWindowChrome = (supportsNativeWindowChrome: boolean) => {
 };
 
 const SidebarProbe = ({ buildTarget }: { buildTarget: "web" | "tauri" }) => (
-  <SidebarProvider>
-    <ApplicationSidebar buildTarget={buildTarget} />
-    <Outlet />
-  </SidebarProvider>
+  <SettingsReturnHrefProvider>
+    <SidebarProvider>
+      <ApplicationSidebar buildTarget={buildTarget} />
+      <Outlet />
+    </SidebarProvider>
+  </SettingsReturnHrefProvider>
 );
 
 const renderSidebar = async (initialEntry: string, buildTarget: "web" | "tauri" = "web") => {
@@ -162,72 +165,25 @@ describe("ApplicationSidebar", () => {
     expect(container?.className).toContain("group-data-[collapsible=offcanvas]:bottom-0");
   });
 
-  it("replaces app navigation with settings sections and a back control", async () => {
+  it("keeps app navigation when settings is open", async () => {
     const router = await renderSidebar("/dashboard");
 
     await router.navigate({ to: "/settings/appearance" });
-
-    expect(await screen.findByRole("link", { name: "Appearance" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "About" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Currencies" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Back to app" })).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
-    expect(screen.queryByText("Settings")).toBeNull();
-  });
-
-  it("keeps the web logo and puts Back to app above the first settings section", async () => {
-    const router = await renderSidebar("/dashboard");
-
-    await router.navigate({ to: "/settings/appearance" });
-
-    const chromeHeader = document.querySelector('[data-slot="sidebar-chrome-header"]');
-    const content = document.querySelector('[data-slot="sidebar-content"]');
-    const brand = document.querySelector('[data-slot="sidebar-brand"][data-wordmark="true"]');
-    const back = await screen.findByRole("button", { name: "Back to app" });
-    const general = screen.getByText("General");
-
-    expect(brand?.textContent).toContain("Zai");
-    expect(chromeHeader?.contains(brand)).toBe(true);
-    expect(chromeHeader?.contains(back)).toBe(false);
-    expect(content?.contains(back)).toBe(true);
-    expect(document.querySelector('[data-slot="sidebar-footer"]')).toBeNull();
-    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
-    expect(back.compareDocumentPosition(general) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByText("Finance")).toBeTruthy();
-  });
-
-  it("keeps the desktop logo and puts Back to app above the first settings section", async () => {
-    mockWindowChrome(true);
-    const router = await renderSidebar("/dashboard", "tauri");
-
-    await router.navigate({ to: "/settings/appearance" });
-
-    const header = document.querySelector('[data-slot="sidebar-header"]');
-    const content = document.querySelector('[data-slot="sidebar-content"]');
-    const brand = document.querySelector('[data-slot="sidebar-brand"][data-wordmark="true"]');
-    const back = await screen.findByRole("button", { name: "Back to app" });
-    const general = screen.getByText("General");
-
-    expect(brand?.textContent).toContain("Zai");
-    expect(header?.contains(brand)).toBe(true);
-    expect(header?.contains(back)).toBe(false);
-    expect(content?.contains(back)).toBe(true);
-    expect(document.querySelector('[data-slot="sidebar-footer"]')).toBeNull();
-    expect(back.compareDocumentPosition(general) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
-  });
-
-  it("returns to the previous app screen from the back control", async () => {
-    const router = await renderSidebar("/dashboard");
-
-    await router.navigate({ to: "/settings/appearance" });
-    expect(await screen.findByRole("button", { name: "Back to app" })).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "Back to app" }));
 
     expect(await screen.findByRole("link", { name: "Dashboard" })).toBeTruthy();
-    expect(screen.getByText("Dashboard page")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Appearance" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "About" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Currencies" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Back to app" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+  });
+
+  it("keeps the previous app item active while settings is open", async () => {
+    const router = await renderSidebar("/dashboard");
+
+    await router.navigate({ to: "/settings/appearance" });
+
+    const dashboard = await screen.findByRole("link", { name: "Dashboard" });
+    expect(dashboard.hasAttribute("data-active")).toBe(true);
   });
 });

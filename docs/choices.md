@@ -1,5 +1,20 @@
 # Choices
 
+## 2026-08-24 — Settings modal has no content header
+
+- No breadcrumbs, no content title bar, no dialog X. Leave via sidebar footer `Back to app` (also ESC/overlay).
+- Sidebar stays full height. `Settings` DialogTitle sits at the top; `Back to app` is bottom-left. Do not nest `SidebarProvider` — it would steal `Cmd+B`.
+
+## 2026-08-24 — Settings modal chrome matches the app shell
+
+- Superseded: content header / breadcrumbs / close icon removed in favor of `Back to app`.
+
+## 2026-08-24 — Settings is a large dialog, not a page
+
+- `/settings/*` stays the URL. Layout is a Dialog at 90vw × 90dvh with the existing left section nav inside the modal.
+- App sidebar stays app nav while settings is open. Back to app (ESC, overlay) returns to the last non-settings path (default `/dashboard`).
+- Title bar crumbs freeze on that last app path so chrome behind the modal still reads as the page you came from.
+
 ## 2026-08-24 — Status bar stacks under overlay backdrops
 
 - Status bar `z-40` (was `z-[100001]`). Sidebar stays `z-10`. Drawer/dialog/sheet overlays stay `z-50` and cover the bar.

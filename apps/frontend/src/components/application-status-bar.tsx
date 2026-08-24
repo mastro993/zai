@@ -11,6 +11,7 @@ import {
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { AlertsBell } from "@/features/alerts/components/alerts-bell";
 import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
 import { settingsItem } from "@/lib/navigation";
@@ -87,6 +88,11 @@ export function ApplicationStatusBar() {
           <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
         </Button>
         <ThemeToggle />
+        <Separator
+          orientation="vertical"
+          data-slot="status-bar-version-separator"
+          className="bg-sidebar-border data-vertical:h-3 data-vertical:self-center"
+        />
         <span
           className="flex min-w-0 items-center gap-1 px-1.5 text-xs leading-none text-muted-foreground tabular-nums"
           aria-label={`Version ${appVersion}`}

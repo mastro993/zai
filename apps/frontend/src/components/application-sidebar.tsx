@@ -1,7 +1,6 @@
-import { useMemo, useRef } from "react";
-import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { useMemo } from "react";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 import type { CommandBuildTarget } from "@/commands/build-target";
 import { WindowDragRegion } from "@/components/window-drag-region";
@@ -10,7 +9,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -21,9 +19,10 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { isSettingsPath, navigationItems, settingsGroups } from "@/lib/navigation";
-import { createWindowChromeAdapter } from "@/lib/window-chrome";
+import { useSettingsReturnHrefValue } from "@/features/settings/hooks/use-settings-return-href";
+import { isSettingsPath, navigationItems } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+import { createWindowChromeAdapter } from "@/lib/window-chrome";
 
 interface ApplicationSidebarProps {
   buildTarget: CommandBuildTarget;
@@ -124,60 +123,6 @@ function AppNav({ pathname }: { pathname: string }) {
   );
 }
 
-function SettingsNav({ pathname, returnHref }: { pathname: string; returnHref: string }) {
-  return (
-    <>
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SettingsBackButton href={returnHref} />
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-      {settingsGroups.map((group) => (
-        <SidebarGroup key={group.label}>
-          <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {group.items.map((section) => (
-                <SidebarMenuItem key={section.to}>
-                  <SidebarMenuButton
-                    isActive={pathname === section.to}
-                    render={<Link to={section.to} preload="intent" />}
-                    tooltip={section.title}
-                  >
-                    <HugeiconsIcon icon={section.icon} strokeWidth={2} />
-                    <span>{section.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      ))}
-    </>
-  );
-}
-
-function SettingsBackButton({ href }: { href: string }) {
-  const router = useRouter();
-
-  return (
-    <SidebarMenuButton
-      tooltip="Back to app"
-      className="text-muted-foreground"
-      onClick={() => {
-        router.history.push(href);
-      }}
-    >
-      <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
-      <span>Back to app</span>
-    </SidebarMenuButton>
-  );
-}
-
 function WebSidebarChrome({ isExpanded, itemPad }: { isExpanded: boolean; itemPad: string }) {
   return (
     <div
@@ -205,32 +150,21 @@ function WebSidebarChrome({ isExpanded, itemPad }: { isExpanded: boolean; itemPa
   );
 }
 
-function useAppReturnHref(pathname: string): string {
-  const returnHrefRef = useRef("/dashboard");
-
-  if (!isSettingsPath(pathname)) {
-    returnHrefRef.current = pathname.length > 0 ? pathname : "/dashboard";
-  }
-
-  return returnHrefRef.current;
-}
-
 export function ApplicationSidebar({ buildTarget }: ApplicationSidebarProps) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const returnHref = useSettingsReturnHrefValue();
   const { state: sidebarState } = useSidebar();
   const windowChrome = useMemo(() => createWindowChromeAdapter(buildTarget), [buildTarget]);
   const hasDesktopWindowChrome = buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
   const isExpanded = sidebarState === "expanded";
-  const isSettings = isSettingsPath(pathname);
-  const returnHref = useAppReturnHref(pathname);
+  const navPathname = isSettingsPath(pathname) ? returnHref : pathname;
   const itemPad = "0.5rem";
 
   return (
     <Sidebar
       collapsible={buildTarget === "tauri" ? "offcanvas" : "icon"}
-      data-mode={isSettings ? "settings" : "app"}
       className="top-0 bottom-8 h-auto group-data-[collapsible=offcanvas]:bottom-0 group-data-[collapsible=offcanvas]:h-svh"
     >
       {hasDesktopWindowChrome ? (
@@ -251,11 +185,7 @@ export function ApplicationSidebar({ buildTarget }: ApplicationSidebarProps) {
         )}
       </SidebarHeader>
       <SidebarContent>
-        {isSettings ? (
-          <SettingsNav pathname={pathname} returnHref={returnHref} />
-        ) : (
-          <AppNav pathname={pathname} />
-        )}
+        <AppNav pathname={navPathname} />
       </SidebarContent>
     </Sidebar>
   );

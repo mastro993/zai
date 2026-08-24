@@ -162,6 +162,19 @@ describe("ApplicationStatusBar", () => {
     expect(document.documentElement.classList.contains("dark")).toBe(true);
   });
 
+  it("puts a vertical divider between the theme toggle and the version", async () => {
+    await renderStatusBar();
+
+    const appVersion = resolveAboutAppVersion(aboutPackageVersion());
+    const theme = screen.getByRole("button", { name: "Switch to dark mode" });
+    const version = screen.getByLabelText(`Version ${appVersion}`);
+    const separator = document.querySelector('[data-slot="status-bar-version-separator"]');
+
+    expect(separator).not.toBeNull();
+    expect(theme.nextElementSibling).toBe(separator);
+    expect(separator?.nextElementSibling).toBe(version);
+  });
+
   it("shows the current app version with alerts on the trailing edge", async () => {
     await renderStatusBar();
 
