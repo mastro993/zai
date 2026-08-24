@@ -8,7 +8,7 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { SettingsReturnHrefProvider } from "../../hooks/use-settings-return-href";
@@ -78,19 +78,30 @@ describe("SettingsModal", () => {
     expect(dialog).toBeTruthy();
     expect(content?.className).toContain("h-[90dvh]");
     expect(content?.className).toContain("w-[90vw]");
+    expect(content?.className).toContain("md:flex-row");
 
-    const header = document.querySelector('[data-slot="settings-modal-header"]');
+    const sidebar = document.querySelector('[data-slot="settings-modal-sidebar"]');
+    const sidebarHeader = document.querySelector('[data-slot="settings-modal-sidebar-header"]');
+    const sidebarFooter = document.querySelector('[data-slot="settings-modal-sidebar-footer"]');
     const title = screen.getByRole("heading", { name: "Settings" });
-    expect(header).not.toBeNull();
-    expect(header?.className).toContain("h-12");
-    expect(header?.className).toContain("border-b");
-    expect(header?.contains(title)).toBe(true);
-    expect(document.querySelector("aside")?.contains(title)).toBe(false);
+    const backButton = screen.getByRole("button", { name: "Back to app" });
+    const sectionsNav = screen.getByRole("navigation", { name: "Settings sections" });
 
-    expect(screen.getByRole("navigation", { name: "Settings sections" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Appearance" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "About" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Currencies" })).toBeTruthy();
+    expect(sidebar).not.toBeNull();
+    expect(sidebarHeader).not.toBeNull();
+    expect(sidebarFooter).not.toBeNull();
+    expect(document.querySelector('[data-slot="settings-modal-header"]')).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "breadcrumb" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
+    expect(sidebar?.contains(title)).toBe(true);
+    expect(sidebarHeader?.contains(title)).toBe(true);
+    expect(sidebarHeader?.contains(backButton)).toBe(false);
+    expect(sidebarFooter?.contains(backButton)).toBe(true);
+
+    expect(sectionsNav).toBeTruthy();
+    expect(within(sectionsNav).getByRole("link", { name: "Appearance" })).toBeTruthy();
+    expect(within(sectionsNav).getByRole("link", { name: "About" })).toBeTruthy();
+    expect(within(sectionsNav).getByRole("link", { name: "Currencies" })).toBeTruthy();
     expect(screen.getByText("Appearance page")).toBeTruthy();
     expect(screen.getByText("General")).toBeTruthy();
     expect(screen.getByText("Finance")).toBeTruthy();
@@ -99,7 +110,8 @@ describe("SettingsModal", () => {
   it("switches sections without leaving the dialog", async () => {
     const router = await renderSettingsModal("/settings/appearance");
 
-    fireEvent.click(await screen.findByRole("link", { name: "Currencies" }));
+    const sectionsNav = await screen.findByRole("navigation", { name: "Settings sections" });
+    fireEvent.click(within(sectionsNav).getByRole("link", { name: "Currencies" }));
 
     expect(await screen.findByText("Currencies page")).toBeTruthy();
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
@@ -112,7 +124,7 @@ describe("SettingsModal", () => {
     await router.navigate({ to: "/settings/appearance" });
     expect(await screen.findByRole("dialog", { name: "Settings" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back to app" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Settings" })).toBeNull();

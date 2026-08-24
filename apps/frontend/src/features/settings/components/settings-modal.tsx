@@ -1,7 +1,16 @@
 import { useState, type ReactNode } from "react";
 import { useRouter, useRouterState } from "@tanstack/react-router";
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { SettingsNav } from "./settings-nav";
 import { useSettingsReturnHrefValue } from "../hooks/use-settings-return-href";
@@ -28,24 +37,38 @@ export function SettingsModal({ children }: SettingsModalProps) {
         }
       }}
     >
-      <DialogContent className="flex h-[90dvh] w-[90vw] max-w-[90vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[90vw]">
-        <header
-          data-slot="settings-modal-header"
-          className="flex h-12 shrink-0 items-center border-b border-border px-4 pr-12"
+      <DialogContent
+        showCloseButton={false}
+        className="flex h-[90dvh] w-[90vw] max-w-[90vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[90vw] md:flex-row"
+      >
+        <aside
+          data-slot="settings-modal-sidebar"
+          className="flex w-full shrink-0 flex-col border-b border-sidebar-border bg-sidebar text-sidebar-foreground md:h-full md:w-52 md:border-r md:border-b-0"
         >
-          <DialogTitle>Settings</DialogTitle>
-          <DialogDescription className="sr-only">
-            Appearance, currencies, and about.
-          </DialogDescription>
-        </header>
-        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-          <aside className="flex w-full shrink-0 flex-col gap-3 border-b border-sidebar-border bg-sidebar py-3 text-sidebar-foreground md:w-52 md:border-r md:border-b-0">
-            <SettingsNav pathname={pathname} />
-          </aside>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background md:pr-10">
-            {children}
+          <div
+            data-slot="settings-modal-sidebar-header"
+            className="flex h-12 shrink-0 items-center px-4"
+          >
+            <DialogTitle>Settings</DialogTitle>
+            <DialogDescription className="sr-only">
+              Appearance, currencies, and about.
+            </DialogDescription>
           </div>
-        </div>
+          <div className="min-h-0 flex-1 overflow-auto py-2">
+            <SettingsNav pathname={pathname} />
+          </div>
+          <div data-slot="settings-modal-sidebar-footer" className="mt-auto shrink-0 p-2">
+            <DialogClose
+              render={
+                <Button variant="ghost" className="w-full justify-start text-sidebar-foreground" />
+              }
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} data-icon="inline-start" />
+              Back to app
+            </DialogClose>
+          </div>
+        </aside>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">{children}</div>
       </DialogContent>
     </Dialog>
   );
