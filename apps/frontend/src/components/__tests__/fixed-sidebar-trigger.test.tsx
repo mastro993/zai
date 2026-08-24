@@ -77,14 +77,29 @@ const stubAlertsController = (unreadCount = 0): AlertsControllerValue => ({
   unreadCountKnown: true,
 });
 
+const idleAlertsController = stubAlertsController(0);
+const unreadAlertsController = stubAlertsController(3);
+
+interface OverlayProbeProps {
+  buildTarget: "tauri" | "web";
+  sidebarOpen: boolean;
+  unreadCount: number;
+}
+
+const OverlayProbe = ({ buildTarget, sidebarOpen, unreadCount }: OverlayProbeProps) => (
+  <AlertsControllerContext.Provider
+    value={unreadCount > 0 ? unreadAlertsController : idleAlertsController}
+  >
+    <SidebarProvider defaultOpen={sidebarOpen}>
+      <FixedSidebarTrigger buildTarget={buildTarget} />
+    </SidebarProvider>
+  </AlertsControllerContext.Provider>
+);
+
 const renderOverlay = async (buildTarget: "tauri" | "web", sidebarOpen = true, unreadCount = 0) => {
   const rootRoute = createRootRoute({
     component: () => (
-      <AlertsControllerContext.Provider value={stubAlertsController(unreadCount)}>
-        <SidebarProvider defaultOpen={sidebarOpen}>
-          <FixedSidebarTrigger buildTarget={buildTarget} />
-        </SidebarProvider>
-      </AlertsControllerContext.Provider>
+      <OverlayProbe buildTarget={buildTarget} sidebarOpen={sidebarOpen} unreadCount={unreadCount} />
     ),
   });
   const indexRoute = createRoute({

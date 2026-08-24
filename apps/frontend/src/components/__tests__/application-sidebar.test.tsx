@@ -88,6 +88,9 @@ const stubAlertsController = (unreadCount = 0): AlertsControllerValue => ({
   unreadCountKnown: true,
 });
 
+const idleAlertsController = stubAlertsController(0);
+const unreadAlertsController = stubAlertsController(3);
+
 interface SidebarProbeProps {
   buildTarget: "web" | "tauri";
   unreadCount?: number;
@@ -95,7 +98,9 @@ interface SidebarProbeProps {
 }
 
 const SidebarProbe = ({ buildTarget, unreadCount = 0, sidebarOpen = true }: SidebarProbeProps) => (
-  <AlertsControllerContext.Provider value={stubAlertsController(unreadCount)}>
+  <AlertsControllerContext.Provider
+    value={unreadCount > 0 ? unreadAlertsController : idleAlertsController}
+  >
     <SidebarProvider defaultOpen={sidebarOpen}>
       <ApplicationSidebar buildTarget={buildTarget} />
       <Outlet />
