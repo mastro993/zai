@@ -4,6 +4,11 @@
 
 - Settings modal has no content header or breadcrumbs. Sidebar footer `Back to app` (bottom-left) returns to the previous screen. `Settings` stays the sidebar DialogTitle.
 - Settings is no longer a full page that swaps the app sidebar. `/settings/*` opens a 90% viewport dialog. Left rail inside the modal keeps General/Finance sections. App chrome stays. Close returns to the previous screen.
+- Status bar `z-40` so drawer/dialog backdrops cover it. TanStack panel `z-index: 30` — still slides from behind the bar.
+- Alerts ledger: Sheet → Drawer, right swipe, 1rem insets, 24rem. Same pattern as transaction form.
+- Notifications drawer header: drop unread sentence, title "Notifications", mono unread badge, ghost double-tick mark-all only when unread > 0.
+- Notifications filters: chip bar → Filter icon menu (top right). Default unread. "Read" toggle shows also-read. Severity stays in the menu.
+- Notifications drawer: drop header divider. Empty + shadcn Empty for no-notifications and filtered (Clear filters CTA).
 
 ## 2026-08-21
 
@@ -52,3 +57,7 @@
 - Migrated assigned frontend test batch off `vi.mock` / unguarded `as T` / `unknown` params. Oxlint `--deny-warnings` + Vitest green on those 21 files.
 - Opened local `feat/multi-currency` at current `main` (`6015578`). Implementing [Exact Money, ISO manifest, and checked conversion](https://github.com/mastro993/zai/issues/387) on this worktree branch; stack target is that long-lived branch, not `main`.
 - Pushed `feat/multi-currency` and opened [PR 399](https://github.com/mastro993/zai/pull/399) onto that stack for #387. Not `main`.
+
+## 2026-08-24
+
+- Status bar sun/moon: follow system ↔ pin opposite. `nextStatusBarTheme(resolved, system)` in `apps/frontend/src/lib/theme-toggle.ts`. Return-to-system **removes** `zai-theme` (Lea Verou: stored value None). Icon = current mode (sun light, moon dark). Appearance stays tri-state.

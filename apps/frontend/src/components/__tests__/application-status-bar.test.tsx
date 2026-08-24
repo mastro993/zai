@@ -15,16 +15,44 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApplicationStatusBar } from "../application-status-bar";
 import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
 import * as alertsBell from "@/features/alerts/components/alerts-bell";
+import { THEME_STORAGE_KEY } from "@/lib/theme-toggle";
 
-const renderStatusBar = async (theme: "light" | "dark" = "light") => {
+const stubColorScheme = (system: "light" | "dark") => {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches: query.includes("prefers-color-scheme: dark") && system === "dark",
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  );
+};
+
+const renderStatusBar = async ({
+  stored,
+  system = "light",
+}: {
+  stored?: "light" | "dark" | "system";
+  system?: "light" | "dark";
+} = {}) => {
+  stubColorScheme(system);
+  if (stored) {
+    localStorage.setItem(THEME_STORAGE_KEY, stored);
+  }
+
   const rootRoute = createRootRoute({
     component: () => (
       <ThemeProvider
         attribute="class"
-        defaultTheme={theme}
+        defaultTheme="system"
         disableTransitionOnChange
-        enableSystem={false}
-        storageKey="zai-theme"
+        enableSystem
+        storageKey={THEME_STORAGE_KEY}
       >
         <ApplicationStatusBar />
         <Outlet />
@@ -55,19 +83,6 @@ describe("ApplicationStatusBar", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.classList.remove("dark");
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn((query: string) => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      })),
-    );
     vi.spyOn(alertsBell, "AlertsBell").mockImplementation(() => (
       <button type="button">Alerts</button>
     ));
@@ -87,7 +102,7 @@ describe("ApplicationStatusBar", () => {
     const bar = document.querySelector('[data-slot="application-status-bar"]');
     expect(bar).not.toBeNull();
     expect(bar?.className).toContain("bg-sidebar");
-    expect(bar?.className).toContain("z-[100001]");
+    expect(bar?.className).toContain("z-40");
     expect(bar?.className).toContain("border-t");
     expect(bar?.className).toContain("border-sidebar-border");
   });
@@ -100,20 +115,51 @@ describe("ApplicationStatusBar", () => {
     expect(await screen.findByText("Settings page")).toBeTruthy();
   });
 
-  it("toggles dark mode from the sun/moon control", async () => {
-    await renderStatusBar("light");
+  it("does not highlight the settings control while settings is open", async () => {
+    await renderStatusBar();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    await screen.findByText("Settings page");
+
+    expect(screen.getByRole("button", { name: "Settings" }).className.split(/\s+/)).not.toContain(
+      "bg-sidebar-accent",
+    );
+  });
+
+  it("pins dark when the system is light and Zai has no theme", async () => {
+    await renderStatusBar({ system: "light" });
 
     fireEvent.click(await screen.findByRole("button", { name: "Switch to dark mode" }));
 
-    expect(localStorage.getItem("zai-theme")).toBe("dark");
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
   });
 
-  it("shows a sun control while dark mode is active", async () => {
-    await renderStatusBar("dark");
+  it("pins light when the system is dark and Zai has no theme", async () => {
+    await renderStatusBar({ system: "dark" });
 
     fireEvent.click(await screen.findByRole("button", { name: "Switch to light mode" }));
 
-    expect(localStorage.getItem("zai-theme")).toBe("light");
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+  });
+
+  it("clears a dark pin back to a light system", async () => {
+    await renderStatusBar({ stored: "dark", system: "light" });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Switch to light mode" }));
+
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+  });
+
+  it("clears a light pin back to a dark system", async () => {
+    await renderStatusBar({ stored: "light", system: "dark" });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Switch to dark mode" }));
+
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
   });
 
   it("puts a vertical divider between the theme toggle and the version", async () => {

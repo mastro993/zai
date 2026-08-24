@@ -147,7 +147,7 @@ describe("ApplicationSidebar", () => {
     expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
   });
 
-  it("keeps app navigation without a settings footer on the main workspace", async () => {
+  it("keeps app navigation without a settings back control on the main workspace", async () => {
     await renderSidebar("/dashboard");
 
     expect(await screen.findByRole("link", { name: "Dashboard" })).toBeTruthy();

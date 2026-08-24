@@ -14,7 +14,7 @@ import { CommandError } from "@/commands/errors";
 
 import * as alertsCommands from "../commands/alerts";
 import { AlertsControllerProvider, useAlertsController } from "../hooks/use-alerts-controller";
-import { setAlertSessionFilters } from "../lib/session-filters";
+import { DEFAULT_ALERT_SESSION_FILTERS, setAlertSessionFilters } from "../lib/session-filters";
 import type { DomainAlertListPage } from "../types/domain-alert";
 
 const pageOne: DomainAlertListPage = {
@@ -73,7 +73,7 @@ function AlertsHookWrapper({ children }: { children: ReactNode }) {
 
 describe("alerts controller filters and pagination", () => {
   beforeEach(() => {
-    setAlertSessionFilters({ readState: "all", severity: "all" });
+    setAlertSessionFilters(DEFAULT_ALERT_SESSION_FILTERS);
     vi.restoreAllMocks();
     vi.spyOn(alertsCommands, "getUnreadAlertCount").mockResolvedValue(Result.succeed(2));
     vi.spyOn(alertsCommands, "listAlerts").mockResolvedValue(Result.succeed(pageOne));
@@ -94,7 +94,7 @@ describe("alerts controller filters and pagination", () => {
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
     expect(result.current.items).toHaveLength(1);
     expect(result.current.nextCursor).toBe("cursor-page-2");
-    expect(alertsCommands.listAlerts).toHaveBeenCalledWith({});
+    expect(alertsCommands.listAlerts).toHaveBeenCalledWith({ readState: "unread" });
   });
 
   it("refetches when read-state filter changes", async () => {
@@ -104,13 +104,11 @@ describe("alerts controller filters and pagination", () => {
     await waitFor(() => expect(result.current.refreshStatus).toBe("ready"));
 
     await act(async () => {
-      result.current.setReadStateFilter("unread");
+      result.current.setReadStateFilter("all");
     });
 
-    await waitFor(() =>
-      expect(alertsCommands.listAlerts).toHaveBeenLastCalledWith({ readState: "unread" }),
-    );
-    expect(result.current.filters.readState).toBe("unread");
+    await waitFor(() => expect(alertsCommands.listAlerts).toHaveBeenLastCalledWith({}));
+    expect(result.current.filters.readState).toBe("all");
   });
 
   it("appends older alerts without clearing the first page", async () => {
@@ -128,7 +126,10 @@ describe("alerts controller filters and pagination", () => {
     });
 
     await waitFor(() => expect(result.current.items).toHaveLength(2));
-    expect(alertsCommands.listAlerts).toHaveBeenLastCalledWith({ cursor: "cursor-page-2" });
+    expect(alertsCommands.listAlerts).toHaveBeenLastCalledWith({
+      readState: "unread",
+      cursor: "cursor-page-2",
+    });
     expect(result.current.nextCursor).toBeNull();
   });
 
@@ -158,7 +159,7 @@ describe("alerts controller filters and pagination", () => {
     let holdDefaultRefresh = false;
 
     vi.mocked(alertsCommands.listAlerts).mockImplementation((query) => {
-      if (query?.readState === "unread") {
+      if (!query?.readState) {
         return Promise.resolve(
           Result.succeed({
             items: pageOne.items,
@@ -182,7 +183,7 @@ describe("alerts controller filters and pagination", () => {
     holdDefaultRefresh = true;
     await act(async () => {
       void result.current.openLedger();
-      result.current.setReadStateFilter("unread");
+      result.current.setReadStateFilter("all");
     });
 
     await waitFor(() => expect(result.current.nextCursor).toBe("cursor-page-2"));
@@ -327,7 +328,10 @@ describe("alerts controller filters and pagination", () => {
       loadOlderPromise = result.current.loadOlder();
     });
     await waitFor(() =>
-      expect(alertsCommands.listAlerts).toHaveBeenLastCalledWith({ cursor: "cursor-page-2" }),
+      expect(alertsCommands.listAlerts).toHaveBeenLastCalledWith({
+        readState: "unread",
+        cursor: "cursor-page-2",
+      }),
     );
 
     await act(async () => {
@@ -336,7 +340,7 @@ describe("alerts controller filters and pagination", () => {
     releaseOlder?.(pageTwo);
     await loadOlderPromise;
 
-    expect(result.current.items).toEqual(refreshedPage.items);
+    expect(result.current.items).toEqual([]);
     expect(result.current.nextCursor).toBeNull();
   });
 
@@ -389,6 +393,7 @@ describe("alerts controller filters and pagination", () => {
   });
 
   it("keeps an updated row under the all filter", async () => {
+    setAlertSessionFilters({ readState: "all", severity: "all" });
     const readItem = { ...pageOne.items[0], readAt: "2026-07-14T11:00:00" };
     vi.mocked(alertsCommands.listAlerts)
       .mockResolvedValueOnce(Result.succeed(pageOne))

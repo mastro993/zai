@@ -4,6 +4,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { ThemeProvider } from "next-themes";
 
 import { bootstrapApp } from "./app-bootstrap";
+import { THEME_STORAGE_KEY } from "./lib/theme-toggle";
 import { getRouter } from "./router";
 
 import "./styles.css";
@@ -18,7 +19,7 @@ bootstrapApp(
       disableTransitionOnChange
       enableColorScheme
       enableSystem
-      storageKey="zai-theme"
+      storageKey={THEME_STORAGE_KEY}
     >
       <RouterProvider router={router} />
     </ThemeProvider>
