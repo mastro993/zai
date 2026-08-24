@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Release channel
+        type: choice
+        options:
+          - beta
+          - stable
+        default: beta
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Compute version
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.compute.outputs.skip }}
+      version: ${{ steps.compute.outputs.version }}
+      tag: ${{ steps.compute.outputs.tag }}
+      prerelease: ${{ steps.compute.outputs.prerelease }}
+      notes: ${{ steps.compute.outputs.notes }}
+      sha: ${{ steps.compute.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch tags
+        run: git fetch --tags --force origin
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: lts/*
+
+      - id: compute
+        name: Compute calendar version
+        env:
+          RELEASE_CHANNEL: ${{ github.event_name == 'schedule' && 'beta' || inputs.channel }}
+          RELEASE_ALLOW_SAME_HEAD: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
+        run: node scripts/release-version.mjs github-output
+
+      - name: Version summary
+        run: |
+          if [ "${{ steps.compute.outputs.skip }}" = "true" ]; then
+            echo "No new commits since the last beta tag; skipping publish." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ${{ steps.compute.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  publish-tauri:
+    name: Publish ${{ matrix.platform }}
+    needs: version
+    if: needs.version.outputs.skip != 'true'
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: "--target aarch64-apple-darwin"
+          - platform: macos-latest
+            args: "--target x86_64-apple-darwin"
+          - platform: ubuntu-22.04
+            args: ""
+          - platform: windows-latest
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+
+      - name: Install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: "./apps/tauri -> target"
+
+      - name: Stamp calendar version
+        run: node scripts/release-version.mjs stamp "${{ needs.version.outputs.version }}"
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Zai __VERSION__
+          releaseBody: ${{ needs.version.outputs.notes }}
+          releaseDraft: false
+          prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
+          args: ${{ matrix.args }}

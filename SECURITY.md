@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Zai is unfinished alpha software (`0.0.1-alpha.1` at the time of writing). There is no stable supported release yet. Only the latest code on the default branch receives best-effort security fixes.
+Zai is unfinished software. The committed tree stays `0.0.0-dev`. Shipped builds use UTC calendar versions (`YYYY.M.D` with optional `-beta.N`). Only the latest code on the default branch receives best-effort security fixes.
 
 | Version              | Supported          |
 | -------------------- | ------------------ |

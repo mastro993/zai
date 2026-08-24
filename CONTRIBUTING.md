@@ -4,7 +4,7 @@ Thank you for your interest in contributing. Zai is a local-first personal finan
 
 ## Project Status
 
-Zai is unfinished alpha software (`0.0.1-alpha.1`). APIs, data models, and workflows may change without notice. There is no stable public release or long-term support commitment yet.
+Zai is unfinished software. The committed tree stays `0.0.0-dev`. APIs, data models, and workflows may change without notice. There is no long-term support commitment yet.
 
 Every contribution should respect the project pillars:
 
@@ -90,6 +90,15 @@ Before opening a pull request, run:
 pnpm check
 pnpm build:web
 ```
+
+## Releases
+
+Shipped desktop builds use UTC calendar versions (`YYYY.M.D`, optional `-beta.N`). See [ADR-0005](docs/adr/0005-calendar-versions-with-beta-and-manual-stables.md).
+
+- **Beta:** `.github/workflows/release.yml` runs at 05:00 UTC on `main` when HEAD has moved since the last beta tag. The same workflow can be dispatched with channel `beta`.
+- **Stable:** dispatch the same workflow with channel `stable`. At most one stable exists per UTC date.
+
+Do not bump the committed `0.0.0-dev` placeholder by hand. CI stamps the calendar version onto release artifacts.
 
 ## Pull Requests
 
