@@ -18,7 +18,9 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { useAlertsController } from "../hooks/use-alerts-controller";
 import { AlertRow } from "./alert-row";
@@ -127,7 +129,7 @@ export function AlertsLedgerDrawer() {
           ) : null}
         </DrawerHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+        <ScrollArea className="min-h-0 flex-1">
           {isLoading ? <AlertsLedgerSkeleton /> : null}
 
           {showError ? (
@@ -192,22 +194,26 @@ export function AlertsLedgerDrawer() {
             </Empty>
           ) : null}
 
-          {!isLoading && items.length > 0
-            ? items.map((alert) => (
-                <AlertRow
-                  key={alert.id}
-                  alert={alert}
-                  autoFocus={ledgerFocusAlertId === alert.id}
-                  destinationFeedback={
-                    destinationFeedback?.alertId === alert.id ? destinationFeedback.message : null
-                  }
-                  isLifecyclePending={lifecyclePendingId === alert.id}
-                  lifecycleError={lifecycleErrors[alert.id] ?? null}
-                  onOpen={() => void openAlert(alert)}
-                  onToggleReadState={() => void toggleAlertReadState(alert)}
-                />
-              ))
-            : null}
+          {!isLoading && items.length > 0 ? (
+            <TooltipProvider>
+              <div className="flex flex-col gap-0.5 px-1.5 pb-2">
+                {items.map((alert) => (
+                  <AlertRow
+                    key={alert.id}
+                    alert={alert}
+                    autoFocus={ledgerFocusAlertId === alert.id}
+                    destinationFeedback={
+                      destinationFeedback?.alertId === alert.id ? destinationFeedback.message : null
+                    }
+                    isLifecyclePending={lifecyclePendingId === alert.id}
+                    lifecycleError={lifecycleErrors[alert.id] ?? null}
+                    onOpen={() => void openAlert(alert)}
+                    onToggleReadState={() => void toggleAlertReadState(alert)}
+                  />
+                ))}
+              </div>
+            </TooltipProvider>
+          ) : null}
 
           {nextCursor && items.length > 0 ? (
             <div className="flex flex-col gap-2 border-t border-border px-4 py-4">
@@ -227,7 +233,7 @@ export function AlertsLedgerDrawer() {
               </Button>
             </div>
           ) : null}
-        </div>
+        </ScrollArea>
       </DrawerContent>
     </Drawer>
   );

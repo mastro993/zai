@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import {
   budgetStatusLabel,
   budgetStatusVariant,
@@ -31,39 +32,38 @@ export function BudgetStatusAlertSnapshot({ data }: BudgetStatusAlertSnapshotPro
   const status = toBudgetStatus(snapshot.status);
 
   return (
-    <div className="grid gap-2 rounded-md border border-border bg-muted/30 p-2 text-[11px]">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground">Status</span>
-        <Badge
-          variant={budgetStatusVariant(status)}
-          className="rounded-none px-1.5 py-0 text-[10px]"
-        >
-          {budgetStatusLabel[status]}
-        </Badge>
-      </div>
-      <p className="text-muted-foreground">
-        Period {formatBudgetPeriod(snapshot.periodStart, snapshot.periodEnd)}
-      </p>
-      <dl className="grid grid-cols-1 gap-1 sm:grid-cols-3">
-        <div>
-          <dt className="text-muted-foreground">Effective allowance</dt>
-          <dd className="font-medium text-foreground">
-            {formatCurrencyFromMinor(snapshot.effectiveAllowance, snapshot.currency)}
-          </dd>
+    <Card size="sm" className="mt-3 text-xs">
+      <CardHeader>
+        <div className="flex flex-wrap items-center gap-2">
+          <CardDescription className="text-xs">Status</CardDescription>
+          <Badge variant={budgetStatusVariant(status)}>{budgetStatusLabel[status]}</Badge>
         </div>
-        <div>
-          <dt className="text-muted-foreground">Net budget spending</dt>
-          <dd className="font-medium text-foreground">
-            {formatCurrencyFromMinor(snapshot.netBudgetSpending, snapshot.currency)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Remaining allowance</dt>
-          <dd className="font-medium text-foreground">
-            {formatCurrencyFromMinor(snapshot.remainingAllowance, snapshot.currency)}
-          </dd>
-        </div>
-      </dl>
-    </div>
+        <CardDescription className="text-xs whitespace-nowrap">
+          Period {formatBudgetPeriod(snapshot.periodStart, snapshot.periodEnd)}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <dl className="flex flex-col gap-1">
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="text-muted-foreground">Effective allowance</dt>
+            <dd className="font-medium text-foreground tabular-nums">
+              {formatCurrencyFromMinor(snapshot.effectiveAllowance, snapshot.currency)}
+            </dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="text-muted-foreground">Net budget spending</dt>
+            <dd className="font-medium text-foreground tabular-nums">
+              {formatCurrencyFromMinor(snapshot.netBudgetSpending, snapshot.currency)}
+            </dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="text-muted-foreground">Remaining allowance</dt>
+            <dd className="font-medium text-foreground tabular-nums">
+              {formatCurrencyFromMinor(snapshot.remainingAllowance, snapshot.currency)}
+            </dd>
+          </div>
+        </dl>
+      </CardContent>
+    </Card>
   );
 }
