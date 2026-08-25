@@ -8,8 +8,8 @@ behavior.
 
 ## Channels
 
-- **Nightly** runs daily at 05:00 UTC and can also be dispatched manually from
-  `main`. It skips when the selected commit is already the latest Nightly,
+- **Nightly** runs daily at 05:00 UTC from `main` and can also be dispatched
+  manually from any branch. It skips when the selected commit is already the latest Nightly,
   uses tag `nightly-vY.M.D.B`, release name `Zai Nightly vY.M.D.B`, and is a
   prerelease.
 - **Stable** is manual-only and must be dispatched from `main`. It uses tag
@@ -20,9 +20,10 @@ builds use the maximum build number found in matching Nightly and Stable tags
 for the current UTC date plus one. `B` cannot exceed 999; the workflow fails
 clearly instead of minting an incompatible version.
 
-After validating that a manual dispatch selected `main`, every job checks out
-the exact trigger SHA. Scheduled releases likewise keep their trigger SHA even
-if `main` advances while a run waits in the queue.
+Stable dispatches validate that `main` was selected. Every job checks out the
+exact trigger SHA, including Nightlies dispatched from another branch.
+Scheduled releases likewise keep their trigger SHA even if `main` advances
+while a run waits in the queue.
 
 Allocation uses existing tags as its only history. Release tags must not be
 deleted when their version numbers must remain reserved; deleting the maximum

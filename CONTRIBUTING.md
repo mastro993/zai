@@ -97,8 +97,8 @@ Shipped desktop builds use the shared UTC Release Version `Y.M.D.B`. See
 [ADR-0006](docs/adr/0006-share-four-part-versions-across-release-channels.md)
 and the [release guide](docs/releasing.md).
 
-- **Nightly:** runs at 05:00 UTC or by manual dispatch from `main`, and skips
-  when the selected `main` commit is already the latest Nightly.
+- **Nightly:** runs at 05:00 UTC from `main` or by manual dispatch from any
+  branch, and skips when the selected commit is already the latest Nightly.
 - **Stable:** manual-only from `main`; multiple Stable releases may use the
   same UTC date.
 
