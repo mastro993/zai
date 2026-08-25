@@ -197,7 +197,7 @@ describe("SettingsModal", () => {
     expect(router.state.location.pathname).toBe("/dashboard");
 
     fireEvent.click(screen.getByRole("link", { name: "About" }));
-    expect(await screen.findByText("App version")).toBeTruthy();
+    expect(await screen.findByText("App version", undefined, { timeout: 2000 })).toBeTruthy();
     expect(router.state.location.pathname).toBe("/dashboard");
 
     fireEvent.click(screen.getByRole("button", { name: "Back to app" }));

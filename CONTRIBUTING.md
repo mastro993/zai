@@ -93,12 +93,18 @@ pnpm build:web
 
 ## Releases
 
-Shipped desktop builds use UTC calendar versions (`YYYY.M.D`, optional `-beta.N`). See [ADR-0005](docs/adr/0005-calendar-versions-with-beta-and-manual-stables.md).
+Shipped desktop builds use the shared UTC Release Version `Y.M.D.B`. See
+[ADR-0006](docs/adr/0006-share-four-part-versions-across-release-channels.md)
+and the [release guide](docs/releasing.md).
 
-- **Beta:** `.github/workflows/release.yml` runs at 05:00 UTC on `main` when HEAD has moved since the last beta tag. The same workflow can be dispatched with channel `beta`.
-- **Stable:** dispatch the same workflow with channel `stable`. At most one stable exists per UTC date.
+- **Nightly:** runs at 05:00 UTC or by manual dispatch from `main`, and skips
+  when the selected `main` commit is already the latest Nightly.
+- **Stable:** manual-only from `main`; multiple Stable releases may use the
+  same UTC date.
 
-Do not bump the committed `0.0.0-dev` placeholder by hand. CI stamps the calendar version onto release artifacts.
+Do not bump the committed `0.0.0-dev` placeholder by hand. CI stamps the packed
+internal SemVer into build manifests while published release identifiers and
+artifact filenames keep the canonical Release Version.
 
 ## Pull Requests
 
