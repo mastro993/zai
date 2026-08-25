@@ -23,7 +23,7 @@ describe("AboutSettingsScreen", () => {
   it("renders version, channel, build facts, and a mock update check", () => {
     render(<AboutSettingsScreen />);
 
-    expect(screen.getByRole("heading", { name: "About" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "About" })).toBeNull();
     expect(screen.getByText("dev")).toBeTruthy();
     expect(screen.getByText("Release channel")).toBeTruthy();
     expect(screen.getByText("Dev")).toBeTruthy();

@@ -1,13 +1,35 @@
 # Choices
 
+## 2026-08-25 — Desktop overlay chrome hosts the wordmark
+
+- Reverted: wordmark stays in the sidebar header under traffic-light chrome. Overlay is toggle + history only. History arrows pack beside the toggle (`TRIGGER_TO_HISTORY_GAP`), left-aligned. No `ml-auto`.
+
+## 2026-08-25 — App sidebar logo row shares the title-bar hairline
+
+- No hairline on the sidebar logo row (web or desktop traffic-light spacer). Title bar keeps its own `border-b`.
+
+## 2026-08-25 — Settings pages drop section h1
+
+- Breadcrumb is the page title (`Settings > section`). Sidebar has no visual Settings heading (`sr-only` DialogTitle). `SettingsSectionHeader` is description-only. About has no intro.
+
+## 2026-08-25 — Settings sidebar search is a no-op
+
+- No visual Settings heading in the sidebar. Search is the first sidebar row (`h-12` + centered, same as the crumb header). Icon left, placeholder "Search settings". Uncontrolled. Does not filter or navigate yet.
+- Modal breadcrumbs: `Settings > section`.
+
+## 2026-08-25 — Settings modal chrome matches the app shell
+
+- Sidebar stays full height. No visual Settings title. No footer `Back to app`.
+- Content column gets an `h-12` header like the app title bar: `Settings > section` crumbs + ghost `icon-sm` Close top right.
+- Leave via Close, ESC, overlay. Do not nest `SidebarProvider` — it would steal `Cmd+B`.
+
 ## 2026-08-24 — Settings modal has no content header
 
-- No breadcrumbs, no content title bar, no dialog X. Leave via sidebar footer `Back to app` (also ESC/overlay).
-- Sidebar stays full height. `Settings` DialogTitle sits at the top; `Back to app` is bottom-left. Do not nest `SidebarProvider` — it would steal `Cmd+B`.
+- Superseded 2026-08-25: content header / breadcrumbs / close icon restored. Sidebar title blank. `Back to app` removed.
 
 ## 2026-08-24 — Settings modal chrome matches the app shell
 
-- Superseded: content header / breadcrumbs / close icon removed in favor of `Back to app`.
+- Superseded: first pass put the header over the sidebar. Current chrome keeps the sidebar full height and puts the header in the content column.
 
 ## 2026-08-24 — Settings is a large dialog, not a page
 

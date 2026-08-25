@@ -83,7 +83,7 @@ describe("FixedSidebarTrigger", () => {
     expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
   });
 
-  it("sits after the traffic lights on overlay-chrome desktops, with history arrows right-aligned", async () => {
+  it("sits after the traffic lights on overlay-chrome desktops, with history arrows next to the toggle", async () => {
     mockWindowChrome(true);
     await renderOverlay("tauri");
 
@@ -94,8 +94,10 @@ describe("FixedSidebarTrigger", () => {
     expect(screen.getByRole("button", { name: "Go forward" })).toBeTruthy();
     expect(host?.contains(screen.getByRole("button", { name: "Go back" }))).toBe(true);
     expect(host?.style.paddingLeft).toBe(NATIVE_TOGGLE_LEADING_INSET);
-    expect(host?.className).toContain("w-(--sidebar-width)");
-    expect(history?.className).toContain("ml-auto");
+    expect(host?.style.gap).toBe(TRIGGER_TO_HISTORY_GAP);
+    expect(host?.className).not.toContain("w-(--sidebar-width)");
+    expect(history?.className).not.toContain("ml-auto");
+    expect(document.querySelector('[data-slot="sidebar-brand"]')).toBeNull();
   });
 
   it("packs history closer to the toggle than the traffic-light inset when Tauri sidebar is offcanvas-collapsed", async () => {
@@ -110,6 +112,7 @@ describe("FixedSidebarTrigger", () => {
     expect(host?.style.paddingLeft).toBe(TRAFFIC_LIGHT_TO_TRIGGER_GAP);
     expect(host?.style.gap).toBe(TRIGGER_TO_HISTORY_GAP);
     expect(history?.className).not.toContain("ml-auto");
+    expect(document.querySelector('[data-slot="sidebar-brand"]')).toBeNull();
   });
 
   it("packs history closer to the toggle when overlay chrome is collapsed", async () => {
@@ -120,5 +123,6 @@ describe("FixedSidebarTrigger", () => {
     expect(host?.style.paddingLeft).toBe(NATIVE_TOGGLE_LEADING_INSET);
     expect(host?.style.gap).toBe(TRIGGER_TO_HISTORY_GAP);
     expect(host?.className).not.toContain("w-(--sidebar-width)");
+    expect(document.querySelector('[data-slot="sidebar-brand"]')).toBeNull();
   });
 });
