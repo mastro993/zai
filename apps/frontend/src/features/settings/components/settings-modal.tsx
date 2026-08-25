@@ -28,9 +28,18 @@ import { useSettingsReturnHrefValue } from "../hooks/use-settings-return-href";
 
 interface SettingsModalProps {
   children: ReactNode;
+  pathname?: string;
+  onNavigate?: (pathname: string) => void;
+  onClose?: () => void;
 }
 
-function SettingsModalBreadcrumbs({ pathname }: { pathname: string }) {
+function SettingsModalBreadcrumbs({
+  pathname,
+  onNavigate,
+}: {
+  pathname: string;
+  onNavigate?: (pathname: string) => void;
+}) {
   const crumbs = resolveScreenBreadcrumbs(pathname);
 
   return (
@@ -51,7 +60,18 @@ function SettingsModalBreadcrumbs({ pathname }: { pathname: string }) {
                   <BreadcrumbPage className="truncate">{crumb.label}</BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink
-                    render={<Link to={crumb.href} preload="intent" />}
+                    render={
+                      <Link
+                        to={crumb.href}
+                        preload={onNavigate ? false : "intent"}
+                        onClick={(event) => {
+                          if (onNavigate) {
+                            event.preventDefault();
+                            onNavigate(crumb.href);
+                          }
+                        }}
+                      />
+                    }
                     className="truncate"
                   >
                     {crumb.label}
@@ -67,12 +87,18 @@ function SettingsModalBreadcrumbs({ pathname }: { pathname: string }) {
   );
 }
 
-export function SettingsModal({ children }: SettingsModalProps) {
+export function SettingsModal({
+  children,
+  pathname: pathnameOverride,
+  onNavigate,
+  onClose,
+}: SettingsModalProps) {
   const [open, setOpen] = useState(true);
   const router = useRouter();
-  const pathname = useRouterState({
+  const routePathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const pathname = pathnameOverride ?? routePathname;
   const returnHref = useSettingsReturnHrefValue();
   const searchId = useId();
 
@@ -82,7 +108,11 @@ export function SettingsModal({ children }: SettingsModalProps) {
       onOpenChange={setOpen}
       onOpenChangeComplete={(nextOpen) => {
         if (!nextOpen) {
-          router.history.push(returnHref);
+          if (onClose) {
+            onClose();
+          } else {
+            router.history.push(returnHref);
+          }
         }
       }}
     >
@@ -115,7 +145,7 @@ export function SettingsModal({ children }: SettingsModalProps) {
             </Field>
           </div>
           <div className="min-h-0 flex-1 overflow-auto py-2">
-            <SettingsNav pathname={pathname} />
+            <SettingsNav pathname={pathname} onNavigate={onNavigate} />
           </div>
         </aside>
         <div
@@ -128,7 +158,7 @@ export function SettingsModal({ children }: SettingsModalProps) {
           >
             <div className="flex h-12 min-w-0 flex-1 items-center gap-2 px-4">
               <div data-slot="settings-modal-breadcrumbs" className="min-w-0 shrink-0">
-                <SettingsModalBreadcrumbs pathname={pathname} />
+                <SettingsModalBreadcrumbs pathname={pathname} onNavigate={onNavigate} />
               </div>
             </div>
             <div
