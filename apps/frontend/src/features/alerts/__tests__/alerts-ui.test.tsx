@@ -21,7 +21,12 @@ import { AlertsBell } from "../components/alerts-bell";
 import { AlertsLedgerFilters } from "../components/alerts-ledger-filters";
 import { AlertsLedgerDrawer } from "../components/alerts-ledger-drawer";
 import { AlertsControllerProvider, useAlertsController } from "../hooks/use-alerts-controller";
-import { alertsBellLabel, domainAlertSeverityLabel, formatAlertCreatedAt } from "../lib/format";
+import {
+  alertsBellLabel,
+  domainAlertSeverityLabel,
+  formatAlertCreatedAt,
+  formatAlertTimestamp,
+} from "../lib/format";
 import { isNavigableAlertDestination, isUnreadAlert, parseDomainAlertListPage } from "../lib/parse";
 import { DEFAULT_ALERT_SESSION_FILTERS, setAlertSessionFilters } from "../lib/session-filters";
 import type { DomainAlert } from "../types/domain-alert";
@@ -144,6 +149,12 @@ describe("domain alert parsing", () => {
     expect(formatAlertCreatedAt("2026-07-14T10:00:00")).toMatch(/ago$/);
   });
 
+  it("formats an absolute timestamp for the subtitle tooltip", () => {
+    expect(formatAlertTimestamp("2026-07-14T10:00:00")).toMatch(/2026/);
+    expect(formatAlertTimestamp("2026-07-14T10:00:00")).not.toMatch(/ago$/);
+    expect(formatAlertTimestamp("not-a-date")).toBe("not-a-date");
+  });
+
   it("detects navigable budget destinations", () => {
     expect(isNavigableAlertDestination(budgetAlert.destination)).toBe(true);
     expect(isNavigableAlertDestination(undefined)).toBe(false);
@@ -151,22 +162,36 @@ describe("domain alert parsing", () => {
 });
 
 describe("alert row rendering", () => {
-  it("shows severity text, unread badge, labelled lifecycle action, and immutable copy", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("shows title, time-only subtitle, labelled read toggle, and immutable copy", () => {
     render(<AlertRow alert={sampleAlert} onToggleReadState={vi.fn()} />);
 
     screen.getByText("Budget warning");
-    screen.getByText("New");
     screen.getByRole("article", { name: /Warning alert/i });
     screen.getByText("Spending exceeded 80% of allowance.");
-    screen.getByRole("button", { name: "Mark read: Budget warning" });
-    screen.getByText("Unread");
+    screen.getByRole("button", { name: "Mark read: Budget warning", pressed: true });
+    expect(screen.queryByText("New")).toBeNull();
+    expect(screen.queryByText(/^Warning$/)).toBeNull();
+    expect(screen.queryByText("Unread")).toBeNull();
+    screen.getByText(/ago$/);
   });
 
-  it("shows mark unread for read alerts", () => {
+  it("shows mark unread toggle for read alerts", () => {
     render(<AlertRow alert={readAlert} onToggleReadState={vi.fn()} />);
 
-    screen.getByRole("button", { name: "Mark unread: Budget warning" });
-    screen.getByText("Read");
+    screen.getByRole("button", { name: "Mark unread: Budget warning", pressed: false });
+    expect(screen.queryByText("Read")).toBeNull();
+  });
+
+  it("toggles read state from the icon control", () => {
+    const onToggleReadState = vi.fn();
+    render(<AlertRow alert={sampleAlert} onToggleReadState={onToggleReadState} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Mark read: Budget warning" }));
+    expect(onToggleReadState).toHaveBeenCalledOnce();
   });
 
   it("renders stale destination feedback without changing alert copy", () => {
@@ -183,6 +208,11 @@ describe("alert row rendering", () => {
 });
 
 describe("alerts bell label", () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
   it("includes exact unread count in accessible name", () => {
     expect(alertsBellLabel(0)).toBe("Alerts, 0 unread");
     expect(alertsBellLabel(3)).toBe("Alerts, 3 unread");
@@ -195,6 +225,26 @@ describe("alerts bell label", () => {
     const bell = await screen.findByRole("button", { name: "Alerts, 0 unread" });
     expect(bell.classList.contains("border-transparent")).toBe(true);
     expect(bell.textContent).toBe("");
+  });
+
+  it("renders a static unread badge with a sidebar ring, offset toward the corner", async () => {
+    stubMatchMedia();
+    vi.spyOn(alertsCommands, "listAlerts").mockResolvedValue(
+      Result.succeed({ items: [sampleAlert], nextCursor: null }),
+    );
+    vi.spyOn(alertsCommands, "getUnreadAlertCount").mockResolvedValue(Result.succeed(2));
+
+    await renderController(<AlertsBell />);
+
+    const bell = await screen.findByRole("button", { name: "Alerts, 2 unread" });
+    const badge = bell.querySelector("span[aria-hidden]");
+    expect(badge?.className).toContain("size-1.5");
+    expect(badge?.className).toContain("rounded-full");
+    expect(badge?.className).toContain("[corner-shape:round]");
+    expect(badge?.className).toContain("ring-sidebar");
+    expect(badge?.className).toContain("top-1");
+    expect(badge?.className).toContain("right-1");
+    expect(badge?.className).not.toContain("animate-pulse");
   });
 });
 
@@ -350,6 +400,8 @@ describe("alerts controller lifecycle", () => {
     expect(emptyState.classList.contains("border")).toBe(true);
     expect(emptyState.classList.contains("border-dashed")).toBe(true);
     expect(screen.queryByText("0 unread alerts")).toBeNull();
+    expect(document.querySelector('[data-slot="scroll-area"]')).not.toBeNull();
+    expect(document.querySelector('[data-slot="scroll-area-viewport"]')).not.toBeNull();
     expect(document.querySelector('[data-slot="drawer-header"]')?.className).not.toMatch(
       /border-b/,
     );

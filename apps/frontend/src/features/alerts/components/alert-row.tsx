@@ -1,26 +1,34 @@
 import { useEffect, useRef } from "react";
+import { Mail01Icon, MailOpen01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Alert02Icon, AlertCircleIcon, InformationCircleIcon } from "@hugeicons/core-free-icons";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
+import { Spinner } from "@/components/ui/spinner";
+import { Toggle } from "@/components/ui/toggle";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-import { domainAlertSeverityLabel, formatAlertCreatedAt } from "../lib/format";
+import {
+  alertReadActionLabel,
+  alertSeverityIconClass,
+  alertTypeIcon,
+} from "../lib/alert-presentation";
+import {
+  domainAlertSeverityLabel,
+  formatAlertCreatedAt,
+  formatAlertTimestamp,
+} from "../lib/format";
 import { isNavigableAlertDestination, isUnreadAlert } from "../lib/parse";
-import type { DomainAlert, DomainAlertSeverity } from "../types/domain-alert";
+import type { DomainAlert } from "../types/domain-alert";
 import { BudgetStatusAlertSnapshot } from "./budget-status-alert-snapshot";
-
-const severityIcon = (severity: DomainAlertSeverity) => {
-  switch (severity) {
-    case "info":
-      return InformationCircleIcon;
-    case "warning":
-      return Alert02Icon;
-    case "critical":
-      return AlertCircleIcon;
-  }
-};
 
 interface AlertRowProps {
   alert: DomainAlert;
@@ -44,7 +52,7 @@ export function AlertRow({
   const rowRef = useRef<HTMLElement>(null);
   const unread = isUnreadAlert(alert);
   const navigable = isNavigableAlertDestination(alert.destination);
-  const lifecycleLabel = unread ? "Mark read" : "Mark unread";
+  const lifecycleLabel = alertReadActionLabel(unread);
 
   useEffect(() => {
     if (!autoFocus || !rowRef.current) {
@@ -58,26 +66,23 @@ export function AlertRow({
     <article
       ref={rowRef}
       tabIndex={autoFocus ? -1 : undefined}
-      className={cn(
-        "flex flex-col gap-2 border-b border-border px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        unread && "bg-primary/5",
-      )}
+      className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
       aria-label={`${domainAlertSeverityLabel(alert.severity)} alert: ${alert.title}`}
     >
-      <div className="flex items-start gap-2">
-        <HugeiconsIcon
-          icon={severityIcon(alert.severity)}
-          strokeWidth={2}
-          className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-          aria-hidden
-        />
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
+      <Item variant={unread ? "muted" : "default"} size="xs" className="items-start">
+        <ItemMedia
+          variant="icon"
+          className={cn("size-6 rounded-md", alertSeverityIconClass(alert.severity))}
+        >
+          <HugeiconsIcon icon={alertTypeIcon(alert.producerKey)} strokeWidth={2} aria-hidden />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle className={cn("text-xs", unread && "font-semibold")}>
             {navigable ? (
               <Button
                 type="button"
                 variant="link"
-                className="h-auto p-0 text-xs font-medium text-foreground"
+                className="h-auto p-0 text-xs text-foreground"
                 aria-label={`Open alert: ${alert.title}`}
                 onClick={() => onOpen?.()}
                 disabled={isLifecyclePending}
@@ -85,55 +90,54 @@ export function AlertRow({
                 {alert.title}
               </Button>
             ) : (
-              <p className="text-xs font-medium text-foreground">{alert.title}</p>
+              alert.title
             )}
-            {unread ? (
-              <Badge variant="secondary" className="rounded-none px-1.5 py-0 text-[10px]">
-                New
-              </Badge>
-            ) : null}
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            <span className="sr-only">Severity: </span>
-            {domainAlertSeverityLabel(alert.severity)}
-            <span aria-hidden> · </span>
-            <time dateTime={alert.createdAt}>{formatAlertCreatedAt(alert.createdAt)}</time>
-            {!unread ? (
-              <>
-                <span aria-hidden> · </span>
-                <span>Read</span>
-              </>
-            ) : (
-              <>
-                <span aria-hidden> · </span>
-                <span>Unread</span>
-              </>
-            )}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          aria-label={`${lifecycleLabel}: ${alert.title}`}
-          disabled={isLifecyclePending}
-          onClick={() => onToggleReadState?.()}
-        >
-          {lifecycleLabel}
-        </Button>
-      </div>
-      <p className="text-xs/relaxed text-foreground">{alert.body}</p>
-      {alert.data ? <BudgetStatusAlertSnapshot data={alert.data} /> : null}
-      {lifecycleError ? (
-        <p className="text-xs text-destructive" role="alert">
-          {lifecycleError}
-        </p>
-      ) : null}
-      {destinationFeedback ? (
-        <p className="text-xs text-muted-foreground" role="status">
-          {destinationFeedback}
-        </p>
-      ) : null}
+          </ItemTitle>
+          <ItemDescription>
+            <Tooltip>
+              <TooltipTrigger render={<time dateTime={alert.createdAt} />}>
+                {formatAlertCreatedAt(alert.createdAt)}
+              </TooltipTrigger>
+              <TooltipContent>{formatAlertTimestamp(alert.createdAt)}</TooltipContent>
+            </Tooltip>
+          </ItemDescription>
+          <p className="mt-1 text-xs text-foreground">{alert.body}</p>
+          {alert.data ? <BudgetStatusAlertSnapshot data={alert.data} /> : null}
+          {lifecycleError ? (
+            <p className="text-xs text-destructive" role="alert">
+              {lifecycleError}
+            </p>
+          ) : null}
+          {destinationFeedback ? (
+            <p className="text-xs text-muted-foreground" role="status">
+              {destinationFeedback}
+            </p>
+          ) : null}
+        </ItemContent>
+        <ItemActions className="self-start">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Toggle
+                  pressed={unread}
+                  size="sm"
+                  disabled={isLifecyclePending}
+                  aria-label={`${lifecycleLabel}: ${alert.title}`}
+                  className={cn("px-0", unread ? "text-primary" : "text-muted-foreground")}
+                  onPressedChange={() => onToggleReadState?.()}
+                />
+              }
+            >
+              {isLifecyclePending ? (
+                <Spinner />
+              ) : (
+                <HugeiconsIcon icon={unread ? Mail01Icon : MailOpen01Icon} strokeWidth={2} />
+              )}
+            </TooltipTrigger>
+            <TooltipContent side="left">{lifecycleLabel}</TooltipContent>
+          </Tooltip>
+        </ItemActions>
+      </Item>
     </article>
   );
 }

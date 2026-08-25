@@ -1,5 +1,32 @@
 # Choices
 
+## 2026-08-25 — Snapshot sits below notification copy
+
+- Budget status Card uses `mt-3` so body and the rich render are not flush (xs ItemContent has no gap).
+
+## 2026-08-25 — Subtitle hover shows the absolute alert time
+
+- Relative copy stays visible. Hover uses shadcn Tooltip with `format(createdAt, "PPpp")`. Invalid ISO falls back to the raw string.
+
+## 2026-08-25 — Notification rows use Item size xs and 12px type
+
+- Rows: `Item size="xs"`. Title, time, and body are `text-xs`. Type well is `size-6`. Body gets `mt-1` because xs ItemContent has no gap.
+
+## 2026-08-25 — Status-bar unread badge is static with a sidebar ring
+
+- Dropped `animate-pulse`. Dot is `size-1.5` with `[corner-shape:round]` (global squircle would flatten it). `ring-1 ring-sidebar` separates it from the bell. Offset `top-1 right-1`.
+
+## 2026-08-25 — Notifications list scrolls with ScrollArea
+
+- Ledger body uses shadcn `ScrollArea` (`min-h-0 flex-1`), same as `ScreenBase`. Native overflow dropped so the 0.375rem scrollbar token applies.
+
+## 2026-08-25 — Notification rows use Item + type icon + read Toggle
+
+- List rows compose shadcn Item (`size="xs"`, muted when unread). Title is ItemTitle; subtitle is time only.
+- Type is the colored producer icon (budget wallet, currency dollar, recurring repeat/calendar/clock). Color follows severity: primary / amber / destructive. No type or read copy in the subtitle.
+- Read state is an icon-only Toggle (`Mail01` unread, `MailOpen01` read). Tooltip + aria-label are the action: "Mark read" / "Mark unread".
+- Dropped the "New" badge. Unread weight + muted Item + pressed Toggle carry status.
+
 ## 2026-08-25 — Desktop overlay chrome hosts the wordmark
 
 - Reverted: wordmark stays in the sidebar header under traffic-light chrome. Overlay is toggle + history only. History arrows pack beside the toggle (`TRIGGER_TO_HISTORY_GAP`), left-aligned. No `ml-auto`.
