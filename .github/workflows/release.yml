@@ -389,6 +389,14 @@ jobs:
           $exe = $bundles | Where-Object Name -Like "*-setup.exe"
           if (-not $msi) { throw "Missing Windows MSI artifact." }
           if (-not $exe) { throw "Missing Windows NSIS artifact." }
+          $windowsKitsRoot = (Get-ItemProperty `
+            "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots").KitsRoot10
+          $signTool = Get-ChildItem "$windowsKitsRoot\bin" -Recurse -File `
+            -Filter "signtool.exe" |
+            Where-Object FullName -Match '\\x64\\signtool\.exe$' |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $signTool) { throw "Windows SDK SignTool was not found." }
           foreach ($installer in @($msi) + @($exe)) {
             if (-not (Test-Path "$($installer.FullName).sig")) {
               throw "Missing Tauri updater signature for $($installer.Name)."
@@ -400,7 +408,7 @@ jobs:
             if ($signature.SignerCertificate.Thumbprint -ne $env:WINDOWS_CERTIFICATE_THUMBPRINT) {
               throw "Unexpected Authenticode signer for $($installer.Name)."
             }
-            & signtool.exe verify /pa /all /v /tw $installer.FullName
+            & $signTool.FullName verify /pa /all /v /tw $installer.FullName
             if ($LASTEXITCODE -ne 0) {
               throw "SignTool verification failed for $($installer.Name)."
             }
