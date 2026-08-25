@@ -82,21 +82,28 @@ describe("SettingsModal", () => {
 
     const sidebar = document.querySelector('[data-slot="settings-modal-sidebar"]');
     const sidebarHeader = document.querySelector('[data-slot="settings-modal-sidebar-header"]');
-    const sidebarFooter = document.querySelector('[data-slot="settings-modal-sidebar-footer"]');
+    const header = document.querySelector('[data-slot="settings-modal-header"]');
     const title = screen.getByRole("heading", { name: "Settings" });
-    const backButton = screen.getByRole("button", { name: "Back to app" });
+    const closeButton = screen.getByRole("button", { name: "Close" });
     const sectionsNav = screen.getByRole("navigation", { name: "Settings sections" });
+    const breadcrumbs = screen.getByRole("navigation", { name: "breadcrumb" });
 
     expect(sidebar).not.toBeNull();
     expect(sidebarHeader).not.toBeNull();
-    expect(sidebarFooter).not.toBeNull();
-    expect(document.querySelector('[data-slot="settings-modal-header"]')).toBeNull();
-    expect(screen.queryByRole("navigation", { name: "breadcrumb" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
+    expect(header).not.toBeNull();
+    expect(document.querySelector('[data-slot="settings-modal-sidebar-footer"]')).toBeNull();
+    expect(screen.queryByRole("button", { name: "Back to app" })).toBeNull();
     expect(sidebar?.contains(title)).toBe(true);
     expect(sidebarHeader?.contains(title)).toBe(true);
-    expect(sidebarHeader?.contains(backButton)).toBe(false);
-    expect(sidebarFooter?.contains(backButton)).toBe(true);
+    expect(title.className).toContain("sr-only");
+    expect(sidebar?.contains(header)).toBe(false);
+    expect(header?.contains(closeButton)).toBe(true);
+    expect(header?.contains(breadcrumbs)).toBe(true);
+    expect(header?.className).toContain("h-12");
+    expect(header?.className).toContain("border-b");
+
+    expect(within(breadcrumbs).getByRole("link", { name: "Settings" })).toBeTruthy();
+    expect(within(breadcrumbs).getByText("Appearance")).toBeTruthy();
 
     expect(sectionsNav).toBeTruthy();
     expect(within(sectionsNav).getByRole("link", { name: "Appearance" })).toBeTruthy();
@@ -116,6 +123,9 @@ describe("SettingsModal", () => {
     expect(await screen.findByText("Currencies page")).toBeTruthy();
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
     expect(router.state.location.pathname).toBe("/settings/currencies");
+
+    const breadcrumbs = screen.getByRole("navigation", { name: "breadcrumb" });
+    expect(within(breadcrumbs).getByText("Currencies")).toBeTruthy();
   });
 
   it("returns to the previous app screen when closed", async () => {
@@ -124,7 +134,7 @@ describe("SettingsModal", () => {
     await router.navigate({ to: "/settings/appearance" });
     expect(await screen.findByRole("dialog", { name: "Settings" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Back to app" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Settings" })).toBeNull();

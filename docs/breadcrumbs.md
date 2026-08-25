@@ -1,5 +1,9 @@
 # Breadcrumbs
 
+## 2026-08-25
+
+- Settings modal: sidebar full height, title slot blank. Content header matches app title bar (crumbs + Close). Drop `Back to app`. DialogTitle stays `sr-only` "Settings".
+
 ## 2026-08-24
 
 - Settings modal has no content header or breadcrumbs. Sidebar footer `Back to app` (bottom-left) returns to the previous screen. `Settings` stays the sidebar DialogTitle.
