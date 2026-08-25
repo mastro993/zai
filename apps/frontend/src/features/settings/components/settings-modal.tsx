@@ -47,7 +47,8 @@ function SettingsModalBreadcrumbs({
       <BreadcrumbList>
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1;
-          const crumbKey = crumb.href ?? `current:${crumb.label}`;
+          const href = crumb.href;
+          const crumbKey = href ?? `current:${crumb.label}`;
 
           return (
             <span key={crumbKey} className="contents">
@@ -56,18 +57,18 @@ function SettingsModalBreadcrumbs({
                   index < crumbs.length - 1 ? "max-w-40 truncate sm:max-w-none" : undefined
                 }
               >
-                {isLast || !crumb.href ? (
+                {isLast || !href ? (
                   <BreadcrumbPage className="truncate">{crumb.label}</BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink
                     render={
                       <Link
-                        to={crumb.href}
+                        to={href}
                         preload={onNavigate ? false : "intent"}
                         onClick={(event) => {
                           if (onNavigate) {
                             event.preventDefault();
-                            onNavigate(crumb.href);
+                            onNavigate(href);
                           }
                         }}
                       />
