@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Blockchain01Icon,
@@ -14,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { AlertsBell } from "@/features/alerts/components/alerts-bell";
 import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
+import { useOpenSettings } from "@/features/settings/hooks/use-settings-modal";
 import { settingsItem } from "@/lib/navigation";
 import { applyStatusBarTheme, nextStatusBarTheme } from "@/lib/theme-toggle";
 
@@ -70,6 +70,7 @@ function TanStackDevtoolsButton() {
 
 export function ApplicationStatusBar() {
   const appVersion = resolveAboutAppVersion(aboutPackageVersion());
+  const openSettings = useOpenSettings();
 
   return (
     <footer
@@ -78,12 +79,12 @@ export function ApplicationStatusBar() {
     >
       <div className="flex min-w-0 items-center gap-1.5">
         <Button
-          nativeButton={false}
+          type="button"
           variant="ghost"
           size="icon-xs"
           className={statusBarControlClassName}
           aria-label={settingsItem.title}
-          render={<Link to={settingsItem.to} preload="intent" />}
+          onClick={() => openSettings()}
         >
           <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
         </Button>

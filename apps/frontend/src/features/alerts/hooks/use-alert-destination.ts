@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 
 import { getBudget } from "@/features/budgets/commands/budgets";
+import { useOpenSettings } from "@/features/settings/hooks/use-settings-modal";
 
 import { markAlertRead } from "../commands/alerts";
 import { isNavigableAlertDestination, isUnreadAlert } from "../lib/parse";
@@ -36,6 +37,7 @@ export function useAlertDestination({
   setLifecyclePendingId,
 }: UseAlertDestinationOptions) {
   const navigate = useNavigate();
+  const openSettings = useOpenSettings();
 
   return useCallback(
     async (alert: DomainAlert) => {
@@ -60,10 +62,7 @@ export function useAlertDestination({
 
       if (current.destination.type === "currencySettings") {
         closeLedger();
-        await navigate({
-          to: "/settings/currencies",
-          search: { focus: "rates" },
-        });
+        openSettings({ section: "currencies", focus: "rates" });
         return;
       }
 
@@ -86,6 +85,7 @@ export function useAlertDestination({
       applyLifecycleResult,
       closeLedger,
       navigate,
+      openSettings,
       refresh,
       setDestinationFeedback,
       setLifecyclePendingId,

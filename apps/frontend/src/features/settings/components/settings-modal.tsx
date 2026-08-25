@@ -17,14 +17,23 @@ import { useSettingsReturnHrefValue } from "../hooks/use-settings-return-href";
 
 interface SettingsModalProps {
   children: ReactNode;
+  pathname?: string;
+  onNavigate?: (pathname: string) => void;
+  onClose?: () => void;
 }
 
-export function SettingsModal({ children }: SettingsModalProps) {
+export function SettingsModal({
+  children,
+  pathname: pathnameOverride,
+  onNavigate,
+  onClose,
+}: SettingsModalProps) {
   const [open, setOpen] = useState(true);
   const router = useRouter();
-  const pathname = useRouterState({
+  const routePathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const pathname = pathnameOverride ?? routePathname;
   const returnHref = useSettingsReturnHrefValue();
 
   return (
@@ -33,7 +42,11 @@ export function SettingsModal({ children }: SettingsModalProps) {
       onOpenChange={setOpen}
       onOpenChangeComplete={(nextOpen) => {
         if (!nextOpen) {
-          router.history.push(returnHref);
+          if (onClose) {
+            onClose();
+          } else {
+            router.history.push(returnHref);
+          }
         }
       }}
     >
@@ -55,7 +68,7 @@ export function SettingsModal({ children }: SettingsModalProps) {
             </DialogDescription>
           </div>
           <div className="min-h-0 flex-1 overflow-auto py-2">
-            <SettingsNav pathname={pathname} />
+            <SettingsNav pathname={pathname} onNavigate={onNavigate} />
           </div>
           <div data-slot="settings-modal-sidebar-footer" className="mt-auto shrink-0 p-2">
             <DialogClose
