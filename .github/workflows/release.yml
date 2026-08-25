@@ -112,6 +112,17 @@ jobs:
           RELEASE_CHANNEL: ${{ github.event_name == 'schedule' && 'nightly' || inputs.channel }}
         run: node scripts/release-version.mjs github-output
 
+      - name: Require curated Stable changelog
+        if: steps.compute.outputs.skip != 'true' && steps.compute.outputs.channel == 'stable'
+        env:
+          RELEASE_TAG: ${{ steps.compute.outputs.tag }}
+        run: |
+          notes_file="release-notes/$RELEASE_TAG.md"
+          if [ ! -s "$notes_file" ]; then
+            echo "::error::Stable release requires non-empty curated changelog $notes_file."
+            exit 1
+          fi
+
       - name: Release summary
         run: |
           if [ "${{ steps.compute.outputs.skip }}" = "true" ]; then
@@ -504,7 +515,11 @@ jobs:
           fi
 
           notes_file="release-notes/$RELEASE_TAG.md"
-          if [ "$RELEASE_CHANNEL" = "stable" ] && [ -f "$notes_file" ]; then
+          if [ "$RELEASE_CHANNEL" = "stable" ]; then
+            [ -s "$notes_file" ] || {
+              echo "::error::Missing curated Stable changelog $notes_file."
+              exit 1
+            }
             release_notes="$(cat "$notes_file")"
           else
             notes_args=(

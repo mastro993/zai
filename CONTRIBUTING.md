@@ -100,7 +100,7 @@ and the [release guide](docs/releasing.md).
 - **Nightly:** runs at 05:00 UTC from `main` or by manual dispatch from any
   branch, and skips when the selected commit is already the latest Nightly.
 - **Stable:** manual-only from `main`; multiple Stable releases may use the
-  same UTC date.
+  same UTC date. Add the curated `release-notes/vY.M.D.B.md` before dispatch.
 
 Do not bump the committed `0.0.0-dev` placeholder by hand. CI stamps the packed
 internal SemVer into build manifests while published release identifiers and
