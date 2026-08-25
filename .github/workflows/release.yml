@@ -394,8 +394,15 @@ jobs:
               throw "Missing Tauri updater signature for $($installer.Name)."
             }
             $signature = Get-AuthenticodeSignature $installer.FullName
-            if ($signature.Status -ne "Valid") {
-              throw "Invalid Authenticode signature for $($installer.Name): $($signature.Status)"
+            if (-not $signature.SignerCertificate) {
+              throw "Missing Authenticode signature for $($installer.Name)."
+            }
+            if ($signature.SignerCertificate.Thumbprint -ne $env:WINDOWS_CERTIFICATE_THUMBPRINT) {
+              throw "Unexpected Authenticode signer for $($installer.Name)."
+            }
+            & signtool.exe verify /pa /all /v /tw $installer.FullName
+            if ($LASTEXITCODE -ne 0) {
+              throw "SignTool verification failed for $($installer.Name)."
             }
           }
 
