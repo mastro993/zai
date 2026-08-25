@@ -81,7 +81,6 @@ describe("SettingsModal", () => {
     expect(content?.className).toContain("md:flex-row");
 
     const sidebar = document.querySelector('[data-slot="settings-modal-sidebar"]');
-    const sidebarHeader = document.querySelector('[data-slot="settings-modal-sidebar-header"]');
     const header = document.querySelector('[data-slot="settings-modal-header"]');
     const title = screen.getByRole("heading", { name: "Settings" });
     const closeButton = screen.getByRole("button", { name: "Close" });
@@ -89,12 +88,11 @@ describe("SettingsModal", () => {
     const breadcrumbs = screen.getByRole("navigation", { name: "breadcrumb" });
 
     expect(sidebar).not.toBeNull();
-    expect(sidebarHeader).not.toBeNull();
     expect(header).not.toBeNull();
+    expect(document.querySelector('[data-slot="settings-modal-sidebar-header"]')).toBeNull();
     expect(document.querySelector('[data-slot="settings-modal-sidebar-footer"]')).toBeNull();
     expect(screen.queryByRole("button", { name: "Back to app" })).toBeNull();
     expect(sidebar?.contains(title)).toBe(true);
-    expect(sidebarHeader?.contains(title)).toBe(true);
     expect(title.className).toContain("sr-only");
     expect(sidebar?.contains(header)).toBe(false);
     expect(header?.contains(closeButton)).toBe(true);
@@ -104,6 +102,15 @@ describe("SettingsModal", () => {
 
     expect(within(breadcrumbs).getByRole("link", { name: "Settings" })).toBeTruthy();
     expect(within(breadcrumbs).getByText("Appearance")).toBeTruthy();
+
+    const search = screen.getByRole("searchbox", { name: "Search settings" });
+    const sidebarSearch = document.querySelector('[data-slot="settings-modal-sidebar-search"]');
+    expect(sidebarSearch?.contains(search)).toBe(true);
+    expect(sidebarSearch?.className).toContain("h-12");
+    expect(search.getAttribute("placeholder")).toBe("Search settings");
+    fireEvent.change(search, { target: { value: "appearance" } });
+    expect(screen.getByText("Appearance page")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
 
     expect(sectionsNav).toBeTruthy();
     expect(within(sectionsNav).getByRole("link", { name: "Appearance" })).toBeTruthy();

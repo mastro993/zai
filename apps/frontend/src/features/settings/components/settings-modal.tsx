@@ -1,9 +1,11 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
-import { Cancel01Icon } from "@hugeicons/core-free-icons";
+import { Cancel01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -72,6 +74,7 @@ export function SettingsModal({ children }: SettingsModalProps) {
     select: (state) => state.location.pathname,
   });
   const returnHref = useSettingsReturnHrefValue();
+  const searchId = useId();
 
   return (
     <Dialog
@@ -91,14 +94,25 @@ export function SettingsModal({ children }: SettingsModalProps) {
           data-slot="settings-modal-sidebar"
           className="flex w-full shrink-0 flex-col border-b border-sidebar-border bg-sidebar text-sidebar-foreground md:h-full md:w-52 md:border-r md:border-b-0"
         >
+          <DialogTitle className="sr-only">Settings</DialogTitle>
+          <DialogDescription className="sr-only">
+            Appearance, currencies, and about.
+          </DialogDescription>
           <div
-            data-slot="settings-modal-sidebar-header"
-            className="flex h-12 shrink-0 items-center px-4"
+            data-slot="settings-modal-sidebar-search"
+            className="flex h-12 shrink-0 items-center px-2"
           >
-            <DialogTitle className="sr-only">Settings</DialogTitle>
-            <DialogDescription className="sr-only">
-              Appearance, currencies, and about.
-            </DialogDescription>
+            <Field className="min-w-0 flex-1">
+              <FieldLabel htmlFor={searchId} className="sr-only">
+                Search settings
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupAddon align="inline-start">
+                  <HugeiconsIcon icon={Search01Icon} strokeWidth={2} aria-hidden="true" />
+                </InputGroupAddon>
+                <InputGroupInput id={searchId} type="search" placeholder="Search settings" />
+              </InputGroup>
+            </Field>
           </div>
           <div className="min-h-0 flex-1 overflow-auto py-2">
             <SettingsNav pathname={pathname} />

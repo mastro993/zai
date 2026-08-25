@@ -19,6 +19,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { SidebarBrandMark } from "@/components/sidebar-brand-mark";
 import { useSettingsReturnHrefValue } from "@/features/settings/hooks/use-settings-return-href";
 import { isSettingsPath, navigationItems } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -26,27 +27,6 @@ import { createWindowChromeAdapter } from "@/lib/window-chrome";
 
 interface ApplicationSidebarProps {
   buildTarget: CommandBuildTarget;
-}
-
-function SidebarBrandMark({ className }: { className?: string }) {
-  return (
-    <div
-      data-slot="sidebar-brand"
-      data-wordmark="true"
-      aria-hidden
-      className={cn(
-        "pointer-events-none relative z-10 flex min-w-0 select-none items-center gap-1.5",
-        className,
-      )}
-    >
-      <span className="flex items-center gap-0 leading-none">
-        <span className="flex size-8 shrink-0 items-center justify-center text-lg leading-none font-semibold text-primary">
-          財
-        </span>
-        <span className="truncate text-lg leading-none font-semibold text-primary">Zai</span>
-      </span>
-    </div>
-  );
 }
 
 /**
@@ -128,7 +108,7 @@ function WebSidebarChrome({ isExpanded, itemPad }: { isExpanded: boolean; itemPa
     <div
       data-slot="sidebar-chrome-header"
       className={cn(
-        "relative flex h-12 w-full items-center",
+        "relative flex h-12 w-full items-center border-b border-border",
         isExpanded ? "justify-between" : "justify-center",
       )}
       style={{

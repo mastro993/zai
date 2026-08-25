@@ -2,7 +2,10 @@
 
 ## 2026-08-25
 
-- Settings modal: sidebar full height, title slot blank. Content header matches app title bar (crumbs + Close). Drop `Back to app`. DialogTitle stays `sr-only` "Settings".
+- Desktop wordmark is back in the sidebar under traffic-light chrome. Overlay chrome is toggle + history arrows packed left.
+- Web sidebar logo row: `border-b border-border` aligned with title-bar hairline. Desktop traffic-light spacer: no hairline above the logo.
+- Settings pages: no section h1, no sidebar Settings title. Crumb is `Settings > section`. Description stays. Search row is `h-12` so it lines up with the breadcrumbs.
+- Settings modal: sidebar full height. Content header matches app title bar (crumbs + Close). Drop `Back to app`.
 
 ## 2026-08-24
 

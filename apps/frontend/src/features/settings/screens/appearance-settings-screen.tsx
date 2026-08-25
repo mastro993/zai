@@ -34,10 +34,7 @@ export function AppearanceSettingsScreen() {
   return (
     <ScreenBase>
       <FieldGroup className="max-w-3xl gap-6">
-        <SettingsSectionHeader
-          title="Appearance"
-          description="Theme for this device. System follows the OS preference."
-        />
+        <SettingsSectionHeader description="Theme for this device. System follows the OS preference." />
         <ThemeModeSetting />
       </FieldGroup>
     </ScreenBase>

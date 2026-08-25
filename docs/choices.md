@@ -1,9 +1,26 @@
 # Choices
 
+## 2026-08-25 — Desktop overlay chrome hosts the wordmark
+
+- Reverted: wordmark stays in the sidebar header under traffic-light chrome. Overlay is toggle + history only. History arrows pack beside the toggle (`TRIGGER_TO_HISTORY_GAP`), left-aligned. No `ml-auto`.
+
+## 2026-08-25 — App sidebar logo row shares the title-bar hairline
+
+- Web chrome header (`h-12`) gets `border-b border-border`, same token as `ApplicationTitleBar`. Desktop traffic-light spacer has no hairline (it sat above the logo).
+
+## 2026-08-25 — Settings pages drop section h1
+
+- Breadcrumb is the page title (`Settings > section`). Sidebar has no visual Settings heading (`sr-only` DialogTitle). `SettingsSectionHeader` is description-only. About has no intro.
+
+## 2026-08-25 — Settings sidebar search is a no-op
+
+- No visual Settings heading in the sidebar. Search is the first sidebar row (`h-12` + centered, same as the crumb header). Icon left, placeholder "Search settings". Uncontrolled. Does not filter or navigate yet.
+- Modal breadcrumbs: `Settings > section`.
+
 ## 2026-08-25 — Settings modal chrome matches the app shell
 
-- Sidebar stays full height. Top slot is blank (`sr-only` DialogTitle "Settings" for the dialog name). No footer `Back to app`.
-- Content column gets an `h-12` header like the app title bar: settings breadcrumbs (`resolveScreenBreadcrumbs(pathname)`, not `useScreenBreadcrumbs` which freezes on the return path) + ghost `icon-sm` Close top right.
+- Sidebar stays full height. No visual Settings title. No footer `Back to app`.
+- Content column gets an `h-12` header like the app title bar: `Settings > section` crumbs + ghost `icon-sm` Close top right.
 - Leave via Close, ESC, overlay. Do not nest `SidebarProvider` — it would steal `Cmd+B`.
 
 ## 2026-08-24 — Settings modal has no content header
