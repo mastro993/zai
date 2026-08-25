@@ -9,10 +9,39 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { useEffect, useState } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SettingsReturnHrefProvider } from "../../hooks/use-settings-return-href";
+import { SettingsModalProvider, useOpenSettings } from "../../hooks/use-settings-modal";
 import { SettingsModal } from "../settings-modal";
+
+const dashboardMounted = vi.fn();
+
+function DashboardPage() {
+  const [value, setValue] = useState("");
+
+  useEffect(() => {
+    dashboardMounted();
+  }, []);
+
+  return (
+    <label>
+      Dashboard state
+      <input value={value} onChange={(event) => setValue(event.target.value)} />
+    </label>
+  );
+}
+
+function OpenSettingsButton() {
+  const openSettings = useOpenSettings();
+
+  return (
+    <button type="button" onClick={() => openSettings()}>
+      Open settings
+    </button>
+  );
+}
 
 const renderSettingsModal = async (initialEntry: string) => {
   const rootRoute = createRootRoute({
@@ -25,7 +54,7 @@ const renderSettingsModal = async (initialEntry: string) => {
   const dashboardRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/dashboard",
-    component: () => <p>Dashboard page</p>,
+    component: DashboardPage,
   });
   const settingsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -64,9 +93,34 @@ const renderSettingsModal = async (initialEntry: string) => {
   return router;
 };
 
+const renderSettingsOverlay = async () => {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <SettingsModalProvider>
+        <OpenSettingsButton />
+        <Outlet />
+      </SettingsModalProvider>
+    ),
+  });
+  const dashboardRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/dashboard",
+    component: DashboardPage,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([dashboardRoute]),
+    history: createMemoryHistory({ initialEntries: ["/dashboard"] }),
+  });
+
+  await router.load();
+  render(<RouterProvider router={router} />);
+  return router;
+};
+
 describe("SettingsModal", () => {
   afterEach(() => {
     cleanup();
+    dashboardMounted.mockClear();
   });
 
   it("opens a large dialog with the settings sidebar", async () => {
@@ -128,8 +182,33 @@ describe("SettingsModal", () => {
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Settings" })).toBeNull();
-      expect(screen.getByText("Dashboard page")).toBeTruthy();
+      expect(screen.getByRole("textbox", { name: "Dashboard state" })).toBeTruthy();
     });
     expect(router.state.location.pathname).toBe("/dashboard");
+  });
+
+  it("preserves the current screen while settings is open", async () => {
+    const router = await renderSettingsOverlay();
+    const input = screen.getByRole("textbox", { name: "Dashboard state" });
+    fireEvent.change(input, { target: { value: "preserved" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Open settings" }));
+    expect(await screen.findByRole("dialog", { name: "Settings" })).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/dashboard");
+
+    fireEvent.click(screen.getByRole("link", { name: "About" }));
+    expect(await screen.findByText("App version")).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/dashboard");
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to app" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Settings" })).toBeNull();
+    });
+    expect(screen.getByRole("textbox", { name: "Dashboard state" })).toHaveProperty(
+      "value",
+      "preserved",
+    );
+    expect(dashboardMounted).toHaveBeenCalledTimes(1);
   });
 });
