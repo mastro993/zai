@@ -130,8 +130,7 @@ describe("ApplicationSidebar", () => {
     expect(brand?.textContent).toContain("Zai");
     expect(header?.contains(brand)).toBe(true);
     expect(header?.contains(toggle)).toBe(true);
-    expect(header?.className).toContain("border-b");
-    expect(header?.className).toContain("border-border");
+    expect(header?.className).not.toContain("border-b");
   });
 
   it("puts the desktop logo below the traffic-light chrome, not beside the toggle", async () => {

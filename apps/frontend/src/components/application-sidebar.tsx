@@ -108,7 +108,7 @@ function WebSidebarChrome({ isExpanded, itemPad }: { isExpanded: boolean; itemPa
     <div
       data-slot="sidebar-chrome-header"
       className={cn(
-        "relative flex h-12 w-full items-center border-b border-border",
+        "relative flex h-12 w-full items-center",
         isExpanded ? "justify-between" : "justify-center",
       )}
       style={{

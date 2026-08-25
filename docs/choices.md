@@ -6,7 +6,7 @@
 
 ## 2026-08-25 — App sidebar logo row shares the title-bar hairline
 
-- Web chrome header (`h-12`) gets `border-b border-border`, same token as `ApplicationTitleBar`. Desktop traffic-light spacer has no hairline (it sat above the logo).
+- No hairline on the sidebar logo row (web or desktop traffic-light spacer). Title bar keeps its own `border-b`.
 
 ## 2026-08-25 — Settings pages drop section h1
 
