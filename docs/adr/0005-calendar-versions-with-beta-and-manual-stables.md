@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0006
+---
+
 # Calendar versions with beta prerelease and manual stables
 
 Zai identifies shipped builds with a UTC calendar version, not SemVer
@@ -29,6 +33,5 @@ The first ship (no previous tag) caps that log at 100 commits. In-app
 update checks stay out of this decision.
 
 Four-part `YYYY.M.D.N` was rejected because it is not valid SemVer.
-`-rc.N` was rejected because the product channel is Beta. Tolaria's
-`-alpha.N` starting at 1 was rejected: Zai is not Alpha and the first
-same-day ship is `.0`.
+`-rc.N` and `-alpha.N` were rejected because the product channel is Beta
+and the first same-day ship is `.0`.

@@ -4,6 +4,23 @@ Personal finance context for tracking money movement and related organization.
 
 ## Language
 
+**Release Version**:
+The exact unpadded UTC `Y.M.D.B` identifier shared by every shipped desktop
+build and used in public release identifiers.
+_Avoid_: App SemVer, channel version
+
+**Nightly Channel**:
+The prerelease distribution channel for current development builds.
+_Avoid_: Beta channel, alpha channel
+
+**Stable Channel**:
+The full-release distribution channel for manually approved builds.
+_Avoid_: Production channel
+
+**Release Artifact**:
+An installable or update package for one Release Version and target platform.
+_Avoid_: Build output
+
 **Cash flow area**:
 The user-interface navigation area that presents transactions, categories,
 recurring transactions, forecasts, and budgets together. This grouping is a
