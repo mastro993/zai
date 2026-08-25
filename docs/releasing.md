@@ -46,11 +46,12 @@ MSI version `26.8.25010`. The workflow rejects years outside 2000–2255 and
 checks all WiX component limits. NSIS and the application keep the internal
 SemVer.
 
-## Required repository secrets
+## Required repository secrets and variables
 
 Open the repository on GitHub and go to **Settings → Secrets and variables →
-Actions → New repository secret**. With GitHub CLI, authenticate with
-`gh auth login`, change to the repository directory, and use `gh secret set`.
+Actions**. Add private values under **Secrets** and the updater public key under
+**Variables**. With GitHub CLI, authenticate with `gh auth login`, change to
+the repository directory, and use `gh secret set` or `gh variable set`.
 Do not put private values directly in command arguments, shell history, logs,
 or documentation.
 
@@ -67,6 +68,12 @@ or documentation.
 | `WINDOWS_CERTIFICATE_PFX`            | Base64 trusted code-signing `.pfx`            |
 | `WINDOWS_CERTIFICATE_PASSWORD`       | `.pfx` export password                        |
 
+Add one repository variable:
+
+| Variable                   | Value                                 |
+| -------------------------- | ------------------------------------- |
+| `TAURI_SIGNING_PUBLIC_KEY` | Tauri updater public key file content |
+
 The workflow checks required secrets before starting platform builds.
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` is optional only when the updater key is
 not encrypted.
@@ -79,11 +86,13 @@ Generate the key once and back it up securely:
 pnpm tauri signer generate -w ~/.tauri/zai.key
 gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/zai.key
 gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+gh variable set TAURI_SIGNING_PUBLIC_KEY < ~/.tauri/zai.key.pub
 ```
 
-The final command prompts without exposing the password. Omit that secret for
-an unencrypted key. Retain the generated public key for a future updater
-runtime; this workflow only generates and signs updater artifacts.
+The password command prompts without exposing the password. Omit that secret
+for an unencrypted key. The public key is safe to share and is embedded in the
+release build because Tauri requires `plugins.updater.pubkey` when generating
+updater artifacts. This workflow does not add the in-app updater runtime.
 
 For the GitHub web form, copy the private key file content directly from a
 trusted local editor into `TAURI_SIGNING_PRIVATE_KEY`.

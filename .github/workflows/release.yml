@@ -129,6 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PUBLIC_KEY: ${{ vars.TAURI_SIGNING_PUBLIC_KEY }}
       APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
       APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -142,6 +143,7 @@ jobs:
         run: |
           missing=()
           [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] || missing+=("TAURI_SIGNING_PRIVATE_KEY")
+          [ -n "$TAURI_SIGNING_PUBLIC_KEY" ] || missing+=("TAURI_SIGNING_PUBLIC_KEY")
           [ -n "$APPLE_CERTIFICATE" ] || missing+=("APPLE_CERTIFICATE")
           [ -n "$APPLE_CERTIFICATE_PASSWORD" ] || missing+=("APPLE_CERTIFICATE_PASSWORD")
           [ -n "$APPLE_SIGNING_IDENTITY" ] || missing+=("APPLE_SIGNING_IDENTITY")
@@ -151,7 +153,7 @@ jobs:
           [ -n "$WINDOWS_CERTIFICATE_PFX" ] || missing+=("WINDOWS_CERTIFICATE_PFX")
           [ -n "$WINDOWS_CERTIFICATE_PASSWORD" ] || missing+=("WINDOWS_CERTIFICATE_PASSWORD")
           if [ "${#missing[@]}" -ne 0 ]; then
-            printf '::error::Missing required release secret: %s\n' "${missing[@]}"
+            printf '::error::Missing required release setting: %s\n' "${missing[@]}"
             exit 1
           fi
 
@@ -189,6 +191,7 @@ jobs:
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      TAURI_SIGNING_PUBLIC_KEY: ${{ vars.TAURI_SIGNING_PUBLIC_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -167,7 +167,11 @@ const tagCommit = (tag, cwd) => git(["rev-list", "-n", "1", tag], cwd);
 
 const utcToday = () => new Date().toISOString().slice(0, 10);
 
-export const stampVersion = (version, cwd = rootDir) => {
+export const stampVersion = (
+  version,
+  cwd = rootDir,
+  updaterPublicKey = process.env.TAURI_SIGNING_PUBLIC_KEY,
+) => {
   if (!/^\d{4}\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(version)) {
     throw new Error(
       `Expected packed package version Y.M.P without a prerelease suffix, got ${version}`,
@@ -193,6 +197,13 @@ export const stampVersion = (version, cwd = rootDir) => {
     const filePath = path.join(cwd, relativePath);
     const data = JSON.parse(readFileSync(filePath, "utf8"));
     data.version = version;
+    if (relativePath === "apps/tauri/tauri.conf.json" && updaterPublicKey) {
+      data.plugins ??= {};
+      data.plugins.updater = {
+        ...data.plugins.updater,
+        pubkey: updaterPublicKey,
+      };
+    }
     writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`);
   }
 };

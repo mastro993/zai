@@ -138,7 +138,7 @@ describe("stampVersion", () => {
       );
 
       assert.throws(() => stampVersion("2026.8.25010-rc.1", cwd), /without a prerelease suffix/);
-      stampVersion("2026.8.25010", cwd);
+      stampVersion("2026.8.25010", cwd, "test-updater-public-key");
 
       assert.match(
         await readFile(path.join(cwd, "Cargo.toml"), "utf8"),
@@ -147,13 +147,17 @@ describe("stampVersion", () => {
       for (const relativePath of [
         "package.json",
         "apps/frontend/package.json",
-        "apps/tauri/tauri.conf.json",
       ]) {
         assert.equal(
           JSON.parse(await readFile(path.join(cwd, relativePath), "utf8")).version,
           "2026.8.25010",
         );
       }
+      const tauriConfig = JSON.parse(
+        await readFile(path.join(cwd, "apps/tauri/tauri.conf.json"), "utf8"),
+      );
+      assert.equal(tauriConfig.version, "2026.8.25010");
+      assert.equal(tauriConfig.plugins.updater.pubkey, "test-updater-public-key");
 
       await mkdir(path.join(cwd, "target/release/bundle"), { recursive: true });
       await writeFile(path.join(cwd, "target/release/bundle/Zai_2026.8.25010_x64.dmg"), "");
