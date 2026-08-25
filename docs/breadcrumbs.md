@@ -8,6 +8,10 @@
 - Notification rows compacted: Item `xs`, title/time/body `text-xs`, icon well `size-6`.
 - Subtitle hover: Tooltip with absolute timestamp (`PPpp`).
 - Budget snapshot Card: `mt-3` under the alert body.
+- Desktop wordmark is back in the sidebar under traffic-light chrome. Overlay chrome is toggle + history arrows packed left.
+- Sidebar logo row: no bottom hairline. Title bar keeps its own.
+- Settings pages: no section h1, no sidebar Settings title. Crumb is `Settings > section`. Description stays. Search row is `h-12` so it lines up with the breadcrumbs.
+- Settings modal: sidebar full height. Content header matches app title bar (crumbs + Close). Drop `Back to app`.
 
 ## 2026-08-24
 

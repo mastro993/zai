@@ -1,9 +1,19 @@
-import { useState, type ReactNode } from "react";
-import { useRouter, useRouterState } from "@tanstack/react-router";
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
+import { useId, useState, type ReactNode } from "react";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { Cancel01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import {
   Dialog,
   DialogClose,
@@ -11,21 +21,87 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { resolveScreenBreadcrumbs } from "@/lib/navigation";
 
 import { SettingsNav } from "./settings-nav";
 import { useSettingsReturnHrefValue } from "../hooks/use-settings-return-href";
 
 interface SettingsModalProps {
   children: ReactNode;
+  pathname?: string;
+  onNavigate?: (pathname: string) => void;
+  onClose?: () => void;
 }
 
-export function SettingsModal({ children }: SettingsModalProps) {
+function SettingsModalBreadcrumbs({
+  pathname,
+  onNavigate,
+}: {
+  pathname: string;
+  onNavigate?: (pathname: string) => void;
+}) {
+  const crumbs = resolveScreenBreadcrumbs(pathname);
+
+  return (
+    <Breadcrumb className="min-w-0">
+      <BreadcrumbList>
+        {crumbs.map((crumb, index) => {
+          const isLast = index === crumbs.length - 1;
+          const href = crumb.href;
+          const crumbKey = href ?? `current:${crumb.label}`;
+
+          return (
+            <span key={crumbKey} className="contents">
+              <BreadcrumbItem
+                className={
+                  index < crumbs.length - 1 ? "max-w-40 truncate sm:max-w-none" : undefined
+                }
+              >
+                {isLast || !href ? (
+                  <BreadcrumbPage className="truncate">{crumb.label}</BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink
+                    render={
+                      <Link
+                        to={href}
+                        preload={onNavigate ? false : "intent"}
+                        onClick={(event) => {
+                          if (onNavigate) {
+                            event.preventDefault();
+                            onNavigate(href);
+                          }
+                        }}
+                      />
+                    }
+                    className="truncate"
+                  >
+                    {crumb.label}
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+              {!isLast ? <BreadcrumbSeparator /> : null}
+            </span>
+          );
+        })}
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}
+
+export function SettingsModal({
+  children,
+  pathname: pathnameOverride,
+  onNavigate,
+  onClose,
+}: SettingsModalProps) {
   const [open, setOpen] = useState(true);
   const router = useRouter();
-  const pathname = useRouterState({
+  const routePathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const pathname = pathnameOverride ?? routePathname;
   const returnHref = useSettingsReturnHrefValue();
+  const searchId = useId();
 
   return (
     <Dialog
@@ -33,7 +109,11 @@ export function SettingsModal({ children }: SettingsModalProps) {
       onOpenChange={setOpen}
       onOpenChangeComplete={(nextOpen) => {
         if (!nextOpen) {
-          router.history.push(returnHref);
+          if (onClose) {
+            onClose();
+          } else {
+            router.history.push(returnHref);
+          }
         }
       }}
     >
@@ -45,30 +125,55 @@ export function SettingsModal({ children }: SettingsModalProps) {
           data-slot="settings-modal-sidebar"
           className="flex w-full shrink-0 flex-col border-b border-sidebar-border bg-sidebar text-sidebar-foreground md:h-full md:w-52 md:border-r md:border-b-0"
         >
+          <DialogTitle className="sr-only">Settings</DialogTitle>
+          <DialogDescription className="sr-only">
+            Appearance, currencies, and about.
+          </DialogDescription>
           <div
-            data-slot="settings-modal-sidebar-header"
-            className="flex h-12 shrink-0 items-center px-4"
+            data-slot="settings-modal-sidebar-search"
+            className="flex h-12 shrink-0 items-center px-2"
           >
-            <DialogTitle>Settings</DialogTitle>
-            <DialogDescription className="sr-only">
-              Appearance, currencies, and about.
-            </DialogDescription>
+            <Field className="min-w-0 flex-1">
+              <FieldLabel htmlFor={searchId} className="sr-only">
+                Search settings
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupAddon align="inline-start">
+                  <HugeiconsIcon icon={Search01Icon} strokeWidth={2} aria-hidden="true" />
+                </InputGroupAddon>
+                <InputGroupInput id={searchId} type="search" placeholder="Search settings" />
+              </InputGroup>
+            </Field>
           </div>
           <div className="min-h-0 flex-1 overflow-auto py-2">
-            <SettingsNav pathname={pathname} />
-          </div>
-          <div data-slot="settings-modal-sidebar-footer" className="mt-auto shrink-0 p-2">
-            <DialogClose
-              render={
-                <Button variant="ghost" className="w-full justify-start text-sidebar-foreground" />
-              }
-            >
-              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} data-icon="inline-start" />
-              Back to app
-            </DialogClose>
+            <SettingsNav pathname={pathname} onNavigate={onNavigate} />
           </div>
         </aside>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">{children}</div>
+        <div
+          data-slot="settings-modal-main"
+          className="flex min-h-0 min-w-0 flex-1 flex-col bg-background"
+        >
+          <header
+            data-slot="settings-modal-header"
+            className="relative z-30 flex h-12 shrink-0 items-center border-b border-border bg-background text-foreground"
+          >
+            <div className="flex h-12 min-w-0 flex-1 items-center gap-2 px-4">
+              <div data-slot="settings-modal-breadcrumbs" className="min-w-0 shrink-0">
+                <SettingsModalBreadcrumbs pathname={pathname} onNavigate={onNavigate} />
+              </div>
+            </div>
+            <div
+              data-slot="settings-modal-header-actions"
+              className="flex shrink-0 items-center justify-end px-4"
+            >
+              <DialogClose render={<Button variant="ghost" size="icon-sm" />}>
+                <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+                <span className="sr-only">Close</span>
+              </DialogClose>
+            </div>
+          </header>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+        </div>
       </DialogContent>
     </Dialog>
   );

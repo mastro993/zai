@@ -18,6 +18,7 @@ import {
   useCurrencyBootstrap,
 } from "@/features/currency/hooks/use-currency-bootstrap";
 import { InitialCurrencySetupScreen } from "@/features/currency/screens/initial-currency-setup-screen";
+import { SettingsModalProvider } from "@/features/settings/hooks/use-settings-modal";
 import { SettingsReturnHrefProvider } from "@/features/settings/hooks/use-settings-return-href";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -104,36 +105,38 @@ function ApplicationWorkspace({ buildTarget }: ApplicationShellProps) {
 
   return (
     <AlertsControllerProvider>
-      <SettingsReturnHrefProvider>
-        <SidebarProvider
-          open={sidebarOpen}
-          onOpenChange={handleSidebarOpenChange}
-          className="flex h-svh flex-col overflow-hidden"
-        >
-          <ApplicationTitleBarProvider>
-            <div className="flex min-h-0 flex-1 overflow-hidden">
-              <FixedSidebarTrigger buildTarget={buildTarget} />
-              <ApplicationSidebar buildTarget={buildTarget} />
-              <SidebarInset className="min-h-0 overflow-hidden">
-                <ApplicationTitleBar buildTarget={buildTarget} />
-                <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <Outlet />
-                </main>
-              </SidebarInset>
-            </div>
-            <ApplicationStatusBar />
-            <Toaster />
-            <TanStackDevtools
-              plugins={[
-                {
-                  name: "Tanstack Router",
-                  render: <TanStackRouterDevtoolsPanel />,
-                },
-              ]}
-            />
-          </ApplicationTitleBarProvider>
-        </SidebarProvider>
-      </SettingsReturnHrefProvider>
+      <SettingsModalProvider>
+        <SettingsReturnHrefProvider>
+          <SidebarProvider
+            open={sidebarOpen}
+            onOpenChange={handleSidebarOpenChange}
+            className="flex h-svh flex-col overflow-hidden"
+          >
+            <ApplicationTitleBarProvider>
+              <div className="flex min-h-0 flex-1 overflow-hidden">
+                <FixedSidebarTrigger buildTarget={buildTarget} />
+                <ApplicationSidebar buildTarget={buildTarget} />
+                <SidebarInset className="min-h-0 overflow-hidden">
+                  <ApplicationTitleBar buildTarget={buildTarget} />
+                  <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <Outlet />
+                  </main>
+                </SidebarInset>
+              </div>
+              <ApplicationStatusBar />
+              <Toaster />
+              <TanStackDevtools
+                plugins={[
+                  {
+                    name: "Tanstack Router",
+                    render: <TanStackRouterDevtoolsPanel />,
+                  },
+                ]}
+              />
+            </ApplicationTitleBarProvider>
+          </SidebarProvider>
+        </SettingsReturnHrefProvider>
+      </SettingsModalProvider>
     </AlertsControllerProvider>
   );
 }
