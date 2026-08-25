@@ -1,5 +1,18 @@
 # Breadcrumbs
 
+## 2026-08-25
+
+- Notification list rows redesigned onto shadcn Item. Subtitle is time only. Type lives in a colored producer icon. Read/unread is an icon Toggle with "Mark read" / "Mark unread" tooltip.
+- Notifications drawer body: native overflow → shadcn ScrollArea so the thin app scrollbar shows.
+- Status-bar unread dot: no pulse, smaller (`size-1.5`), true circle (`corner-shape: round`). Sidebar ring separates it from the bell. Nudged toward the top-right corner.
+- Notification rows compacted: Item `xs`, title/time/body `text-xs`, icon well `size-6`.
+- Subtitle hover: Tooltip with absolute timestamp (`PPpp`).
+- Budget snapshot Card: `mt-3` under the alert body.
+- Desktop wordmark is back in the sidebar under traffic-light chrome. Overlay chrome is toggle + history arrows packed left.
+- Sidebar logo row: no bottom hairline. Title bar keeps its own.
+- Settings pages: no section h1, no sidebar Settings title. Crumb is `Settings > section`. Description stays. Search row is `h-12` so it lines up with the breadcrumbs.
+- Settings modal: sidebar full height. Content header matches app title bar (crumbs + Close). Drop `Back to app`.
+
 ## 2026-08-24
 
 - Settings modal has no content header or breadcrumbs. Sidebar footer `Back to app` (bottom-left) returns to the previous screen. `Settings` stays the sidebar DialogTitle.

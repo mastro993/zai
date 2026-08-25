@@ -130,6 +130,7 @@ describe("ApplicationSidebar", () => {
     expect(brand?.textContent).toContain("Zai");
     expect(header?.contains(brand)).toBe(true);
     expect(header?.contains(toggle)).toBe(true);
+    expect(header?.className).not.toContain("border-b");
   });
 
   it("puts the desktop logo below the traffic-light chrome, not beside the toggle", async () => {
@@ -141,6 +142,7 @@ describe("ApplicationSidebar", () => {
     const header = document.querySelector('[data-slot="sidebar-header"]');
 
     expect(chrome).not.toBeNull();
+    expect(chrome?.className).not.toContain("border-b");
     expect(brand?.textContent).toContain("Zai");
     expect(chrome?.contains(brand)).toBe(false);
     expect(header?.contains(brand)).toBe(true);

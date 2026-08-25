@@ -16,10 +16,7 @@ export function CurrenciesSettingsScreen({
   return (
     <ScreenBase>
       <FieldGroup className="max-w-3xl gap-6">
-        <SettingsSectionHeader
-          title="Currencies"
-          description="Enabled currencies, coverage, and refresh. The default is used for converted amounts."
-        />
+        <SettingsSectionHeader description="Enabled currencies, coverage, and refresh. The default is used for converted amounts." />
         <CurrencySettingsScreen focusRates={focusRates} focusAdd={focusAdd} />
       </FieldGroup>
     </ScreenBase>

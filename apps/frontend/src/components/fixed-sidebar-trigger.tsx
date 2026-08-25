@@ -9,7 +9,6 @@ import {
   TRIGGER_TO_HISTORY_GAP,
 } from "@/components/window-drag-region";
 import { createWindowChromeAdapter } from "@/lib/window-chrome";
-import { cn } from "@/lib/utils";
 
 interface FixedSidebarTriggerProps {
   buildTarget: CommandBuildTarget;
@@ -18,7 +17,7 @@ interface FixedSidebarTriggerProps {
 /**
  * Hosts window-chrome controls when the sidebar header cannot:
  * mobile sheet, Tauri offcanvas collapsed, or desktop overlay chrome
- * (toggle after traffic lights, history right-aligned when expanded).
+ * (toggle after traffic lights, history packed beside the toggle).
  */
 export function FixedSidebarTrigger({ buildTarget }: FixedSidebarTriggerProps) {
   const { isMobile, state } = useSidebar();
@@ -34,29 +33,21 @@ export function FixedSidebarTrigger({ buildTarget }: FixedSidebarTriggerProps) {
   const paddingLeft = hasDesktopWindowChrome
     ? NATIVE_TOGGLE_LEADING_INSET
     : TRAFFIC_LIGHT_TO_TRIGGER_GAP;
-  const spanSidebarChrome = hasDesktopWindowChrome && state === "expanded";
 
   return (
     <div
       data-slot="fixed-sidebar-trigger"
-      className={cn(
-        "pointer-events-none fixed top-0 left-0 z-40 flex h-12 items-center",
-        spanSidebarChrome && "w-(--sidebar-width)",
-      )}
+      className="pointer-events-none fixed top-0 left-0 z-40 flex h-12 items-center"
       style={{
         paddingLeft,
-        paddingRight: spanSidebarChrome ? TRAFFIC_LIGHT_TO_TRIGGER_GAP : undefined,
-        gap: spanSidebarChrome ? undefined : TRIGGER_TO_HISTORY_GAP,
+        gap: TRIGGER_TO_HISTORY_GAP,
       }}
     >
       <div className="pointer-events-auto flex size-8 items-center justify-center">
         <SidebarTrigger />
       </div>
       {buildTarget === "tauri" ? (
-        <div
-          data-slot="window-chrome-history"
-          className={cn("pointer-events-auto", spanSidebarChrome && "ml-auto")}
-        >
+        <div data-slot="window-chrome-history" className="pointer-events-auto">
           <NavigationHistoryButtons />
         </div>
       ) : null}

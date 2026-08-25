@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ItemGroup } from "@/components/ui/item";
 
 import { AboutSettingsRow } from "../components/about-settings-row";
-import { SettingsSectionHeader } from "../components/settings-section-header";
 import {
   ABOUT_APP_IDENTIFIER,
   ABOUT_LICENSE,
@@ -30,7 +29,6 @@ export function AboutSettingsScreen() {
   return (
     <ScreenBase>
       <div className="flex max-w-3xl flex-col gap-6">
-        <SettingsSectionHeader title="About" />
         <Card className="gap-0! py-0!">
           <CardContent className="px-0!">
             <ItemGroup className="gap-0">
