@@ -40,12 +40,6 @@ internally as `2026.8.25001`. This preserves ordering and avoids prerelease
 suffixes. Tags, GitHub Release names, release-note paths, and artifact
 filenames keep the visible `Y.M.D.B` Release Version.
 
-MSI ProductVersion has smaller component limits, so Windows builds override
-only WiX with `(Y - 2000).M.P`. Release Version `2026.8.25.10` therefore uses
-MSI version `26.8.25010`. The workflow rejects years outside 2000–2255 and
-checks all WiX component limits. NSIS and the application keep the internal
-SemVer.
-
 ## Required repository secrets and variables
 
 Open the repository on GitHub and go to **Settings → Secrets and variables →
@@ -65,8 +59,6 @@ or documentation.
 | `APPLE_API_ISSUER`                   | App Store Connect API issuer ID               |
 | `APPLE_API_KEY`                      | App Store Connect API key ID                  |
 | `APPLE_API_PRIVATE_KEY`              | App Store Connect API `.p8` file content      |
-| `WINDOWS_CERTIFICATE_PFX`            | Base64 trusted code-signing `.pfx`            |
-| `WINDOWS_CERTIFICATE_PASSWORD`       | `.pfx` export password                        |
 
 Add one repository variable:
 
@@ -148,49 +140,13 @@ For the web form, paste the issuer ID and key ID into their fields and load the
 build, the workflow writes it to a runner temporary file and sets
 `APPLE_API_KEY_PATH`.
 
-### Windows Authenticode certificate
-
-Use a trusted code-signing certificate whose private key can be exported for a
-GitHub-hosted runner. Hardware-only EV certificates need a different signing
-service and are not compatible with this PFX workflow.
-
-On Windows, export an installed certificate and private key:
-
-```powershell
-$password = Read-Host "PFX export password" -AsSecureString
-Export-PfxCertificate `
-  -Cert "Cert:\CurrentUser\My\<thumbprint>" `
-  -FilePath "zai-code-signing.pfx" `
-  -Password $password
-```
-
-If the authority supplied separate certificate and key files, create the PFX:
-
-```sh
-openssl pkcs12 -export -in codesigning.cer -inkey codesigning.key -out zai-code-signing.pfx
-```
-
-Set the secrets from PowerShell:
-
-```powershell
-[Convert]::ToBase64String(
-  [IO.File]::ReadAllBytes("zai-code-signing.pfx")
-) | gh secret set WINDOWS_CERTIFICATE_PFX
-gh secret set WINDOWS_CERTIFICATE_PASSWORD
-```
-
-For the web form, pipe the base64 expression to `Set-Clipboard`, paste it into
-`WINDOWS_CERTIFICATE_PFX`, then clear the clipboard. The workflow imports the
-PFX into the Current User certificate store, derives its thumbprint at runtime,
-uses SHA-256 with a timestamp server, verifies Authenticode on every Windows
-installer, and removes the certificate afterward.
-
 ## Publication guarantees
 
 The build matrix preserves macOS arm64 and x86_64, Linux x86_64, and Windows
 x86_64 coverage. Tauri updater signatures are required on every generated
-updater artifact. macOS builds require Developer ID signing and notarization;
-Windows installers require valid Authenticode signatures.
+updater artifact. macOS builds require Developer ID signing and notarization.
+Windows publishes the NSIS `.exe` without Authenticode signing on a best-effort
+basis, so Windows and SmartScreen can show an unknown-publisher warning.
 
 Each platform uploads a one-day workflow artifact. Only after every platform
 succeeds does the publish job validate the complete set. macOS updater

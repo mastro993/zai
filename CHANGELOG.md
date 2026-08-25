@@ -16,7 +16,7 @@ The committed tree stays `0.0.0-dev`. GitHub Releases carry the stamped calendar
 ### Changed
 
 - Nightly and Stable releases share UTC `Y.M.D.B` Release Versions and publish
-  only after all platform artifacts pass required signing checks.
+  only after all platform artifacts pass required checks.
 
 ### Fixed
 

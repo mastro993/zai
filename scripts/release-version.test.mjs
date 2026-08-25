@@ -11,7 +11,6 @@ import {
   renameArtifactVersions,
   resolveRelease,
   stampVersion,
-  wixVersionFromReleaseVersion,
 } from "./release-version.mjs";
 
 describe("release version allocation", () => {
@@ -39,7 +38,6 @@ describe("release version allocation", () => {
         previousTag: "v2026.8.25.4",
         version: "2026.8.25.10",
         packageVersion: "2026.8.25010",
-        wixVersion: "26.8.25010",
         tag: "v2026.8.25.10",
       },
     );
@@ -105,13 +103,6 @@ describe("release version allocation", () => {
     );
   });
 
-  it("maps release versions into bounded MSI versions", () => {
-    assert.equal(wixVersionFromReleaseVersion("2000.1.1.0"), "0.1.1000");
-    assert.equal(wixVersionFromReleaseVersion("2026.8.25.10"), "26.8.25010");
-    assert.equal(wixVersionFromReleaseVersion("2255.12.31.999"), "255.12.31999");
-    assert.throws(() => wixVersionFromReleaseVersion("1999.12.31.999"), /cannot map to MSI major/);
-    assert.throws(() => wixVersionFromReleaseVersion("2256.1.1.0"), /cannot map to MSI major/);
-  });
 });
 
 describe("stampVersion", () => {

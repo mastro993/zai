@@ -7,9 +7,6 @@ export const PLACEHOLDER_VERSION = "0.0.0-dev";
 export const NIGHTLY_TAG_PATTERN = /^nightly-v(\d{4})\.(\d+)\.(\d+)\.(\d+)$/;
 export const STABLE_TAG_PATTERN = /^v(\d{4})\.(\d+)\.(\d+)\.(\d+)$/;
 export const MAX_DAILY_BUILD = 999;
-const MSI_YEAR_EPOCH = 2000;
-const MAX_MSI_MAJOR = 255;
-const MAX_MSI_COMPONENT = 65_535;
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -104,21 +101,6 @@ export const packageVersionFromReleaseVersion = (version) => {
   return `${year}.${month}.${day * 1000 + build}`;
 };
 
-export const wixVersionFromReleaseVersion = (version) => {
-  const [year, month, day, build] = releaseVersionParts(version);
-  const major = year - MSI_YEAR_EPOCH;
-  const patch = day * 1000 + build;
-  if (major < 0 || major > MAX_MSI_MAJOR) {
-    throw new Error(
-      `Release year ${year} cannot map to MSI major 0-${MAX_MSI_MAJOR} using epoch ${MSI_YEAR_EPOCH}`,
-    );
-  }
-  if (month > MAX_MSI_MAJOR || patch > MAX_MSI_COMPONENT) {
-    throw new Error(`Release version ${version} exceeds MSI version component limits`);
-  }
-  return `${major}.${month}.${patch}`;
-};
-
 export const resolveRelease = ({ channel, today, tags, headSha, tagShas = {} }) => {
   if (channel !== "nightly" && channel !== "stable") {
     throw new Error(`Release channel must be nightly or stable, got ${channel}`);
@@ -151,7 +133,6 @@ export const resolveRelease = ({ channel, today, tags, headSha, tagShas = {} }) 
     previousTag,
     version,
     packageVersion: packageVersionFromReleaseVersion(version),
-    wixVersion: wixVersionFromReleaseVersion(version),
     tag: channel === "nightly" ? `nightly-v${version}` : `v${version}`,
   };
 };
@@ -326,7 +307,6 @@ const runGithubOutput = () => {
       channel,
       version: "",
       package_version: "",
-      wix_version: "",
       tag: "",
       prerelease: "false",
       previous_tag: resolved.previousTag ?? "",
@@ -340,7 +320,6 @@ const runGithubOutput = () => {
     channel,
     version: resolved.version,
     package_version: resolved.packageVersion,
-    wix_version: resolved.wixVersion,
     tag: resolved.tag,
     prerelease: resolved.prerelease ? "true" : "false",
     previous_tag: resolved.previousTag ?? "",

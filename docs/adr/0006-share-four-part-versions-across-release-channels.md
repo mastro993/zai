@@ -24,8 +24,3 @@ so release builds pack the day and build into the SemVer patch component:
 ordering without a prerelease suffix and limits `B` to 999. Tags, GitHub
 Release names, release-note paths, documentation, and artifact filenames keep
 the canonical unpadded `Y.M.D.B` Release Version.
-
-Windows MSI packages use the separate WiX ProductVersion
-`(Y - 2000).M.(D × 1000 + B)` because MSI limits its major component to 255.
-The mapping supports years 2000 through 2255; the application and NSIS
-installer retain the internal SemVer.

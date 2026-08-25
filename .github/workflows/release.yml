@@ -80,7 +80,6 @@ jobs:
       channel: ${{ steps.compute.outputs.channel }}
       version: ${{ steps.compute.outputs.version }}
       package_version: ${{ steps.compute.outputs.package_version }}
-      wix_version: ${{ steps.compute.outputs.wix_version }}
       tag: ${{ steps.compute.outputs.tag }}
       prerelease: ${{ steps.compute.outputs.prerelease }}
       previous_tag: ${{ steps.compute.outputs.previous_tag }}
@@ -136,8 +135,6 @@ jobs:
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
       APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
       APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
-      WINDOWS_CERTIFICATE_PFX: ${{ secrets.WINDOWS_CERTIFICATE_PFX }}
-      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
     steps:
       - name: Require release signing credentials
         run: |
@@ -150,8 +147,6 @@ jobs:
           [ -n "$APPLE_API_ISSUER" ] || missing+=("APPLE_API_ISSUER")
           [ -n "$APPLE_API_KEY" ] || missing+=("APPLE_API_KEY")
           [ -n "$APPLE_API_PRIVATE_KEY" ] || missing+=("APPLE_API_PRIVATE_KEY")
-          [ -n "$WINDOWS_CERTIFICATE_PFX" ] || missing+=("WINDOWS_CERTIFICATE_PFX")
-          [ -n "$WINDOWS_CERTIFICATE_PASSWORD" ] || missing+=("WINDOWS_CERTIFICATE_PASSWORD")
           if [ "${#missing[@]}" -ne 0 ]; then
             printf '::error::Missing required release setting: %s\n' "${missing[@]}"
             exit 1
@@ -277,53 +272,6 @@ jobs:
             exit 1
           fi
 
-      - name: Prepare Windows signing certificate
-        if: matrix.id == 'windows-x86_64'
-        shell: pwsh
-        env:
-          WINDOWS_CERTIFICATE_PFX: ${{ secrets.WINDOWS_CERTIFICATE_PFX }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-          WINDOWS_WIX_VERSION: ${{ needs.version.outputs.wix_version }}
-        run: |
-          $pfxPath = Join-Path $env:RUNNER_TEMP "zai-code-signing.pfx"
-          $configPath = Join-Path $env:RUNNER_TEMP "tauri-windows-signing.json"
-          "TAURI_RELEASE_CONFIG=$configPath" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "WINDOWS_CERTIFICATE_PATH=$pfxPath" | Out-File -FilePath $env:GITHUB_ENV -Append
-          [IO.File]::WriteAllBytes(
-            $pfxPath,
-            [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_PFX)
-          )
-          $flags = [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet `
-            -bor [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::UserKeySet
-          $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new(
-            $pfxPath,
-            $env:WINDOWS_CERTIFICATE_PASSWORD,
-            $flags
-          )
-          if (-not $certificate.HasPrivateKey) {
-            throw "WINDOWS_CERTIFICATE_PFX does not contain a private key."
-          }
-          "WINDOWS_CERTIFICATE_THUMBPRINT=$($certificate.Thumbprint)" |
-            Out-File -FilePath $env:GITHUB_ENV -Append
-          $store = [Security.Cryptography.X509Certificates.X509Store]::new(
-            "My",
-            [Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
-          )
-          $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-          $store.Add($certificate)
-          $store.Close()
-          $config = @{
-            bundle = @{
-              windows = @{
-                certificateThumbprint = $certificate.Thumbprint
-                wix = @{
-                  version = $env:WINDOWS_WIX_VERSION
-                }
-              }
-            }
-          } | ConvertTo-Json -Depth 4 -Compress
-          [IO.File]::WriteAllText($configPath, $config)
-
       - name: Build signed macOS bundle
         if: startsWith(matrix.id, 'macos-')
         env:
@@ -336,10 +284,10 @@ jobs:
         if: matrix.id == 'linux-x86_64'
         run: pnpm tauri build
 
-      - name: Build signed Windows bundle
+      - name: Build Windows bundle
         if: matrix.id == 'windows-x86_64'
         shell: pwsh
-        run: pnpm tauri build --config "$env:TAURI_RELEASE_CONFIG"
+        run: pnpm tauri build --bundles nsis
 
       - name: Use Release Version in artifact filenames
         run: >-
@@ -379,42 +327,21 @@ jobs:
           updater="$(find target -type f -path '*/release/bundle/*' -name '*.AppImage' -print -quit)"
           [ -f "$updater.sig" ] || { echo "::error::Missing Linux updater signature."; exit 1; }
 
-      - name: Verify Windows artifacts and Authenticode
+      - name: Verify Windows artifact
         if: matrix.id == 'windows-x86_64'
         shell: pwsh
         run: |
           $bundles = Get-ChildItem target -Recurse -File |
             Where-Object { $_.FullName -match '[\\/]release[\\/]bundle[\\/]' }
-          $msi = $bundles | Where-Object Extension -eq ".msi"
           $exe = $bundles | Where-Object Name -Like "*-setup.exe"
-          if (-not $msi) { throw "Missing Windows MSI artifact." }
           if (-not $exe) { throw "Missing Windows NSIS artifact." }
-          $windowsKitsRoot = (Get-ItemProperty `
-            "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots").KitsRoot10
-          $signTool = Get-ChildItem "$windowsKitsRoot\bin" -Recurse -File `
-            -Filter "signtool.exe" |
-            Where-Object FullName -Match '\\x64\\signtool\.exe$' |
-            Sort-Object FullName -Descending |
-            Select-Object -First 1
-          if (-not $signTool) { throw "Windows SDK SignTool was not found." }
-          foreach ($installer in @($msi) + @($exe)) {
+          foreach ($installer in @($exe)) {
             if (-not (Test-Path "$($installer.FullName).sig")) {
               throw "Missing Tauri updater signature for $($installer.Name)."
             }
-            $signature = Get-AuthenticodeSignature $installer.FullName
-            if (-not $signature.SignerCertificate) {
-              throw "Missing Authenticode signature for $($installer.Name)."
-            }
-            if ($signature.SignerCertificate.Thumbprint -ne $env:WINDOWS_CERTIFICATE_THUMBPRINT) {
-              throw "Unexpected Authenticode signer for $($installer.Name)."
-            }
-            & $signTool.FullName verify /pa /all /v /tw $installer.FullName
-            if ($LASTEXITCODE -ne 0) {
-              throw "SignTool verification failed for $($installer.Name)."
-            }
           }
 
-      - name: Upload signed release artifacts
+      - name: Upload release artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-${{ matrix.id }}
@@ -426,7 +353,6 @@ jobs:
             target/**/release/bundle/**/*.deb
             target/**/release/bundle/**/*.rpm
             target/**/release/bundle/**/*.AppImage
-            target/**/release/bundle/**/*.msi
             target/**/release/bundle/**/*-setup.exe
             target/**/release/bundle/**/*.sig
 
@@ -451,20 +377,6 @@ jobs:
           [ -z "${APPLE_CERTIFICATE_PATH:-}" ] || rm -f "$APPLE_CERTIFICATE_PATH"
           [ -z "${APPLE_API_KEY_PATH:-}" ] || rm -f "$APPLE_API_KEY_PATH"
 
-      - name: Remove Windows signing material
-        if: always() && matrix.id == 'windows-x86_64'
-        shell: pwsh
-        run: |
-          if ($env:WINDOWS_CERTIFICATE_THUMBPRINT) {
-            Remove-Item "Cert:\CurrentUser\My\$env:WINDOWS_CERTIFICATE_THUMBPRINT" -Force `
-              -ErrorAction SilentlyContinue
-          }
-          foreach ($path in @($env:WINDOWS_CERTIFICATE_PATH, $env:TAURI_RELEASE_CONFIG)) {
-            if ($path) {
-              Remove-Item $path -Force -ErrorAction SilentlyContinue
-            }
-          }
-
   publish:
     name: Publish ${{ needs.version.outputs.tag }}
     needs:
@@ -483,7 +395,7 @@ jobs:
           ref: ${{ needs.version.outputs.sha }}
           fetch-depth: 0
 
-      - name: Download signed release artifacts
+      - name: Download release artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: release-*
@@ -538,14 +450,12 @@ jobs:
           }
 
           windows="release-assets/release-windows-x86_64"
-          require "$windows" '*.msi' "Windows MSI"
           require "$windows" '*-setup.exe' "Windows NSIS installer"
-          while IFS= read -r -d '' installer; do
-            [ -f "$installer.sig" ] || {
-              echo "::error::Missing Windows updater signature for $(basename "$installer")."
-              exit 1
-            }
-          done < <(find "$windows" -type f \( -name '*.msi' -o -name '*-setup.exe' \) -print0)
+          installer="$(find "$windows" -type f -name '*-setup.exe' -print -quit)"
+          [ -f "$installer.sig" ] || {
+            echo "::error::Missing Windows updater signature."
+            exit 1
+          }
 
           duplicates="$(
             find release-assets -type f -printf '%f\n' | sort | uniq -d
