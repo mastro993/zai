@@ -59,11 +59,11 @@ jobs:
           duplicates="$(find release-assets -type f -printf '%f\n' | sort | uniq -d)"
           [ -z "$duplicates" ] || { echo "::error::Duplicate release asset names:"; printf '%s\n' "$duplicates"; exit 1; }
 
-      # REST tag lookup hides drafts, so resolve the immutable tag through the draft-aware CLI.
+      # REST tag lookup hides drafts; pass repo explicitly because this job has no checkout.
       - name: Upload and publish
         run: |
           set -euo pipefail
-          release="$(gh release view "$RELEASE_TAG" --json databaseId,isDraft)"
+          release="$(gh release view --repo "$GITHUB_REPOSITORY" "$RELEASE_TAG" --json databaseId,isDraft)"
           [ "$(jq -r .isDraft <<<"$release")" = "true" ] || {
             echo "::error::Release $RELEASE_TAG is not the expected draft."
             exit 1
@@ -71,7 +71,7 @@ jobs:
           release_id="$(jq -r .databaseId <<<"$release")"
           mapfile -d '' assets < <(find release-assets -type f -print0)
           [ "${#assets[@]}" -gt 0 ]
-          gh release upload "$RELEASE_TAG" "${assets[@]}"
+          gh release upload --repo "$GITHUB_REPOSITORY" "$RELEASE_TAG" "${assets[@]}"
           expected="$(printf '%s\n' "${assets[@]##*/}" | sort)"
           actual="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" --paginate --jq '.[].name' | sort)"
           [ "$actual" = "$expected" ] || { echo "::error::Uploaded release assets differ from verified set."; exit 1; }
