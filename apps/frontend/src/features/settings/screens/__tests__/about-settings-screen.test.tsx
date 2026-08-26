@@ -53,5 +53,6 @@ describe("AboutSettingsScreen", () => {
 
     expect(screen.queryByText("Update channel")).toBeNull();
     expect(screen.queryByRole("button", { name: "Check for updates" })).toBeNull();
+    expect(screen.queryByText(ABOUT_APP_IDENTIFIER)).toBeNull();
   });
 });

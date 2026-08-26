@@ -52,7 +52,7 @@ export function AboutSettingsScreen() {
   const buildMode = resolveAboutBuildMode(import.meta.env.PROD);
   const buildTarget = import.meta.env.VITE_ZAI_BUILD_TARGET;
   const updaterTarget = import.meta.env.VITE_ZAI_UPDATER_TARGET;
-  const showUpdater = buildTarget === "tauri";
+  const isTauriBuild = buildTarget === "tauri";
   const updaterAvailable = isUpdaterAvailable(buildTarget, packageVersion, updaterTarget);
   const [channel, setChannel] = useState<UpdateChannel>(readUpdateChannel);
   const [checking, setChecking] = useState(false);
@@ -116,7 +116,7 @@ export function AboutSettingsScreen() {
           <CardContent className="px-0!">
             <ItemGroup className="gap-0">
               <AboutSettingsRow title="App version" value={appVersion} />
-              {showUpdater ? (
+              {isTauriBuild ? (
                 <>
                   <AboutSettingsDivider />
                   <AboutSettingsRow title="Update channel">
@@ -176,8 +176,12 @@ export function AboutSettingsScreen() {
               <AboutSettingsRow title="Build mode" value={buildMode} />
               <AboutSettingsDivider />
               <AboutSettingsRow title="Tauri version" value={ABOUT_TAURI_VERSION} />
-              <AboutSettingsDivider />
-              <AboutSettingsRow title="App identifier" value={ABOUT_APP_IDENTIFIER} />
+              {isTauriBuild ? (
+                <>
+                  <AboutSettingsDivider />
+                  <AboutSettingsRow title="App identifier" value={ABOUT_APP_IDENTIFIER} />
+                </>
+              ) : null}
               <AboutSettingsDivider />
               <AboutSettingsRow title="License" value={ABOUT_LICENSE} />
             </ItemGroup>
