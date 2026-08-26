@@ -1,5 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -148,11 +155,7 @@ const tagCommit = (tag, cwd) => git(["rev-list", "-n", "1", tag], cwd);
 
 const utcToday = () => new Date().toISOString().slice(0, 10);
 
-export const stampVersion = (
-  version,
-  cwd = rootDir,
-  updaterPublicKey = process.env.TAURI_SIGNING_PUBLIC_KEY,
-) => {
+export const stampVersion = (version, cwd = rootDir) => {
   if (!/^\d{4}\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(version)) {
     throw new Error(
       `Expected packed package version Y.M.P without a prerelease suffix, got ${version}`,
@@ -178,15 +181,107 @@ export const stampVersion = (
     const filePath = path.join(cwd, relativePath);
     const data = JSON.parse(readFileSync(filePath, "utf8"));
     data.version = version;
-    if (relativePath === "apps/tauri/tauri.conf.json" && updaterPublicKey) {
-      data.plugins ??= {};
-      data.plugins.updater = {
-        ...data.plugins.updater,
-        pubkey: updaterPublicKey,
-      };
-    }
     writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`);
   }
+};
+
+const findSingleFile = (directory, predicate, description) => {
+  const matches = [];
+  const visit = (currentDirectory) => {
+    for (const entry of readdirSync(currentDirectory, { withFileTypes: true })) {
+      const filePath = path.join(currentDirectory, entry.name);
+      if (entry.isDirectory()) {
+        visit(filePath);
+      } else if (predicate(entry.name)) {
+        matches.push(filePath);
+      }
+    }
+  };
+  visit(directory);
+
+  if (matches.length !== 1) {
+    throw new Error(`Expected exactly one ${description}, found ${matches.length}`);
+  }
+  return matches[0];
+};
+
+export const createUpdaterManifests = ({
+  channel,
+  releaseVersion,
+  packageVersion,
+  releaseTag,
+  repository,
+  assetsDirectory,
+  outputDirectory,
+}) => {
+  if (channel !== "nightly" && channel !== "stable") {
+    throw new Error(`Release channel must be nightly or stable, got ${channel}`);
+  }
+  if (packageVersion !== packageVersionFromReleaseVersion(releaseVersion)) {
+    throw new Error(`Package version does not match release version ${releaseVersion}`);
+  }
+  const parsedTag = parseReleaseTag(releaseTag);
+  if (!parsedTag || parsedTag.kind !== channel || parsedTag.version !== releaseVersion) {
+    throw new Error(`Release tag ${releaseTag} does not match ${channel} ${releaseVersion}`);
+  }
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
+    throw new Error(`Expected GitHub repository owner/name, got ${repository}`);
+  }
+
+  const targets = [
+    {
+      id: "macos-aarch64",
+      matches: (name) => name.endsWith(`_${releaseVersion}_aarch64.app.tar.gz`),
+      description: "macOS aarch64 updater archive",
+    },
+    {
+      id: "macos-x86_64",
+      matches: (name) => name.endsWith(`_${releaseVersion}_x86_64.app.tar.gz`),
+      description: "macOS x86_64 updater archive",
+    },
+    {
+      id: "linux-x86_64",
+      matches: (name) => name.endsWith(".AppImage"),
+      description: "Linux x86_64 updater AppImage",
+    },
+    {
+      id: "windows-x86_64",
+      matches: (name) => name.endsWith("-setup.exe"),
+      description: "Windows x86_64 updater installer",
+    },
+  ];
+
+  mkdirSync(outputDirectory, { recursive: true });
+  return targets.map((target) => {
+    const assetPath = findSingleFile(
+      path.join(assetsDirectory, `release-${target.id}`),
+      target.matches,
+      target.description,
+    );
+    const signaturePath = `${assetPath}.sig`;
+    if (!existsSync(signaturePath)) {
+      throw new Error(`Missing updater signature ${signaturePath}`);
+    }
+    const signature = readFileSync(signaturePath, "utf8").trim();
+    if (!signature) {
+      throw new Error(`Updater signature is empty: ${signaturePath}`);
+    }
+
+    const manifestTarget = `${channel}-${target.id}`;
+    const assetName = path.basename(assetPath);
+    const manifestPath = path.join(outputDirectory, `${manifestTarget}.json`);
+    const manifest = {
+      version: packageVersion,
+      platforms: {
+        [manifestTarget]: {
+          signature,
+          url: `https://github.com/${repository}/releases/download/${encodeURIComponent(releaseTag)}/${encodeURIComponent(assetName)}`,
+        },
+      },
+    };
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    return manifestPath;
+  });
 };
 
 export const renameArtifactVersions = (
@@ -351,9 +446,41 @@ if (isCli) {
       );
     }
     renameArtifactVersions(releaseVersion, packageVersion, directory, macUpdaterArchitecture);
+  } else if (command === "updater-manifests") {
+    const [
+      channel,
+      releaseVersion,
+      packageVersion,
+      releaseTag,
+      repository,
+      assetsDirectory,
+      outputDirectory,
+    ] = process.argv.slice(3);
+    if (
+      !channel ||
+      !releaseVersion ||
+      !packageVersion ||
+      !releaseTag ||
+      !repository ||
+      !assetsDirectory ||
+      !outputDirectory
+    ) {
+      throw new Error(
+        "usage: node scripts/release-version.mjs updater-manifests <channel> <release-version> <package-version> <release-tag> <repository> <assets-directory> <output-directory>",
+      );
+    }
+    createUpdaterManifests({
+      channel,
+      releaseVersion,
+      packageVersion,
+      releaseTag,
+      repository,
+      assetsDirectory,
+      outputDirectory,
+    });
   } else {
     throw new Error(
-      "usage: node scripts/release-version.mjs github-output|stamp <version>|rename-artifacts <release-version> <package-version> <directory> [mac-updater-architecture]",
+      "usage: node scripts/release-version.mjs github-output|stamp <version>|rename-artifacts <release-version> <package-version> <directory> [mac-updater-architecture]|updater-manifests <channel> <release-version> <package-version> <release-tag> <repository> <assets-directory> <output-directory>",
     );
   }
 }

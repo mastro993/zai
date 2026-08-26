@@ -2,21 +2,36 @@ export const PLACEHOLDER_APP_VERSION = "0.0.0-dev";
 export const ABOUT_APP_IDENTIFIER = "dev.fedemas.zai.app";
 export const ABOUT_LICENSE = "GPL-3.0-only";
 export const ABOUT_TAURI_VERSION = "2.11.5";
-export const UPDATE_CHECK_UNAVAILABLE_MESSAGE = "Update checks are not available yet.";
 
-export type AboutReleaseChannel = "Dev" | "Beta" | "Stable";
+const packedVersionPattern = /^(\d{4})\.(\d+)\.(\d+)$/;
 
-export const resolveAboutAppVersion = (packageVersion: string): string =>
-  packageVersion === PLACEHOLDER_APP_VERSION ? "dev" : packageVersion;
-
-export const resolveAboutReleaseChannel = (packageVersion: string): AboutReleaseChannel => {
-  if (/-beta\.\d+$/.test(packageVersion)) {
-    return "Beta";
+export const resolveAboutAppVersion = (packageVersion: string): string => {
+  if (packageVersion === PLACEHOLDER_APP_VERSION) {
+    return "dev";
   }
-  if (packageVersion !== PLACEHOLDER_APP_VERSION && /^\d+\.\d+\.\d+$/.test(packageVersion)) {
-    return "Stable";
+
+  const match = packedVersionPattern.exec(packageVersion);
+  if (!match) {
+    return packageVersion;
   }
-  return "Dev";
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const patch = Number(match[3]);
+  const day = Math.floor(patch / 1000);
+  const build = patch % 1000;
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    day < 1 ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return packageVersion;
+  }
+
+  return `${year}.${month}.${day}.${build}`;
 };
 
 export const resolveAboutBuildMode = (isProduction: boolean): "Production" | "Development" =>

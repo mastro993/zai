@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 
 import {
   calendarCoreFromIsoDate,
+  createUpdaterManifests,
   packageVersionFromReleaseVersion,
   parseReleaseTag,
   previousReleaseTag,
@@ -102,7 +103,6 @@ describe("release version allocation", () => {
       /build sequence for 2026\.8\.25 exceeds the supported daily maximum of 999/,
     );
   });
-
 });
 
 describe("stampVersion", () => {
@@ -129,16 +129,13 @@ describe("stampVersion", () => {
       );
 
       assert.throws(() => stampVersion("2026.8.25010-rc.1", cwd), /without a prerelease suffix/);
-      stampVersion("2026.8.25010", cwd, "test-updater-public-key");
+      stampVersion("2026.8.25010", cwd);
 
       assert.match(
         await readFile(path.join(cwd, "Cargo.toml"), "utf8"),
         /version = "2026\.8\.25010"/,
       );
-      for (const relativePath of [
-        "package.json",
-        "apps/frontend/package.json",
-      ]) {
+      for (const relativePath of ["package.json", "apps/frontend/package.json"]) {
         assert.equal(
           JSON.parse(await readFile(path.join(cwd, relativePath), "utf8")).version,
           "2026.8.25010",
@@ -148,7 +145,6 @@ describe("stampVersion", () => {
         await readFile(path.join(cwd, "apps/tauri/tauri.conf.json"), "utf8"),
       );
       assert.equal(tauriConfig.version, "2026.8.25010");
-      assert.equal(tauriConfig.plugins.updater.pubkey, "test-updater-public-key");
 
       await mkdir(path.join(cwd, "target/release/bundle"), { recursive: true });
       await writeFile(path.join(cwd, "target/release/bundle/Zai_2026.8.25010_x64.dmg"), "");
@@ -202,6 +198,55 @@ describe("stampVersion", () => {
         /Missing macOS updater signature/,
       );
       assert.equal(await readFile(path.join(bundle, "Zai.app.tar.gz"), "utf8"), "archive");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("updater manifests", () => {
+  it("writes one signed manifest per channel and platform target", async () => {
+    const cwd = await mkdtemp(path.join(process.cwd(), ".updater-manifest-test-"));
+    try {
+      const assetsDirectory = path.join(cwd, "release-assets");
+      const outputDirectory = path.join(cwd, "updater-manifests");
+      const fixtures = [
+        ["macos-aarch64", "Zai_2026.8.25.10_aarch64.app.tar.gz"],
+        ["macos-x86_64", "Zai_2026.8.25.10_x86_64.app.tar.gz"],
+        ["linux-x86_64", "Zai_2026.8.25.10_amd64.AppImage"],
+        ["windows-x86_64", "Zai_2026.8.25.10_x64-setup.exe"],
+      ];
+
+      for (const [target, filename] of fixtures) {
+        const directory = path.join(assetsDirectory, `release-${target}`);
+        await mkdir(directory, { recursive: true });
+        await writeFile(path.join(directory, filename), "artifact");
+        await writeFile(path.join(directory, `${filename}.sig`), `signature-${target}\n`);
+      }
+
+      const manifests = createUpdaterManifests({
+        channel: "nightly",
+        releaseVersion: "2026.8.25.10",
+        packageVersion: "2026.8.25010",
+        releaseTag: "nightly-v2026.8.25.10",
+        repository: "mastro993/zai",
+        assetsDirectory,
+        outputDirectory,
+      });
+
+      assert.equal(manifests.length, 4);
+      const linuxManifest = JSON.parse(
+        await readFile(path.join(outputDirectory, "nightly-linux-x86_64.json"), "utf8"),
+      );
+      assert.deepEqual(linuxManifest, {
+        version: "2026.8.25010",
+        platforms: {
+          "nightly-linux-x86_64": {
+            signature: "signature-linux-x86_64",
+            url: "https://github.com/mastro993/zai/releases/download/nightly-v2026.8.25.10/Zai_2026.8.25.10_amd64.AppImage",
+          },
+        },
+      });
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
