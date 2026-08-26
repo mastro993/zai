@@ -2,7 +2,7 @@
   "name": "zai",
   "private": true,
   "license": "GPL-3.0-only",
-  "version": "2026.8.26001",
+  "version": "2026.8.26002",
   "type": "module",
   "workspaces": [
     "apps/frontend"
