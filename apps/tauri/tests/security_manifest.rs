@@ -177,7 +177,7 @@ fn production_csp_is_restrictive_and_dev_csp_is_isolated() {
 }
 
 #[test]
-fn updater_uses_signed_github_manifests() {
+fn updater_uses_signed_pages_manifests() {
     let config_path = manifest_dir().join("tauri.conf.json");
     let source = fs::read_to_string(&config_path).expect("tauri config should exist");
     let config: serde_json::Value =
@@ -187,7 +187,7 @@ fn updater_uses_signed_github_manifests() {
     assert_eq!(config["bundle"]["createUpdaterArtifacts"], true);
     assert_eq!(
         updater["endpoints"][0],
-        "https://github.com/mastro993/zai/releases/download/updater/{{target}}.json"
+        "https://mastro993.github.io/zai/updater/{{target}}.json"
     );
     assert!(
         updater["pubkey"]
