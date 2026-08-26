@@ -3,36 +3,18 @@ name: Publish updater manifests
 on:
   workflow_call:
     inputs:
-      channel:
-        required: true
-        type: string
       tag:
+        description: Published release tag
         required: true
         type: string
-      use_workflow_artifacts:
-        required: false
-        type: boolean
-        default: true
   workflow_dispatch:
     inputs:
-      channel:
-        description: Release channel
-        type: choice
-        options:
-          - nightly
-          - stable
-        required: true
       tag:
         description: Existing published release tag
         type: string
         required: true
-      use_workflow_artifacts:
-        type: boolean
-        default: false
-        required: false
 
 permissions:
-  actions: read
   contents: read
   pages: write
   id-token: write
@@ -50,7 +32,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_CHANNEL: ${{ inputs.channel }}
       RELEASE_TAG: ${{ inputs.tag }}
     steps:
       # Generate manifests with tooling from selected immutable release tag.
@@ -70,11 +51,12 @@ jobs:
         name: Validate selected published release
         run: |
           set -euo pipefail
-          info="$(node --input-type=module - "$RELEASE_CHANNEL" "$RELEASE_TAG" <<'NODE'
+          info="$(node --input-type=module - "$RELEASE_TAG" <<'NODE'
           import { packageVersionFromReleaseVersion, parseReleaseTag } from "./scripts/release-version.mjs";
-          const [channel, tag] = process.argv.slice(2);
+          const [tag] = process.argv.slice(2);
           const parsed = parseReleaseTag(tag);
-          if (!parsed || parsed.kind !== channel) throw new Error(`Tag ${tag} does not identify ${channel}`);
+          if (!parsed) throw new Error(`Invalid release tag ${tag}`);
+          console.log(`channel=${parsed.kind}`);
           console.log(`version=${parsed.version}`);
           console.log(`package_version=${packageVersionFromReleaseVersion(parsed.version)}`);
           NODE
@@ -84,24 +66,15 @@ jobs:
           release="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")"
           [ "$(jq -r .draft <<<"$release")" = "false" ] || { echo "::error::Release must be published."; exit 1; }
           expected_prerelease=false
-          [ "$RELEASE_CHANNEL" = "stable" ] || expected_prerelease=true
+          [ "$(grep '^channel=' <<<"$info" | cut -d= -f2)" = "stable" ] || expected_prerelease=true
           [ "$(jq -r .prerelease <<<"$release")" = "$expected_prerelease" ] || {
-            echo "::error::Release prerelease state does not match $RELEASE_CHANNEL."
+            echo "::error::Release prerelease state does not match its tag."
             exit 1
           }
           echo "published_at=$(jq -r .published_at <<<"$release")" >> "$GITHUB_OUTPUT"
 
-      # Normal release reuses already verified matrix outputs without redownloading GitHub assets.
-      - name: Download current workflow artifacts
-        if: inputs.use_workflow_artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: release-*
-          path: selected-assets
-
-      # Manual recovery reconstructs state from immutable published release assets.
+      # Immutable published assets support both normal publication and manual recovery.
       - name: Download selected release assets
-        if: ${{ !inputs.use_workflow_artifacts }}
         run: gh release download "$RELEASE_TAG" --dir selected-assets
 
       # Complete installers are required even though manifests reference updater bundles only.
@@ -115,7 +88,7 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/release-version.mjs updater-manifests \
-            "$RELEASE_CHANNEL" \
+            "${{ steps.release.outputs.channel }}" \
             "${{ steps.release.outputs.version }}" \
             "${{ steps.release.outputs.package_version }}" \
             "$RELEASE_TAG" \
@@ -128,7 +101,7 @@ jobs:
         name: Find other channel release
         run: |
           set -euo pipefail
-          if [ "$RELEASE_CHANNEL" = "nightly" ]; then
+          if [ "${{ steps.release.outputs.channel }}" = "nightly" ]; then
             other_channel=stable
             pattern='^[0-9]{4}\.[0-9]+\.[0-9]+\.[0-9]+$'
           else
@@ -192,7 +165,7 @@ jobs:
       - name: Validate complete Pages projection
         run: |
           set -euo pipefail
-          selected_count="$(find site/updater -type f -name "$RELEASE_CHANNEL-*.json" | wc -l | tr -d ' ')"
+          selected_count="$(find site/updater -type f -name "${{ steps.release.outputs.channel }}-*.json" | wc -l | tr -d ' ')"
           [ "$selected_count" = "4" ] || { echo "::error::Expected four selected-channel manifests."; exit 1; }
           node --input-type=module <<'NODE'
           import { readFileSync, readdirSync } from "node:fs";

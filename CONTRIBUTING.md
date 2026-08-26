@@ -101,9 +101,9 @@ Shipped desktop builds use the shared UTC Release Version `Y.M.D.B`. See
 - **Stable:** manual-only from `main`; multiple Stable releases may use the
   same UTC date.
 
-Do not bump release versions by hand. The Release workflow commits packed
-internal SemVer changes before building; UI, tags, release names, and artifact
-filenames use the canonical Release Version.
+Do not bump release versions by hand. The `Release` and `Release Nightly`
+workflows commit packed internal SemVer changes before building; UI, tags,
+release names, and artifact filenames use the canonical Release Version.
 
 ## Pull Requests
 

@@ -3,27 +3,35 @@ name: Prepare release
 on:
   workflow_call:
     inputs:
-      channel:
-        description: Stable or Nightly release channel
-        required: true
-        type: string
       source_sha:
         description: Tested main commit to release
         required: true
         type: string
-    outputs:
-      channel:
-        value: ${{ inputs.channel }}
       version:
-        value: ${{ jobs.version.outputs.version }}
+        description: Public Y.M.D.B Release Version
+        required: true
+        type: string
       package_version:
-        value: ${{ jobs.version.outputs.package_version }}
+        description: Packed SemVer committed to manifests
+        required: true
+        type: string
       tag:
-        value: ${{ jobs.version.outputs.tag }}
-      release_sha:
-        value: ${{ jobs.version.outputs.release_sha }}
-      release_id:
-        value: ${{ jobs.version.outputs.release_id }}
+        description: Stable or Nightly annotated release tag
+        required: true
+        type: string
+      previous_tag:
+        description: Previous same-channel release tag for generated notes
+        required: false
+        type: string
+        default: ""
+      release_title:
+        description: GitHub Release title
+        required: true
+        type: string
+      prerelease:
+        description: Whether GitHub marks the release as a prerelease
+        required: true
+        type: boolean
 
 permissions:
   contents: write
@@ -46,12 +54,10 @@ jobs:
     steps:
       # Releases must mutate main, never a manually selected feature branch.
       - name: Require main
-        env:
-          RELEASE_CHANNEL: ${{ inputs.channel }}
         run: |
           set -euo pipefail
           [ "$GITHUB_REF" = "refs/heads/main" ] || {
-            echo "::error::$RELEASE_CHANNEL releases must run from main."
+            echo "::error::Releases must run from main."
             exit 1
           }
 
@@ -135,18 +141,12 @@ jobs:
       - name: Run checks
         run: pnpm check
 
-  version:
+  release:
     name: Commit release version and create draft
     needs:
       - preflight
       - checks
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.compute.outputs.version }}
-      package_version: ${{ steps.compute.outputs.package_version }}
-      tag: ${{ steps.compute.outputs.tag }}
-      release_sha: ${{ steps.release.outputs.release_sha }}
-      release_id: ${{ steps.release.outputs.release_id }}
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -159,7 +159,7 @@ jobs:
           fetch-tags: true
           ssh-key: ${{ secrets.SSH_DEPLOY_KEY }}
 
-      # Node computes and stamps calendar versions.
+      # Node validates the precomputed plan and stamps calendar versions.
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -169,26 +169,31 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
 
-      # Fresh tags provide channel-local release-note baselines and collision checks.
-      - name: Fetch release tags
-        run: git fetch --tags --force origin
-
-      # Committed version is allocation source: same UTC day increments B, new day resets B.
-      - id: compute
-        name: Allocate version
+      # Reject inconsistent caller plans before mutating version files or repository state.
+      - name: Validate release plan
         env:
-          RELEASE_CHANNEL: ${{ inputs.channel }}
-        run: node scripts/release-version.mjs github-output
+          PACKAGE_VERSION: ${{ inputs.package_version }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { packageVersionFromReleaseVersion, parseReleaseTag } from "./scripts/release-version.mjs";
+          const parsed = parseReleaseTag(process.env.RELEASE_TAG);
+          if (!parsed || parsed.version !== process.env.RELEASE_VERSION) throw new Error("Release tag and version differ");
+          if (packageVersionFromReleaseVersion(parsed.version) !== process.env.PACKAGE_VERSION) throw new Error("Release and package versions differ");
+          if (String(parsed.kind === "nightly") !== process.env.PRERELEASE) throw new Error("Release tag and prerelease state differ");
+          NODE
 
       # Version commit and tag are pushed atomically; draft cleanup never rewrites main.
-      - id: release
-        name: Push version commit, tag, and draft release
+      - name: Push version commit, tag, and draft release
         env:
-          RELEASE_CHANNEL: ${{ inputs.channel }}
-          RELEASE_VERSION: ${{ steps.compute.outputs.version }}
-          PACKAGE_VERSION: ${{ steps.compute.outputs.package_version }}
-          RELEASE_TAG: ${{ steps.compute.outputs.tag }}
-          PREVIOUS_TAG: ${{ steps.compute.outputs.previous_tag }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          PACKAGE_VERSION: ${{ inputs.package_version }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+          RELEASE_TITLE: ${{ inputs.release_title }}
+          RELEASE_PRERELEASE: ${{ inputs.prerelease }}
           SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
           set -Eeuo pipefail
@@ -265,25 +270,16 @@ jobs:
           [ -z "$PREVIOUS_TAG" ] || notes_args+=(-f "previous_tag_name=$PREVIOUS_TAG")
           release_notes="$(gh api "${notes_args[@]}" --jq .body)"
 
-          if [ "$RELEASE_CHANNEL" = "nightly" ]; then
-            title="Zai Nightly $RELEASE_VERSION"
-            prerelease=true
-          else
-            title="Zai $RELEASE_VERSION"
-            prerelease=false
-          fi
           release_id="$(
             gh api --method POST "repos/$GITHUB_REPOSITORY/releases" \
               -f "tag_name=$RELEASE_TAG" \
               -f "target_commitish=$release_sha" \
-              -f "name=$title" \
+              -f "name=$RELEASE_TITLE" \
               -f "body=$release_notes" \
               -F draft=true \
-              -F "prerelease=$prerelease" \
+              -F "prerelease=$RELEASE_PRERELEASE" \
               --jq .id
           )"
           trap - ERR
 
-          echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
-          echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
           printf "### %s\nCommit: \`%s\`\n" "$RELEASE_TAG" "$release_sha" >> "$GITHUB_STEP_SUMMARY"

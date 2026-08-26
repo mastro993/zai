@@ -3,16 +3,8 @@ name: Build release artifacts
 on:
   workflow_call:
     inputs:
-      release_sha:
-        description: Version commit to build
-        required: true
-        type: string
-      version:
-        description: Public Y.M.D.B Release Version
-        required: true
-        type: string
-      package_version:
-        description: Packed SemVer committed to manifests
+      tag:
+        description: Prepared annotated release tag
         required: true
         type: string
 
@@ -56,7 +48,7 @@ jobs:
       - name: Check out version commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.release_sha }}
+          ref: ${{ inputs.tag }}
 
       # Linux runners need native libraries used by WebKit, AppIndicator, and bundlers.
       - name: Install Linux dependencies
@@ -75,6 +67,29 @@ jobs:
         with:
           node-version: lts/*
           cache: pnpm
+
+      # Immutable tag plus committed manifest provide every shared build input.
+      - id: metadata
+        name: Read release metadata
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          release_version="${RELEASE_TAG#nightly-}"
+          [[ "$release_version" =~ ^[0-9]{4}\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::Invalid release tag $RELEASE_TAG."
+            exit 1
+          }
+          package_version="$(node -p "require('./package.json').version")"
+          {
+            echo "RELEASE_VERSION=$release_version"
+            echo "PACKAGE_VERSION=$package_version"
+          } >> "$GITHUB_ENV"
+          {
+            echo "version=$release_version"
+            echo "package_version=$package_version"
+          } >> "$GITHUB_OUTPUT"
 
       # Platform-specific Rust targets are required for both macOS architectures.
       - name: Install Rust stable
@@ -153,8 +168,8 @@ jobs:
       - name: Use display version in artifact filenames
         run: >-
           node scripts/release-version.mjs rename-artifacts
-          "${{ inputs.version }}"
-          "${{ inputs.package_version }}"
+          "${{ steps.metadata.outputs.version }}"
+          "${{ steps.metadata.outputs.package_version }}"
           target
           "${{ matrix.updater_arch }}"
 
@@ -164,7 +179,7 @@ jobs:
         run: |
           app="$(find target -type d -path '*/release/bundle/*' -name '*.app' -print -quit)"
           dmg="$(find target -type f -path '*/release/bundle/*' -name '*.dmg' -print -quit)"
-          updater="$(find target -type f -path '*/release/bundle/*' -name '*_${{ inputs.version }}_${{ matrix.updater_arch }}.app.tar.gz' -print -quit)"
+          updater="$(find target -type f -path '*/release/bundle/*' -name "*_${RELEASE_VERSION}_${{ matrix.updater_arch }}.app.tar.gz" -print -quit)"
           [ -n "$app" ] && [ -n "$dmg" ] && [ -n "$updater" ] && [ -f "$updater.sig" ]
           codesign --verify --deep --strict --verbose=2 "$app"
           spctl --assess --type execute --verbose=2 "$app"

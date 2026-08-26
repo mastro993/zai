@@ -1,111 +1,76 @@
 name: Release
 
 on:
-  schedule:
-    - cron: "0 5 * * *"
   workflow_dispatch:
-    inputs:
-      channel:
-        description: Release channel
-        type: choice
-        options:
-          - nightly
-          - stable
-        default: nightly
 
 permissions:
-  actions: read
   contents: read
 
-# One release may mutate main at a time. New runs wait instead of cancelling active work.
+# Stable and Nightly plans share one version sequence and must never mutate main concurrently.
 concurrency:
   group: release-main
   cancel-in-progress: false
 
 jobs:
-  # Scheduled Nightlies stop early when only release-bot commits followed latest Nightly.
-  detect-changes:
-    name: Detect releasable changes
-    permissions:
-      contents: read
-    uses: ./.github/workflows/release-detect-changes.yml
-    with:
-      force: ${{ github.event_name == 'workflow_dispatch' }}
+  plan:
+    name: Plan Stable release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+      package_version: ${{ steps.compute.outputs.package_version }}
+      tag: ${{ steps.compute.outputs.tag }}
+      previous_tag: ${{ steps.compute.outputs.previous_tag }}
+      prerelease: ${{ steps.compute.outputs.prerelease }}
+    steps:
+      # Full history and tags let the entry workflow compute every immutable release input.
+      - name: Check out release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
 
-  # Validate source, run all checks, commit version, push tag, and create draft release.
+      # Release tooling runs on the repository-supported Node.js version.
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: lts/*
+
+      # Stable policy stays at the entry point; shared workflows receive concrete values.
+      - id: compute
+        name: Compute Stable release
+        env:
+          RELEASE_CHANNEL: stable
+        run: node scripts/release-version.mjs github-output
+
   prepare:
-    name: Prepare release
-    needs: detect-changes
-    if: needs.detect-changes.outputs.has_changes == 'true'
+    name: Prepare Stable release
+    needs: plan
     permissions:
       contents: write
       pages: read
     uses: ./.github/workflows/release-prepare.yml
     secrets: inherit
     with:
-      channel: ${{ github.event_name == 'schedule' && 'nightly' || inputs.channel }}
       source_sha: ${{ github.sha }}
+      version: ${{ needs.plan.outputs.version }}
+      package_version: ${{ needs.plan.outputs.package_version }}
+      tag: ${{ needs.plan.outputs.tag }}
+      previous_tag: ${{ needs.plan.outputs.previous_tag }}
+      release_title: Zai ${{ needs.plan.outputs.version }}
+      prerelease: ${{ needs.plan.outputs.prerelease == 'true' }}
 
-  # Build identical signed artifact sets for Stable and Nightly channels.
-  build:
-    name: Build release artifacts
-    needs: prepare
-    permissions:
-      contents: read
-    uses: ./.github/workflows/release-build-artifacts.yml
-    secrets: inherit
-    with:
-      release_sha: ${{ needs.prepare.outputs.release_sha }}
-      version: ${{ needs.prepare.outputs.version }}
-      package_version: ${{ needs.prepare.outputs.package_version }}
-
-  # Attach only complete verified matrix output, then publish draft GitHub Release.
-  publish:
-    name: Publish GitHub release
+  release:
+    name: Release ${{ needs.plan.outputs.tag }}
     needs:
+      - plan
       - prepare
-      - build
     permissions:
       actions: read
       contents: write
-    uses: ./.github/workflows/release-publish.yml
-    with:
-      release_id: ${{ needs.prepare.outputs.release_id }}
-      tag: ${{ needs.prepare.outputs.tag }}
-      version: ${{ needs.prepare.outputs.version }}
-
-  # Rebuild both rolling channels and atomically deploy updater manifests to Pages.
-  updater-manifests:
-    name: Publish updater manifests
-    needs:
-      - prepare
-      - publish
-    permissions:
-      actions: read
-      contents: read
       pages: write
       id-token: write
-    uses: ./.github/workflows/publish-updater-manifests.yml
+    uses: ./.github/workflows/release-shared.yml
+    secrets: inherit
     with:
-      channel: ${{ needs.prepare.outputs.channel }}
-      tag: ${{ needs.prepare.outputs.tag }}
-      use_workflow_artifacts: true
-
-  # Build/publication failure removes only this run's draft and tag; main stays immutable.
-  cleanup:
-    name: Clean failed draft release
-    needs:
-      - prepare
-      - build
-      - publish
-      - updater-manifests
-    if: >-
-      always() &&
-      needs.prepare.result == 'success' &&
-      (needs.build.result != 'success' || needs.publish.result != 'success')
-    permissions:
-      contents: write
-    uses: ./.github/workflows/release-cleanup.yml
-    with:
-      release_id: ${{ needs.prepare.outputs.release_id }}
-      tag: ${{ needs.prepare.outputs.tag }}
+      tag: ${{ needs.plan.outputs.tag }}

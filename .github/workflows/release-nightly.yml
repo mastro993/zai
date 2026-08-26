@@ -1,0 +1,114 @@
+name: Release Nightly
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Stable and Nightly plans share one version sequence and must never mutate main concurrently.
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan Nightly release
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.detect.outputs.should_release }}
+      version: ${{ steps.compute.outputs.version }}
+      package_version: ${{ steps.compute.outputs.package_version }}
+      tag: ${{ steps.compute.outputs.tag }}
+      previous_tag: ${{ steps.compute.outputs.previous_tag }}
+      prerelease: ${{ steps.compute.outputs.prerelease }}
+    steps:
+      # Full history and tags support change detection plus complete Nightly planning.
+      - name: Check out release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      # Scheduled runs skip release-only commits; manual runs intentionally allocate another build.
+      - id: detect
+        name: Detect releasable changes
+        env:
+          FORCE_RELEASE: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          set -euo pipefail
+          if [ "$FORCE_RELEASE" = "true" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          latest="$(
+            git tag --list 'nightly-*' --sort=-v:refname |
+              grep -E '^nightly-[0-9]{4}\.[0-9]+\.[0-9]+\.[0-9]+$' |
+              head -n 1 || true
+          )"
+          range=HEAD
+          [ -z "$latest" ] || range="$latest..HEAD"
+          count="$(
+            git log --no-merges --format='%ae%x09%an' "$range" |
+              { grep -Ev 'github-actions\[bot\]|actions@github.com' || true; } |
+              wc -l |
+              tr -d ' '
+          )"
+          if [ "$count" -gt 0 ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "No non-release commits since latest Nightly." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Release tooling runs only when this Nightly will proceed.
+      - name: Setup Node.js
+        if: steps.detect.outputs.should_release == 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: lts/*
+
+      # Nightly policy stays at the entry point; shared workflows receive concrete values.
+      - id: compute
+        name: Compute Nightly release
+        if: steps.detect.outputs.should_release == 'true'
+        env:
+          RELEASE_CHANNEL: nightly
+        run: node scripts/release-version.mjs github-output
+
+  prepare:
+    name: Prepare Nightly release
+    needs: plan
+    if: needs.plan.outputs.should_release == 'true'
+    permissions:
+      contents: write
+      pages: read
+    uses: ./.github/workflows/release-prepare.yml
+    secrets: inherit
+    with:
+      source_sha: ${{ github.sha }}
+      version: ${{ needs.plan.outputs.version }}
+      package_version: ${{ needs.plan.outputs.package_version }}
+      tag: ${{ needs.plan.outputs.tag }}
+      previous_tag: ${{ needs.plan.outputs.previous_tag }}
+      release_title: Zai Nightly ${{ needs.plan.outputs.version }}
+      prerelease: ${{ needs.plan.outputs.prerelease == 'true' }}
+
+  release:
+    name: Release ${{ needs.plan.outputs.tag }}
+    needs:
+      - plan
+      - prepare
+    permissions:
+      actions: read
+      contents: write
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/release-shared.yml
+    secrets: inherit
+    with:
+      tag: ${{ needs.plan.outputs.tag }}
