@@ -12,6 +12,8 @@ Zai takes significant inspiration from [Wealthfolio](https://github.com/wealthfo
 
 I believe personal finance software should help people understand their money without requiring them to hand their financial history to a third party. Users should stay in control of their data and be able to understand how the app reaches its numbers. Zai is my attempt to build toward that idea from a local-first foundation and discover what becomes possible from there.
 
+Zai is a side project, not a business. It will never be sold or used as a source of income. Monetization is not its goal.
+
 ## Installation
 
 There are no supported public binaries yet.
