@@ -35,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
+      SSH_DEPLOY_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
       APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -60,6 +61,7 @@ jobs:
           set -euo pipefail
           missing=()
           for name in \
+            SSH_DEPLOY_KEY \
             TAURI_SIGNING_PRIVATE_KEY \
             APPLE_CERTIFICATE \
             APPLE_CERTIFICATE_PASSWORD \
@@ -148,13 +150,14 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      # Full history supports release notes; persisted credentials authorize atomic push.
+      # Deploy-key auth bypasses main's PR-only rules for the release version commit.
       - name: Check out release source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.source_sha }}
           fetch-depth: 0
           fetch-tags: true
+          ssh-key: ${{ secrets.SSH_DEPLOY_KEY }}
 
       # Node computes and stamps calendar versions.
       - name: Setup Node.js

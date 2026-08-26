@@ -163,6 +163,7 @@ Configure these under **Settings → Secrets and variables → Actions**:
 
 | Secret | Value |
 | --- | --- |
+| `SSH_DEPLOY_KEY` | Private half of a write-enabled, repository-scoped deploy key allowed to bypass the `main` ruleset |
 | `TAURI_SIGNING_PRIVATE_KEY` | Tauri updater private key file content |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Updater key password, when encrypted |
 | `APPLE_CERTIFICATE` | Base64 Developer ID Application `.p12` |
@@ -175,6 +176,12 @@ Configure these under **Settings → Secrets and variables → Actions**:
 The signing-key password is optional only for an unencrypted updater key.
 Private values must never enter command arguments, logs, committed files, or
 documentation.
+
+`GITHUB_TOKEN` cannot push the version commit through the PR-only `main`
+ruleset. Create a dedicated Ed25519 deploy key, add its public half under
+**Settings → Deploy keys** with write access, allow deploy keys to bypass the
+`main` ruleset, and store its private half as `SSH_DEPLOY_KEY`. Use this key only
+for release version pushes.
 
 Generate and store a Tauri updater key with:
 
