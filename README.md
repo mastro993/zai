@@ -1,4 +1,4 @@
-# Zai
+# 💰 Zai: personal finance, kept personal
 
 > [!WARNING]
 > **Zai is in early development. Expect data loss.** Features and data models may
