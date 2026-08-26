@@ -14,7 +14,7 @@ use zai_core::features::domain_alerts::{
 };
 use zai_core::features::recurring_transactions::{
     RecurringProcessingEvent, RecurringProcessingEventBus, RecurringProcessingEventPublisher,
-    deserialize_recurring_processing_event,
+    RecurringProcessingFinishState, deserialize_recurring_processing_event,
 };
 
 mod native_smoke_support;
@@ -113,7 +113,10 @@ async fn forwards_recurring_processing_lag_as_state_changed() {
 #[tokio::test]
 async fn native_recurring_workflow_smoke_boots_processes_and_resolves_links() {
     let mut native = NativeHarness::new();
-    assert_eq!(native.await_finished(0).await, "caughtUp");
+    assert_eq!(
+        native.await_finished(0).await,
+        RecurringProcessingFinishState::CaughtUp
+    );
 
     let error = native.invoke_error(
         "create_recurring_transaction",
@@ -184,7 +187,7 @@ async fn native_recurring_workflow_smoke_boots_processes_and_resolves_links() {
     assert_eq!(created_document["failures"]["state"], "empty");
 
     let finished = native.await_finished(1).await;
-    assert_eq!(finished, "caughtUp");
+    assert_eq!(finished, RecurringProcessingFinishState::CaughtUp);
 
     let document = native.invoke(
         "get_recurring_transaction",
@@ -310,6 +313,14 @@ async fn forwards_currency_state_events_to_one_application_wide_emitter() {
         CurrencyStateEvent::StateChanged
     );
     task.abort();
+}
+
+#[tokio::test]
+async fn native_shutdown_ignores_finished_events_queued_before_shutdown() {
+    let native = NativeHarness::new();
+    native.await_queued_processing_event().await;
+
+    native.shutdown().await;
 }
 
 #[tokio::test]
