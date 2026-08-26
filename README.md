@@ -14,6 +14,33 @@ I believe personal finance software should help people understand their money wi
 
 Zai is a side project, not a business. It will never be sold or used as a source of income. Monetization is not its goal.
 
+## An agent-driven experiment
+
+Zai is developed as a 100% agent-driven software experiment. I do not write or
+edit a single line of code myself. I decide what the product should do, plan the
+work with AI agents, turn requirements into issues, and ask agents to implement
+them. When the work is complete, I press the green merge button. Product
+direction and the final merge decision remain human; the code is agent-written.
+
+The experiment asks a simple question: does software written entirely by AI
+inevitably become low-quality "slop," or can an agent-driven process produce
+trustworthy software when planning and verification are taken seriously?
+
+I chose an open-source personal finance app because it is a demanding test:
+
+- It must be **secure** because it handles sensitive financial data.
+- It must be **efficient** enough to handle thousands of transactions and
+  operations.
+- It must be **reliable** because even a small rounding error can distort
+  someone's financial data.
+- It must be **private** so each user's data stays on their device.
+
+These are the standards the experiment must meet, not claims that Zai has
+already met them. The early-development warning at the top of this README still
+applies. The goal is to test whether software written entirely by AI can meet
+serious standards for security, performance, reliability, and privacy when the
+process is designed well.
+
 ## Installation
 
 Official desktop binaries for macOS, Linux, and Windows are available from
