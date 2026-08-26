@@ -1,0 +1,65 @@
+name: Shared release
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Prepared annotated release tag
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  # Build every platform from the immutable version commit identified by the tag.
+  build:
+    name: Build release artifacts
+    permissions:
+      contents: read
+    uses: ./.github/workflows/release-build-artifacts.yml
+    secrets: inherit
+    with:
+      tag: ${{ inputs.tag }}
+
+  # Attach only complete verified matrix output, then publish the draft GitHub Release.
+  publish:
+    name: Publish GitHub release
+    needs: build
+    permissions:
+      actions: read
+      contents: write
+    uses: ./.github/workflows/release-publish.yml
+    with:
+      tag: ${{ inputs.tag }}
+
+  # Rebuild both rolling channels and atomically deploy updater manifests to Pages.
+  updater-manifests:
+    name: Publish updater manifests
+    needs: publish
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/publish-updater-manifests.yml
+    with:
+      tag: ${{ inputs.tag }}
+
+  # Build/publication failure removes only this run's draft and tag; main stays immutable.
+  cleanup:
+    name: Clean failed draft release
+    needs:
+      - build
+      - publish
+      - updater-manifests
+    if: >-
+      always() &&
+      (needs.build.result != 'success' || needs.publish.result != 'success')
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release-cleanup.yml
+    with:
+      tag: ${{ inputs.tag }}

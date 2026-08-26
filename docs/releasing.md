@@ -1,19 +1,20 @@
 # Releasing Zai
 
-Zai ships desktop builds through one `Release` workflow with two channels. Both
-channels run the same checks, commit a version to `main`, create a GitHub
-Release, build the same platform artifacts, and publish signed updater
-manifests to GitHub Pages.
+Zai ships desktop builds through separate `Release` and `Release Nightly`
+entry workflows. Both precompute channel-specific release metadata, commit a
+version to `main`, then pass the immutable tag to the same build, publication,
+and updater-manifest workflows.
 
 ## Channels
 
-- **Nightly** runs from `main` every day at 05:00 UTC and by manual dispatch.
-  Scheduled runs skip successfully when no non-release commit exists after the
-  latest Nightly tag. Manual runs intentionally create another build. Nightly tags are
-  `nightly-Y.M.D.B`; their GitHub Releases are prereleases named
-  `Zai Nightly Y.M.D.B`.
-- **Stable** runs only by manual dispatch from `main`. Stable tags are
-  `Y.M.D.B`; their GitHub Releases are full releases named `Zai Y.M.D.B`.
+- **Nightly** runs through `Release Nightly` from `main` every day at 05:00 UTC
+  and by manual dispatch. Scheduled runs skip successfully when no non-release
+  commit exists after the latest Nightly tag. Manual runs intentionally create
+  another build. Nightly tags are `nightly-Y.M.D.B`; their GitHub Releases are
+  prereleases named `Zai Nightly Y.M.D.B`.
+- **Stable** runs through `Release` only by manual dispatch from `main`.
+  Stable tags are `Y.M.D.B`; their GitHub Releases are full releases named
+  `Zai Y.M.D.B`.
 
 All dates are UTC and unpadded. Both channels share one daily build sequence:
 `B` starts at zero and increments the Release Version already committed on
@@ -51,38 +52,45 @@ therefore report the latest committed Release Version until the next release.
 
 ## Workflow modules
 
-`release.yml` is the channel-agnostic orchestrator. Each phase has one focused
-reusable workflow:
+Channel policy and release planning live in two small entry workflows. Shared
+release phases consume concrete plan values until preparation creates an
+immutable tag; every later phase receives only that tag.
 
 | Workflow | Responsibility |
 | --- | --- |
-| `release-detect-changes.yml` | Skip scheduled Nightlies without source changes |
-| `release-prepare.yml` | Preflight, checks, version commit, tag, and draft release |
-| `release-build-artifacts.yml` | Cross-platform signed artifact matrix |
-| `release-publish.yml` | Complete-set validation, upload, and release publication |
-| `publish-updater-manifests.yml` | Normal and recovery Pages publication |
-| `release-cleanup.yml` | Compare-and-delete cleanup for failed drafts |
+| `release.yml` | Manually plan and start a Stable release |
+| `release-nightly.yml` | Detect changes, then plan and start a scheduled or manual Nightly |
+| `release-prepare.yml` | Validate the plan, run checks, commit version, tag, and create draft release |
+| `release-shared.yml` | Order all tag-based build, publish, manifest, and cleanup phases |
+| `release-build-artifacts.yml` | Cross-platform signed artifact matrix for one tag |
+| `release-publish.yml` | Complete-set validation, upload, and tag-based release publication |
+| `publish-updater-manifests.yml` | Tag-based normal and recovery Pages publication |
+| `release-cleanup.yml` | Compare-and-delete cleanup for a failed draft tag |
 
-Comments above every workflow step state both operation and reason. Keep phase
-internals in their owning reusable workflow; keep `release.yml` limited to job
-ordering, permissions, inputs, and failure policy.
+Comments above every workflow step state both operation and reason. Keep
+channel decisions in entry workflows and phase internals in their owning
+reusable workflow. Tag-based shared workflows must recover version, commit, and
+release identity from the immutable tag instead of accepting duplicate inputs.
 
 ## Release sequence
 
-GitHub Actions concurrency serializes Release workflow runs on `main`.
+GitHub Actions concurrency serializes both release entry workflows on `main`.
 
-1. Verify required signing credentials and GitHub Pages configuration.
-2. Run `pnpm install --frozen-lockfile` and `pnpm check` against the selected
+1. The channel entry workflow allocates the next Release Version from the
+   version committed on `main` and precomputes the tag, package version,
+   previous same-channel tag, title, and prerelease state.
+2. Verify required signing credentials and GitHub Pages configuration.
+3. Run `pnpm install --frozen-lockfile` and `pnpm check` against the selected
    `main` commit.
-3. Confirm `main` has not advanced. If it has, stop and require a fresh run.
-4. Allocate the next Release Version from the version committed on `main`.
+4. Confirm `main` has not advanced. If it has, stop and require a fresh run.
 5. Update manifests, regenerate `Cargo.lock`, validate the exact changed-file
    set, commit, and atomically push `main` plus the annotated tag.
 6. Create a draft GitHub Release.
 7. Build and verify every platform artifact.
 8. Attach the exact verified artifact set and publish the GitHub Release.
-9. Reconstruct both updater channels from published GitHub Releases and deploy
-   the complete manifest set atomically to GitHub Pages.
+9. Pass only the prepared tag through shared publication phases. Reconstruct
+   both updater channels from published GitHub Releases and deploy the complete
+   manifest set atomically to GitHub Pages.
 
 The workflow never rebases untested code into a release and never replaces an
 existing tag or GitHub Release.
@@ -152,10 +160,10 @@ shipped, only the selected channel is present.
 
 ### Recover manifest publication
 
-Run `Publish updater manifests` manually with the channel and exact existing
-tag. Recovery requires a published, non-draft release whose prerelease state,
-tag, complete artifact set, and signatures match the selected channel. It only
-rebuilds and deploys Pages; it never changes `main`, a tag, or a release.
+Run `Publish updater manifests` manually with the exact existing tag. The tag
+determines the channel. Recovery requires a published, non-draft release whose
+prerelease state, complete artifact set, and signatures match that channel. It
+only rebuilds and deploys Pages; it never changes `main`, a tag, or a release.
 
 ## Required secrets
 
