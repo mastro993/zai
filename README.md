@@ -16,30 +16,19 @@ Zai is a side project, not a business. It will never be sold or used as a source
 
 ## An agent-driven experiment
 
-Zai is developed as a 100% agent-driven software experiment. I do not write or
-edit a single line of code myself. I decide what the product should do, plan the
-work with AI agents, turn requirements into issues, and ask agents to implement
-them. When the work is complete, I press the green merge button. Product
-direction and the final merge decision remain human; the code is agent-written.
+Zai is a 100% agent-driven software experiment. The maintainer defines product
+direction, plans work with AI agents, turns requirements into issues, and makes
+the final merge decision. AI agents write and edit every line of code.
 
-The experiment asks a simple question: does software written entirely by AI
-inevitably become low-quality "slop," or can an agent-driven process produce
-trustworthy software when planning and verification are taken seriously?
+The experiment tests whether entirely AI-written software inevitably becomes
+low-quality "slop," or can meet high standards through disciplined planning and
+verification. Personal finance is a demanding test: sensitive data must remain
+secure and private, thousands of operations must stay fast, and calculations
+must remain reliable because even small rounding errors can distort financial
+data.
 
-I chose an open-source personal finance app because it is a demanding test:
-
-- It must be **secure** because it handles sensitive financial data.
-- It must be **efficient** enough to handle thousands of transactions and
-  operations.
-- It must be **reliable** because even a small rounding error can distort
-  someone's financial data.
-- It must be **private** so each user's data stays on their device.
-
-These are the standards the experiment must meet, not claims that Zai has
-already met them. The early-development warning at the top of this README still
-applies. The goal is to test whether software written entirely by AI can meet
-serious standards for security, performance, reliability, and privacy when the
-process is designed well.
+These are target standards, not claims about Zai's current maturity. The
+early-development warning above still applies.
 
 ## Installation
 
