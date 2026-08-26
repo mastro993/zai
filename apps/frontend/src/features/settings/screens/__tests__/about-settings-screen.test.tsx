@@ -3,7 +3,12 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ABOUT_APP_IDENTIFIER, ABOUT_LICENSE, ABOUT_TAURI_VERSION } from "../../lib/about-info";
+import {
+  ABOUT_APP_IDENTIFIER,
+  ABOUT_LICENSE,
+  ABOUT_TAURI_VERSION,
+  PLACEHOLDER_APP_VERSION,
+} from "../../lib/about-info";
 import { AboutSettingsScreen } from "../about-settings-screen";
 
 describe("AboutSettingsScreen", () => {
@@ -15,6 +20,8 @@ describe("AboutSettingsScreen", () => {
   });
 
   it("renders disabled updater controls in development builds", () => {
+    vi.stubEnv("VITE_ZAI_APP_VERSION", PLACEHOLDER_APP_VERSION);
+
     render(<AboutSettingsScreen />);
 
     expect(screen.queryByRole("heading", { name: "About" })).toBeNull();
