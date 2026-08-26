@@ -19,11 +19,11 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: ${{ inputs.tag }}
     steps:
-      # REST tag lookup hides drafts; use the CLI before compare-deleting the unchanged tag.
+      # REST tag lookup hides drafts; pass repo explicitly because this job has no checkout.
       - name: Delete this run's draft and tag
         run: |
           set -euo pipefail
-          release="$(gh release view "$RELEASE_TAG" --json databaseId,isDraft 2>/dev/null || true)"
+          release="$(gh release view --repo "$GITHUB_REPOSITORY" "$RELEASE_TAG" --json databaseId,isDraft 2>/dev/null || true)"
           if [ -z "$release" ] || [ "$(jq -r .isDraft <<<"$release")" != "true" ]; then
             echo "Release is absent or published; refusing cleanup."
             exit 0
