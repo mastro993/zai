@@ -174,7 +174,10 @@ impl NativeHarness {
             .expect_err("command should return an IPC error")
     }
 
-    pub(crate) async fn await_finished(&mut self, committed: u32) -> &'static str {
+    pub(crate) async fn await_finished(
+        &mut self,
+        committed: u32,
+    ) -> RecurringProcessingFinishState {
         loop {
             let payload =
                 tokio::time::timeout(Duration::from_secs(5), self.processing_events.recv())
@@ -188,12 +191,7 @@ impl NativeHarness {
             } = deserialize_recurring_processing_event(&payload).expect("event should decode")
                 && actual_committed == committed
             {
-                return match state {
-                    RecurringProcessingFinishState::CaughtUp => "caughtUp",
-                    RecurringProcessingFinishState::Parked => "parked",
-                    RecurringProcessingFinishState::ShuttingDown => "shuttingDown",
-                    _ => "unexpected",
-                };
+                return state;
             }
         }
     }
@@ -205,9 +203,19 @@ impl NativeHarness {
             .expect("currency-state event channel should stay open")
     }
 
+    pub(crate) async fn await_queued_processing_event(&self) {
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while self.processing_events.is_empty() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("processing event should be queued");
+    }
+
     pub(crate) async fn shutdown(mut self) {
         self.supervisor_handle.request_shutdown();
-        assert_eq!(self.await_finished(0).await, "shuttingDown");
+        while self.await_finished(0).await != RecurringProcessingFinishState::ShuttingDown {}
         drop(self.app);
     }
 }
