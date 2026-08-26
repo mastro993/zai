@@ -16,9 +16,34 @@ Zai is a side project, not a business. It will never be sold or used as a source
 
 ## Installation
 
-There are no supported public binaries yet.
+Official desktop binaries for macOS, Linux, and Windows are available from
+[GitHub Releases](https://github.com/mastro993/zai/releases). Zai publishes two
+release channels. Both are built from `main` through the same checks and
+artifact pipeline, but they have different release cadences.
 
-To run the project from source, follow the development instructions below.
+### Stable
+
+Stable releases are published manually and are the recommended channel for most
+users. They receive updates less often than Nightly releases and appear on
+GitHub as full releases named `Zai Y.M.D.B`. Download the most recent build from
+the [latest Stable release](https://github.com/mastro993/zai/releases/latest).
+
+"Stable" describes the release channel, not the maturity of Zai or its data
+format. Zai remains in early development, and the data-loss and migration
+warning at the top of this README applies to Stable releases too.
+
+### Nightly
+
+Nightly releases contain the latest changes from `main`. A new Nightly is
+scheduled for 05:00 UTC when changes exist, and maintainers can also trigger one
+manually. Nightlies appear as prereleases named `Zai Nightly Y.M.D.B` on the
+[Releases page](https://github.com/mastro993/zai/releases).
+
+Choose Nightly only if you want to test recent changes and can tolerate more
+regressions, incomplete behavior, and data loss. Nightly builds are not a safer
+backup or migration path than Stable builds.
+
+To run Zai from source instead, follow the development instructions below.
 
 ## Development
 
