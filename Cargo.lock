@@ -6267,7 +6267,7 @@ dependencies = [
 
 [[package]]
 name = "zai"
-version = "0.0.0-dev"
+version = "2026.8.26000"
 dependencies = [
  "chrono",
  "dotenvy",
@@ -6291,7 +6291,7 @@ dependencies = [
 
 [[package]]
 name = "zai-app"
-version = "0.0.0-dev"
+version = "2026.8.26000"
 dependencies = [
  "async-trait",
  "chrono",
@@ -6306,7 +6306,7 @@ dependencies = [
 
 [[package]]
 name = "zai-core"
-version = "0.0.0-dev"
+version = "2026.8.26000"
 dependencies = [
  "async-trait",
  "chrono",
@@ -6322,7 +6322,7 @@ dependencies = [
 
 [[package]]
 name = "zai-db"
-version = "0.0.0-dev"
+version = "2026.8.26000"
 dependencies = [
  "async-trait",
  "chrono",
@@ -6341,7 +6341,7 @@ dependencies = [
 
 [[package]]
 name = "zai-server"
-version = "0.0.0-dev"
+version = "2026.8.26000"
 dependencies = [
  "axum",
  "chrono",
