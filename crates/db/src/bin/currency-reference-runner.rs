@@ -10,6 +10,9 @@ use std::fs;
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use zai_core::features::exchange_rates::{
+    APPROVED_ECB_CURRENCIES, ExchangeRateCache, SyncMetadata, parse_ecb_csv, validate_complete_set,
+};
 use zai_core::features::transactions::import_models::{
     BoundImportCommitRequest, BoundImportCommitRow, ImportRatePlan,
 };
@@ -21,7 +24,7 @@ use zai_db::currency::require_setup_on_connection;
 
 const REFERENCE_SEED: u64 = 377;
 const TXN_COUNT: usize = 10_000;
-const RESTATEMENT_TARGET: &str = "RUB";
+const RESTATEMENT_TARGET: &str = "USD";
 const IMPORT_ROWS: usize = 1_000;
 
 #[derive(QueryableByName)]
@@ -59,6 +62,7 @@ async fn run_benchmark(data_dir: &Path) -> Result<(), Box<dyn Error>> {
     )?;
 
     require_setup_on_connection(&mut conn)?;
+    seed_exchange_rates(database.exchange_rate_repository().as_ref()).await?;
     seed_transactions_and_rates(&mut conn)?;
 
     wait_for_measurement_start()?;
@@ -126,10 +130,33 @@ async fn run_benchmark(data_dir: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+async fn seed_exchange_rates(
+    repository: &zai_db::exchange_rates::ExchangeRateRepository,
+) -> Result<(), Box<dyn Error>> {
+    let mut csv = String::from("CURRENCY,TIME_PERIOD,OBS_VALUE\n");
+    for currency in APPROVED_ECB_CURRENCIES {
+        csv.push_str(&format!("{currency},2026-01-15,1.25\n"));
+    }
+    let parsed = parse_ecb_csv(&csv).map_err(|error| io::Error::other(format!("{error:?}")))?;
+    let set = validate_complete_set(&parsed, None, "benchmark-set".to_string())
+        .map_err(|error| io::Error::other(format!("{error:?}")))?;
+    repository
+        .publish(
+            set,
+            SyncMetadata {
+                updated_after: None,
+                etag: None,
+            },
+            Utc::now(),
+        )
+        .await?;
+    Ok(())
+}
+
 fn seed_transactions_and_rates(conn: &mut SqliteConnection) -> Result<(), Box<dyn Error>> {
     sql_query(
         "INSERT INTO enabled_currencies (code, enabled_at, disabled_at) \
-         VALUES ('RUB', CURRENT_TIMESTAMP, NULL)",
+         VALUES ('USD', CURRENT_TIMESTAMP, NULL)",
     )
     .execute(conn)?;
 
@@ -138,9 +165,8 @@ fn seed_transactions_and_rates(conn: &mut SqliteConnection) -> Result<(), Box<dy
     let mut is_eur = Vec::with_capacity(TXN_COUNT);
     let mut amounts = Vec::with_capacity(TXN_COUNT);
 
-    for _ in 0..TXN_COUNT {
-        seed = next_seed(seed);
-        let eur = seed.is_multiple_of(2);
+    for i in 0..TXN_COUNT {
+        let eur = i.is_multiple_of(2);
         seed = next_seed(seed);
         is_eur.push(eur);
         amounts.push(10_000 + (seed % 90_000) as i32);
@@ -152,7 +178,7 @@ fn seed_transactions_and_rates(conn: &mut SqliteConnection) -> Result<(), Box<dy
         let mut tuples = Vec::with_capacity(batch.len());
         for (offset, &is_eur_txn) in batch.iter().enumerate() {
             let i = start_idx + offset;
-            let currency = if is_eur_txn { "EUR" } else { "RUB" };
+            let currency = if is_eur_txn { "EUR" } else { "USD" };
             tuples.push(format!(
                 "('bench377-txn-{i}', NULL, {amount}, '{currency}', '{tx_date}', 'expense', NULL, NULL, '{tx_date}', '{tx_date}', NULL)",
                 amount = amounts[i],
@@ -195,14 +221,11 @@ fn seed_transactions_and_rates(conn: &mut SqliteConnection) -> Result<(), Box<dy
 async fn bound_import_with_currency_preparation(
     repository: &zai_db::transactions::TransactionsRepository,
 ) -> Result<(), Box<dyn Error>> {
-    let mut seed = REFERENCE_SEED.wrapping_add(1);
     let import_date = NaiveDateTime::parse_from_str("2026-02-01 00:00:00", "%Y-%m-%d %H:%M:%S")?;
     let mut rows = Vec::with_capacity(IMPORT_ROWS);
     for i in 0..IMPORT_ROWS {
-        seed = next_seed(seed);
-        let currency = if seed.is_multiple_of(2) { "EUR" } else { "RUB" }.to_string();
-        seed = next_seed(seed);
-        let amount = 5_000 + (seed % 45_000) as i32;
+        let currency = if i.is_multiple_of(2) { "EUR" } else { "USD" }.to_string();
+        let amount = 5_000 + i as i32;
         let rate_plan = if currency == "EUR" {
             ImportRatePlan::Pending {
                 rate_date: import_date,
@@ -228,7 +251,7 @@ async fn bound_import_with_currency_preparation(
 
     repository
         .commit_bound_import(BoundImportCommitRequest {
-            enable_currencies: vec!["RUB".to_string()],
+            enable_currencies: vec!["USD".to_string()],
             categories: vec![],
             rows,
         })
