@@ -1,12 +1,14 @@
 # Zai
 
+> [!WARNING]
+> **Zai is in early development. Expect data loss.** Features and data models may
+> change without notice. Correct data migration between releases is not
+> guaranteed, and automatic database backup and restore are not implemented yet.
+> Keep independent backups and do not use Zai as the only copy of important data.
+
 Zai (ざい, japanese word for _wealth_) is a local-first personal finance app for people who want to track their money without cloud sync, telemetry, or bank-login dependencies.
 
 Zai takes significant inspiration from [Wealthfolio](https://github.com/wealthfolio/wealthfolio) and [Sure](https://github.com/we-promise/sure). It is my own interpretation of what a personal finance app can be.
-
-> [!WARNING]
-> This is early software. Features are incomplete, releases are not yet considered stable, and automatic full-database backup and restore are not implemented.
-> Do not use Zai as the only copy of important financial data.
 
 ## Installation
 
@@ -63,8 +65,8 @@ The current beta:
 
 - does not include cloud sync, bank connections, or telemetry;
 - does not encrypt the SQLite database at rest;
-- does not provide automatic full-database backup and restore;
-- may run migrations as the schema evolves.
+- does not provide automatic full-database backup and restore; and
+- does not guarantee that migrations will preserve existing data between releases.
 
 Back up important source data independently. Never attach a real Zai database,
 financial statement, or unredacted log to a public issue.
