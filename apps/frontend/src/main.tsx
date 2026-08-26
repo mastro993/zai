@@ -4,6 +4,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { ThemeProvider } from "next-themes";
 
 import { bootstrapApp } from "./app-bootstrap";
+import { startAutomaticUpdateCheck } from "./features/settings/lib/updater";
 import { THEME_STORAGE_KEY } from "./lib/theme-toggle";
 import { getRouter } from "./router";
 
@@ -29,6 +30,7 @@ bootstrapApp(
     getRouter,
     render: (root, tree) => {
       createRoot(root).render(tree);
+      startAutomaticUpdateCheck();
     },
   },
 );

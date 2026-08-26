@@ -128,7 +128,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      TAURI_SIGNING_PUBLIC_KEY: ${{ vars.TAURI_SIGNING_PUBLIC_KEY }}
       APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
       APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -140,7 +139,6 @@ jobs:
         run: |
           missing=()
           [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] || missing+=("TAURI_SIGNING_PRIVATE_KEY")
-          [ -n "$TAURI_SIGNING_PUBLIC_KEY" ] || missing+=("TAURI_SIGNING_PUBLIC_KEY")
           [ -n "$APPLE_CERTIFICATE" ] || missing+=("APPLE_CERTIFICATE")
           [ -n "$APPLE_CERTIFICATE_PASSWORD" ] || missing+=("APPLE_CERTIFICATE_PASSWORD")
           [ -n "$APPLE_SIGNING_IDENTITY" ] || missing+=("APPLE_SIGNING_IDENTITY")
@@ -186,7 +184,7 @@ jobs:
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-      TAURI_SIGNING_PUBLIC_KEY: ${{ vars.TAURI_SIGNING_PUBLIC_KEY }}
+      VITE_ZAI_UPDATER_TARGET: ${{ matrix.id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -470,6 +468,7 @@ jobs:
         env:
           RELEASE_CHANNEL: ${{ needs.version.outputs.channel }}
           RELEASE_VERSION: ${{ needs.version.outputs.version }}
+          PACKAGE_VERSION: ${{ needs.version.outputs.package_version }}
           RELEASE_TAG: ${{ needs.version.outputs.tag }}
           RELEASE_SHA: ${{ needs.version.outputs.sha }}
           PREVIOUS_TAG: ${{ needs.version.outputs.previous_tag }}
@@ -579,3 +578,81 @@ jobs:
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" \
             -F draft=false >/dev/null
           trap - ERR
+
+  updater-manifests:
+    name: Publish updater manifests
+    needs:
+      - version
+      - publish
+    if: needs.version.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: lts/*
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: release-*
+          path: release-assets
+
+      - name: Publish rolling manifests
+        env:
+          RELEASE_CHANNEL: ${{ needs.version.outputs.channel }}
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+          PACKAGE_VERSION: ${{ needs.version.outputs.package_version }}
+          RELEASE_TAG: ${{ needs.version.outputs.tag }}
+          RELEASE_SHA: ${{ needs.version.outputs.sha }}
+        run: |
+          set -Eeuo pipefail
+          node scripts/release-version.mjs updater-manifests \
+            "$RELEASE_CHANNEL" \
+            "$RELEASE_VERSION" \
+            "$PACKAGE_VERSION" \
+            "$RELEASE_TAG" \
+            "$GITHUB_REPOSITORY" \
+            release-assets \
+            updater-manifests
+
+          if ! gh release view updater >/dev/null 2>&1; then
+            gh release create updater \
+              --target "$RELEASE_SHA" \
+              --title "Zai updater manifests" \
+              --notes "Machine-readable signed update manifests." \
+              --prerelease
+          fi
+
+          mapfile -d '' manifests < <(
+            find updater-manifests -type f -name "$RELEASE_CHANNEL-*.json" -print0 | sort -z
+          )
+          [ "${#manifests[@]}" -eq 4 ] || {
+            echo "::error::Expected four $RELEASE_CHANNEL updater manifests."
+            exit 1
+          }
+          gh release upload updater "${manifests[@]}" --clobber
+
+          expected_manifest_names="$(printf '%s\n' "${manifests[@]##*/}" | sort)"
+          actual_manifest_names="$(
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/updater" \
+              --jq '.assets[].name'
+          )"
+          actual_manifest_names="$(
+            printf '%s\n' "$actual_manifest_names" |
+              grep "^$RELEASE_CHANNEL-.*\\.json$" |
+              sort
+          )"
+          [ "$actual_manifest_names" = "$expected_manifest_names" ] || {
+            echo "::error::Rolling updater manifests do not match the generated set."
+            exit 1
+          }

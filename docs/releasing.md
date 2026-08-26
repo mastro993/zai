@@ -40,12 +40,12 @@ internally as `2026.8.25001`. This preserves ordering and avoids prerelease
 suffixes. Tags, GitHub Release names, release-note paths, and artifact
 filenames keep the visible `Y.M.D.B` Release Version.
 
-## Required repository secrets and variables
+## Required repository secrets
 
 Open the repository on GitHub and go to **Settings → Secrets and variables →
-Actions**. Add private values under **Secrets** and the updater public key under
-**Variables**. With GitHub CLI, authenticate with `gh auth login`, change to
-the repository directory, and use `gh secret set` or `gh variable set`.
+Actions**. Add private values under **Secrets**. With GitHub CLI, authenticate
+with `gh auth login`, change to the repository directory, and use
+`gh secret set`.
 Do not put private values directly in command arguments, shell history, logs,
 or documentation.
 
@@ -60,12 +60,6 @@ or documentation.
 | `APPLE_API_KEY`                      | App Store Connect API key ID                  |
 | `APPLE_API_PRIVATE_KEY`              | App Store Connect API `.p8` file content      |
 
-Add one repository variable:
-
-| Variable                   | Value                                 |
-| -------------------------- | ------------------------------------- |
-| `TAURI_SIGNING_PUBLIC_KEY` | Tauri updater public key file content |
-
 The workflow checks required secrets before starting platform builds.
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` is optional only when the updater key is
 not encrypted.
@@ -78,13 +72,12 @@ Generate the key once and back it up securely:
 pnpm tauri signer generate -w ~/.tauri/zai.key
 gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/zai.key
 gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD
-gh variable set TAURI_SIGNING_PUBLIC_KEY < ~/.tauri/zai.key.pub
 ```
 
 The password command prompts without exposing the password. Omit that secret
-for an unencrypted key. The public key is safe to share and is embedded in the
-release build because Tauri requires `plugins.updater.pubkey` when generating
-updater artifacts. This workflow does not add the in-app updater runtime.
+for an unencrypted key. The public key is safe to share and is committed as
+`plugins.updater.pubkey` in `apps/tauri/tauri.conf.json`. When rotating keys,
+update that value in the same change that replaces the private-key secret.
 
 For the GitHub web form, copy the private key file content directly from a
 trusted local editor into `TAURI_SIGNING_PRIVATE_KEY`.
@@ -156,3 +149,10 @@ exact trigger SHA, assembles and verifies a draft GitHub Release, and publishes
 it. Failed publication cleanup targets only the draft release ID and tag
 created by that run; pre-existing tags and releases are never replaced or
 deleted.
+
+After publication, the workflow generates one signed updater manifest for each
+supported platform in the selected channel. It uploads them to the rolling
+prerelease tagged `updater`, replacing only that channel's four manifests.
+Stable and Nightly therefore remain independently selectable in the app. This
+runs as a separate job, so a transient manifest-upload failure can be retried
+without recreating the published release.

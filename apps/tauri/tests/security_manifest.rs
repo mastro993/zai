@@ -61,9 +61,19 @@ const REQUIRED_MAIN_PERMISSIONS: &[(&str, &str)] = &[
     ("core:window:allow-close", "Linux client-side close control"),
     ("dialog:allow-open", "CSV import file picker"),
     ("dialog:allow-save", "CSV export save dialog"),
+    ("dialog:allow-message", "native update confirmation"),
     ("fs:allow-read-text-file", "dialog-selected CSV read"),
     ("fs:allow-write-text-file", "dialog-selected CSV write"),
     ("log:default", "desktop log sink"),
+    (
+        "process:allow-restart",
+        "restart after installing an update",
+    ),
+    ("updater:allow-check", "signed update availability check"),
+    (
+        "updater:allow-download-and-install",
+        "signed update download and installation",
+    ),
 ];
 
 const FORBIDDEN_MAIN_PERMISSIONS: &[(&str, &str)] = &[
@@ -72,6 +82,11 @@ const FORBIDDEN_MAIN_PERMISSIONS: &[(&str, &str)] = &[
         "broad core default includes unrequested window permissions",
     ),
     ("shell:default", "no shell consumer"),
+    ("process:default", "only restart is required"),
+    (
+        "updater:default",
+        "only check and download-and-install are required",
+    ),
     ("store:default", "no store consumer"),
     ("stronghold:default", "no renderer stronghold consumer"),
     ("fs:default", "recursive app filesystem access"),
@@ -162,6 +177,28 @@ fn production_csp_is_restrictive_and_dev_csp_is_isolated() {
 }
 
 #[test]
+fn updater_uses_signed_github_manifests() {
+    let config_path = manifest_dir().join("tauri.conf.json");
+    let source = fs::read_to_string(&config_path).expect("tauri config should exist");
+    let config: serde_json::Value =
+        serde_json::from_str(&source).expect("tauri config should parse");
+    let updater = &config["plugins"]["updater"];
+
+    assert_eq!(config["bundle"]["createUpdaterArtifacts"], true);
+    assert_eq!(
+        updater["endpoints"][0],
+        "https://github.com/mastro993/zai/releases/download/updater/{{target}}.json"
+    );
+    assert!(
+        updater["pubkey"]
+            .as_str()
+            .is_some_and(|key| !key.is_empty()),
+        "updater public key must be committed"
+    );
+    assert_eq!(updater["windows"]["installMode"], "passive");
+}
+
+#[test]
 fn main_window_uses_native_overlay_chrome() {
     let config_path = manifest_dir().join("tauri.conf.json");
     let source = fs::read_to_string(&config_path).expect("tauri config should exist");
@@ -248,5 +285,13 @@ fn invoke_handler_exposes_no_credential_commands() {
     assert!(
         !lib_source.contains("tauri_plugin_shell"),
         "unused shell plugin should not be initialized"
+    );
+    assert!(
+        lib_source.contains("tauri_plugin_process::init()"),
+        "process plugin should support relaunch after updates"
+    );
+    assert!(
+        lib_source.contains("tauri_plugin_updater::Builder::new().build()"),
+        "updater plugin should be initialized"
     );
 }
