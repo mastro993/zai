@@ -59,16 +59,16 @@ jobs:
           duplicates="$(find release-assets -type f -printf '%f\n' | sort | uniq -d)"
           [ -z "$duplicates" ] || { echo "::error::Duplicate release asset names:"; printf '%s\n' "$duplicates"; exit 1; }
 
-      # Resolve draft from immutable tag, upload exact files, then make release public.
+      # REST tag lookup hides drafts, so resolve the immutable tag through the draft-aware CLI.
       - name: Upload and publish
         run: |
           set -euo pipefail
-          release="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")"
-          [ "$(jq -r .draft <<<"$release")" = "true" ] || {
+          release="$(gh release view "$RELEASE_TAG" --json databaseId,isDraft)"
+          [ "$(jq -r .isDraft <<<"$release")" = "true" ] || {
             echo "::error::Release $RELEASE_TAG is not the expected draft."
             exit 1
           }
-          release_id="$(jq -r .id <<<"$release")"
+          release_id="$(jq -r .databaseId <<<"$release")"
           mapfile -d '' assets < <(find release-assets -type f -print0)
           [ "${#assets[@]}" -gt 0 ]
           gh release upload "$RELEASE_TAG" "${assets[@]}"
