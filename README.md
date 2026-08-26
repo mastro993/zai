@@ -71,10 +71,15 @@ financial statement, or unredacted log to a public issue.
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. By
-participating, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+Zai is not ready to accept direct contributions or pull requests because its
+roadmap and contribution process are not defined yet. For now, contribute only
+through [GitHub issues](https://github.com/mastro993/zai/issues/new/choose) for
+bug reports, feature requests, and suggestions. Opening an issue does not
+authorize a pull request or guarantee implementation.
 
-Please use synthetic data in tests, screenshots, fixtures, and bug reports.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for the full policy. By participating,
+you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md). Use synthetic or
+fully redacted data in issue reports.
 
 ## Security
 
