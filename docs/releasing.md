@@ -1,72 +1,182 @@
 # Releasing Zai
 
-The `Release` workflow builds signed desktop artifacts for every supported
-target before it publishes a tag or GitHub Release. Each run waits for older
-incomplete runs of the same workflow before allocating a version. This native
-API gate avoids GitHub Actions concurrency's single-pending-run cancellation
-behavior.
+Zai ships desktop builds through one `Release` workflow with two channels. Both
+channels run the same checks, commit a version to `main`, create a GitHub
+Release, build the same platform artifacts, and publish signed updater
+manifests to GitHub Pages.
 
 ## Channels
 
-- **Nightly** runs daily at 05:00 UTC from `main` and can also be dispatched
-  manually from any branch. It skips when the selected commit is already the latest Nightly,
-  uses tag `nightly-vY.M.D.B`, release name `Zai Nightly vY.M.D.B`, and is a
-  prerelease.
-- **Stable** is manual-only and must be dispatched from `main`. It uses tag
-  `vY.M.D.B`, release name `Zai vY.M.D.B`, and is a full release.
+- **Nightly** runs from `main` every day at 05:00 UTC and by manual dispatch.
+  Scheduled runs skip successfully when no non-release commit exists after the
+  latest Nightly tag. Manual runs intentionally create another build. Nightly tags are
+  `nightly-Y.M.D.B`; their GitHub Releases are prereleases named
+  `Zai Nightly Y.M.D.B`.
+- **Stable** runs only by manual dispatch from `main`. Stable tags are
+  `Y.M.D.B`; their GitHub Releases are full releases named `Zai Y.M.D.B`.
 
-Both channels share the daily `B` sequence. The first build is zero; later
-builds use the maximum build number found in matching Nightly and Stable tags
-for the current UTC date plus one. `B` cannot exceed 999; the workflow fails
-clearly instead of minting an incompatible version.
+All dates are UTC and unpadded. Both channels share one daily build sequence:
+`B` starts at zero and increments the Release Version already committed on
+`main`; a new UTC day resets it to zero. The committed value reserves a build
+after failed-release cleanup removes its tag. `B` cannot exceed 999. Existing
+tags are collision guards, not allocation state, and old tag formats are
+intentionally ignored.
 
-Stable dispatches validate that `main` was selected. Every job checks out the
-exact trigger SHA, including Nightlies dispatched from another branch.
-Scheduled releases likewise keep their trigger SHA even if `main` advances
-while a run waits in the queue.
+Nightly change detection excludes merge commits and release commits authored by
+GitHub Actions. A manual Nightly always allocates a new build.
 
-Allocation uses existing tags as its only history. Release tags must not be
-deleted when their version numbers must remain reserved; deleting the maximum
-tag for a date can make that number available for reuse.
+## Versions
 
-Nightly notes are generated since the previous Nightly. Stable notes use
-`release-notes/<tag>.md` when that file exists and otherwise are generated
-since the previous Stable.
+The public **Release Version** is `Y.M.D.B`. Cargo, npm, and Tauri require
+SemVer, so committed manifests use `Y.M.P`, where `P = D × 1000 + B`.
 
-The canonical Release Version has four numeric components. Because Cargo, npm,
-and Tauri require SemVer, build manifests use packed internal version `Y.M.P`,
-where `P = D × 1000 + B`. For example, Release Version `2026.8.25.1` is built
-internally as `2026.8.25001`. This preserves ordering and avoids prerelease
-suffixes. Tags, GitHub Release names, release-note paths, and artifact
-filenames keep the visible `Y.M.D.B` Release Version.
+For example:
 
-## Required repository secrets
+| Use | Version |
+| --- | --- |
+| UI, tag, release, artifact filename | `2026.8.25.1` |
+| Cargo, npm, Tauri, updater comparison | `2026.8.25001` |
 
-Open the repository on GitHub and go to **Settings → Secrets and variables →
-Actions**. Add private values under **Secrets**. With GitHub CLI, authenticate
-with `gh auth login`, change to the repository directory, and use
-`gh secret set`.
-Do not put private values directly in command arguments, shell history, logs,
-or documentation.
+Every release commits the internal version to these files:
 
-| Secret                               | Value                                         |
-| ------------------------------------ | --------------------------------------------- |
-| `TAURI_SIGNING_PRIVATE_KEY`          | Tauri updater private key file content        |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Updater key password, if the key is encrypted |
-| `APPLE_CERTIFICATE`                  | Base64 Developer ID Application `.p12`        |
-| `APPLE_CERTIFICATE_PASSWORD`         | `.p12` export password                        |
-| `APPLE_SIGNING_IDENTITY`             | Developer ID Application identity name        |
-| `APPLE_API_ISSUER`                   | App Store Connect API issuer ID               |
-| `APPLE_API_KEY`                      | App Store Connect API key ID                  |
-| `APPLE_API_PRIVATE_KEY`              | App Store Connect API `.p8` file content      |
+- `Cargo.toml`
+- `Cargo.lock`
+- `package.json`
+- `apps/frontend/package.json`
+- `apps/tauri/tauri.conf.json`
 
-The workflow checks required secrets before starting platform builds.
-`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` is optional only when the updater key is
-not encrypted.
+The commit is titled `chore(release): Y.M.D.B`. An annotated release tag points
+at that exact commit. Versions remain committed after release; ordinary builds
+therefore report the latest committed Release Version until the next release.
 
-### Tauri updater key
+## Workflow modules
 
-Generate the key once and back it up securely:
+`release.yml` is the channel-agnostic orchestrator. Each phase has one focused
+reusable workflow:
+
+| Workflow | Responsibility |
+| --- | --- |
+| `release-detect-changes.yml` | Skip scheduled Nightlies without source changes |
+| `release-prepare.yml` | Preflight, checks, version commit, tag, and draft release |
+| `release-build-artifacts.yml` | Cross-platform signed artifact matrix |
+| `release-publish.yml` | Complete-set validation, upload, and release publication |
+| `publish-updater-manifests.yml` | Normal and recovery Pages publication |
+| `release-cleanup.yml` | Compare-and-delete cleanup for failed drafts |
+
+Comments above every workflow step state both operation and reason. Keep phase
+internals in their owning reusable workflow; keep `release.yml` limited to job
+ordering, permissions, inputs, and failure policy.
+
+## Release sequence
+
+GitHub Actions concurrency serializes Release workflow runs on `main`.
+
+1. Verify required signing credentials and GitHub Pages configuration.
+2. Run `pnpm install --frozen-lockfile` and `pnpm check` against the selected
+   `main` commit.
+3. Confirm `main` has not advanced. If it has, stop and require a fresh run.
+4. Allocate the next Release Version from the version committed on `main`.
+5. Update manifests, regenerate `Cargo.lock`, validate the exact changed-file
+   set, commit, and atomically push `main` plus the annotated tag.
+6. Create a draft GitHub Release.
+7. Build and verify every platform artifact.
+8. Attach the exact verified artifact set and publish the GitHub Release.
+9. Reconstruct both updater channels from published GitHub Releases and deploy
+   the complete manifest set atomically to GitHub Pages.
+
+The workflow never rebases untested code into a release and never replaces an
+existing tag or GitHub Release.
+
+## Artifact contract
+
+Every release must contain:
+
+- macOS arm64: Developer ID signed and notarized app, DMG, Tauri updater archive,
+  and updater signature;
+- macOS x86_64: Developer ID signed and notarized app, DMG, Tauri updater
+  archive, and updater signature;
+- Linux x86_64: DEB, RPM, AppImage, and Tauri updater signature;
+- Windows x86_64: NSIS installer and Tauri updater signature.
+
+Windows Authenticode signing is not configured. Windows and SmartScreen may
+show an unknown-publisher warning. Tauri updater signatures remain mandatory
+and protect update integrity.
+
+Any missing build, installer, updater archive, or updater signature fails the
+release. Asset names must be unique, and the uploaded GitHub Release asset set
+must exactly match the locally verified set.
+
+## Failure behavior
+
+- Existing generated tag or release: stop without replacing it.
+- Version push failure: stop before creating the release.
+- Draft creation, build, verification, or artifact upload failure: delete only
+  the draft and tag created by that run. Keep the version commit on `main`;
+  retry with a new build number.
+- GitHub Pages publication failure: keep the already published release and tag.
+  The previous Pages deployment remains active. Recover with the dedicated
+  manifest workflow.
+
+Cleanup uses compare-and-delete semantics. It refuses to delete a tag that has
+changed or any release that is no longer a draft.
+
+## Updater manifests
+
+Tauri reads manifests from:
+
+```text
+https://mastro993.github.io/zai/updater/{{target}}.json
+```
+
+Pages contains one rolling manifest for each channel and target:
+
+```text
+updater/stable-macos-aarch64.json
+updater/stable-macos-x86_64.json
+updater/stable-linux-x86_64.json
+updater/stable-windows-x86_64.json
+updater/nightly-macos-aarch64.json
+updater/nightly-macos-x86_64.json
+updater/nightly-linux-x86_64.json
+updater/nightly-windows-x86_64.json
+```
+
+Each file contains the internal SemVer, publication time, release note, updater
+signature, and immutable GitHub Release asset URL. Before deployment, the
+workflow validates every manifest and downloads every referenced asset URL.
+
+Pages is a rebuildable projection. Each deployment generates the selected
+channel from its new release, finds the latest published release in the other
+channel, and regenerates that channel too. If the other channel has never
+shipped, only the selected channel is present.
+
+### Recover manifest publication
+
+Run `Publish updater manifests` manually with the channel and exact existing
+tag. Recovery requires a published, non-draft release whose prerelease state,
+tag, complete artifact set, and signatures match the selected channel. It only
+rebuilds and deploys Pages; it never changes `main`, a tag, or a release.
+
+## Required secrets
+
+Configure these under **Settings → Secrets and variables → Actions**:
+
+| Secret | Value |
+| --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` | Tauri updater private key file content |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Updater key password, when encrypted |
+| `APPLE_CERTIFICATE` | Base64 Developer ID Application `.p12` |
+| `APPLE_CERTIFICATE_PASSWORD` | `.p12` export password |
+| `APPLE_SIGNING_IDENTITY` | Developer ID Application identity name |
+| `APPLE_API_ISSUER` | App Store Connect API issuer ID |
+| `APPLE_API_KEY` | App Store Connect API key ID |
+| `APPLE_API_PRIVATE_KEY` | App Store Connect API `.p8` content |
+
+The signing-key password is optional only for an unencrypted updater key.
+Private values must never enter command arguments, logs, committed files, or
+documentation.
+
+Generate and store a Tauri updater key with:
 
 ```sh
 pnpm tauri signer generate -w ~/.tauri/zai.key
@@ -74,85 +184,5 @@ gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/zai.key
 gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 ```
 
-The password command prompts without exposing the password. Omit that secret
-for an unencrypted key. The public key is safe to share and is committed as
-`plugins.updater.pubkey` in `apps/tauri/tauri.conf.json`. When rotating keys,
-update that value in the same change that replaces the private-key secret.
-
-For the GitHub web form, copy the private key file content directly from a
-trusted local editor into `TAURI_SIGNING_PRIVATE_KEY`.
-
-### Apple Developer ID Application certificate
-
-1. In **Keychain Access → Certificate Assistant**, create a certificate
-   signing request.
-2. In Apple Developer **Certificates, Identifiers & Profiles**, create and
-   download a **Developer ID Application** certificate from that request.
-3. Install it, then export the certificate and its private key from **My
-   Certificates** as a password-protected `.p12`.
-4. Find the identity name without exposing private material:
-
-   ```sh
-   security find-identity -v -p codesigning
-   ```
-
-5. Set the secrets through stdin or a prompt:
-
-   ```sh
-   openssl base64 -A -in DeveloperIDApplication.p12 | gh secret set APPLE_CERTIFICATE
-   gh secret set APPLE_CERTIFICATE_PASSWORD
-   gh secret set APPLE_SIGNING_IDENTITY
-   ```
-
-For the web form, use
-`openssl base64 -A -in DeveloperIDApplication.p12 | pbcopy`, paste into
-`APPLE_CERTIFICATE`, then clear the clipboard. Set the password and exact
-identity name in their own secret fields.
-
-The workflow imports the certificate into an ephemeral keychain, adds that
-keychain to the user search list for Tauri and `codesign`, and removes the
-keychain and certificate file after the build.
-
-### App Store Connect notarization key
-
-1. In App Store Connect, open **Users and Access → Integrations → App Store
-   Connect API**.
-2. Create a team key with **Developer** access.
-3. Record the issuer ID and key ID, then download the `.p8` private key. Apple
-   permits downloading it only once.
-4. Set the values without printing the private key:
-
-   ```sh
-   gh secret set APPLE_API_ISSUER
-   gh secret set APPLE_API_KEY
-   gh secret set APPLE_API_PRIVATE_KEY < AuthKey_KEYID.p8
-   ```
-
-For the web form, paste the issuer ID and key ID into their fields and load the
-`.p8` in a trusted local editor for `APPLE_API_PRIVATE_KEY`. During a macOS
-build, the workflow writes it to a runner temporary file and sets
-`APPLE_API_KEY_PATH`.
-
-## Publication guarantees
-
-The build matrix preserves macOS arm64 and x86_64, Linux x86_64, and Windows
-x86_64 coverage. Tauri updater signatures are required on every generated
-updater artifact. macOS builds require Developer ID signing and notarization.
-Windows publishes the NSIS `.exe` without Authenticode signing on a best-effort
-basis, so Windows and SmartScreen can show an unknown-publisher warning.
-
-Each platform uploads a one-day workflow artifact. Only after every platform
-succeeds does the publish job validate the complete set. macOS updater
-archives and their matching signatures include both Release Version and
-architecture in the filename. The workflow then creates a tag pointing to the
-exact trigger SHA, assembles and verifies a draft GitHub Release, and publishes
-it. Failed publication cleanup targets only the draft release ID and tag
-created by that run; pre-existing tags and releases are never replaced or
-deleted.
-
-After publication, the workflow generates one signed updater manifest for each
-supported platform in the selected channel. It uploads them to the rolling
-prerelease tagged `updater`, replacing only that channel's four manifests.
-Stable and Nightly therefore remain independently selectable in the app. This
-runs as a separate job, so a transient manifest-upload failure can be retried
-without recreating the published release.
+The matching public key remains committed in `apps/tauri/tauri.conf.json`.
+Rotate public and private updater keys together.

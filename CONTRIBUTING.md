@@ -4,7 +4,7 @@ Thank you for your interest in contributing. Zai is a local-first personal finan
 
 ## Project Status
 
-Zai is unfinished software. The committed tree stays `0.0.0-dev`. APIs, data models, and workflows may change without notice. There is no long-term support commitment yet.
+Zai is unfinished software. Release versions remain committed on `main`. APIs, data models, and workflows may change without notice. There is no long-term support commitment yet.
 
 Every contribution should respect the project pillars:
 
@@ -94,17 +94,16 @@ pnpm build:web
 ## Releases
 
 Shipped desktop builds use the shared UTC Release Version `Y.M.D.B`. See
-[ADR-0006](docs/adr/0006-share-four-part-versions-across-release-channels.md)
-and the [release guide](docs/releasing.md).
+[ADR-0007](docs/adr/0007-commit-release-versions-before-building.md) and the
+[release guide](docs/releasing.md).
 
-- **Nightly:** runs at 05:00 UTC from `main` or by manual dispatch from any
-  branch, and skips when the selected commit is already the latest Nightly.
+- **Nightly:** runs at 05:00 UTC from `main` or by manual dispatch from `main`.
 - **Stable:** manual-only from `main`; multiple Stable releases may use the
   same UTC date.
 
-Do not bump the committed `0.0.0-dev` placeholder by hand. CI stamps the packed
-internal SemVer into build manifests while published release identifiers and
-artifact filenames keep the canonical Release Version.
+Do not bump release versions by hand. The Release workflow commits packed
+internal SemVer changes before building; UI, tags, release names, and artifact
+filenames use the canonical Release Version.
 
 ## Pull Requests
 

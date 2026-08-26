@@ -17,642 +17,95 @@ permissions:
   actions: read
   contents: read
 
+# One release may mutate main at a time. New runs wait instead of cancelling active work.
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
 jobs:
-  queue:
-    name: Wait for older releases
-    runs-on: ubuntu-latest
-    timeout-minutes: 370
-    steps:
-      - name: Require main for Stable releases
-        if: github.event_name == 'workflow_dispatch' && inputs.channel == 'stable'
-        run: |
-          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "::error::Stable releases must be dispatched from main."
-            exit 1
-          fi
+  # Scheduled Nightlies stop early when only release-bot commits followed latest Nightly.
+  detect-changes:
+    name: Detect releasable changes
+    permissions:
+      contents: read
+    uses: ./.github/workflows/release-detect-changes.yml
+    with:
+      force: ${{ github.event_name == 'workflow_dispatch' }}
 
-      - name: Wait for older release runs
-        env:
-          GH_TOKEN: ${{ github.token }}
-          QUEUE_WAIT_SECONDS: 21600
-        run: |
-          set -euo pipefail
-          deadline=$((SECONDS + QUEUE_WAIT_SECONDS))
+  # Validate source, run all checks, commit version, push tag, and create draft release.
+  prepare:
+    name: Prepare release
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
+    permissions:
+      contents: write
+      pages: read
+    uses: ./.github/workflows/release-prepare.yml
+    secrets: inherit
+    with:
+      channel: ${{ github.event_name == 'schedule' && 'nightly' || inputs.channel }}
+      source_sha: ${{ github.sha }}
 
-          while :; do
-            older="$(
-              for status in queued in_progress waiting requested pending; do
-                gh api --paginate \
-                  "repos/$GITHUB_REPOSITORY/actions/workflows/release.yml/runs?status=$status&per_page=100" \
-                  --jq ".workflow_runs[]
-                    | select(.id != $GITHUB_RUN_ID)
-                    | select(
-                        (.run_number < $GITHUB_RUN_NUMBER)
-                        or (.run_number == $GITHUB_RUN_NUMBER and .id < $GITHUB_RUN_ID)
-                      )
-                    | [.run_number, .id, .status, .html_url]
-                    | @tsv"
-              done | sort -n -k1,1 -k2,2 -u
-            )"
-
-            if [ -z "$older" ]; then
-              echo "No older incomplete release run remains."
-              break
-            fi
-            if [ "$SECONDS" -ge "$deadline" ]; then
-              echo "::error::Timed out waiting for older release runs:"
-              printf '%s\n' "$older"
-              exit 1
-            fi
-
-            # ponytail: Six hours is the runner-wait ceiling; use a durable
-            # dispatcher if releases stop being rare.
-            echo "Waiting for older release run: $(printf '%s\n' "$older" | head -n 1)"
-            sleep 60
-          done
-
-  version:
-    name: Allocate release version
-    needs: queue
-    runs-on: ubuntu-latest
-    outputs:
-      skip: ${{ steps.compute.outputs.skip }}
-      channel: ${{ steps.compute.outputs.channel }}
-      version: ${{ steps.compute.outputs.version }}
-      package_version: ${{ steps.compute.outputs.package_version }}
-      tag: ${{ steps.compute.outputs.tag }}
-      prerelease: ${{ steps.compute.outputs.prerelease }}
-      previous_tag: ${{ steps.compute.outputs.previous_tag }}
-      sha: ${{ steps.compute.outputs.sha }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Verify immutable source
-        run: |
-          if [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
-            echo "::error::Checkout does not match the workflow trigger SHA."
-            exit 1
-          fi
-
-      - name: Fetch tags
-        run: git fetch --tags --force origin
-
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: lts/*
-
-      - id: compute
-        name: Compute release version
-        env:
-          RELEASE_CHANNEL: ${{ github.event_name == 'schedule' && 'nightly' || inputs.channel }}
-        run: node scripts/release-version.mjs github-output
-
-      - name: Release summary
-        run: |
-          if [ "${{ steps.compute.outputs.skip }}" = "true" ]; then
-            echo "The selected commit is already the latest nightly; skipping release." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "### ${{ steps.compute.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
-            echo "Commit: \`${{ steps.compute.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-  preflight:
-    name: Verify signing secrets
-    needs: version
-    if: needs.version.outputs.skip != 'true'
-    runs-on: ubuntu-latest
-    env:
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-      APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
-    steps:
-      - name: Require release signing credentials
-        run: |
-          missing=()
-          [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] || missing+=("TAURI_SIGNING_PRIVATE_KEY")
-          [ -n "$APPLE_CERTIFICATE" ] || missing+=("APPLE_CERTIFICATE")
-          [ -n "$APPLE_CERTIFICATE_PASSWORD" ] || missing+=("APPLE_CERTIFICATE_PASSWORD")
-          [ -n "$APPLE_SIGNING_IDENTITY" ] || missing+=("APPLE_SIGNING_IDENTITY")
-          [ -n "$APPLE_API_ISSUER" ] || missing+=("APPLE_API_ISSUER")
-          [ -n "$APPLE_API_KEY" ] || missing+=("APPLE_API_KEY")
-          [ -n "$APPLE_API_PRIVATE_KEY" ] || missing+=("APPLE_API_PRIVATE_KEY")
-          if [ "${#missing[@]}" -ne 0 ]; then
-            printf '::error::Missing required release setting: %s\n' "${missing[@]}"
-            exit 1
-          fi
-
+  # Build identical signed artifact sets for Stable and Nightly channels.
   build:
-    name: Build ${{ matrix.id }}
-    needs:
-      - version
-      - preflight
-    if: needs.version.outputs.skip != 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - id: macos-aarch64
-            os: macos-latest
-            args: --target aarch64-apple-darwin
-            rust_targets: aarch64-apple-darwin
-            updater_arch: aarch64
-          - id: macos-x86_64
-            os: macos-latest
-            args: --target x86_64-apple-darwin
-            rust_targets: x86_64-apple-darwin
-            updater_arch: x86_64
-          - id: linux-x86_64
-            os: ubuntu-22.04
-            args: ""
-            rust_targets: ""
-            updater_arch: ""
-          - id: windows-x86_64
-            os: windows-latest
-            args: ""
-            rust_targets: ""
-            updater_arch: ""
-    runs-on: ${{ matrix.os }}
-    env:
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-      VITE_ZAI_UPDATER_TARGET: ${{ matrix.id }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.version.outputs.sha }}
+    name: Build release artifacts
+    needs: prepare
+    permissions:
+      contents: read
+    uses: ./.github/workflows/release-build-artifacts.yml
+    secrets: inherit
+    with:
+      release_sha: ${{ needs.prepare.outputs.release_sha }}
+      version: ${{ needs.prepare.outputs.version }}
+      package_version: ${{ needs.prepare.outputs.package_version }}
 
-      - name: Install dependencies (Linux only)
-        if: matrix.os == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: lts/*
-          cache: pnpm
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
-        with:
-          targets: ${{ matrix.rust_targets }}
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@f0d9c3887740aee45f6153b24b3a6b815192ec16 # v2
-        with:
-          shared-key: release-${{ matrix.id }}
-          workspaces: ". -> target"
-
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Stamp build manifests
-        run: node scripts/release-version.mjs stamp "${{ needs.version.outputs.package_version }}"
-
-      - name: Prepare Apple signing and notarization
-        if: startsWith(matrix.id, 'macos-')
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-        run: |
-          umask 077
-          certificate_path="$RUNNER_TEMP/zai-developer-id.p12"
-          keychain_path="$RUNNER_TEMP/zai-signing.keychain-db"
-          api_key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY}.p8"
-          keychain_password="$(openssl rand -hex 32)"
-
-          echo "APPLE_API_KEY_PATH=$api_key_path" >> "$GITHUB_ENV"
-          echo "APPLE_KEYCHAIN_PATH=$keychain_path" >> "$GITHUB_ENV"
-          echo "APPLE_CERTIFICATE_PATH=$certificate_path" >> "$GITHUB_ENV"
-
-          printf '%s' "$APPLE_CERTIFICATE" | base64 -D > "$certificate_path"
-          printf '%s' "$APPLE_API_PRIVATE_KEY" > "$api_key_path"
-          chmod 600 "$certificate_path" "$api_key_path"
-
-          security create-keychain -p "$keychain_password" "$keychain_path"
-          security unlock-keychain -p "$keychain_password" "$keychain_path"
-          security set-keychain-settings -lut 21600 "$keychain_path"
-          keychains=()
-          while IFS= read -r keychain; do
-            keychain="${keychain#\"}"
-            keychain="${keychain%\"}"
-            keychains+=("$keychain")
-          done < <(security list-keychains -d user)
-          security list-keychains -d user -s "$keychain_path" "${keychains[@]}"
-          security import "$certificate_path" -k "$keychain_path" \
-            -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
-          security set-key-partition-list -S apple-tool:,apple:,codesign: \
-            -s -k "$keychain_password" "$keychain_path"
-
-      - name: Verify Apple signing identity
-        if: startsWith(matrix.id, 'macos-')
-        env:
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-        run: |
-          if ! security find-identity -v -p codesigning "$APPLE_KEYCHAIN_PATH" \
-            | grep -F -- "$APPLE_SIGNING_IDENTITY" >/dev/null; then
-            echo "::error::APPLE_SIGNING_IDENTITY was not found in APPLE_CERTIFICATE."
-            exit 1
-          fi
-
-      - name: Build signed macOS bundle
-        if: startsWith(matrix.id, 'macos-')
-        env:
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-        run: pnpm tauri build ${{ matrix.args }}
-
-      - name: Build signed Linux bundle
-        if: matrix.id == 'linux-x86_64'
-        run: pnpm tauri build
-
-      - name: Build Windows bundle
-        if: matrix.id == 'windows-x86_64'
-        shell: pwsh
-        run: pnpm tauri build --bundles nsis
-
-      - name: Use Release Version in artifact filenames
-        run: >-
-          node scripts/release-version.mjs rename-artifacts
-          "${{ needs.version.outputs.version }}"
-          "${{ needs.version.outputs.package_version }}"
-          target
-          "${{ matrix.updater_arch }}"
-
-      - name: Verify macOS artifacts
-        if: startsWith(matrix.id, 'macos-')
-        run: |
-          app="$(find target -type d -path '*/release/bundle/*' -name '*.app' -print -quit)"
-          dmg="$(find target -type f -path '*/release/bundle/*' -name '*.dmg' -print -quit)"
-          updater="$(
-            find target -type f -path '*/release/bundle/*' \
-              -name '*_${{ needs.version.outputs.version }}_${{ matrix.updater_arch }}.app.tar.gz' \
-              -print -quit
-          )"
-          [ -n "$app" ] || { echo "::error::Missing macOS app bundle."; exit 1; }
-          [ -n "$dmg" ] || { echo "::error::Missing macOS DMG."; exit 1; }
-          [ -n "$updater" ] || { echo "::error::Missing macOS updater artifact."; exit 1; }
-          [ -f "$updater.sig" ] || { echo "::error::Missing macOS updater signature."; exit 1; }
-          codesign --verify --deep --strict --verbose=2 "$app"
-          spctl --assess --type execute --verbose=2 "$app"
-
-      - name: Verify Linux artifacts
-        if: matrix.id == 'linux-x86_64'
-        run: |
-          for pattern in '*.deb' '*.rpm' '*.AppImage'; do
-            if ! find target -type f -path '*/release/bundle/*' -name "$pattern" -print -quit \
-              | grep -q .; then
-              echo "::error::Missing Linux artifact matching $pattern."
-              exit 1
-            fi
-          done
-          updater="$(find target -type f -path '*/release/bundle/*' -name '*.AppImage' -print -quit)"
-          [ -f "$updater.sig" ] || { echo "::error::Missing Linux updater signature."; exit 1; }
-
-      - name: Verify Windows artifact
-        if: matrix.id == 'windows-x86_64'
-        shell: pwsh
-        run: |
-          $bundles = Get-ChildItem target -Recurse -File |
-            Where-Object { $_.FullName -match '[\\/]release[\\/]bundle[\\/]' }
-          $exe = $bundles | Where-Object Name -Like "*-setup.exe"
-          if (-not $exe) { throw "Missing Windows NSIS artifact." }
-          foreach ($installer in @($exe)) {
-            if (-not (Test-Path "$($installer.FullName).sig")) {
-              throw "Missing Tauri updater signature for $($installer.Name)."
-            }
-          }
-
-      - name: Upload release artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: release-${{ matrix.id }}
-          retention-days: 1
-          if-no-files-found: error
-          path: |
-            target/**/release/bundle/**/*.dmg
-            target/**/release/bundle/**/*.app.tar.gz
-            target/**/release/bundle/**/*.deb
-            target/**/release/bundle/**/*.rpm
-            target/**/release/bundle/**/*.AppImage
-            target/**/release/bundle/**/*-setup.exe
-            target/**/release/bundle/**/*.sig
-
-      - name: Remove Apple signing material
-        if: always() && startsWith(matrix.id, 'macos-')
-        run: |
-          set +e
-          if [ -n "${APPLE_KEYCHAIN_PATH:-}" ]; then
-            keychains=()
-            while IFS= read -r keychain; do
-              keychain="${keychain#\"}"
-              keychain="${keychain%\"}"
-              if [ "$keychain" != "$APPLE_KEYCHAIN_PATH" ]; then
-                keychains+=("$keychain")
-              fi
-            done < <(security list-keychains -d user)
-            if [ "${#keychains[@]}" -gt 0 ]; then
-              security list-keychains -d user -s "${keychains[@]}"
-            fi
-            security delete-keychain "$APPLE_KEYCHAIN_PATH" 2>/dev/null || true
-          fi
-          [ -z "${APPLE_CERTIFICATE_PATH:-}" ] || rm -f "$APPLE_CERTIFICATE_PATH"
-          [ -z "${APPLE_API_KEY_PATH:-}" ] || rm -f "$APPLE_API_KEY_PATH"
-
+  # Attach only complete verified matrix output, then publish draft GitHub Release.
   publish:
-    name: Publish ${{ needs.version.outputs.tag }}
+    name: Publish GitHub release
     needs:
-      - version
+      - prepare
       - build
-    if: needs.version.outputs.skip != 'true'
-    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.version.outputs.sha }}
-          fetch-depth: 0
+    uses: ./.github/workflows/release-publish.yml
+    with:
+      release_id: ${{ needs.prepare.outputs.release_id }}
+      tag: ${{ needs.prepare.outputs.tag }}
+      version: ${{ needs.prepare.outputs.version }}
 
-      - name: Download release artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: release-*
-          path: release-assets
-
-      - name: Validate complete release
-        env:
-          RELEASE_VERSION: ${{ needs.version.outputs.version }}
-        run: |
-          require() {
-            if ! find "$1" -type f -name "$2" -print -quit | grep -q .; then
-              echo "::error::Missing $3."
-              exit 1
-            fi
-          }
-
-          for platform in macos-aarch64 macos-x86_64 linux-x86_64 windows-x86_64; do
-            [ -d "release-assets/release-$platform" ] || {
-              echo "::error::Missing workflow artifact for $platform."
-              exit 1
-            }
-          done
-
-          for target in macos-aarch64:aarch64 macos-x86_64:x86_64; do
-            platform="${target%%:*}"
-            architecture="${target#*:}"
-            directory="release-assets/release-$platform"
-            require "$directory" '*.dmg' "$platform DMG"
-            updater="$(
-              find "$directory" -type f \
-                -name "*_${RELEASE_VERSION}_${architecture}.app.tar.gz" \
-                -print -quit
-            )"
-            [ -n "$updater" ] || {
-              echo "::error::Missing versioned $platform updater artifact."
-              exit 1
-            }
-            [ -f "$updater.sig" ] || {
-              echo "::error::Missing $platform updater signature."
-              exit 1
-            }
-          done
-
-          linux="release-assets/release-linux-x86_64"
-          require "$linux" '*.deb' "Linux DEB"
-          require "$linux" '*.rpm' "Linux RPM"
-          require "$linux" '*.AppImage' "Linux AppImage"
-          updater="$(find "$linux" -type f -name '*.AppImage' -print -quit)"
-          [ -f "$updater.sig" ] || {
-            echo "::error::Missing Linux updater signature."
-            exit 1
-          }
-
-          windows="release-assets/release-windows-x86_64"
-          require "$windows" '*-setup.exe' "Windows NSIS installer"
-          installer="$(find "$windows" -type f -name '*-setup.exe' -print -quit)"
-          [ -f "$installer.sig" ] || {
-            echo "::error::Missing Windows updater signature."
-            exit 1
-          }
-
-          duplicates="$(
-            find release-assets -type f -printf '%f\n' | sort | uniq -d
-          )"
-          if [ -n "$duplicates" ]; then
-            echo "::error::Release asset names must be unique across platforms."
-            printf '%s\n' "$duplicates"
-            exit 1
-          fi
-
-      - name: Create tag and publish release
-        env:
-          RELEASE_CHANNEL: ${{ needs.version.outputs.channel }}
-          RELEASE_VERSION: ${{ needs.version.outputs.version }}
-          PACKAGE_VERSION: ${{ needs.version.outputs.package_version }}
-          RELEASE_TAG: ${{ needs.version.outputs.tag }}
-          RELEASE_SHA: ${{ needs.version.outputs.sha }}
-          PREVIOUS_TAG: ${{ needs.version.outputs.previous_tag }}
-        run: |
-          set -Eeuo pipefail
-          [ "$(git rev-parse HEAD)" = "$RELEASE_SHA" ] || {
-            echo "::error::Checked-out commit does not match the built commit."
-            exit 1
-          }
-
-          mapfile -d '' assets < <(find release-assets -type f -print0)
-          [ "${#assets[@]}" -gt 0 ] || {
-            echo "::error::No release assets were downloaded."
-            exit 1
-          }
-
-          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "::error::Refusing to replace pre-existing tag $RELEASE_TAG."
-            exit 1
-          fi
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "::error::Refusing to replace pre-existing release $RELEASE_TAG."
-            exit 1
-          fi
-
-          if [ "$RELEASE_CHANNEL" = "nightly" ]; then
-            title="Zai Nightly v$RELEASE_VERSION"
-            prerelease=true
-          else
-            title="Zai v$RELEASE_VERSION"
-            prerelease=false
-          fi
-
-          notes_file="release-notes/$RELEASE_TAG.md"
-          if [ "$RELEASE_CHANNEL" = "stable" ] && [ -f "$notes_file" ]; then
-            release_notes="$(cat "$notes_file")"
-          else
-            notes_args=(
-              --method POST
-              "repos/$GITHUB_REPOSITORY/releases/generate-notes"
-              -f "tag_name=$RELEASE_TAG"
-              -f "target_commitish=$RELEASE_SHA"
-            )
-            if [ -n "$PREVIOUS_TAG" ]; then
-              notes_args+=(-f "previous_tag_name=$PREVIOUS_TAG")
-            fi
-            release_notes="$(gh api "${notes_args[@]}" --jq .body)"
-          fi
-
-          tag_created=false
-          tag_object_sha=""
-          release_id=""
-          cleanup_failed_release() {
-            status=$?
-            trap - ERR
-            set +e
-
-            if [ -n "$release_id" ]; then
-              gh api --method DELETE \
-                "repos/$GITHUB_REPOSITORY/releases/$release_id" >/dev/null 2>&1
-            fi
-            if [ "$tag_created" = "true" ]; then
-              if ! git push \
-                --force-with-lease="refs/tags/$RELEASE_TAG:$tag_object_sha" \
-                origin ":refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
-                echo "::warning::Not deleting tag $RELEASE_TAG because it changed."
-              fi
-            fi
-            exit "$status"
-          }
-          trap cleanup_failed_release ERR
-
-          git -c user.name=github-actions[bot] \
-            -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
-            tag -a "$RELEASE_TAG" "$RELEASE_SHA" \
-            -m "Release $RELEASE_TAG from GitHub Actions run $GITHUB_RUN_ID"
-          tag_object_sha="$(git rev-parse "$RELEASE_TAG")"
-          [ "$(git rev-list -n 1 "$RELEASE_TAG")" = "$RELEASE_SHA" ] || {
-            echo "::error::Release tag does not target the built commit."
-            exit 1
-          }
-          tag_created=true
-          git push --force-with-lease="refs/tags/$RELEASE_TAG:" \
-            origin "refs/tags/$RELEASE_TAG"
-
-          release_id="$(
-            gh api --method POST "repos/$GITHUB_REPOSITORY/releases" \
-              -f "tag_name=$RELEASE_TAG" \
-              -f "target_commitish=$RELEASE_SHA" \
-              -f "name=$title" \
-              -f "body=$release_notes" \
-              -F draft=true \
-              -F "prerelease=$prerelease" \
-              --jq .id
-          )"
-
-          gh release upload "$RELEASE_TAG" "${assets[@]}"
-          expected_names="$(printf '%s\n' "${assets[@]##*/}" | sort)"
-          actual_names="$(
-            gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" \
-              --paginate --jq '.[].name' | sort
-          )"
-          [ "$actual_names" = "$expected_names" ] || {
-            echo "::error::Draft release assets do not match the verified local set."
-            exit 1
-          }
-          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" \
-            -F draft=false >/dev/null
-          trap - ERR
-
+  # Rebuild both rolling channels and atomically deploy updater manifests to Pages.
   updater-manifests:
     name: Publish updater manifests
     needs:
-      - version
+      - prepare
       - publish
-    if: needs.version.outputs.skip != 'true'
-    runs-on: ubuntu-latest
     permissions:
       actions: read
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/publish-updater-manifests.yml
+    with:
+      channel: ${{ needs.prepare.outputs.channel }}
+      tag: ${{ needs.prepare.outputs.tag }}
+      use_workflow_artifacts: true
+
+  # Build/publication failure removes only this run's draft and tag; main stays immutable.
+  cleanup:
+    name: Clean failed draft release
+    needs:
+      - prepare
+      - build
+      - publish
+      - updater-manifests
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      (needs.build.result != 'success' || needs.publish.result != 'success')
+    permissions:
       contents: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.version.outputs.sha }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: lts/*
-
-      - name: Download release artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: release-*
-          path: release-assets
-
-      - name: Publish rolling manifests
-        env:
-          RELEASE_CHANNEL: ${{ needs.version.outputs.channel }}
-          RELEASE_VERSION: ${{ needs.version.outputs.version }}
-          PACKAGE_VERSION: ${{ needs.version.outputs.package_version }}
-          RELEASE_TAG: ${{ needs.version.outputs.tag }}
-          RELEASE_SHA: ${{ needs.version.outputs.sha }}
-        run: |
-          set -Eeuo pipefail
-          node scripts/release-version.mjs updater-manifests \
-            "$RELEASE_CHANNEL" \
-            "$RELEASE_VERSION" \
-            "$PACKAGE_VERSION" \
-            "$RELEASE_TAG" \
-            "$GITHUB_REPOSITORY" \
-            release-assets \
-            updater-manifests
-
-          if ! gh release view updater >/dev/null 2>&1; then
-            gh release create updater \
-              --target "$RELEASE_SHA" \
-              --title "Zai updater manifests" \
-              --notes "Machine-readable signed update manifests." \
-              --prerelease
-          fi
-
-          mapfile -d '' manifests < <(
-            find updater-manifests -type f -name "$RELEASE_CHANNEL-*.json" -print0 | sort -z
-          )
-          [ "${#manifests[@]}" -eq 4 ] || {
-            echo "::error::Expected four $RELEASE_CHANNEL updater manifests."
-            exit 1
-          }
-          gh release upload updater "${manifests[@]}" --clobber
-
-          expected_manifest_names="$(printf '%s\n' "${manifests[@]##*/}" | sort)"
-          actual_manifest_names="$(
-            gh api "repos/$GITHUB_REPOSITORY/releases/tags/updater" \
-              --jq '.assets[].name'
-          )"
-          actual_manifest_names="$(
-            printf '%s\n' "$actual_manifest_names" |
-              grep "^$RELEASE_CHANNEL-.*\\.json$" |
-              sort
-          )"
-          [ "$actual_manifest_names" = "$expected_manifest_names" ] || {
-            echo "::error::Rolling updater manifests do not match the generated set."
-            exit 1
-          }
+    uses: ./.github/workflows/release-cleanup.yml
+    with:
+      release_id: ${{ needs.prepare.outputs.release_id }}
+      tag: ${{ needs.prepare.outputs.tag }}

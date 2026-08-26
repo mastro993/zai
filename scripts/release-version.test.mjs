@@ -9,96 +9,90 @@ import {
   packageVersionFromReleaseVersion,
   parseReleaseTag,
   previousReleaseTag,
+  releaseVersionFromPackageVersion,
   renameArtifactVersions,
   resolveRelease,
   stampVersion,
+  validateReleaseAssets,
 } from "./release-version.mjs";
 
 describe("release version allocation", () => {
-  it("uses unpadded UTC dates and a shared max-based daily sequence", () => {
+  it("increments the committed daily build and keeps channel-local notes", () => {
     assert.equal(calendarCoreFromIsoDate("2026-08-25"), "2026.8.25");
     assert.deepEqual(
       resolveRelease({
         channel: "stable",
         today: "2026-08-25",
-        tags: [
-          "nightly-v2026.8.25.0",
-          "v2026.8.25.4",
-          "nightly-v2026.8.25.9",
-          "nightly-v2026.08.25.10",
-          "v2026.8.25.bad",
-          "unrelated-v2026.8.25.99",
-        ],
-        headSha: "bbb",
+        tags: ["nightly-2026.8.25.9", "2026.8.25.4"],
+        committedVersion: "2026.8.25.9",
       }),
       {
         ok: true,
-        skip: false,
         channel: "stable",
         prerelease: false,
-        previousTag: "v2026.8.25.4",
+        previousTag: "2026.8.25.4",
         version: "2026.8.25.10",
         packageVersion: "2026.8.25010",
-        tag: "v2026.8.25.10",
+        tag: "2026.8.25.10",
       },
     );
   });
 
-  it("starts at build 0 and skips any nightly whose latest nightly tag is HEAD", () => {
-    const first = resolveRelease({
-      channel: "nightly",
-      today: "2026-08-25",
-      tags: [],
-      headSha: "aaa",
-    });
+  it("starts at build 0 and resets the committed sequence on a new UTC day", () => {
+    const first = resolveRelease({ channel: "nightly", today: "2026-08-25", tags: [] });
     assert.equal(first.version, "2026.8.25.0");
-    assert.equal(first.tag, "nightly-v2026.8.25.0");
+    assert.equal(first.tag, "nightly-2026.8.25.0");
 
-    assert.deepEqual(
-      resolveRelease({
-        channel: "nightly",
-        today: "2026-08-25",
-        tags: ["nightly-v2026.8.24.7", "v2026.8.25.0"],
-        headSha: "aaa",
-        tagShas: { "nightly-v2026.8.24.7": "aaa" },
-      }),
-      {
-        ok: true,
-        skip: true,
-        channel: "nightly",
-        previousTag: "nightly-v2026.8.24.7",
-      },
-    );
+    const nextDay = resolveRelease({
+      channel: "nightly",
+      today: "2026-08-26",
+      tags: ["nightly-2026.8.25.7"],
+      committedVersion: "2026.8.25.7",
+    });
+    assert.equal(nextDay.version, "2026.8.26.0");
   });
 
   it("keeps generated-note baselines within each channel", () => {
-    const tags = ["nightly-v2026.8.24.3", "v2026.8.24.4", "nightly-v2026.8.25.0", "v2026.8.25.1"];
-    assert.equal(previousReleaseTag(tags, "nightly"), "nightly-v2026.8.25.0");
-    assert.equal(previousReleaseTag(tags, "stable"), "v2026.8.25.1");
+    const tags = ["nightly-2026.8.24.3", "2026.8.24.4", "nightly-2026.8.25.0", "2026.8.25.1"];
+    assert.equal(previousReleaseTag(tags, "nightly"), "nightly-2026.8.25.0");
+    assert.equal(previousReleaseTag(tags, "stable"), "2026.8.25.1");
   });
 
   it("ignores invalid dates, padded parts, and unrelated tags", () => {
-    assert.equal(parseReleaseTag("nightly-v2026.2.29.0"), null);
-    assert.equal(parseReleaseTag("v2026.08.25.0"), null);
-    assert.equal(parseReleaseTag("v2026.8.25.00"), null);
-    assert.equal(parseReleaseTag("release-v2026.8.25.0"), null);
+    assert.equal(parseReleaseTag("nightly-2026.2.29.0"), null);
+    assert.equal(parseReleaseTag("2026.08.25.0"), null);
+    assert.equal(parseReleaseTag("2026.8.25.00"), null);
+    assert.equal(parseReleaseTag("release-2026.8.25.0"), null);
+    assert.equal(parseReleaseTag("nightly-v2026.8.25.0"), null);
+    assert.equal(parseReleaseTag("v2026.8.25.0"), null);
   });
 
   it("packs the day and build into SemVer patch and enforces the daily ceiling", () => {
     assert.equal(packageVersionFromReleaseVersion("2026.8.25.1"), "2026.8.25001");
+    assert.equal(releaseVersionFromPackageVersion("2026.8.25001"), "2026.8.25.1");
+    assert.equal(releaseVersionFromPackageVersion("0.0.0-dev"), null);
     assert.equal(packageVersionFromReleaseVersion("2026.8.25.999"), "2026.8.25999");
     assert.equal(packageVersionFromReleaseVersion("2026.8.26.0"), "2026.8.26000");
     assert.throws(
       () => packageVersionFromReleaseVersion("2026.8.25.1000"),
       /build 1000 exceeds the supported daily maximum of 999/,
     );
+    assert.equal(
+      resolveRelease({
+        channel: "stable",
+        today: "2026-08-25",
+        tags: [],
+        committedVersion: "2026.8.25.9",
+      }).version,
+      "2026.8.25.10",
+    );
     assert.throws(
       () =>
         resolveRelease({
           channel: "stable",
           today: "2026-08-25",
-          tags: ["nightly-v2026.8.25.999"],
-          headSha: "bbb",
+          tags: [],
+          committedVersion: "2026.8.25.999",
         }),
       /build sequence for 2026\.8\.25 exceeds the supported daily maximum of 999/,
     );
@@ -204,6 +198,28 @@ describe("stampVersion", () => {
   });
 });
 
+describe("release assets", () => {
+  it("requires the complete platform installer set", async () => {
+    const cwd = await mkdtemp(path.join(process.cwd(), ".release-assets-test-"));
+    try {
+      const names = [
+        "Zai_2026.8.25.10_aarch64.dmg",
+        "Zai_2026.8.25.10_x64.dmg",
+        "Zai_2026.8.25.10_amd64.deb",
+        "Zai-2026.8.25.10-1.x86_64.rpm",
+        "Zai_2026.8.25.10_amd64.AppImage",
+        "Zai_2026.8.25.10_x64-setup.exe",
+      ];
+      for (const name of names) await writeFile(path.join(cwd, name), "artifact");
+      assert.equal(validateReleaseAssets("2026.8.25.10", cwd), true);
+      await rm(path.join(cwd, names[0]));
+      assert.throws(() => validateReleaseAssets("2026.8.25.10", cwd), /exactly 2 macOS DMGs/);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("updater manifests", () => {
   it("writes one signed manifest per channel and platform target", async () => {
     const cwd = await mkdtemp(path.join(process.cwd(), ".updater-manifest-test-"));
@@ -228,10 +244,11 @@ describe("updater manifests", () => {
         channel: "nightly",
         releaseVersion: "2026.8.25.10",
         packageVersion: "2026.8.25010",
-        releaseTag: "nightly-v2026.8.25.10",
+        releaseTag: "nightly-2026.8.25.10",
         repository: "mastro993/zai",
         assetsDirectory,
         outputDirectory,
+        publishedAt: "2026-08-25T05:00:00Z",
       });
 
       assert.equal(manifests.length, 4);
@@ -240,10 +257,12 @@ describe("updater manifests", () => {
       );
       assert.deepEqual(linuxManifest, {
         version: "2026.8.25010",
+        notes: "Nightly release 2026.8.25.10",
+        pub_date: "2026-08-25T05:00:00Z",
         platforms: {
           "nightly-linux-x86_64": {
             signature: "signature-linux-x86_64",
-            url: "https://github.com/mastro993/zai/releases/download/nightly-v2026.8.25.10/Zai_2026.8.25.10_amd64.AppImage",
+            url: "https://github.com/mastro993/zai/releases/download/nightly-2026.8.25.10/Zai_2026.8.25.10_amd64.AppImage",
           },
         },
       });

@@ -1,0 +1,41 @@
+name: Clean failed release
+
+on:
+  workflow_call:
+    inputs:
+      release_id:
+        description: Draft GitHub Release ID created by failed run
+        required: true
+        type: string
+      tag:
+        description: Annotated tag created by failed run
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    name: Clean failed draft release
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_ID: ${{ inputs.release_id }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      # Delete only an unpublished draft and compare-delete its unchanged tag.
+      - name: Delete this run's draft and tag
+        run: |
+          set -euo pipefail
+          draft="$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" --jq .draft 2>/dev/null || true)"
+          if [ "$draft" != "true" ]; then
+            echo "Release is absent or published; refusing cleanup."
+            exit 0
+          fi
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID"
+          remote_sha="$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" "refs/tags/$RELEASE_TAG" | cut -f1)"
+          [ -n "$remote_sha" ] || exit 0
+          git init cleanup
+          git -C cleanup remote add origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
+          git -C cleanup push --force-with-lease="refs/tags/$RELEASE_TAG:$remote_sha" origin ":refs/tags/$RELEASE_TAG"

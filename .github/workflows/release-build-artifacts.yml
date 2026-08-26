@@ -1,0 +1,214 @@
+name: Build release artifacts
+
+on:
+  workflow_call:
+    inputs:
+      release_sha:
+        description: Version commit to build
+        required: true
+        type: string
+      version:
+        description: Public Y.M.D.B Release Version
+        required: true
+        type: string
+      package_version:
+        description: Packed SemVer committed to manifests
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.id }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - id: macos-aarch64
+            os: macos-latest
+            args: --target aarch64-apple-darwin
+            rust_targets: aarch64-apple-darwin
+            updater_arch: aarch64
+          - id: macos-x86_64
+            os: macos-latest
+            args: --target x86_64-apple-darwin
+            rust_targets: x86_64-apple-darwin
+            updater_arch: x86_64
+          - id: linux-x86_64
+            os: ubuntu-22.04
+            args: ""
+            rust_targets: ""
+            updater_arch: ""
+          - id: windows-x86_64
+            os: windows-latest
+            args: ""
+            rust_targets: ""
+            updater_arch: ""
+    runs-on: ${{ matrix.os }}
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      VITE_ZAI_UPDATER_TARGET: ${{ matrix.id }}
+    steps:
+      # Every platform builds the exact version commit created during preparation.
+      - name: Check out version commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.release_sha }}
+
+      # Linux runners need native libraries used by WebKit, AppIndicator, and bundlers.
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      # Use repository-pinned pnpm version on every platform.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      # Node builds frontend assets embedded in Tauri bundles.
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      # Platform-specific Rust targets are required for both macOS architectures.
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      # Separate cache keys prevent cross-platform target contamination.
+      - name: Restore Rust cache
+        uses: swatinem/rust-cache@f0d9c3887740aee45f6153b24b3a6b815192ec16 # v2
+        with:
+          shared-key: release-${{ matrix.id }}
+          workspaces: ". -> target"
+
+      # Frozen install guarantees build dependencies match reviewed lockfile.
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # macOS signing material lives only in an ephemeral keychain and temp files.
+      - name: Prepare Apple signing and notarization
+        if: startsWith(matrix.id, 'macos-')
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          umask 077
+          certificate_path="$RUNNER_TEMP/zai-developer-id.p12"
+          keychain_path="$RUNNER_TEMP/zai-signing.keychain-db"
+          api_key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY}.p8"
+          keychain_password="$(openssl rand -hex 32)"
+          {
+            echo "APPLE_API_KEY_PATH=$api_key_path"
+            echo "APPLE_KEYCHAIN_PATH=$keychain_path"
+            echo "APPLE_CERTIFICATE_PATH=$certificate_path"
+          } >> "$GITHUB_ENV"
+          printf '%s' "$APPLE_CERTIFICATE" | base64 -D > "$certificate_path"
+          printf '%s' "$APPLE_API_PRIVATE_KEY" > "$api_key_path"
+          chmod 600 "$certificate_path" "$api_key_path"
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security list-keychains -d user -s "$keychain_path"
+          security import "$certificate_path" -k "$keychain_path" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain_path"
+
+      # Catch certificate/identity mismatches before expensive compilation.
+      - name: Verify Apple signing identity
+        if: startsWith(matrix.id, 'macos-')
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: security find-identity -v -p codesigning "$APPLE_KEYCHAIN_PATH" | grep -F -- "$APPLE_SIGNING_IDENTITY"
+
+      # Tauri signs, notarizes, and emits install plus updater bundles for macOS.
+      - name: Build signed macOS bundle
+        if: startsWith(matrix.id, 'macos-')
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: pnpm tauri build ${{ matrix.args }}
+
+      # Linux emits DEB, RPM, AppImage, and signed Tauri updater metadata.
+      - name: Build signed Linux updater bundle
+        if: matrix.id == 'linux-x86_64'
+        run: pnpm tauri build
+
+      # Windows ships unsigned Authenticode installer but requires Tauri updater signature.
+      - name: Build Windows updater bundle
+        if: matrix.id == 'windows-x86_64'
+        shell: pwsh
+        run: pnpm tauri build --bundles nsis
+
+      # Public filenames use Y.M.D.B while embedded package metadata stays valid SemVer.
+      - name: Use display version in artifact filenames
+        run: >-
+          node scripts/release-version.mjs rename-artifacts
+          "${{ inputs.version }}"
+          "${{ inputs.package_version }}"
+          target
+          "${{ matrix.updater_arch }}"
+
+      # Verify notarization, code signature, installer, archive, and updater signature.
+      - name: Verify macOS artifacts
+        if: startsWith(matrix.id, 'macos-')
+        run: |
+          app="$(find target -type d -path '*/release/bundle/*' -name '*.app' -print -quit)"
+          dmg="$(find target -type f -path '*/release/bundle/*' -name '*.dmg' -print -quit)"
+          updater="$(find target -type f -path '*/release/bundle/*' -name '*_${{ inputs.version }}_${{ matrix.updater_arch }}.app.tar.gz' -print -quit)"
+          [ -n "$app" ] && [ -n "$dmg" ] && [ -n "$updater" ] && [ -f "$updater.sig" ]
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type execute --verbose=2 "$app"
+
+      # Require all Linux package formats plus AppImage updater signature.
+      - name: Verify Linux artifacts
+        if: matrix.id == 'linux-x86_64'
+        run: |
+          for pattern in '*.deb' '*.rpm' '*.AppImage'; do
+            find target -type f -path '*/release/bundle/*' -name "$pattern" -print -quit | grep -q .
+          done
+          updater="$(find target -type f -path '*/release/bundle/*' -name '*.AppImage' -print -quit)"
+          [ -f "$updater.sig" ]
+
+      # Authenticode is optional, but updater integrity signature is mandatory.
+      - name: Verify Windows artifact
+        if: matrix.id == 'windows-x86_64'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem target -Recurse -File | Where-Object { $_.Name -Like "*-setup.exe" } | Select-Object -First 1
+          if (-not $installer) { throw "Missing Windows NSIS artifact." }
+          if (-not (Test-Path "$($installer.FullName).sig")) { throw "Missing Tauri updater signature." }
+
+      # One short-lived workflow artifact per platform feeds release publication.
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-${{ matrix.id }}
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            target/**/release/bundle/**/*.dmg
+            target/**/release/bundle/**/*.app.tar.gz
+            target/**/release/bundle/**/*.deb
+            target/**/release/bundle/**/*.rpm
+            target/**/release/bundle/**/*.AppImage
+            target/**/release/bundle/**/*-setup.exe
+            target/**/release/bundle/**/*.sig
+
+      # Always erase imported Apple private material, including failed builds.
+      - name: Remove Apple signing material
+        if: always() && startsWith(matrix.id, 'macos-')
+        run: |
+          set +e
+          [ -z "${APPLE_KEYCHAIN_PATH:-}" ] || security delete-keychain "$APPLE_KEYCHAIN_PATH" 2>/dev/null
+          [ -z "${APPLE_CERTIFICATE_PATH:-}" ] || rm -f "$APPLE_CERTIFICATE_PATH"
+          [ -z "${APPLE_API_KEY_PATH:-}" ] || rm -f "$APPLE_API_KEY_PATH"

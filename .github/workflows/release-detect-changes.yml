@@ -1,0 +1,63 @@
+name: Detect release changes
+
+on:
+  workflow_call:
+    inputs:
+      force:
+        description: Bypass scheduled Nightly change detection
+        required: true
+        type: boolean
+    outputs:
+      has_changes:
+        description: Whether release preparation should run
+        value: ${{ jobs.detect.outputs.has_changes }}
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    name: Detect releasable changes
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+    steps:
+      # Full history and tags are required to compare main with latest Nightly.
+      - name: Check out release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      # Manual runs are explicit rebuild requests; scheduled runs skip release-only changes.
+      - id: detect
+        name: Compare with latest Nightly
+        env:
+          FORCE_RELEASE: ${{ inputs.force }}
+        run: |
+          set -euo pipefail
+          if [ "$FORCE_RELEASE" = "true" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          latest="$(
+            git tag --list 'nightly-*' --sort=-v:refname |
+              grep -E '^nightly-[0-9]{4}\.[0-9]+\.[0-9]+\.[0-9]+$' |
+              head -n 1 || true
+          )"
+          range=HEAD
+          [ -z "$latest" ] || range="$latest..HEAD"
+          count="$(
+            git log --no-merges --format='%ae%x09%an' "$range" |
+              { grep -Ev 'github-actions\[bot\]|actions@github.com' || true; } |
+              wc -l |
+              tr -d ' '
+          )"
+          if [ "$count" -gt 0 ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No non-release commits since latest Nightly." >> "$GITHUB_STEP_SUMMARY"
+          fi

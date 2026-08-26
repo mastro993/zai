@@ -1,0 +1,286 @@
+name: Prepare release
+
+on:
+  workflow_call:
+    inputs:
+      channel:
+        description: Stable or Nightly release channel
+        required: true
+        type: string
+      source_sha:
+        description: Tested main commit to release
+        required: true
+        type: string
+    outputs:
+      channel:
+        value: ${{ inputs.channel }}
+      version:
+        value: ${{ jobs.version.outputs.version }}
+      package_version:
+        value: ${{ jobs.version.outputs.package_version }}
+      tag:
+        value: ${{ jobs.version.outputs.tag }}
+      release_sha:
+        value: ${{ jobs.version.outputs.release_sha }}
+      release_id:
+        value: ${{ jobs.version.outputs.release_id }}
+
+permissions:
+  contents: write
+  pages: read
+
+jobs:
+  preflight:
+    name: Verify release prerequisites
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
+    steps:
+      # Releases must mutate main, never a manually selected feature branch.
+      - name: Require main
+        env:
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = "refs/heads/main" ] || {
+            echo "::error::$RELEASE_CHANNEL releases must run from main."
+            exit 1
+          }
+
+      # Fail before committing a version when required signing material is absent.
+      - name: Require signing credentials
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in \
+            TAURI_SIGNING_PRIVATE_KEY \
+            APPLE_CERTIFICATE \
+            APPLE_CERTIFICATE_PASSWORD \
+            APPLE_SIGNING_IDENTITY \
+            APPLE_API_ISSUER \
+            APPLE_API_KEY \
+            APPLE_API_PRIVATE_KEY; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+          if [ "${#missing[@]}" -ne 0 ]; then
+            printf '::error::Missing required release setting: %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+      # Manifest publication depends on atomic GitHub Actions Pages deployments.
+      - name: Verify GitHub Pages configuration
+        run: |
+          set -euo pipefail
+          build_type="$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type)"
+          [ "$build_type" = "workflow" ] || {
+            echo "::error::GitHub Pages must use GitHub Actions deployment."
+            exit 1
+          }
+
+  checks:
+    name: Run release checks
+    runs-on: ubuntu-latest
+    steps:
+      # Every check runs against immutable trigger SHA, not a moving main checkout.
+      - name: Check out release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+
+      # Native frontend and backend checks require Tauri and SQLite development libraries.
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev libssl-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf pkg-config
+
+      # Use repository-pinned pnpm version from packageManager.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      # Node executes frontend checks and release tooling with dependency caching.
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      # Stable Rust with lint components matches repository CI policy.
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          components: rustfmt, clippy
+
+      # Shared release-check cache avoids rebuilding unchanged Rust dependencies.
+      - name: Restore Rust cache
+        uses: swatinem/rust-cache@f0d9c3887740aee45f6153b24b3a6b815192ec16 # v2
+        with:
+          shared-key: release-checks
+          workspaces: ". -> target"
+
+      # Frozen install rejects lockfile drift before checks consume dependencies.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # One command covers release tooling, frontend, formatting, lint, Clippy, and tests.
+      - name: Run checks
+        run: pnpm check
+
+  version:
+    name: Commit release version and create draft
+    needs:
+      - preflight
+      - checks
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+      package_version: ${{ steps.compute.outputs.package_version }}
+      tag: ${{ steps.compute.outputs.tag }}
+      release_sha: ${{ steps.release.outputs.release_sha }}
+      release_id: ${{ steps.release.outputs.release_id }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      # Full history supports release notes; persisted credentials authorize atomic push.
+      - name: Check out release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      # Node computes and stamps calendar versions.
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: lts/*
+
+      # Cargo metadata regenerates and validates Cargo.lock after workspace version changes.
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+
+      # Fresh tags provide channel-local release-note baselines and collision checks.
+      - name: Fetch release tags
+        run: git fetch --tags --force origin
+
+      # Committed version is allocation source: same UTC day increments B, new day resets B.
+      - id: compute
+        name: Allocate version
+        env:
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+        run: node scripts/release-version.mjs github-output
+
+      # Version commit and tag are pushed atomically; draft cleanup never rewrites main.
+      - id: release
+        name: Push version commit, tag, and draft release
+        env:
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+          RELEASE_VERSION: ${{ steps.compute.outputs.version }}
+          PACKAGE_VERSION: ${{ steps.compute.outputs.package_version }}
+          RELEASE_TAG: ${{ steps.compute.outputs.tag }}
+          PREVIOUS_TAG: ${{ steps.compute.outputs.previous_tag }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -Eeuo pipefail
+          git fetch origin main
+          [ "$(git rev-parse origin/main)" = "$SOURCE_SHA" ] || {
+            echo "::error::main advanced after release checks; rerun against the new HEAD."
+            exit 1
+          }
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $RELEASE_TAG already exists."
+            exit 1
+          fi
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error::Release $RELEASE_TAG already exists."
+            exit 1
+          fi
+
+          node scripts/release-version.mjs stamp "$PACKAGE_VERSION"
+          cargo metadata --format-version 1 >/dev/null
+          cargo metadata --locked --format-version 1 >/dev/null
+
+          expected="$({ printf '%s\n' Cargo.lock Cargo.toml apps/frontend/package.json apps/tauri/tauri.conf.json package.json; } | sort)"
+          actual="$(git status --short | sed -E 's/^.. //' | sort)"
+          [ "$actual" = "$expected" ] || {
+            echo "::error::Version bump changed an unexpected file set."
+            printf 'Expected:\n%s\nActual:\n%s\n' "$expected" "$actual"
+            exit 1
+          }
+          # shellcheck disable=SC2016
+          node --input-type=module - "$PACKAGE_VERSION" <<'NODE'
+          import { readFileSync } from "node:fs";
+          const expected = process.argv[2];
+          for (const file of ["package.json", "apps/frontend/package.json", "apps/tauri/tauri.conf.json"]) {
+            if (JSON.parse(readFileSync(file, "utf8")).version !== expected) throw new Error(`${file} version mismatch`);
+          }
+          const cargo = readFileSync("Cargo.toml", "utf8");
+          if (!cargo.includes(`version = "${expected}"`)) throw new Error("Cargo.toml version mismatch");
+          NODE
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add Cargo.lock Cargo.toml package.json apps/frontend/package.json apps/tauri/tauri.conf.json
+          git commit -m "chore(release): $RELEASE_VERSION"
+          release_sha="$(git rev-parse HEAD)"
+          git tag -a "$RELEASE_TAG" "$release_sha" -m "Release $RELEASE_TAG"
+          tag_object_sha="$(git rev-parse "$RELEASE_TAG")"
+
+          git push --atomic \
+            --force-with-lease="refs/heads/main:$SOURCE_SHA" \
+            --force-with-lease="refs/tags/$RELEASE_TAG:" \
+            origin HEAD:refs/heads/main "refs/tags/$RELEASE_TAG"
+
+          release_id=""
+          cleanup_draft() {
+            status=$?
+            trap - ERR
+            set +e
+            if [ -n "$release_id" ]; then
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/$release_id" >/dev/null 2>&1
+            fi
+            if ! git push --force-with-lease="refs/tags/$RELEASE_TAG:$tag_object_sha" origin ":refs/tags/$RELEASE_TAG"; then
+              echo "::warning::Tag cleanup skipped because $RELEASE_TAG changed."
+            fi
+            exit "$status"
+          }
+          trap cleanup_draft ERR
+
+          notes_args=(
+            --method POST
+            "repos/$GITHUB_REPOSITORY/releases/generate-notes"
+            -f "tag_name=$RELEASE_TAG"
+            -f "target_commitish=$release_sha"
+          )
+          [ -z "$PREVIOUS_TAG" ] || notes_args+=(-f "previous_tag_name=$PREVIOUS_TAG")
+          release_notes="$(gh api "${notes_args[@]}" --jq .body)"
+
+          if [ "$RELEASE_CHANNEL" = "nightly" ]; then
+            title="Zai Nightly $RELEASE_VERSION"
+            prerelease=true
+          else
+            title="Zai $RELEASE_VERSION"
+            prerelease=false
+          fi
+          release_id="$(
+            gh api --method POST "repos/$GITHUB_REPOSITORY/releases" \
+              -f "tag_name=$RELEASE_TAG" \
+              -f "target_commitish=$release_sha" \
+              -f "name=$title" \
+              -f "body=$release_notes" \
+              -F draft=true \
+              -F "prerelease=$prerelease" \
+              --jq .id
+          )"
+          trap - ERR
+
+          echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
+          echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
+          printf "### %s\nCommit: \`%s\`\n" "$RELEASE_TAG" "$release_sha" >> "$GITHUB_STEP_SUMMARY"

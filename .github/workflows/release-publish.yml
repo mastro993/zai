@@ -1,0 +1,83 @@
+name: Publish GitHub release
+
+on:
+  workflow_call:
+    inputs:
+      release_id:
+        description: Draft GitHub Release ID
+        required: true
+        type: string
+      tag:
+        description: Release tag
+        required: true
+        type: string
+      version:
+        description: Public Y.M.D.B Release Version
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    name: Attach artifacts and publish release
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      # Collect all matrix outputs from this workflow run into platform directories.
+      - name: Download release artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: release-*
+          path: release-assets
+
+      # Reject partial, unsigned, or duplicate artifact sets before touching draft release.
+      - name: Validate complete artifact set
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          require() { find "$1" -type f -name "$2" -print -quit | grep -q . || { echo "::error::Missing $3."; exit 1; }; }
+          for platform in macos-aarch64 macos-x86_64 linux-x86_64 windows-x86_64; do
+            [ -d "release-assets/release-$platform" ] || { echo "::error::Missing $platform artifact group."; exit 1; }
+          done
+          for target in macos-aarch64:aarch64 macos-x86_64:x86_64; do
+            platform="${target%%:*}"; architecture="${target#*:}"; directory="release-assets/release-$platform"
+            require "$directory" '*.dmg' "$platform DMG"
+            updater="$(find "$directory" -type f -name "*_${RELEASE_VERSION}_${architecture}.app.tar.gz" -print -quit)"
+            [ -n "$updater" ] && [ -f "$updater.sig" ] || { echo "::error::Missing signed $platform updater."; exit 1; }
+          done
+          linux=release-assets/release-linux-x86_64
+          require "$linux" '*.deb' 'Linux DEB'
+          require "$linux" '*.rpm' 'Linux RPM'
+          require "$linux" '*.AppImage' 'Linux AppImage'
+          updater="$(find "$linux" -type f -name '*.AppImage' -print -quit)"
+          [ -f "$updater.sig" ] || { echo "::error::Missing Linux updater signature."; exit 1; }
+          windows=release-assets/release-windows-x86_64
+          require "$windows" '*-setup.exe' 'Windows NSIS installer'
+          installer="$(find "$windows" -type f -name '*-setup.exe' -print -quit)"
+          [ -f "$installer.sig" ] || { echo "::error::Missing Windows updater signature."; exit 1; }
+          duplicates="$(find release-assets -type f -printf '%f\n' | sort | uniq -d)"
+          [ -z "$duplicates" ] || { echo "::error::Duplicate release asset names:"; printf '%s\n' "$duplicates"; exit 1; }
+
+      # Upload exact verified files, compare GitHub state, then make release public.
+      - name: Upload and publish
+        env:
+          RELEASE_ID: ${{ inputs.release_id }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          [ "$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" --jq .draft)" = "true" ] || {
+            echo "::error::Release $RELEASE_TAG is not the expected draft."
+            exit 1
+          }
+          mapfile -d '' assets < <(find release-assets -type f -print0)
+          [ "${#assets[@]}" -gt 0 ]
+          gh release upload "$RELEASE_TAG" "${assets[@]}"
+          expected="$(printf '%s\n' "${assets[@]##*/}" | sort)"
+          actual="$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" --paginate --jq '.[].name' | sort)"
+          [ "$actual" = "$expected" ] || { echo "::error::Uploaded release assets differ from verified set."; exit 1; }
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false >/dev/null

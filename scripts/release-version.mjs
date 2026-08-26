@@ -11,8 +11,8 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const PLACEHOLDER_VERSION = "0.0.0-dev";
-export const NIGHTLY_TAG_PATTERN = /^nightly-v(\d{4})\.(\d+)\.(\d+)\.(\d+)$/;
-export const STABLE_TAG_PATTERN = /^v(\d{4})\.(\d+)\.(\d+)\.(\d+)$/;
+export const NIGHTLY_TAG_PATTERN = /^nightly-(\d{4})\.(\d+)\.(\d+)\.(\d+)$/;
+export const STABLE_TAG_PATTERN = /^(\d{4})\.(\d+)\.(\d+)\.(\d+)$/;
 export const MAX_DAILY_BUILD = 999;
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -108,20 +108,25 @@ export const packageVersionFromReleaseVersion = (version) => {
   return `${year}.${month}.${day * 1000 + build}`;
 };
 
-export const resolveRelease = ({ channel, today, tags, headSha, tagShas = {} }) => {
+export const releaseVersionFromPackageVersion = (packageVersion) => {
+  const match = /^(\d{4})\.(\d+)\.(\d+)$/.exec(packageVersion);
+  if (!match) {
+    return null;
+  }
+  const [year, month, patch] = match.slice(1).map(Number);
+  const version = `${year}.${month}.${Math.floor(patch / 1000)}.${patch % 1000}`;
+  return parseReleaseTag(version)?.version ?? null;
+};
+
+export const resolveRelease = ({ channel, today, tags, committedVersion = null }) => {
   if (channel !== "nightly" && channel !== "stable") {
     throw new Error(`Release channel must be nightly or stable, got ${channel}`);
   }
 
-  const parsed = parsedReleaseTags(tags);
   const previousTag = previousReleaseTag(tags, channel);
-  if (channel === "nightly" && previousTag && tagShas[previousTag] === headSha) {
-    return { ok: true, skip: true, channel, previousTag };
-  }
-
   const core = calendarCoreFromIsoDate(today);
-  const builds = parsed.filter((tag) => tag.core === core).map((tag) => tag.build);
-  const build = builds.length === 0 ? 0 : Math.max(...builds) + 1;
+  const committed = committedVersion ? parseReleaseTag(committedVersion) : null;
+  const build = committed?.core === core ? committed.build + 1 : 0;
   if (!Number.isSafeInteger(build)) {
     throw new Error(`Release build sequence overflow for ${core}`);
   }
@@ -134,13 +139,12 @@ export const resolveRelease = ({ channel, today, tags, headSha, tagShas = {} }) 
   const version = `${core}.${build}`;
   return {
     ok: true,
-    skip: false,
     channel,
     prerelease: channel === "nightly",
     previousTag,
     version,
     packageVersion: packageVersionFromReleaseVersion(version),
-    tag: channel === "nightly" ? `nightly-v${version}` : `v${version}`,
+    tag: channel === "nightly" ? `nightly-${version}` : version,
   };
 };
 
@@ -150,8 +154,6 @@ const listGitTags = (cwd) => {
   const output = git(["tag", "--list"], cwd);
   return output === "" ? [] : output.split("\n");
 };
-
-const tagCommit = (tag, cwd) => git(["rev-list", "-n", "1", tag], cwd);
 
 const utcToday = () => new Date().toISOString().slice(0, 10);
 
@@ -185,7 +187,7 @@ export const stampVersion = (version, cwd = rootDir) => {
   }
 };
 
-const findSingleFile = (directory, predicate, description) => {
+const matchingFiles = (directory, predicate) => {
   const matches = [];
   const visit = (currentDirectory) => {
     for (const entry of readdirSync(currentDirectory, { withFileTypes: true })) {
@@ -198,11 +200,33 @@ const findSingleFile = (directory, predicate, description) => {
     }
   };
   visit(directory);
+  return matches;
+};
 
+const findSingleFile = (directory, predicate, description) => {
+  const matches = matchingFiles(directory, predicate);
   if (matches.length !== 1) {
     throw new Error(`Expected exactly one ${description}, found ${matches.length}`);
   }
   return matches[0];
+};
+
+export const validateReleaseAssets = (releaseVersion, assetsDirectory) => {
+  releaseVersionParts(releaseVersion);
+  const expected = [
+    [2, (name) => name.includes(releaseVersion) && name.endsWith(".dmg"), "macOS DMGs"],
+    [1, (name) => name.includes(releaseVersion) && name.endsWith(".deb"), "Linux DEB"],
+    [1, (name) => name.includes(releaseVersion) && name.endsWith(".rpm"), "Linux RPM"],
+    [1, (name) => name.includes(releaseVersion) && name.endsWith(".AppImage"), "Linux AppImage"],
+    [1, (name) => name.includes(releaseVersion) && name.endsWith("-setup.exe"), "Windows NSIS installer"],
+  ];
+  for (const [count, predicate, description] of expected) {
+    const actual = matchingFiles(assetsDirectory, predicate).length;
+    if (actual !== count) {
+      throw new Error(`Expected exactly ${count} ${description}, found ${actual}`);
+    }
+  }
+  return true;
 };
 
 export const createUpdaterManifests = ({
@@ -213,6 +237,7 @@ export const createUpdaterManifests = ({
   repository,
   assetsDirectory,
   outputDirectory,
+  publishedAt = process.env.RELEASE_PUBLISHED_AT ?? new Date().toISOString(),
 }) => {
   if (channel !== "nightly" && channel !== "stable") {
     throw new Error(`Release channel must be nightly or stable, got ${channel}`);
@@ -241,23 +266,19 @@ export const createUpdaterManifests = ({
     },
     {
       id: "linux-x86_64",
-      matches: (name) => name.endsWith(".AppImage"),
+      matches: (name) => name.includes(releaseVersion) && name.endsWith(".AppImage"),
       description: "Linux x86_64 updater AppImage",
     },
     {
       id: "windows-x86_64",
-      matches: (name) => name.endsWith("-setup.exe"),
+      matches: (name) => name.includes(releaseVersion) && name.endsWith("-setup.exe"),
       description: "Windows x86_64 updater installer",
     },
   ];
 
   mkdirSync(outputDirectory, { recursive: true });
   return targets.map((target) => {
-    const assetPath = findSingleFile(
-      path.join(assetsDirectory, `release-${target.id}`),
-      target.matches,
-      target.description,
-    );
+    const assetPath = findSingleFile(assetsDirectory, target.matches, target.description);
     const signaturePath = `${assetPath}.sig`;
     if (!existsSync(signaturePath)) {
       throw new Error(`Missing updater signature ${signaturePath}`);
@@ -272,6 +293,8 @@ export const createUpdaterManifests = ({
     const manifestPath = path.join(outputDirectory, `${manifestTarget}.json`);
     const manifest = {
       version: packageVersion,
+      notes: `${channel === "nightly" ? "Nightly" : "Stable"} release ${releaseVersion}`,
+      pub_date: publishedAt,
       platforms: {
         [manifestTarget]: {
           signature,
@@ -392,26 +415,14 @@ const runGithubOutput = () => {
   const cwd = process.env.RELEASE_GIT_DIR ?? rootDir;
   const tags = listGitTags(cwd);
   const headSha = git(["rev-parse", "HEAD"], cwd);
-  const nightlyTags = parsedReleaseTags(tags).filter((tag) => tag.kind === "nightly");
-  const tagShas = Object.fromEntries(nightlyTags.map((tag) => [tag.tag, tagCommit(tag.tag, cwd)]));
-  const resolved = resolveRelease({ channel, today, tags, headSha, tagShas });
-
-  if (resolved.skip) {
-    writeGithubOutput({
-      skip: "true",
-      channel,
-      version: "",
-      package_version: "",
-      tag: "",
-      prerelease: "false",
-      previous_tag: resolved.previousTag ?? "",
-      sha: headSha,
-    });
-    return;
-  }
+  const cargoToml = readFileSync(path.join(cwd, "Cargo.toml"), "utf8");
+  const packageMatch = /\[workspace\.package\][\s\S]*?^version = "([^"]+)"/m.exec(cargoToml);
+  const committedVersion = packageMatch
+    ? releaseVersionFromPackageVersion(packageMatch[1])
+    : null;
+  const resolved = resolveRelease({ channel, today, tags, committedVersion });
 
   writeGithubOutput({
-    skip: "false",
     channel,
     version: resolved.version,
     package_version: resolved.packageVersion,
@@ -446,6 +457,13 @@ if (isCli) {
       );
     }
     renameArtifactVersions(releaseVersion, packageVersion, directory, macUpdaterArchitecture);
+  } else if (command === "verify-assets") {
+    const releaseVersion = process.argv[3];
+    const assetsDirectory = process.argv[4];
+    if (!releaseVersion || !assetsDirectory) {
+      throw new Error("usage: node scripts/release-version.mjs verify-assets <release-version> <assets-directory>");
+    }
+    validateReleaseAssets(releaseVersion, assetsDirectory);
   } else if (command === "updater-manifests") {
     const [
       channel,
@@ -480,7 +498,7 @@ if (isCli) {
     });
   } else {
     throw new Error(
-      "usage: node scripts/release-version.mjs github-output|stamp <version>|rename-artifacts <release-version> <package-version> <directory> [mac-updater-architecture]|updater-manifests <channel> <release-version> <package-version> <release-tag> <repository> <assets-directory> <output-directory>",
+      "usage: node scripts/release-version.mjs github-output|stamp <version>|rename-artifacts <release-version> <package-version> <directory> [mac-updater-architecture]|verify-assets <release-version> <assets-directory>|updater-manifests <channel> <release-version> <package-version> <release-tag> <repository> <assets-directory> <output-directory>",
     );
   }
 }
