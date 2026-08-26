@@ -16,19 +16,19 @@ Zai is a side project, not a business. It will never be sold or used as a source
 
 ## An agent-driven experiment
 
-Zai is a 100% agent-driven software experiment. The maintainer defines product
-direction, plans work with AI agents, turns requirements into issues, and makes
-the final merge decision. AI agents write and edit every line of code.
+Zai is my 100% agent-driven software experiment. I define the product direction,
+plan work with AI agents, turn requirements into issues, and make the final merge
+decision. AI agents write and edit every line of code.
 
-The experiment tests whether entirely AI-written software inevitably becomes
+I want to test whether entirely AI-written software inevitably becomes
 low-quality "slop," or can meet high standards through disciplined planning and
-verification. Personal finance is a demanding test: sensitive data must remain
-secure and private, thousands of operations must stay fast, and calculations
-must remain reliable because even small rounding errors can distort financial
-data.
+verification. I chose personal finance because it is a demanding test: sensitive
+data must stay secure and private, thousands of operations must stay fast, and
+calculations must remain reliable because even small rounding errors can distort
+financial data.
 
-These are target standards, not claims about Zai's current maturity. The
-early-development warning above still applies.
+These are the standards I want the experiment to meet, not claims about Zai's
+current maturity. The early-development warning above still applies.
 
 ## Installation
 
