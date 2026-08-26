@@ -8,7 +8,7 @@
 
 Zai (ざい, japanese word for _wealth_) is a local-first personal finance app for people who want to track their money without cloud sync, telemetry, or bank-login dependencies.
 
-Zai takes significant inspiration from [Wealthfolio](https://github.com/wealthfolio/wealthfolio) and [Sure](https://github.com/we-promise/sure). It is my own interpretation of what a personal finance app can be.
+Zai takes significant inspiration from [Wealthfolio](https://github.com/wealthfolio/wealthfolio) and [Sure](https://github.com/we-promise/sure), but it is my own interpretation of what a personal finance app should and could be.
 
 ## Installation
 
