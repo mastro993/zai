@@ -55,10 +55,7 @@ export const categoryFormSchema = z
       .regex(/^#[0-9a-f]{6}$/i)
       .nullable()
       .optional(),
-    icon: z
-      .union([categoryIconSchema, z.literal(""), z.null()])
-      .optional()
-      .transform((value) => (value ? value : null)),
+    icon: categoryIconSchema.nullable().optional(),
     role: categoryRoleSchema.optional(),
   })
   .superRefine((values, context) => {

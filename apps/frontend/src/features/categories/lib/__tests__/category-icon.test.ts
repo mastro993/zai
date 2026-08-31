@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CATEGORY_ICON_CATALOG,
+  CATEGORY_ICON_GROUPS,
   CATEGORY_ICONS,
   DEFAULT_CATEGORY_ICON,
   parseCategoryIcon,
@@ -21,9 +22,13 @@ const root = (overrides: Partial<TransactionCategory> = {}): TransactionCategory
 });
 
 describe("category icons", () => {
-  it("curates 48 unique keys", () => {
-    expect(CATEGORY_ICON_CATALOG).toHaveLength(48);
-    expect(new Set(CATEGORY_ICONS).size).toBe(48);
+  it("curates 96 unique keys in equal groups", () => {
+    expect(CATEGORY_ICON_CATALOG).toHaveLength(96);
+    expect(new Set(CATEGORY_ICONS).size).toBe(96);
+    expect(CATEGORY_ICON_GROUPS).toHaveLength(8);
+    for (const group of CATEGORY_ICON_GROUPS) {
+      expect(CATEGORY_ICON_CATALOG.filter((entry) => entry.group === group)).toHaveLength(12);
+    }
   });
 
   it("parses known keys and drops unknown values", () => {
