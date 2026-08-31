@@ -32,15 +32,18 @@ pub struct LogDiagnostics {
 }
 
 pub(crate) fn collect(database: &Database, log_dir: Option<&Path>) -> DiagnosticsReport {
-    let database_path =
-        fs::canonicalize(database.path()).unwrap_or_else(|_| database.path().to_path_buf());
+    let database_path = fs::canonicalize(database.path()).ok();
 
     DiagnosticsReport {
         operating_system: std::env::consts::OS,
         architecture: std::env::consts::ARCH,
         database: DatabaseDiagnostics {
-            path: database_path.to_string_lossy().into_owned(),
-            size_bytes: database_footprint(database.path()),
+            path: database_path
+                .as_deref()
+                .unwrap_or(database.path())
+                .to_string_lossy()
+                .into_owned(),
+            size_bytes: database_path.as_deref().and_then(database_footprint),
             schema_version: database.latest_migration_version().ok().flatten(),
         },
         logs: log_dir.map(|path| LogDiagnostics {
