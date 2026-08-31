@@ -15,6 +15,7 @@ log = { workspace = true }
 async-trait = { workspace = true }
 chrono = { workspace = true }
 reqwest = { workspace = true }
+serde = { workspace = true }
 tokio = { workspace = true }
 fs2 = { workspace = true }
 

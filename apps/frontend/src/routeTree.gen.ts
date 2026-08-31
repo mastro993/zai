@@ -24,6 +24,7 @@ import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SettingsAboutRouteImport } from './routes/settings.about'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
 import { Route as SettingsCurrenciesRouteImport } from './routes/settings.currencies'
+import { Route as SettingsDiagnosticsRouteImport } from './routes/settings.diagnostics'
 import { Route as CashFlowBudgetsIndexRouteImport } from './routes/cash-flow.budgets.index'
 import { Route as CashFlowBudgetsBudgetIdRouteImport } from './routes/cash-flow.budgets.$budgetId'
 import { Route as CashFlowRecurringIndexRouteImport } from './routes/cash-flow.recurring.index'
@@ -106,6 +107,11 @@ const SettingsCurrenciesRoute = SettingsCurrenciesRouteImport.update({
   path: '/currencies',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsDiagnosticsRoute = SettingsDiagnosticsRouteImport.update({
+  id: '/diagnostics',
+  path: '/diagnostics',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const CashFlowBudgetsIndexRoute = CashFlowBudgetsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/settings/about': typeof SettingsAboutRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/currencies': typeof SettingsCurrenciesRoute
+  '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/cash-flow/': typeof CashFlowIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
@@ -172,6 +179,7 @@ export interface FileRoutesByTo {
   '/settings/about': typeof SettingsAboutRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/currencies': typeof SettingsCurrenciesRoute
+  '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/cash-flow': typeof CashFlowIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
@@ -196,6 +204,7 @@ export interface FileRoutesById {
   '/settings/about': typeof SettingsAboutRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/currencies': typeof SettingsCurrenciesRoute
+  '/settings/diagnostics': typeof SettingsDiagnosticsRoute
   '/cash-flow/': typeof CashFlowIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/cash-flow/budgets/$budgetId': typeof CashFlowBudgetsBudgetIdRoute
@@ -221,6 +230,7 @@ export interface FileRouteTypes {
     | '/settings/about'
     | '/settings/appearance'
     | '/settings/currencies'
+    | '/settings/diagnostics'
     | '/cash-flow/'
     | '/settings/'
     | '/cash-flow/budgets/$budgetId'
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/settings/about'
     | '/settings/appearance'
     | '/settings/currencies'
+    | '/settings/diagnostics'
     | '/cash-flow'
     | '/settings'
     | '/cash-flow/budgets/$budgetId'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/settings/about'
     | '/settings/appearance'
     | '/settings/currencies'
+    | '/settings/diagnostics'
     | '/cash-flow/'
     | '/settings/'
     | '/cash-flow/budgets/$budgetId'
@@ -387,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsCurrenciesRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/diagnostics': {
+      id: '/settings/diagnostics'
+      path: '/diagnostics'
+      fullPath: '/settings/diagnostics'
+      preLoaderRoute: typeof SettingsDiagnosticsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/cash-flow/budgets/': {
       id: '/cash-flow/budgets/'
       path: '/'
@@ -500,6 +519,7 @@ interface SettingsRouteChildren {
   SettingsAboutRoute: typeof SettingsAboutRoute
   SettingsAppearanceRoute: typeof SettingsAppearanceRoute
   SettingsCurrenciesRoute: typeof SettingsCurrenciesRoute
+  SettingsDiagnosticsRoute: typeof SettingsDiagnosticsRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
@@ -507,6 +527,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAboutRoute: SettingsAboutRoute,
   SettingsAppearanceRoute: SettingsAppearanceRoute,
   SettingsCurrenciesRoute: SettingsCurrenciesRoute,
+  SettingsDiagnosticsRoute: SettingsDiagnosticsRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
 

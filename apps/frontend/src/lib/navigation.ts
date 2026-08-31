@@ -1,4 +1,5 @@
 import {
+  Bug01Icon,
   DashboardSquare01Icon,
   DollarCircleIcon,
   InformationCircleIcon,
@@ -54,6 +55,7 @@ export const settingsGroups = [
     items: [
       { title: "Appearance", to: "/settings/appearance", icon: PaintBoardIcon },
       { title: "About", to: "/settings/about", icon: InformationCircleIcon },
+      { title: "Diagnostics", to: "/settings/diagnostics", icon: Bug01Icon },
     ],
   },
   {

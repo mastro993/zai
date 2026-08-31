@@ -127,7 +127,7 @@ export function SettingsModal({
         >
           <DialogTitle className="sr-only">Settings</DialogTitle>
           <DialogDescription className="sr-only">
-            Appearance, currencies, and about.
+            Appearance, about, diagnostics, and currencies.
           </DialogDescription>
           <div
             data-slot="settings-modal-sidebar-search"

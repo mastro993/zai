@@ -28,6 +28,10 @@ describe("resolveScreenBreadcrumbs", () => {
       { label: "Settings", href: "/settings" },
       { label: "About" },
     ]);
+    expect(resolveScreenBreadcrumbs("/settings/diagnostics")).toEqual([
+      { label: "Settings", href: "/settings" },
+      { label: "Diagnostics" },
+    ]);
   });
 
   it("normalizes trailing slashes", () => {
@@ -61,20 +65,21 @@ describe("isSettingsPath", () => {
     expect(isSettingsPath("/settings/appearance")).toBe(true);
     expect(isSettingsPath("/settings/currencies")).toBe(true);
     expect(isSettingsPath("/settings/about")).toBe(true);
+    expect(isSettingsPath("/settings/diagnostics")).toBe(true);
     expect(isSettingsPath("/dashboard")).toBe(false);
     expect(isSettingsPath("/settings-room")).toBe(false);
   });
 });
 
 describe("settings groups", () => {
-  it("places Appearance and About under General and Currencies under Finance", () => {
+  it("places general and finance settings in their groups", () => {
     expect(
       settingsGroups.map((group) => ({
         label: group.label,
         titles: group.items.map((item) => item.title),
       })),
     ).toEqual([
-      { label: "General", titles: ["Appearance", "About"] },
+      { label: "General", titles: ["Appearance", "About", "Diagnostics"] },
       { label: "Finance", titles: ["Currencies"] },
     ]);
   });

@@ -26,8 +26,13 @@ const CurrenciesSettingsScreen = lazy(() =>
     default: module.CurrenciesSettingsScreen,
   })),
 );
+const DiagnosticsSettingsScreen = lazy(() =>
+  import("../screens/diagnostics-settings-screen").then((module) => ({
+    default: module.DiagnosticsSettingsScreen,
+  })),
+);
 
-type SettingsSection = "appearance" | "about" | "currencies";
+type SettingsSection = "appearance" | "about" | "diagnostics" | "currencies";
 type SettingsFocus = "rates" | "currencies";
 
 interface OpenSettingsOptions {
@@ -58,6 +63,8 @@ export function SettingsModalProvider({ children }: { children: ReactNode }) {
           onNavigate={(pathname) => {
             if (pathname === "/settings/about") {
               setSettings({ section: "about" });
+            } else if (pathname === "/settings/diagnostics") {
+              setSettings({ section: "diagnostics" });
             } else if (pathname === "/settings/currencies") {
               setSettings({ section: "currencies" });
             } else {
@@ -88,6 +95,8 @@ export function useOpenSettings() {
 
       if (options.section === "about") {
         void navigate({ to: "/settings/about" });
+      } else if (options.section === "diagnostics") {
+        void navigate({ to: "/settings/diagnostics" });
       } else if (options.section === "currencies") {
         void navigate({ to: "/settings/currencies", search: { focus: options.focus } });
       } else {
@@ -101,6 +110,10 @@ export function useOpenSettings() {
 function SettingsContent({ settings }: { settings: SettingsState }) {
   if (settings.section === "about") {
     return <AboutSettingsScreen />;
+  }
+
+  if (settings.section === "diagnostics") {
+    return <DiagnosticsSettingsScreen />;
   }
 
   if (settings.section === "currencies") {
