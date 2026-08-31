@@ -82,6 +82,18 @@ const FORBIDDEN_MAIN_PERMISSIONS: &[(&str, &str)] = &[
         "broad core default includes unrequested window permissions",
     ),
     ("shell:default", "no shell consumer"),
+    (
+        "opener:default",
+        "diagnostic locations use trusted backend commands",
+    ),
+    (
+        "opener:allow-open-path",
+        "renderer must not open arbitrary filesystem paths",
+    ),
+    (
+        "opener:allow-reveal-item-in-dir",
+        "renderer must not reveal arbitrary filesystem paths",
+    ),
     ("process:default", "only restart is required"),
     (
         "updater:default",

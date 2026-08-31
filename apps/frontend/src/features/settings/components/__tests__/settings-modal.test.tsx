@@ -75,6 +75,11 @@ const renderSettingsModal = async (initialEntry: string) => {
     path: "about",
     component: () => <p>About page</p>,
   });
+  const diagnosticsRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: "diagnostics",
+    component: () => <p>Diagnostics page</p>,
+  });
   const currenciesRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: "currencies",
@@ -83,7 +88,7 @@ const renderSettingsModal = async (initialEntry: string) => {
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       dashboardRoute,
-      settingsRoute.addChildren([appearanceRoute, aboutRoute, currenciesRoute]),
+      settingsRoute.addChildren([appearanceRoute, aboutRoute, diagnosticsRoute, currenciesRoute]),
     ]),
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
   });
@@ -169,6 +174,7 @@ describe("SettingsModal", () => {
     expect(sectionsNav).toBeTruthy();
     expect(within(sectionsNav).getByRole("link", { name: "Appearance" })).toBeTruthy();
     expect(within(sectionsNav).getByRole("link", { name: "About" })).toBeTruthy();
+    expect(within(sectionsNav).getByRole("link", { name: "Diagnostics" })).toBeTruthy();
     expect(within(sectionsNav).getByRole("link", { name: "Currencies" })).toBeTruthy();
     expect(screen.getByText("Appearance page")).toBeTruthy();
     expect(screen.getByText("General")).toBeTruthy();
@@ -187,6 +193,18 @@ describe("SettingsModal", () => {
 
     const breadcrumbs = screen.getByRole("navigation", { name: "breadcrumb" });
     expect(within(breadcrumbs).getByText("Currencies")).toBeTruthy();
+  });
+
+  it("switches the settings overlay to diagnostics", async () => {
+    const router = await renderSettingsOverlay();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open settings" }));
+    expect(await screen.findByRole("dialog", { name: "Settings" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("link", { name: "Diagnostics" }));
+
+    expect(await screen.findByRole("heading", { name: "System" })).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/dashboard");
   });
 
   it("returns to the previous app screen when closed", async () => {

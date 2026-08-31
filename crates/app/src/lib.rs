@@ -95,6 +95,8 @@ fn create_private_directory(path: &Path) -> zai_core::Result<()> {
 
 mod currency_refresh;
 pub use currency_refresh::CurrencyRefreshHandle;
+mod diagnostics;
+pub use diagnostics::{DatabaseDiagnostics, DiagnosticsReport, LogDiagnostics};
 mod ecb;
 mod recurring_supervisor;
 use currency_refresh::CurrencyRefreshSupervisor;
@@ -103,6 +105,7 @@ use recurring_supervisor::{ProcessDelayAlertPort, RepositorySupervisorHeads};
 use zai_core::features::exchange_rates::{ExchangeRateService, SystemUtcClock};
 
 pub struct ServiceContext {
+    database: Arc<zai_db::Database>,
     pub budgets_service: Arc<dyn BudgetsServiceTrait>,
     pub currency_service: Arc<CurrencyService>,
     pub exchange_rate_service: Arc<ExchangeRateService>,
@@ -121,6 +124,14 @@ pub struct ServiceContext {
 }
 
 impl ServiceContext {
+    pub fn diagnostics(&self, log_dir: Option<&Path>) -> DiagnosticsReport {
+        diagnostics::collect(&self.database, log_dir)
+    }
+
+    pub fn database_path(&self) -> &Path {
+        self.database.path()
+    }
+
     pub fn budgets_service(&self) -> Arc<dyn BudgetsServiceTrait> {
         Arc::clone(&self.budgets_service)
     }
@@ -324,12 +335,12 @@ pub fn bootstrap_context_with_buses_and_clock(
     let userdata_dir = zai_home.join(USERDATA_DIR_NAME);
     create_private_directory(&userdata_dir)?;
 
-    let database = zai_db::connect_with_event_bus_and_clock(
+    let database = Arc::new(zai_db::connect_with_event_bus_and_clock(
         userdata_dir,
         Arc::clone(&domain_alert_event_bus),
         Arc::clone(&clock),
-    )?;
-    log::info!("Database initialized at {}", database.path().display());
+    )?);
+    log::info!("Database initialized");
 
     let currency_service = Arc::new(CurrencyService::new(
         database.currency_settings_repository(),
@@ -381,6 +392,7 @@ pub fn bootstrap_context_with_buses_and_clock(
 
     Ok(BootstrappedApp {
         context: ServiceContext {
+            database,
             budgets_service: Arc::new(
                 BudgetsService::new(budgets_repository)
                     .with_currency_setup(currency_service.clone()),
@@ -500,6 +512,18 @@ mod tests {
                 & 0o777,
             0o600
         );
+    }
+
+    #[tokio::test]
+    async fn diagnostics_reports_applied_schema_and_database_size() {
+        let zai_home = TempAppDataDir::new();
+        let context = initialize_context(zai_home.path()).expect("context should initialize");
+
+        let diagnostics = context.diagnostics(None);
+
+        assert!(diagnostics.database.size_bytes.is_some_and(|size| size > 0));
+        assert!(diagnostics.database.schema_version.is_some());
+        assert!(diagnostics.logs.is_none());
     }
 
     #[tokio::test]

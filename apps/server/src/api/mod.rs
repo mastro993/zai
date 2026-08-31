@@ -7,6 +7,7 @@ mod alerts;
 mod budgets;
 mod categories;
 mod currency;
+mod diagnostics;
 pub mod error;
 mod recurring_bulk;
 mod recurring_processing_events;
@@ -19,6 +20,7 @@ pub fn router() -> Router<Arc<ServiceContext>> {
         .merge(alerts::router())
         .merge(categories::router())
         .merge(currency::router())
+        .merge(diagnostics::router())
         .merge(budgets::router())
         .merge(recurring_projection::projection_routes())
         .merge(recurring_transactions::router())

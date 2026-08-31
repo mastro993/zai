@@ -6,7 +6,7 @@ use std::{
 };
 
 use axum::{
-    body::Body,
+    body::{Body, to_bytes},
     http::{Request, StatusCode},
 };
 use tower::ServiceExt;
@@ -109,6 +109,40 @@ async fn health_route_returns_ok() {
         .expect("health request should succeed");
 
     assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn diagnostics_route_reports_local_database_without_web_logs() {
+    let app_data_dir = TempAppDataDir::new();
+    let context = Arc::new(
+        initialize_context(app_data_dir.path()).expect("shared context should initialize"),
+    );
+    let app = create_router(context);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/diagnostics")
+                .body(Body::empty())
+                .expect("diagnostics request should build"),
+        )
+        .await
+        .expect("diagnostics request should complete");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = to_bytes(response.into_body(), 16_384)
+        .await
+        .expect("diagnostics response should be readable");
+    let diagnostics: serde_json::Value =
+        serde_json::from_slice(&body).expect("diagnostics response should be JSON");
+    assert_eq!(diagnostics["logs"], serde_json::Value::Null);
+    assert_eq!(
+        diagnostics["database"]["path"],
+        fs::canonicalize(app_data_dir.path().join("userdata").join("zai.db"))
+            .expect("database path should canonicalize")
+            .to_string_lossy()
+            .as_ref()
+    );
 }
 
 #[tokio::test]

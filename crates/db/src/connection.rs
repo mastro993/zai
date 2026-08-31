@@ -10,8 +10,11 @@ use crate::transaction_categories::TransactionCategoriesRepository;
 use crate::transactions::TransactionsRepository;
 use crate::write_actor::{WriteHandle, spawn_writer};
 use diesel::connection::{Connection, SimpleConnection};
+use diesel::prelude::QueryableByName;
 use diesel::r2d2::{self, ConnectionManager, Pool, PooledConnection};
+use diesel::sql_types::Text;
 use diesel::sqlite::SqliteConnection;
+use diesel::{OptionalExtension, RunQueryDsl};
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use log::{error, info};
 use std::fs;
@@ -35,6 +38,12 @@ const DEFAULT_DB_FILENAME: &str = "zai.db";
 const DEFAULT_POOL_SIZE: u32 = 8;
 const DEFAULT_CONNECTION_TIMEOUT_SECS: u64 = 30;
 
+#[derive(QueryableByName)]
+struct MigrationVersionRow {
+    #[diesel(sql_type = Text)]
+    version: String,
+}
+
 pub struct Database {
     db_path: PathBuf,
     pool: Arc<DbPool>,
@@ -46,6 +55,17 @@ pub struct Database {
 impl Database {
     pub fn path(&self) -> &Path {
         &self.db_path
+    }
+
+    pub fn latest_migration_version(&self) -> Result<Option<String>> {
+        let mut connection = get_connection(&self.pool)?;
+        diesel::sql_query(
+            "SELECT version FROM __diesel_schema_migrations ORDER BY version DESC LIMIT 1",
+        )
+        .get_result::<MigrationVersionRow>(&mut connection)
+        .optional()
+        .map(|row| row.map(|row| row.version))
+        .into_core()
     }
 
     pub fn transaction_categories_repository(&self) -> Arc<TransactionCategoriesRepository> {
