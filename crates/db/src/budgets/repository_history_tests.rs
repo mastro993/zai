@@ -200,6 +200,7 @@ async fn confirmed_category_role_change_rebuilds_historical_rollover_suffix() {
             name: "Food".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -242,6 +243,7 @@ async fn confirmed_category_role_change_rebuilds_historical_rollover_suffix() {
         name: "Food".to_string(),
         description: None,
         color: None,
+        icon: None,
         role: Some(CategoryRole::Income),
         confirm_budget_impact,
     };

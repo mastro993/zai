@@ -104,7 +104,7 @@ describe("category import", () => {
 
   it("splits single-column paths on the first separator", () => {
     const preview = buildPreview("path\nFood - Restaurants - Pizza", {
-      mapping: { name: 0, parentName: null, color: null, description: null },
+      mapping: { name: 0, parentName: null, color: null, description: null, icon: null },
       linkMode: "single-column",
       separator: " - ",
     });
@@ -225,5 +225,73 @@ describe("category import", () => {
     expect(preview.rows[0]).toMatchObject({ status: "import", color: "" });
     expect(preview.summary.warningRows).toBe(0);
     expect(preview.categories[1]).toMatchObject({ name: "Groceries", color: null });
+  });
+
+  it("round-trips selected icons and silently drops unknown keys", () => {
+    const root: TransactionCategory = {
+      id: "root",
+      parentId: null,
+      name: "Food",
+      description: null,
+      color: "#C55B26",
+      icon: "food",
+      role: "spending",
+      parent: null,
+    };
+    const child: TransactionCategory = {
+      id: "child",
+      parentId: "root",
+      name: "Groceries",
+      description: null,
+      color: null,
+      icon: "groceries",
+      role: "spending",
+      parent: root,
+    };
+
+    const preview = buildPreview(toCategoryExportCsv([root, child]));
+
+    expect(preview.categories).toEqual([
+      {
+        id: "id-1",
+        parentId: null,
+        name: "Food",
+        description: null,
+        color: "#C55B26",
+        icon: "food",
+      },
+      {
+        id: "id-2",
+        parentId: "id-1",
+        name: "Groceries",
+        description: null,
+        color: null,
+        icon: "groceries",
+      },
+    ]);
+  });
+
+  it("silently drops unknown imported icons", () => {
+    const preview = buildPreview("name,icon\nFood,spaceship\nGroceries,dining");
+
+    expect(preview.rows.map((row) => row.status)).toEqual(["import", "import"]);
+    expect(preview.summary.warningRows).toBe(0);
+    expect(preview.categories).toEqual([
+      {
+        id: "id-1",
+        parentId: null,
+        name: "Food",
+        description: null,
+        color: null,
+      },
+      {
+        id: "id-2",
+        parentId: null,
+        name: "Groceries",
+        description: null,
+        color: null,
+        icon: "dining",
+      },
+    ]);
   });
 });

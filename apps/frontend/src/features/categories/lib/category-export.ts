@@ -1,13 +1,14 @@
 import type { TransactionCategory } from "../types/model";
 import { escapeCsvValue } from "@/lib/csv";
 
-const CATEGORY_EXPORT_HEADERS = ["name", "parent_name", "color", "description"] as const;
+const CATEGORY_EXPORT_HEADERS = ["name", "parent_name", "color", "description", "icon"] as const;
 
 interface CategoryExportRow {
   name: string;
   parent_name: string;
   color: string;
   description: string;
+  icon: string;
 }
 
 const padDatePart = (value: number) => value.toString().padStart(2, "0");
@@ -34,6 +35,7 @@ const toCategoryExportRow = (
     "",
   color: category.parentId ? "" : (category.color ?? ""),
   description: category.description ?? "",
+  icon: category.icon ?? "",
 });
 
 export const getCategoryExportFilename = (date = new Date()) =>

@@ -28,6 +28,7 @@ async fn create_root(repo: &TransactionCategoriesRepository, name: &str) -> Stri
             parent_id: None,
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -42,6 +43,7 @@ fn child_update(id: &str, parent_id: &str, name: &str) -> TransactionCategoryUpd
         name: name.to_string(),
         description: None,
         color: None,
+        icon: None,
         role: Some(CategoryRole::Spending),
         confirm_budget_impact: false,
     }
@@ -113,6 +115,7 @@ async fn concurrent_updates_cannot_create_depth_three() {
             parent_id: Some(parent_id.clone()),
             description: None,
             color: None,
+            icon: None,
             role: None,
         })
         .await
@@ -138,6 +141,7 @@ async fn concurrent_updates_cannot_create_depth_three() {
             name: "Child renamed".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -177,6 +181,7 @@ async fn concurrent_sibling_name_updates_leave_one_conflict() {
             name: "Shared".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -194,6 +199,7 @@ async fn concurrent_sibling_name_updates_leave_one_conflict() {
             name: " shared ".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -232,6 +238,7 @@ async fn unrelated_concurrent_updates_both_succeed() {
             name: "Groceries".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -249,6 +256,7 @@ async fn unrelated_concurrent_updates_both_succeed() {
             name: "Flights".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };

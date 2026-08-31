@@ -2,7 +2,8 @@ use crate::schema::transaction_categories;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use zai_core::features::transaction_categories::models::{
-    CategoryRole, NewTransactionCategory, TransactionCategory, TransactionCategoryUpdate,
+    CategoryIcon, CategoryRole, NewTransactionCategory, TransactionCategory,
+    TransactionCategoryUpdate,
 };
 
 #[derive(AsChangeset)]
@@ -18,6 +19,8 @@ pub struct TransactionCategoryRowUpdate {
     pub color: Option<String>,
     pub role: String,
     pub updated_at: NaiveDateTime,
+    #[diesel(treat_none_as_null = true)]
+    pub icon: Option<String>,
 }
 
 #[derive(Queryable, Identifiable, Insertable, Selectable, PartialEq, Debug, Clone)]
@@ -36,6 +39,7 @@ pub struct TransactionCategoryRow {
     #[diesel(skip_insertion)]
     pub updated_at: NaiveDateTime,
     pub deleted_at: Option<NaiveDateTime>,
+    pub icon: Option<String>,
 }
 
 impl TryFrom<TransactionCategoryRow> for TransactionCategory {
@@ -46,12 +50,20 @@ impl TryFrom<TransactionCategoryRow> for TransactionCategory {
             zai_core::Error::Repository(format!("Invalid category role: {}", value.role))
         })?;
 
+        let icon = match value.icon.as_deref() {
+            None | Some("") => None,
+            Some(raw) => Some(raw.parse::<CategoryIcon>().map_err(|_| {
+                zai_core::Error::Repository(format!("Invalid category icon: {raw}"))
+            })?),
+        };
+
         Ok(Self {
             id: value.id,
             parent_id: value.parent_id,
             name: value.name,
             description: value.description,
             color: value.color,
+            icon,
             role,
             parent: None,
         })
@@ -71,6 +83,7 @@ impl From<NewTransactionCategory> for TransactionCategoryRow {
             created_at: now,
             updated_at: now,
             deleted_at: None,
+            icon: value.icon.map(|icon| icon.to_string()),
         }
     }
 }
@@ -84,6 +97,7 @@ impl From<TransactionCategoryUpdate> for TransactionCategoryRowUpdate {
             color: value.color,
             role: value.role.unwrap_or_default().to_string(),
             updated_at: chrono::Utc::now().naive_utc(),
+            icon: value.icon.map(|icon| icon.to_string()),
         }
     }
 }

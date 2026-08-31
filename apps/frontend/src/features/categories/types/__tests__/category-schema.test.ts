@@ -38,4 +38,28 @@ describe("categorySchema wire decode", () => {
     expect(parsed.color).toBeNull();
     expect(parsed.parent?.color).toBe("#C55B26");
   });
+
+  it("accepts selected icons and coerces unknown icons to null", () => {
+    const parsed = categorySchema.parse({
+      id: "root",
+      parentId: null,
+      name: "Food",
+      description: null,
+      color: "#C32828",
+      icon: "food",
+      role: "spending",
+      parent: null,
+    });
+
+    expect(parsed.icon).toBe("food");
+    expect(
+      categorySchema.parse({
+        id: "root",
+        parentId: null,
+        name: "Food",
+        role: "spending",
+        icon: "spaceship",
+      }).icon,
+    ).toBeNull();
+  });
 });

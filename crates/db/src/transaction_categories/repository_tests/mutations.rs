@@ -10,6 +10,7 @@ async fn test_create_category() {
         parent_id: None,
         description: Some("Descrizione test".to_string()),
         color: Some("#FF0000".to_string()),
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -32,6 +33,7 @@ async fn test_update_category() {
         parent_id: None,
         description: None,
         color: Some("#D31212".to_string()),
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -43,6 +45,7 @@ async fn test_update_category() {
         parent_id: None,
         description: Some("Updated description".to_string()),
         color: Some("#3C99F6".to_string()),
+        icon: None,
         role: None,
         confirm_budget_impact: false,
     };
@@ -68,6 +71,7 @@ async fn updating_a_root_role_updates_child_effective_roles() {
             parent_id: None,
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Income),
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -79,6 +83,7 @@ async fn updating_a_root_role_updates_child_effective_roles() {
             parent_id: Some(parent.id.clone()),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Income),
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -91,6 +96,7 @@ async fn updating_a_root_role_updates_child_effective_roles() {
         parent_id: None,
         description: None,
         color: None,
+        icon: None,
         role: Some(CategoryRole::Spending),
         confirm_budget_impact: false,
     })
@@ -114,6 +120,7 @@ async fn update_category_promotes_child_to_root_in_database() {
             parent_id: None,
             description: None,
             color: Some("#D31212".to_string()),
+            icon: None,
             role: Some(CategoryRole::Spending),
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -125,6 +132,7 @@ async fn update_category_promotes_child_to_root_in_database() {
             parent_id: Some(parent.id.clone()),
             description: None,
             color: Some("#DB1313".to_string()),
+            icon: None,
             role: None,
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -138,6 +146,7 @@ async fn update_category_promotes_child_to_root_in_database() {
             parent_id: None,
             description: None,
             color: Some("#AB63F2".to_string()),
+            icon: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         })
@@ -159,6 +168,7 @@ async fn update_category_clears_root_color_in_database() {
             parent_id: None,
             description: None,
             color: Some("#D31212".to_string()),
+            icon: None,
             role: Some(CategoryRole::Spending),
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -172,6 +182,7 @@ async fn update_category_clears_root_color_in_database() {
             parent_id: None,
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         })
@@ -193,6 +204,7 @@ async fn update_category_clears_description_in_database() {
             parent_id: None,
             description: Some("Original description".to_string()),
             color: Some("#D31212".to_string()),
+            icon: None,
             role: Some(CategoryRole::Spending),
             id: Some(Uuid::new_v4().to_string()),
         })
@@ -206,6 +218,7 @@ async fn update_category_clears_description_in_database() {
             parent_id: None,
             description: None,
             color: Some("#D31212".to_string()),
+            icon: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         })
@@ -217,4 +230,46 @@ async fn update_category_clears_description_in_database() {
         repo.get_category(&created.id).await.unwrap().description,
         None
     );
+}
+
+#[tokio::test]
+async fn create_and_update_category_persists_selected_icon() {
+    let temp_db = TempDb::new();
+    let repo = setup_test_repo(temp_db.path());
+
+    let created = repo
+        .create_category(NewTransactionCategory {
+            name: "Food".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            icon: Some(CategoryIcon::Food),
+            role: Some(CategoryRole::Spending),
+            id: Some(Uuid::new_v4().to_string()),
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(created.icon, Some(CategoryIcon::Food));
+    assert_eq!(
+        repo.get_category(&created.id).await.unwrap().icon,
+        Some(CategoryIcon::Food)
+    );
+
+    let updated = repo
+        .update_category(TransactionCategoryUpdate {
+            id: created.id.clone(),
+            name: "Food".to_string(),
+            parent_id: None,
+            description: None,
+            color: None,
+            icon: None,
+            role: Some(CategoryRole::Spending),
+            confirm_budget_impact: false,
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(updated.icon, None);
+    assert_eq!(repo.get_category(&created.id).await.unwrap().icon, None);
 }

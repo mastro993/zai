@@ -10,6 +10,7 @@ async fn test_get_categories() {
         parent_id: None,
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -18,6 +19,7 @@ async fn test_get_categories() {
         parent_id: None,
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -26,6 +28,7 @@ async fn test_get_categories() {
         parent_id: None,
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -55,6 +58,7 @@ async fn test_get_category() {
         parent_id: None,
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -65,6 +69,7 @@ async fn test_get_category() {
         parent_id: Some(parent.id.clone()),
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -86,6 +91,7 @@ async fn test_get_categories_by_parent_id() {
         parent_id: None,
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -96,6 +102,7 @@ async fn test_get_categories_by_parent_id() {
         parent_id: Some(parent.id.clone()),
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -104,6 +111,7 @@ async fn test_get_categories_by_parent_id() {
         parent_id: None,
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -112,6 +120,7 @@ async fn test_get_categories_by_parent_id() {
         parent_id: Some(parent.id.clone()),
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };

@@ -14,7 +14,13 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-import { getCategoryDisplayColor, getCategoryRoleLabel, isCategoryColor } from "../lib/category";
+import {
+  getCategoryDisplayColor,
+  getCategoryDisplayIcon,
+  getCategoryRoleLabel,
+  isCategoryColor,
+} from "../lib/category";
+import { DEFAULT_CATEGORY_ICON } from "../lib/category-icon";
 import type { CategoryFormMode } from "../types/category-types";
 import {
   DEFAULT_CATEGORY_COLOR,
@@ -24,6 +30,7 @@ import {
 } from "../types/model";
 import { CategoryBadge } from "./category-badge";
 import { CategoryColorPicker } from "./category-color-picker";
+import { CategoryIconPicker } from "./category-icon-picker";
 import { CategoryParentCombobox } from "./category-parent-combobox";
 import { CategoryRoleCombobox } from "./category-role-combobox";
 
@@ -34,6 +41,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       parentId: "",
       description: "",
       color: DEFAULT_CATEGORY_COLOR,
+      icon: null,
       role: "spending",
     };
   }
@@ -44,6 +52,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       parentId: mode.parentId,
       description: "",
       color: undefined,
+      icon: null,
       role: undefined,
     };
   }
@@ -53,6 +62,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
     parentId: mode.category.parentId ?? "",
     description: mode.category.description ?? "",
     color: isCategoryColor(mode.category.color) ? mode.category.color : DEFAULT_CATEGORY_COLOR,
+    icon: mode.category.icon ?? null,
     role: mode.category.parentId ? undefined : mode.category.role,
   };
 };
@@ -61,23 +71,20 @@ const getFormCopy = (mode: CategoryFormMode) => {
   if (mode.type === "edit") {
     return {
       title: "Edit category",
-      description:
-        "Update the name, role, parent, or color. Names must stay unique at the same level.",
+      description: "Names must be unique among siblings.",
     };
   }
 
   if (mode.type === "create-child") {
     return {
       title: "New subcategory",
-      description:
-        "Subcategories inherit their parent color in lists and reports. Pick a clear, specific name.",
+      description: "Names must be unique under this parent.",
     };
   }
 
   return {
     title: "New category",
-    description:
-      "Choose whether this category tracks spending or income. Names must be unique among other root categories.",
+    description: "Names must be unique among root categories.",
   };
 };
 
@@ -109,8 +116,22 @@ function CategoryFormDrawer({
     defaultValues: getFormDefaults(mode),
   });
   const parentId = useWatch({ control: form.control, name: "parentId" });
+  const selectedIcon = useWatch({ control: form.control, name: "icon" });
+  const selectedColor = useWatch({ control: form.control, name: "color" });
   const isChildCategory = Boolean(parentId);
   const parentCategory = parentId ? categoryById.get(parentId) : undefined;
+  const effectiveIcon =
+    selectedIcon ??
+    (isChildCategory
+      ? parentCategory
+        ? getCategoryDisplayIcon(parentCategory)
+        : DEFAULT_CATEGORY_ICON
+      : DEFAULT_CATEGORY_ICON);
+  const effectiveColor = isChildCategory
+    ? parentCategory
+      ? getCategoryDisplayColor(parentCategory)
+      : DEFAULT_CATEGORY_COLOR
+    : (selectedColor ?? DEFAULT_CATEGORY_COLOR);
   const { title, description } = getFormCopy(mode);
   const { errors, isSubmitting } = form.formState;
   const nameErrorId = "category-name-error";
@@ -137,9 +158,6 @@ function CategoryFormDrawer({
               placeholder="Groceries"
               {...form.register("name")}
             />
-            <FieldDescription>
-              Required. Shown in transaction lists and category reports.
-            </FieldDescription>
             <FieldError id={nameErrorId}>{errors.name?.message}</FieldError>
           </Field>
 
@@ -151,7 +169,6 @@ function CategoryFormDrawer({
                   {lockedParent.name}
                 </CategoryBadge>
               </div>
-              <FieldDescription>Subcategories stay under this parent.</FieldDescription>
               <input type="hidden" {...form.register("parentId")} />
             </Field>
           ) : canChooseParent && rootOptions.length > 0 ? (
@@ -199,9 +216,7 @@ function CategoryFormDrawer({
                   />
                 )}
               />
-              <FieldDescription>
-                Leave as none for a root category, or nest one level under an existing root.
-              </FieldDescription>
+              <FieldDescription>Only one nesting level.</FieldDescription>
             </Field>
           ) : null}
 
@@ -213,9 +228,6 @@ function CategoryFormDrawer({
                   parentCategory?.role ?? (mode.type === "edit" ? mode.category.role : "spending"),
                 )}
               </div>
-              <FieldDescription>
-                Child categories inherit their root category role.
-              </FieldDescription>
             </Field>
           ) : (
             <Field data-invalid={Boolean(errors.role)}>
@@ -234,9 +246,6 @@ function CategoryFormDrawer({
                   />
                 )}
               />
-              <FieldDescription>
-                Income categories identify genuine income; spending categories can include refunds.
-              </FieldDescription>
               <FieldError>{errors.role?.message}</FieldError>
             </Field>
           )}
@@ -245,10 +254,35 @@ function CategoryFormDrawer({
             <FieldLabel htmlFor="category-description">Description</FieldLabel>
             <Textarea
               id="category-description"
-              placeholder="Optional note for your own reference"
+              placeholder="Optional"
               className="min-h-16 resize-y"
               {...form.register("description")}
             />
+          </Field>
+
+          <Field>
+            <FieldLabel>Icon</FieldLabel>
+            <Controller
+              control={form.control}
+              name="icon"
+              render={({ field }) => (
+                <CategoryIconPicker
+                  value={field.value ?? null}
+                  effectiveIcon={effectiveIcon}
+                  effectiveColor={effectiveColor}
+                  isChild={isChildCategory}
+                  onChange={(icon) =>
+                    field.onChange(icon, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  }
+                />
+              )}
+            />
+            {isChildCategory ? null : (
+              <FieldDescription>Children inherit this unless they pick their own.</FieldDescription>
+            )}
           </Field>
 
           {!isChildCategory ? (

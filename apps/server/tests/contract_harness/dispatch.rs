@@ -152,6 +152,9 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
                     .get("color")
                     .and_then(Value::as_str)
                     .map(str::to_string),
+                icon: body
+                    .get("icon")
+                    .and_then(|value| serde_json::from_value(value.clone()).ok()),
                 role: body
                     .get("role")
                     .and_then(|value| serde_json::from_value(value.clone()).ok()),

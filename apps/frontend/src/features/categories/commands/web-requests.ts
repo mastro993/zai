@@ -4,7 +4,7 @@ import { CommandError } from "@/commands/errors";
 import type { WebRequestSpec } from "@/commands/web-request-spec";
 
 import type { CategoryBackendImportPayload } from "../lib/category-import";
-import type { CategoryChildrenDeleteStrategy, CategoryRole } from "../types/model";
+import type { CategoryChildrenDeleteStrategy, CategoryIcon, CategoryRole } from "../types/model";
 
 export interface GetCategoriesArgs {
   parentId?: string | null;
@@ -20,6 +20,7 @@ export interface CategoryPayload {
   name: string;
   description?: string | null;
   color?: string | null;
+  icon?: CategoryIcon | null;
   role?: CategoryRole | null;
   confirmBudgetImpact?: boolean;
 }

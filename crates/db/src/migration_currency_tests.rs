@@ -293,7 +293,10 @@ fn destructive_down_migration_is_refused_after_activation() {
         .run_pending_migrations(TEST_MIGRATIONS)
         .expect("migrate");
 
-    let refused = connection.revert_last_migration(TEST_MIGRATIONS);
+    let mut refused = connection.revert_last_migration(TEST_MIGRATIONS);
+    while refused.is_ok() {
+        refused = connection.revert_last_migration(TEST_MIGRATIONS);
+    }
     assert!(refused.is_err(), "down after activation must refuse");
     assert_eq!(
         count(

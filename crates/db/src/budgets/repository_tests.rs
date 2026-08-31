@@ -87,6 +87,7 @@ async fn create_budget_uses_existing_month_transactions_and_materializes_project
             name: "Groceries".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -135,6 +136,7 @@ async fn spending_budget_counts_refunds_but_ignores_income_category_income() {
             name: "Shopping".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -146,6 +148,7 @@ async fn spending_budget_counts_refunds_but_ignores_income_category_income() {
             name: "Salary".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Income),
         })
         .await
@@ -245,6 +248,7 @@ async fn category_scope_includes_children_and_canonicalizes_redundant_selection(
             name: "Groceries".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -256,6 +260,7 @@ async fn category_scope_includes_children_and_canonicalizes_redundant_selection(
             name: "Produce".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: None,
         })
         .await
@@ -267,6 +272,7 @@ async fn category_scope_includes_children_and_canonicalizes_redundant_selection(
             name: "Travel".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -321,6 +327,7 @@ async fn measurement_mode_applies_signed_income_rules_to_empty_scope() {
             name: "Shopping".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -332,6 +339,7 @@ async fn measurement_mode_applies_signed_income_rules_to_empty_scope() {
             name: "Salary".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Income),
         })
         .await

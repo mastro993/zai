@@ -10,8 +10,8 @@ use axum::{
 use serde::Deserialize;
 use zai_app::ServiceContext;
 use zai_core::features::transaction_categories::models::{
-    CategoryChildrenDeleteStrategy, CategoryDeletionPreview, CategoryRole, NewTransactionCategory,
-    TransactionCategory, TransactionCategoryUpdate,
+    CategoryChildrenDeleteStrategy, CategoryDeletionPreview, CategoryIcon, CategoryRole,
+    NewTransactionCategory, TransactionCategory, TransactionCategoryUpdate,
 };
 
 use crate::api::error::{bad_request, command_error};
@@ -38,6 +38,8 @@ pub struct UpdateCategoryRequest {
     pub name: String,
     pub description: Option<String>,
     pub color: Option<String>,
+    #[serde(default)]
+    pub icon: Option<CategoryIcon>,
     pub role: Option<CategoryRole>,
     #[serde(default)]
     pub confirm_budget_impact: bool,
@@ -128,6 +130,7 @@ pub async fn update_category(
         name: body.name,
         description: body.description,
         color: body.color,
+        icon: body.icon,
         role: body.role,
         confirm_budget_impact: body.confirm_budget_impact,
     };

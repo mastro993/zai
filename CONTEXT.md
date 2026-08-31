@@ -240,6 +240,17 @@ the HEX color's hue and derives theme-aware badge colors from it; an achromatic
 HEX color produces the neutral badge treatment.
 _Avoid_: Effective category hue in user-facing copy
 
+**Category icon**:
+A user-selected symbol assigned to a category from Zai's curated icon catalogue.
+A child category may select its own icon or inherit its root category's icon.
+_Avoid_: Transaction category icon, arbitrary icon
+
+**Effective category icon**:
+The symbol used to present a category. A root category without a selected icon
+uses Zai's default category icon; a child category uses its selected icon when
+present, otherwise it inherits its root category's effective icon.
+_Avoid_: Hugeicon in user-facing copy
+
 **Category path**:
 The category's identity in the category hierarchy. A root category's path is its
 own name; a child category's path is its root category name plus its own name.

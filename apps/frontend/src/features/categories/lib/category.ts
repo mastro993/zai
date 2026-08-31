@@ -5,6 +5,7 @@ import {
   type CategoryRole,
   type TransactionCategory,
 } from "../types/model";
+import { DEFAULT_CATEGORY_ICON, type CategoryIcon } from "./category-icon";
 
 export const getCategoryDisplayColor = (category: TransactionCategory) => {
   if (category.parentId) {
@@ -12,6 +13,18 @@ export const getCategoryDisplayColor = (category: TransactionCategory) => {
   }
 
   return category.color ?? DEFAULT_CATEGORY_COLOR;
+};
+
+export const getCategoryDisplayIcon = (category: TransactionCategory): CategoryIcon => {
+  if (category.icon) {
+    return category.icon;
+  }
+
+  if (category.parentId) {
+    return category.parent?.icon ?? DEFAULT_CATEGORY_ICON;
+  }
+
+  return DEFAULT_CATEGORY_ICON;
 };
 
 export const getCategoryDisplayName = (

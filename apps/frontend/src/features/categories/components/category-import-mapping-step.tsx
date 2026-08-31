@@ -229,6 +229,12 @@ export function CategoryImportMappingStep({
             onChange={(value) => onMappingChange("color", value)}
           />
           <ColumnSelect
+            label="Icon column"
+            value={mapping.icon}
+            headers={headers}
+            onChange={(value) => onMappingChange("icon", value)}
+          />
+          <ColumnSelect
             label="Description column"
             value={mapping.description}
             headers={headers}

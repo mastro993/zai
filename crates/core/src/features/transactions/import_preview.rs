@@ -420,6 +420,7 @@ fn resolve_category_id(
                 name: parent_name.to_string(),
                 description: None,
                 color: None,
+                icon: None,
                 role: None,
             });
             id
@@ -440,6 +441,7 @@ fn resolve_category_id(
             name: name.to_string(),
             description: None,
             color: None,
+            icon: None,
             role: None,
         });
         return Ok(Some(id));
@@ -456,6 +458,7 @@ fn resolve_category_id(
         name: name.to_string(),
         description: None,
         color: None,
+        icon: None,
         role: None,
     });
     Ok(Some(id))
