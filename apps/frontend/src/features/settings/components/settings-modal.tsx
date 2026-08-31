@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from "react";
-import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { useRouter, useRouterState } from "@tanstack/react-router";
 import { Cancel01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
@@ -7,21 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import {
   Dialog,
   DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { resolveScreenBreadcrumbs } from "@/lib/navigation";
 
 import { SettingsNav } from "./settings-nav";
 import { useSettingsReturnHrefValue } from "../hooks/use-settings-return-href";
@@ -31,61 +22,6 @@ interface SettingsModalProps {
   pathname?: string;
   onNavigate?: (pathname: string) => void;
   onClose?: () => void;
-}
-
-function SettingsModalBreadcrumbs({
-  pathname,
-  onNavigate,
-}: {
-  pathname: string;
-  onNavigate?: (pathname: string) => void;
-}) {
-  const crumbs = resolveScreenBreadcrumbs(pathname);
-
-  return (
-    <Breadcrumb className="min-w-0">
-      <BreadcrumbList>
-        {crumbs.map((crumb, index) => {
-          const isLast = index === crumbs.length - 1;
-          const href = crumb.href;
-          const crumbKey = href ?? `current:${crumb.label}`;
-
-          return (
-            <span key={crumbKey} className="contents">
-              <BreadcrumbItem
-                className={
-                  index < crumbs.length - 1 ? "max-w-40 truncate sm:max-w-none" : undefined
-                }
-              >
-                {isLast || !href ? (
-                  <BreadcrumbPage className="truncate">{crumb.label}</BreadcrumbPage>
-                ) : (
-                  <BreadcrumbLink
-                    render={
-                      <Link
-                        to={href}
-                        preload={onNavigate ? false : "intent"}
-                        onClick={(event) => {
-                          if (onNavigate) {
-                            event.preventDefault();
-                            onNavigate(href);
-                          }
-                        }}
-                      />
-                    }
-                    className="truncate"
-                  >
-                    {crumb.label}
-                  </BreadcrumbLink>
-                )}
-              </BreadcrumbItem>
-              {!isLast ? <BreadcrumbSeparator /> : null}
-            </span>
-          );
-        })}
-      </BreadcrumbList>
-    </Breadcrumb>
-  );
 }
 
 export function SettingsModal({
@@ -137,7 +73,7 @@ export function SettingsModal({
               <FieldLabel htmlFor={searchId} className="sr-only">
                 Search settings
               </FieldLabel>
-              <InputGroup>
+              <InputGroup className="bg-background">
                 <InputGroupAddon align="inline-start">
                   <HugeiconsIcon icon={Search01Icon} strokeWidth={2} aria-hidden="true" />
                 </InputGroupAddon>
@@ -155,24 +91,16 @@ export function SettingsModal({
         >
           <header
             data-slot="settings-modal-header"
-            className="relative z-30 flex h-12 shrink-0 items-center border-b border-border bg-background text-foreground"
+            className="relative z-30 flex h-12 shrink-0 items-center justify-end bg-background px-4 text-foreground"
           >
-            <div className="flex h-12 min-w-0 flex-1 items-center gap-2 px-4">
-              <div data-slot="settings-modal-breadcrumbs" className="min-w-0 shrink-0">
-                <SettingsModalBreadcrumbs pathname={pathname} onNavigate={onNavigate} />
-              </div>
-            </div>
-            <div
-              data-slot="settings-modal-header-actions"
-              className="flex shrink-0 items-center justify-end px-4"
-            >
+            <div data-slot="settings-modal-header-actions" className="flex shrink-0 items-center">
               <DialogClose render={<Button variant="ghost" size="icon-sm" />}>
                 <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
                 <span className="sr-only">Close</span>
               </DialogClose>
             </div>
           </header>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col px-4">{children}</div>
         </div>
       </DialogContent>
     </Dialog>

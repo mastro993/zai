@@ -18,7 +18,7 @@ export function SettingsNav({ pathname, onNavigate }: SettingsNavProps) {
     >
       {settingsGroups.map((group) => (
         <div key={group.label} className="contents md:flex md:flex-col md:gap-1">
-          <p className="hidden px-2 text-xs font-medium text-muted-foreground md:block">
+          <p className="hidden px-2 text-xs font-medium text-muted-foreground/60 md:block">
             {group.label}
           </p>
           <ul className="contents md:flex md:flex-col md:gap-1">

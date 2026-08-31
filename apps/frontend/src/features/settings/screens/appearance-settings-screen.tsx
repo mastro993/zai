@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/field";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-import { SettingsSectionHeader } from "../components/settings-section-header";
+import { SettingsSection, SettingsSectionHeader } from "../components/settings-section";
 
 const THEME_MODES = [
   { value: "light", label: "Light" },
@@ -32,10 +32,12 @@ const isThemeMode = (value: string | undefined): value is ThemeMode =>
 
 export function AppearanceSettingsScreen() {
   return (
-    <ScreenBase>
-      <FieldGroup className="max-w-3xl gap-6">
-        <SettingsSectionHeader description="Theme for this device. System follows the OS preference." />
-        <ThemeModeSetting />
+    <ScreenBase contentClassName="pt-4">
+      <FieldGroup className="max-w-3xl gap-8">
+        <SettingsSectionHeader title="Appearance" />
+        <SettingsSection>
+          <ThemeModeSetting />
+        </SettingsSection>
       </FieldGroup>
     </ScreenBase>
   );
@@ -58,10 +60,7 @@ function ThemeModeSetting() {
       : `${THEME_LABELS[activeTheme]} mode is pinned for this device.`;
 
   return (
-    <Field
-      orientation="responsive"
-      className="items-start border border-border p-4 @md/field-group:items-center"
-    >
+    <Field orientation="responsive" className="items-start p-4 @md/field-group:items-center">
       <FieldContent>
         <FieldTitle id="appearance-title">Theme</FieldTitle>
         <FieldDescription id="appearance-description">{description}</FieldDescription>
