@@ -10,6 +10,7 @@ async fn test_create_category_preserves_child_color() {
         parent_id: None,
         description: None,
         color: Some("#D31212".to_string()),
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -20,6 +21,7 @@ async fn test_create_category_preserves_child_color() {
         parent_id: Some(created_parent.id.clone()),
         description: None,
         color: Some("#3C99F6".to_string()),
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -38,6 +40,7 @@ async fn test_create_category_preserves_missing_child_color() {
         parent_id: None,
         description: None,
         color: Some("#D31212".to_string()),
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -48,6 +51,7 @@ async fn test_create_category_preserves_missing_child_color() {
         parent_id: Some(created_parent.id),
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -66,6 +70,7 @@ async fn test_update_category_preserves_child_color() {
         parent_id: None,
         description: None,
         color: Some("#D31212".to_string()),
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -76,6 +81,7 @@ async fn test_update_category_preserves_child_color() {
         parent_id: Some(created_parent.id.clone()),
         description: None,
         color: Some("#DB1313".to_string()),
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -87,6 +93,7 @@ async fn test_update_category_preserves_child_color() {
         parent_id: Some(created_parent.id),
         description: None,
         color: Some("#AB63F2".to_string()),
+        icon: None,
         role: None,
         confirm_budget_impact: false,
     };
@@ -106,6 +113,7 @@ async fn test_update_category_keeps_root_color_when_parent_is_removed() {
         parent_id: None,
         description: None,
         color: Some("#D31212".to_string()),
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -116,6 +124,7 @@ async fn test_update_category_keeps_root_color_when_parent_is_removed() {
         parent_id: Some(created_parent.id.clone()),
         description: None,
         color: Some("#DB1313".to_string()),
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -127,6 +136,7 @@ async fn test_update_category_keeps_root_color_when_parent_is_removed() {
         parent_id: None,
         description: None,
         color: Some("#AB63F2".to_string()),
+        icon: None,
         role: None,
         confirm_budget_impact: false,
     };
@@ -146,6 +156,7 @@ async fn test_sibling_name_exists_compares_trimmed_names_case_insensitively() {
         parent_id: None,
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     })

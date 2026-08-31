@@ -187,8 +187,36 @@ async fn create_root_category_returns_created_category() {
     assert_eq!(body["description"], "Meals");
     assert_eq!(body["color"], "#FF0000");
     assert_eq!(body["role"], "spending");
+    assert!(body["icon"].is_null());
     assert!(body["id"].is_string());
     assert!(body["parentId"].is_null());
+}
+
+#[tokio::test]
+async fn create_category_persists_selected_icon() {
+    let app = CategoryTestApp::new();
+    let (status, body) = app
+        .post_json(
+            "/api/categories",
+            json!({ "name": "Food", "role": "spending", "icon": "food" }),
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(body["icon"], "food");
+}
+
+#[tokio::test]
+async fn create_category_rejects_unknown_icon() {
+    let app = CategoryTestApp::new();
+    let (status, _body) = app
+        .post_json(
+            "/api/categories",
+            json!({ "name": "Food", "role": "spending", "icon": "spaceship" }),
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]

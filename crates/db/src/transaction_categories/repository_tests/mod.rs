@@ -18,8 +18,8 @@ use zai_core::features::budgets::models::{
 };
 use zai_core::features::budgets::traits::BudgetsRepositoryTrait;
 use zai_core::features::transaction_categories::models::{
-    CategoryChildrenDeleteStrategy, CategoryRole, NewTransactionCategory, TransactionCategory,
-    TransactionCategoryUpdate,
+    CategoryChildrenDeleteStrategy, CategoryIcon, CategoryRole, NewTransactionCategory,
+    TransactionCategory, TransactionCategoryUpdate,
 };
 use zai_core::features::transactions::models::NewTransaction;
 

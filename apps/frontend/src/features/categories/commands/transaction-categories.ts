@@ -16,6 +16,7 @@ const toCategoryPayload = (values: CategoryFormValues): CategoryPayload => ({
   parentId: values.parentId || null,
   description: values.description || null,
   color: values.color ?? null,
+  icon: values.icon ?? null,
   role: values.parentId ? null : (values.role ?? null),
 });
 

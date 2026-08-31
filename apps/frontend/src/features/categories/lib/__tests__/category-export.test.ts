@@ -34,9 +34,9 @@ describe("category export", () => {
 
     expect(csv).toBe(
       [
-        "name,parent_name,color,description",
-        '"Food, ""Home""",,#C55B26,"Monthly\nneeds"',
-        'Groceries,"Food, ""Home""",,',
+        "name,parent_name,color,description,icon",
+        '"Food, ""Home""",,#C55B26,"Monthly\nneeds",',
+        'Groceries,"Food, ""Home""",,,',
       ].join("\n"),
     );
   });
@@ -53,7 +53,7 @@ describe("category export", () => {
     };
 
     expect(toCategoryExportCsv([root])).toBe(
-      ["name,parent_name,color,description", '"\t=1+1",,#C55B26,"\t@SUM(A1)"'].join("\n"),
+      ["name,parent_name,color,description,icon", '"\t=1+1",,#C55B26,"\t@SUM(A1)",'].join("\n"),
     );
   });
 });

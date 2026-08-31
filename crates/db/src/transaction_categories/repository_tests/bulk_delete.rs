@@ -10,6 +10,7 @@ async fn test_delete_categories() {
         parent_id: None,
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };
@@ -20,6 +21,7 @@ async fn test_delete_categories() {
         parent_id: None,
         description: None,
         color: None,
+        icon: None,
         role: None,
         id: Some(Uuid::new_v4().to_string()),
     };

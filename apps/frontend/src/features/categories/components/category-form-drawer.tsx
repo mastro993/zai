@@ -14,7 +14,13 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-import { getCategoryDisplayColor, getCategoryRoleLabel, isCategoryColor } from "../lib/category";
+import {
+  getCategoryDisplayColor,
+  getCategoryDisplayIcon,
+  getCategoryRoleLabel,
+  isCategoryColor,
+} from "../lib/category";
+import { DEFAULT_CATEGORY_ICON } from "../lib/category-icon";
 import type { CategoryFormMode } from "../types/category-types";
 import {
   DEFAULT_CATEGORY_COLOR,
@@ -24,6 +30,7 @@ import {
 } from "../types/model";
 import { CategoryBadge } from "./category-badge";
 import { CategoryColorPicker } from "./category-color-picker";
+import { CategoryIconPicker } from "./category-icon-picker";
 import { CategoryParentCombobox } from "./category-parent-combobox";
 import { CategoryRoleCombobox } from "./category-role-combobox";
 
@@ -34,6 +41,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       parentId: "",
       description: "",
       color: DEFAULT_CATEGORY_COLOR,
+      icon: null,
       role: "spending",
     };
   }
@@ -44,6 +52,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
       parentId: mode.parentId,
       description: "",
       color: undefined,
+      icon: null,
       role: undefined,
     };
   }
@@ -53,6 +62,7 @@ const getFormDefaults = (mode: CategoryFormMode): CategoryFormValues => {
     parentId: mode.category.parentId ?? "",
     description: mode.category.description ?? "",
     color: isCategoryColor(mode.category.color) ? mode.category.color : DEFAULT_CATEGORY_COLOR,
+    icon: mode.category.icon ?? null,
     role: mode.category.parentId ? undefined : mode.category.role,
   };
 };
@@ -109,8 +119,22 @@ function CategoryFormDrawer({
     defaultValues: getFormDefaults(mode),
   });
   const parentId = useWatch({ control: form.control, name: "parentId" });
+  const selectedIcon = useWatch({ control: form.control, name: "icon" });
+  const selectedColor = useWatch({ control: form.control, name: "color" });
   const isChildCategory = Boolean(parentId);
   const parentCategory = parentId ? categoryById.get(parentId) : undefined;
+  const effectiveIcon =
+    selectedIcon ??
+    (isChildCategory
+      ? parentCategory
+        ? getCategoryDisplayIcon(parentCategory)
+        : DEFAULT_CATEGORY_ICON
+      : DEFAULT_CATEGORY_ICON);
+  const effectiveColor = isChildCategory
+    ? parentCategory
+      ? getCategoryDisplayColor(parentCategory)
+      : DEFAULT_CATEGORY_COLOR
+    : (selectedColor ?? DEFAULT_CATEGORY_COLOR);
   const { title, description } = getFormCopy(mode);
   const { errors, isSubmitting } = form.formState;
   const nameErrorId = "category-name-error";
@@ -240,6 +264,33 @@ function CategoryFormDrawer({
               <FieldError>{errors.role?.message}</FieldError>
             </Field>
           )}
+
+          <Field>
+            <FieldLabel>Icon</FieldLabel>
+            <Controller
+              control={form.control}
+              name="icon"
+              render={({ field }) => (
+                <CategoryIconPicker
+                  value={field.value ?? null}
+                  effectiveIcon={effectiveIcon}
+                  effectiveColor={effectiveColor}
+                  isChild={isChildCategory}
+                  onChange={(icon) =>
+                    field.onChange(icon, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  }
+                />
+              )}
+            />
+            <FieldDescription>
+              {isChildCategory
+                ? "Leave inherited, or pick an icon to override the parent."
+                : "Used as the category symbol. Children inherit this unless they override it."}
+            </FieldDescription>
+          </Field>
 
           <Field>
             <FieldLabel htmlFor="category-description">Description</FieldLabel>

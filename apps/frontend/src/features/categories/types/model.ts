@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { CATEGORY_ICONS, parseCategoryIcon } from "../lib/category-icon";
+
 export const CATEGORY_COLORS = [
   "#C32828",
   "#C39B28",
@@ -30,6 +32,18 @@ const categoryColorWireSchema = z.union([z.string(), z.null()]).transform((value
 });
 
 export const categoryRoleSchema = z.enum(CATEGORY_ROLES);
+export const categoryIconSchema = z.enum(CATEGORY_ICONS);
+
+const categoryIconWireSchema = z
+  .union([z.string(), z.null()])
+  .optional()
+  .transform((value) => {
+    if (value == null || value === "") {
+      return null;
+    }
+
+    return parseCategoryIcon(value);
+  });
 
 export const categoryFormSchema = z
   .object({
@@ -41,6 +55,10 @@ export const categoryFormSchema = z
       .regex(/^#[0-9a-f]{6}$/i)
       .nullable()
       .optional(),
+    icon: z
+      .union([categoryIconSchema, z.literal(""), z.null()])
+      .optional()
+      .transform((value) => (value ? value : null)),
     role: categoryRoleSchema.optional(),
   })
   .superRefine((values, context) => {
@@ -65,6 +83,7 @@ const categoryBaseSchema = z.object({
   name: z.string().min(1),
   description: nullableStringSchema,
   color: categoryColorWireSchema.optional(),
+  icon: categoryIconWireSchema.optional(),
   role: categoryRoleSchema,
 });
 
@@ -91,6 +110,7 @@ export const categoryDeletionPreviewSchema = z.object({
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 export type CategoryColor = string | null;
 export type CategoryRole = z.infer<typeof categoryRoleSchema>;
+export type { CategoryIcon } from "../lib/category-icon";
 export type TransactionCategory = z.infer<typeof categorySchema>;
 export type CategoryChildrenDeleteStrategy = "block" | "promote" | "delete";
 export type CategoryDeletionPreview = z.infer<typeof categoryDeletionPreviewSchema>;

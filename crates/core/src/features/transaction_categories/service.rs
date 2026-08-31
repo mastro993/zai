@@ -424,6 +424,7 @@ mod tests {
                 name: new_category.name,
                 description: new_category.description,
                 color: new_category.color,
+                icon: new_category.icon,
                 role: new_category.role.unwrap_or_default(),
                 parent: None,
             };
@@ -441,6 +442,7 @@ mod tests {
                 name: updated_category.name,
                 description: updated_category.description,
                 color: updated_category.color,
+                icon: updated_category.icon,
                 role: updated_category.role.unwrap_or_default(),
                 parent: None,
             };
@@ -487,6 +489,7 @@ mod tests {
                     name: category.name,
                     description: category.description,
                     color: category.color,
+                    icon: category.icon,
                     role: category.role.unwrap_or_default(),
                     parent: None,
                 })
@@ -502,6 +505,7 @@ mod tests {
             name: "Parent".to_string(),
             description: None,
             color: Some("#FFFFFF".to_string()),
+            icon: None,
             role: CategoryRole::Spending,
             parent: None,
         }]));
@@ -514,6 +518,7 @@ mod tests {
                 parent_id: Some("parent".to_string()),
                 description: None,
                 color: Some("#000000".to_string()),
+                icon: None,
                 role: None,
             })
             .await
@@ -530,6 +535,7 @@ mod tests {
             name: "Salary".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: CategoryRole::Income,
             parent: None,
         }]));
@@ -542,6 +548,7 @@ mod tests {
                 parent_id: Some("parent".to_string()),
                 description: None,
                 color: None,
+                icon: None,
                 role: None,
             })
             .await
@@ -559,6 +566,7 @@ mod tests {
             parent_id: None,
             description: Some("Parent description".to_string()),
             color: Some("#D31212".to_string()),
+            icon: None,
             role: Some(CategoryRole::Spending),
         };
         let child = NewTransactionCategory {
@@ -567,6 +575,7 @@ mod tests {
             parent_id: Some("parent1".to_string()),
             description: Some("Child description".to_string()),
             color: None,
+            icon: None,
             role: None,
         };
 
@@ -594,6 +603,7 @@ mod tests {
             name: "Food".to_string(),
             description: Some("Existing wins".to_string()),
             color: Some("#C92A2A".to_string()),
+            icon: None,
             role: CategoryRole::Spending,
             parent: None,
         };
@@ -603,6 +613,7 @@ mod tests {
             name: "Groceries".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: CategoryRole::Spending,
             parent: None,
         };
@@ -620,6 +631,7 @@ mod tests {
                     parent_id: None,
                     description: Some("Imported ignored".to_string()),
                     color: Some("#FFFFFF".to_string()),
+                    icon: None,
                     role: Some(CategoryRole::Income),
                 },
                 NewTransactionCategory {
@@ -628,6 +640,7 @@ mod tests {
                     parent_id: Some("incoming-root".to_string()),
                     description: None,
                     color: None,
+                    icon: None,
                     role: None,
                 },
                 NewTransactionCategory {
@@ -636,6 +649,7 @@ mod tests {
                     parent_id: Some("incoming-root".to_string()),
                     description: None,
                     color: Some("#000000".to_string()),
+                    icon: None,
                     role: None,
                 },
             ])
@@ -656,6 +670,7 @@ mod tests {
             name: "Income".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: CategoryRole::Income,
             parent: None,
         }]));
@@ -668,6 +683,7 @@ mod tests {
                 parent_id: Some("existing-income-root".to_string()),
                 description: None,
                 color: None,
+                icon: None,
                 role: None,
             }])
             .await
@@ -686,6 +702,7 @@ mod tests {
                 name: "Income".to_string(),
                 description: None,
                 color: None,
+                icon: None,
                 role: CategoryRole::Income,
                 parent: None,
             },
@@ -695,6 +712,7 @@ mod tests {
                 name: "Spending".to_string(),
                 description: None,
                 color: None,
+                icon: None,
                 role: CategoryRole::Spending,
                 parent: None,
             },
@@ -709,6 +727,7 @@ mod tests {
                     parent_id: None,
                     description: None,
                     color: None,
+                    icon: None,
                     role: Some(CategoryRole::Income),
                 },
                 NewTransactionCategory {
@@ -717,6 +736,7 @@ mod tests {
                     parent_id: Some("spending-root".to_string()),
                     description: None,
                     color: None,
+                    icon: None,
                     role: None,
                 },
             ])
@@ -740,6 +760,7 @@ mod tests {
                     parent_id: None,
                     description: None,
                     color: Some("#C92A2A".to_string()),
+                    icon: None,
                     role: Some(CategoryRole::Spending),
                 },
                 NewTransactionCategory {
@@ -748,6 +769,7 @@ mod tests {
                     parent_id: None,
                     description: Some("Duplicate ignored".to_string()),
                     color: Some("#FFFFFF".to_string()),
+                    icon: None,
                     role: Some(CategoryRole::Spending),
                 },
                 NewTransactionCategory {
@@ -756,6 +778,7 @@ mod tests {
                     parent_id: Some("root-1".to_string()),
                     description: None,
                     color: None,
+                    icon: None,
                     role: None,
                 },
                 NewTransactionCategory {
@@ -764,6 +787,7 @@ mod tests {
                     parent_id: Some("root-2".to_string()),
                     description: Some("Duplicate ignored".to_string()),
                     color: None,
+                    icon: None,
                     role: None,
                 },
             ])
@@ -797,6 +821,7 @@ mod tests {
                     parent_id: None,
                     description: None,
                     color: Some("#C92A2A".to_string()),
+                    icon: None,
                     role: Some(CategoryRole::Spending),
                 },
                 NewTransactionCategory {
@@ -805,6 +830,7 @@ mod tests {
                     parent_id: Some(client_root_id.to_string()),
                     description: None,
                     color: None,
+                    icon: None,
                     role: None,
                 },
             ])
@@ -836,6 +862,7 @@ mod tests {
                 parent_id: None,
                 description: None,
                 color: None,
+                icon: None,
                 role: Some(CategoryRole::Spending),
             }])
             .await;
@@ -851,6 +878,7 @@ mod tests {
             name: "Food".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: CategoryRole::Spending,
             parent: None,
         }]));
@@ -863,6 +891,7 @@ mod tests {
                 parent_id: None,
                 description: None,
                 color: None,
+                icon: None,
                 role: Some(CategoryRole::Spending),
             })
             .await;
@@ -879,6 +908,7 @@ mod tests {
                 name: "Parent".to_string(),
                 description: None,
                 color: None,
+                icon: None,
                 role: CategoryRole::Spending,
                 parent: None,
             },
@@ -888,6 +918,7 @@ mod tests {
                 name: "Target".to_string(),
                 description: None,
                 color: None,
+                icon: None,
                 role: CategoryRole::Spending,
                 parent: None,
             },
@@ -897,6 +928,7 @@ mod tests {
                 name: "Child".to_string(),
                 description: None,
                 color: None,
+                icon: None,
                 role: CategoryRole::Spending,
                 parent: None,
             },
@@ -910,6 +942,7 @@ mod tests {
                 parent_id: Some("parent".to_string()),
                 description: None,
                 color: None,
+                icon: None,
                 role: Some(CategoryRole::Spending),
                 confirm_budget_impact: false,
             })
@@ -927,6 +960,7 @@ mod tests {
                 name: "Parent".to_string(),
                 description: None,
                 color: None,
+                icon: None,
                 role: CategoryRole::Spending,
                 parent: None,
             },
@@ -936,6 +970,7 @@ mod tests {
                 name: "Child".to_string(),
                 description: None,
                 color: None,
+                icon: None,
                 role: CategoryRole::Spending,
                 parent: None,
             },

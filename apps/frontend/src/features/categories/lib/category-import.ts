@@ -1,6 +1,7 @@
 import { parseCsv } from "@/lib/csv";
 import { isImportablePreviewStatus } from "@/lib/import-preview-filter";
 import type { TransactionCategory } from "../types/model";
+import { parseCategoryIcon } from "./category-icon";
 
 export type CategoryImportLinkMode = "columns" | "single-column";
 export type CategoryImportPreviewStatus = "import" | "warning" | "duplicate" | "invalid" | "empty";
@@ -10,6 +11,7 @@ export type CategoryImportColumnMapping = {
   parentName: number | null;
   color: number | null;
   description: number | null;
+  icon: number | null;
 };
 
 export type CategoryImportPayload = {
@@ -18,6 +20,7 @@ export type CategoryImportPayload = {
   name: string;
   description?: string | null;
   color?: string | null;
+  icon?: string | null;
 };
 
 export type CategoryBackendImportPayload = CategoryImportPayload;
@@ -71,6 +74,7 @@ type ParsedCandidate = {
   name: string;
   color: string;
   description: string;
+  icon: string | null;
   isChild: boolean;
 };
 
@@ -81,6 +85,7 @@ const emptyMapping: CategoryImportColumnMapping = {
   parentName: null,
   color: null,
   description: null,
+  icon: null,
 };
 
 const createFallbackId = () => {
@@ -118,6 +123,7 @@ export const inferCategoryImportMapping = (
   parentName: findHeaderIndex(headers, ["parent_name", "parent", "root", "root_category"]),
   color: findHeaderIndex(headers, ["color", "colour"]),
   description: findHeaderIndex(headers, ["description", "notes"]),
+  icon: findHeaderIndex(headers, ["icon"]),
 });
 
 const getExistingCategoryPaths = (categories: Array<TransactionCategory>) => {
@@ -241,6 +247,7 @@ export const buildCategoryImportPreview = (
         : parseColumnCategory(row, mapping);
     const color = normalizeName(getCell(row, mapping.color));
     const description = normalizeName(getCell(row, mapping.description));
+    const icon = parseCategoryIcon(normalizeName(getCell(row, mapping.icon)));
 
     if (!parsed.name) {
       previewRows.push(
@@ -276,6 +283,7 @@ export const buildCategoryImportPreview = (
       name: parsed.name,
       color: normalizedColor,
       description,
+      icon,
       isChild: parsed.isChild,
     });
     previewRows.push(previewRow);
@@ -327,13 +335,17 @@ export const buildCategoryImportPreview = (
 
       const id = createId();
       importedRootIdByKey.set(rootKey, id);
-      categories.push({
+      const rootPayload: CategoryImportPayload = {
         id,
         parentId: null,
         name: candidate.name,
         description: candidate.description || null,
         color: candidate.color || null,
-      });
+      };
+      if (candidate.icon) {
+        rootPayload.icon = candidate.icon;
+      }
+      categories.push(rootPayload);
       continue;
     }
 
@@ -355,13 +367,17 @@ export const buildCategoryImportPreview = (
     }
 
     importedChildPaths.add(pathKey);
-    categories.push({
+    const childPayload: CategoryImportPayload = {
       id: createId(),
       parentId,
       name: candidate.name,
       description: candidate.description || null,
       color: null,
-    });
+    };
+    if (candidate.icon) {
+      childPayload.icon = candidate.icon;
+    }
+    categories.push(childPayload);
   }
 
   return {

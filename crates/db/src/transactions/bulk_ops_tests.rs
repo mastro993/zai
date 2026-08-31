@@ -107,6 +107,7 @@ async fn export_transactions_csv_matches_frontend_fixture() {
             name: "Food".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: None,
         })
         .await
@@ -118,6 +119,7 @@ async fn export_transactions_csv_matches_frontend_fixture() {
             name: "Groceries".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: None,
         })
         .await

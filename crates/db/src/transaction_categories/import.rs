@@ -15,7 +15,7 @@ use crate::errors::{IntoStorage, Result as StorageResult, StorageError};
 use crate::schema::transaction_categories;
 
 const SQLITE_LEGACY_BIND_LIMIT: usize = 999;
-const IMPORT_INSERT_BIND_COLUMNS: usize = 6;
+const IMPORT_INSERT_BIND_COLUMNS: usize = 7;
 const IMPORT_INSERT_CHUNK_SIZE: usize = SQLITE_LEGACY_BIND_LIMIT / IMPORT_INSERT_BIND_COLUMNS;
 const DUPLICATE_NAME_MESSAGE: &str = "A category with this name already exists at the same level";
 const CATEGORY_DEPTH_MESSAGE: &str =
@@ -36,6 +36,7 @@ struct ImportCategoryInsert<'a> {
     description: Option<&'a str>,
     color: Option<&'a str>,
     role: &'a str,
+    icon: Option<&'a str>,
 }
 
 impl<'a> From<&'a TransactionCategoryRow> for ImportCategoryInsert<'a> {
@@ -47,6 +48,7 @@ impl<'a> From<&'a TransactionCategoryRow> for ImportCategoryInsert<'a> {
             description: row.description.as_deref(),
             color: row.color.as_deref(),
             role: &row.role,
+            icon: row.icon.as_deref(),
         }
     }
 }

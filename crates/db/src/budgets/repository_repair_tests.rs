@@ -206,6 +206,7 @@ async fn transaction_update_repairs_category_type_and_amount_changes() {
             name: "Repair category".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
         })
         .await
@@ -344,6 +345,7 @@ async fn delete_bulk_delete_and_combined_import_repair_results() {
                 name: "Imported".to_string(),
                 description: None,
                 color: None,
+                icon: None,
                 role: Some(CategoryRole::Spending),
             }],
             vec![NewTransaction {

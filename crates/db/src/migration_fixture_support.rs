@@ -235,7 +235,7 @@ mod generator {
             diesel::sql_query("SELECT version FROM __diesel_schema_migrations ORDER BY version")
                 .load(&mut connection)
                 .expect("versions");
-        assert_eq!(versions.len(), 15);
+        assert_eq!(versions.len(), 16);
         assert_eq!(versions[3].version, "202607120900000003");
         assert_eq!(versions[4].version, "202607121000000004");
         assert_eq!(versions[5].version, "202607121200000005");

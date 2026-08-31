@@ -33,6 +33,7 @@ const EMPTY_MAPPING: CategoryImportColumnMapping = {
   parentName: null,
   color: null,
   description: null,
+  icon: null,
 };
 
 const createDefaultConfig = (): CategoryImportConfig => ({

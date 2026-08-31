@@ -253,6 +253,7 @@ async fn tombstoned_budget_is_excluded_from_category_safeguards_and_repair() {
             name: "Tombstone category".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
         })
         .await

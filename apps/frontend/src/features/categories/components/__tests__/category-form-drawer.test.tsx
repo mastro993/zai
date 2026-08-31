@@ -189,4 +189,44 @@ describe("CategoryFormDrawer", () => {
       expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ role: "income" })),
     );
   });
+
+  it("selects a category icon from the curated grid", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <Drawer open swipeDirection="right">
+        <CategoryFormDrawer
+          open
+          mode={{ type: "create-root" }}
+          categories={[]}
+          onSubmit={onSubmit}
+        />
+      </Drawer>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Category icon, Default" }));
+    fireEvent.click(screen.getByRole("button", { name: "Food" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Meals" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save category" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ icon: "food" })),
+    );
+  });
+
+  it("lets a child inherit the parent icon", () => {
+    render(
+      <Drawer open swipeDirection="right">
+        <CategoryFormDrawer
+          open
+          mode={{ type: "create-child", parentId: food.id }}
+          categories={[food]}
+          onSubmit={vi.fn()}
+        />
+      </Drawer>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Category icon, Default" }));
+    expect(screen.getByRole("button", { name: "Inherit from parent" })).not.toBeNull();
+  });
 });

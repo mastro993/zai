@@ -12,6 +12,7 @@ async fn test_import_categories() {
         parent_id: None,
         description: Some("Descrizione test".to_string()),
         color: Some("#FF0000".to_string()),
+        icon: None,
         role: None,
     };
 
@@ -21,6 +22,7 @@ async fn test_import_categories() {
         parent_id: None,
         description: Some("Descrizione test".to_string()),
         color: Some("#FF0000".to_string()),
+        icon: None,
         role: None,
     };
 
@@ -30,6 +32,7 @@ async fn test_import_categories() {
         parent_id: Some(new_category_1.id.as_deref().unwrap().to_string()),
         description: Some("Descrizione test".to_string()),
         color: Some("#DB1313".to_string()),
+        icon: None,
         role: None,
     };
 
@@ -59,6 +62,7 @@ async fn import_category_validation_avoids_per_row_statements() {
             parent_id: None,
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Spending),
         })
         .collect();

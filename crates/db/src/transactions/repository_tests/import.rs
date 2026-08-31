@@ -228,6 +228,7 @@ async fn import_transactions_with_categories_rolls_back_when_any_transaction_is_
         name: "Food".to_string(),
         description: None,
         color: None,
+        icon: None,
         role: None,
     }];
 

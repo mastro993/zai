@@ -71,6 +71,184 @@ impl FromStr for CategoryRole {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CategoryIcon {
+    #[default]
+    Default,
+    Food,
+    Groceries,
+    Dining,
+    Coffee,
+    Drinks,
+    Bakery,
+    Delivery,
+    Home,
+    Rent,
+    Utilities,
+    Phone,
+    Internet,
+    Shopping,
+    Clothing,
+    Health,
+    Pharmacy,
+    Fitness,
+    Beauty,
+    Education,
+    Books,
+    Entertainment,
+    Gaming,
+    Music,
+    Movies,
+    Subscriptions,
+    Transport,
+    Car,
+    Fuel,
+    Parking,
+    Bicycle,
+    Train,
+    Flight,
+    Hotel,
+    Travel,
+    Taxes,
+    Insurance,
+    Savings,
+    Investments,
+    Salary,
+    Business,
+    Transfer,
+    Other,
+    Gifts,
+    Charity,
+    Family,
+    Childcare,
+    Pets,
+}
+
+impl CategoryIcon {
+    pub const ALL: [Self; 48] = [
+        Self::Default,
+        Self::Food,
+        Self::Groceries,
+        Self::Dining,
+        Self::Coffee,
+        Self::Drinks,
+        Self::Bakery,
+        Self::Delivery,
+        Self::Home,
+        Self::Rent,
+        Self::Utilities,
+        Self::Phone,
+        Self::Internet,
+        Self::Shopping,
+        Self::Clothing,
+        Self::Health,
+        Self::Pharmacy,
+        Self::Fitness,
+        Self::Beauty,
+        Self::Education,
+        Self::Books,
+        Self::Entertainment,
+        Self::Gaming,
+        Self::Music,
+        Self::Movies,
+        Self::Subscriptions,
+        Self::Transport,
+        Self::Car,
+        Self::Fuel,
+        Self::Parking,
+        Self::Bicycle,
+        Self::Train,
+        Self::Flight,
+        Self::Hotel,
+        Self::Travel,
+        Self::Taxes,
+        Self::Insurance,
+        Self::Savings,
+        Self::Investments,
+        Self::Salary,
+        Self::Business,
+        Self::Transfer,
+        Self::Other,
+        Self::Gifts,
+        Self::Charity,
+        Self::Family,
+        Self::Childcare,
+        Self::Pets,
+    ];
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::Food => "food",
+            Self::Groceries => "groceries",
+            Self::Dining => "dining",
+            Self::Coffee => "coffee",
+            Self::Drinks => "drinks",
+            Self::Bakery => "bakery",
+            Self::Delivery => "delivery",
+            Self::Home => "home",
+            Self::Rent => "rent",
+            Self::Utilities => "utilities",
+            Self::Phone => "phone",
+            Self::Internet => "internet",
+            Self::Shopping => "shopping",
+            Self::Clothing => "clothing",
+            Self::Health => "health",
+            Self::Pharmacy => "pharmacy",
+            Self::Fitness => "fitness",
+            Self::Beauty => "beauty",
+            Self::Education => "education",
+            Self::Books => "books",
+            Self::Entertainment => "entertainment",
+            Self::Gaming => "gaming",
+            Self::Music => "music",
+            Self::Movies => "movies",
+            Self::Subscriptions => "subscriptions",
+            Self::Transport => "transport",
+            Self::Car => "car",
+            Self::Fuel => "fuel",
+            Self::Parking => "parking",
+            Self::Bicycle => "bicycle",
+            Self::Train => "train",
+            Self::Flight => "flight",
+            Self::Hotel => "hotel",
+            Self::Travel => "travel",
+            Self::Taxes => "taxes",
+            Self::Insurance => "insurance",
+            Self::Savings => "savings",
+            Self::Investments => "investments",
+            Self::Salary => "salary",
+            Self::Business => "business",
+            Self::Transfer => "transfer",
+            Self::Other => "other",
+            Self::Gifts => "gifts",
+            Self::Charity => "charity",
+            Self::Family => "family",
+            Self::Childcare => "childcare",
+            Self::Pets => "pets",
+        }
+    }
+}
+
+impl fmt::Display for CategoryIcon {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl FromStr for CategoryIcon {
+    type Err = ();
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        Self::ALL
+            .iter()
+            .copied()
+            .find(|icon| icon.as_str() == value)
+            .ok_or(())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionCategory {
@@ -79,6 +257,8 @@ pub struct TransactionCategory {
     pub name: String,
     pub description: Option<String>,
     pub color: Option<String>,
+    #[serde(default)]
+    pub icon: Option<CategoryIcon>,
     pub role: CategoryRole,
     pub parent: Option<Box<Self>>,
 }
@@ -115,6 +295,8 @@ pub struct NewTransactionCategory {
     pub name: String,
     pub description: Option<String>,
     pub color: Option<String>,
+    #[serde(default)]
+    pub icon: Option<CategoryIcon>,
     pub role: Option<CategoryRole>,
 }
 
@@ -139,6 +321,8 @@ pub struct TransactionCategoryUpdate {
     pub name: String,
     pub description: Option<String>,
     pub color: Option<String>,
+    #[serde(default)]
+    pub icon: Option<CategoryIcon>,
     pub role: Option<CategoryRole>,
     #[serde(default)]
     pub confirm_budget_impact: bool,
@@ -197,6 +381,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
+            icon: None,
             role: Some(CategoryRole::Spending),
             id: None,
         };
@@ -216,6 +401,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
+            icon: None,
             role: Some(CategoryRole::Spending),
             id: None,
         };
@@ -232,6 +418,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("red".to_string()),
+            icon: None,
             role: Some(CategoryRole::Spending),
             id: None,
         };
@@ -255,6 +442,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
+            icon: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -274,6 +462,7 @@ mod tests {
             parent_id: None,
             description: Some("Descrizione test".to_string()),
             color: Some("#FF0000".to_string()),
+            icon: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -289,6 +478,7 @@ mod tests {
             parent_id: Some("same-id".to_string()),
             description: None,
             color: None,
+            icon: None,
             role: None,
             confirm_budget_impact: false,
         };
@@ -308,6 +498,7 @@ mod tests {
             parent_id: None,
             description: None,
             color: Some("#12345".to_string()),
+            icon: None,
             role: Some(CategoryRole::Spending),
             confirm_budget_impact: false,
         };
@@ -344,6 +535,7 @@ mod tests {
             name: "Salary".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: None,
         };
 
@@ -358,6 +550,7 @@ mod tests {
             name: "Groceries".to_string(),
             description: None,
             color: None,
+            icon: None,
             role: Some(CategoryRole::Income),
         };
 
@@ -374,5 +567,43 @@ mod tests {
             serde_json::to_string(&CategoryRole::Income).unwrap(),
             "\"income\""
         );
+    }
+
+    #[test]
+    fn category_icons_use_stable_wire_values() {
+        assert_eq!(CategoryIcon::ALL.len(), 48);
+        assert_eq!(
+            serde_json::to_string(&CategoryIcon::Default).unwrap(),
+            "\"default\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CategoryIcon::Food).unwrap(),
+            "\"food\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CategoryIcon::Childcare).unwrap(),
+            "\"childcare\""
+        );
+        for icon in CategoryIcon::ALL {
+            assert_eq!(icon.as_str().parse::<CategoryIcon>(), Ok(icon));
+        }
+    }
+
+    #[test]
+    fn new_transaction_category_accepts_missing_icon() {
+        let category: NewTransactionCategory =
+            serde_json::from_str(r#"{"name":"Food","role":"spending"}"#).expect("decode");
+
+        assert_eq!(category.icon, None);
+        category.validate().expect("validate");
+    }
+
+    #[test]
+    fn new_transaction_category_rejects_unknown_icon() {
+        let result = serde_json::from_str::<NewTransactionCategory>(
+            r#"{"name":"Food","role":"spending","icon":"spaceship"}"#,
+        );
+
+        assert!(result.is_err());
     }
 }
