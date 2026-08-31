@@ -28,7 +28,6 @@ serde_json = { workspace = true }
 tauri-plugin-fs = "=2.5.1"
 tauri-plugin-log = "=2.9.0"
 tauri-plugin-dialog = "=2.7.1"
-dotenvy = { workspace = true }
 zai-app = { workspace = true }
 zai-core = { workspace = true }
 log = { workspace = true }

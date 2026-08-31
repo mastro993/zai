@@ -22,8 +22,8 @@ fn sample_alert(
     }
 }
 
-async fn insert_sample_alert(app_data_dir: &std::path::Path) -> String {
-    let database = connect(app_data_dir).expect("database");
+async fn insert_sample_alert(zai_home: &std::path::Path) -> String {
+    let database = connect(zai_home.join("userdata")).expect("database");
     let repo = database.domain_alerts_repository();
     let outcome = repo
         .insert(sample_alert(
@@ -39,8 +39,8 @@ async fn insert_sample_alert(app_data_dir: &std::path::Path) -> String {
     alert.id
 }
 
-async fn seed_unread_alerts(app_data_dir: &std::path::Path) {
-    let database = connect(app_data_dir).expect("database should connect");
+async fn seed_unread_alerts(zai_home: &std::path::Path) {
+    let database = connect(zai_home.join("userdata")).expect("database should connect");
     let repository = database.domain_alerts_repository();
     for (occurrence_key, title, severity) in [
         ("a", "Info alert", DomainAlertSeverity::Info),

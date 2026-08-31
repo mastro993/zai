@@ -33,7 +33,7 @@ diesel = { version = "2.2.11", features = [
     "numeric",
 ] }
 diesel_migrations = { version = "2.2.0", features = ["sqlite"] }
-dotenvy = "0.15.7"
+fs2 = "0.4.3"
 log = "0.4.28"
 r2d2 = "0.8.10"
 thiserror = "2.0.12"

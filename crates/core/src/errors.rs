@@ -148,6 +148,7 @@ impl Error {
             Self::Database(db_error) => matches!(
                 db_error,
                 DatabaseError::DirectoryCreation { .. }
+                    | DatabaseError::FilePreparation { .. }
                     | DatabaseError::PoolCreationFailed(_)
                     | DatabaseError::ConnectionFailed(_)
                     | DatabaseError::QueryFailed(_)

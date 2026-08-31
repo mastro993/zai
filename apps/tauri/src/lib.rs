@@ -2,8 +2,7 @@ mod commands;
 mod linux_client_chrome;
 mod macos_traffic_lights;
 
-use dotenvy::dotenv;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, Runtime};
 use tauri_plugin_log::log::{LevelFilter, error};
 use zai_app::bootstrap_context;
@@ -214,8 +213,6 @@ fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    dotenv().ok();
-
     let app = register_commands(
         tauri::Builder::default()
             .plugin(tauri_plugin_process::init())
@@ -227,9 +224,11 @@ pub fn run() {
                 let handle = app.handle().clone();
 
                 tauri::async_runtime::block_on(async {
-                    let app_data_dir = handle.path().app_data_dir()?;
+                    let zai_home = std::env::var_os("ZAI_HOME")
+                        .map(PathBuf::from)
+                        .unwrap_or(handle.path().home_dir()?.join(".zai"));
 
-                    let bootstrapped = match bootstrap_context(&app_data_dir) {
+                    let bootstrapped = match bootstrap_context(&zai_home) {
                         Ok(value) => value,
                         Err(e) => {
                             error!("Failed to initialize context: {}", e);

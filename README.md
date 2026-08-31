@@ -108,12 +108,14 @@ normal shutdown. To keep data between runs:
 cp .env.web.example .env.web
 ```
 
-Then configure `ZAI_DATA_DIR` in `.env.web`.
+Then configure `ZAI_HOME` with an absolute path in `.env.web`. Running
+`zai-server` directly requires this variable.
 
 ## 💾 Data, privacy and backups
 
-Desktop data is stored in a local SQLite database named `zai.db` under the
-operating system’s application-data directory.
+Zai-managed persistent state lives under Zai Home. Desktop defaults to `~/.zai`
+and accepts an absolute `ZAI_HOME` process override. Web mode requires an
+absolute `ZAI_HOME`; its database is `{ZAI_HOME}/userdata/zai.db`.
 
 The current beta:
 

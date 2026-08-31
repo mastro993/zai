@@ -5,6 +5,9 @@ pub enum DatabaseError {
     #[error("Failed to create database directory '{path}': {reason}")]
     DirectoryCreation { path: String, reason: String },
 
+    #[error("Failed to prepare database file '{path}': {reason}")]
+    FilePreparation { path: String, reason: String },
+
     #[error("Failed to create database connection pool: {0}")]
     PoolCreationFailed(String),
 

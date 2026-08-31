@@ -1,5 +1,12 @@
-use std::{path::Path, sync::Arc};
+use std::{
+    fs::{self, File, OpenOptions},
+    path::Path,
+    sync::Arc,
+};
 
+use fs2::FileExt;
+#[cfg(unix)]
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use zai_core::features::budgets::traits::{CalendarClock, LocalCalendarClock};
 use zai_core::features::domain_alerts::DomainAlertEventBus;
 use zai_core::features::recurring_transactions::{
@@ -18,6 +25,73 @@ use zai_core::features::{
         traits::TransactionsServiceTrait,
     },
 };
+use zai_core::{DatabaseError, Error};
+
+const USERDATA_DIR_NAME: &str = "userdata";
+const ZAI_HOME_LOCK_NAME: &str = ".zai.lock";
+
+struct ZaiHomeLock {
+    file: File,
+}
+
+impl ZaiHomeLock {
+    fn acquire(zai_home: &Path) -> zai_core::Result<Self> {
+        let lock_path = zai_home.join(ZAI_HOME_LOCK_NAME);
+        let file = open_private_lock_file(&lock_path).map_err(|err| {
+            Error::Unexpected(format!(
+                "Failed to open Zai Home lock '{}': {err}",
+                lock_path.display()
+            ))
+        })?;
+
+        FileExt::try_lock_exclusive(&file).map_err(|err| {
+            if err.kind() == std::io::ErrorKind::WouldBlock {
+                Error::Conflict(format!(
+                    "Zai Home '{}' is already in use by another process",
+                    zai_home.display()
+                ))
+            } else {
+                Error::Unexpected(format!(
+                    "Failed to lock Zai Home '{}': {err}",
+                    zai_home.display()
+                ))
+            }
+        })?;
+
+        Ok(Self { file })
+    }
+}
+
+impl Drop for ZaiHomeLock {
+    fn drop(&mut self) {
+        let _ = FileExt::unlock(&self.file);
+    }
+}
+
+fn open_private_lock_file(path: &Path) -> std::io::Result<File> {
+    let mut options = OpenOptions::new();
+    options.read(true).write(true).create(true).truncate(false);
+    #[cfg(unix)]
+    options.mode(0o600);
+    options.open(path)
+}
+
+fn create_private_directory(path: &Path) -> zai_core::Result<()> {
+    #[cfg(unix)]
+    let result = {
+        let mut builder = fs::DirBuilder::new();
+        builder.recursive(true).mode(0o700).create(path)
+    };
+    #[cfg(not(unix))]
+    let result = fs::create_dir_all(path);
+
+    result.map_err(|err| {
+        Error::Database(DatabaseError::DirectoryCreation {
+            path: path.display().to_string(),
+            reason: err.to_string(),
+        })
+    })
+}
 
 mod currency_refresh;
 pub use currency_refresh::CurrencyRefreshHandle;
@@ -43,6 +117,7 @@ pub struct ServiceContext {
     pub recurring_processing_supervisor: RecurringProcessingSupervisorHandle,
     pub currency_refresh_supervisor: CurrencyRefreshHandle,
     pub domain_alerts_repository: Arc<zai_db::domain_alerts::DomainAlertsRepository>,
+    _zai_home_lock: ZaiHomeLock,
 }
 
 impl ServiceContext {
@@ -170,23 +245,23 @@ pub struct BootstrappedApp {
     pub currency_refresh: CurrencyRefreshSupervisor,
 }
 
-pub fn initialize_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<ServiceContext> {
-    Ok(bootstrap_context(app_data_dir)?.context)
+pub fn initialize_context(zai_home: impl AsRef<Path>) -> zai_core::Result<ServiceContext> {
+    Ok(bootstrap_context(zai_home)?.context)
 }
 
-pub fn bootstrap_context(app_data_dir: impl AsRef<Path>) -> zai_core::Result<BootstrappedApp> {
-    bootstrap_context_with_clock(app_data_dir, Arc::new(LocalCalendarClock))
+pub fn bootstrap_context(zai_home: impl AsRef<Path>) -> zai_core::Result<BootstrappedApp> {
+    bootstrap_context_with_clock(zai_home, Arc::new(LocalCalendarClock))
 }
 
 pub fn bootstrap_context_with_clock(
-    app_data_dir: impl AsRef<Path>,
+    zai_home: impl AsRef<Path>,
     clock: Arc<dyn CalendarClock>,
 ) -> zai_core::Result<BootstrappedApp> {
     let domain_alert_event_bus = DomainAlertEventBus::new();
     let recurring_processing_event_bus = RecurringProcessingEventBus::new();
     let currency_state_event_bus = CurrencyStateEventBus::new();
     bootstrap_context_with_buses_and_clock(
-        app_data_dir,
+        zai_home,
         domain_alert_event_bus,
         recurring_processing_event_bus,
         currency_state_event_bus,
@@ -195,18 +270,18 @@ pub fn bootstrap_context_with_clock(
 }
 
 pub fn initialize_context_with_clock(
-    app_data_dir: impl AsRef<Path>,
+    zai_home: impl AsRef<Path>,
     clock: Arc<dyn CalendarClock>,
 ) -> zai_core::Result<ServiceContext> {
-    Ok(bootstrap_context_with_clock(app_data_dir, clock)?.context)
+    Ok(bootstrap_context_with_clock(zai_home, clock)?.context)
 }
 
 pub fn initialize_context_with_event_bus(
-    app_data_dir: impl AsRef<Path>,
+    zai_home: impl AsRef<Path>,
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
 ) -> zai_core::Result<ServiceContext> {
     Ok(bootstrap_context_with_buses(
-        app_data_dir,
+        zai_home,
         domain_alert_event_bus,
         RecurringProcessingEventBus::new(),
         CurrencyStateEventBus::new(),
@@ -215,13 +290,13 @@ pub fn initialize_context_with_event_bus(
 }
 
 pub fn bootstrap_context_with_buses(
-    app_data_dir: impl AsRef<Path>,
+    zai_home: impl AsRef<Path>,
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
     recurring_processing_event_bus: Arc<RecurringProcessingEventBus>,
     currency_state_event_bus: Arc<CurrencyStateEventBus>,
 ) -> zai_core::Result<BootstrappedApp> {
     bootstrap_context_with_buses_and_clock(
-        app_data_dir,
+        zai_home,
         domain_alert_event_bus,
         recurring_processing_event_bus,
         currency_state_event_bus,
@@ -230,14 +305,27 @@ pub fn bootstrap_context_with_buses(
 }
 
 pub fn bootstrap_context_with_buses_and_clock(
-    app_data_dir: impl AsRef<Path>,
+    zai_home: impl AsRef<Path>,
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
     recurring_processing_event_bus: Arc<RecurringProcessingEventBus>,
     currency_state_event_bus: Arc<CurrencyStateEventBus>,
     clock: Arc<dyn CalendarClock>,
 ) -> zai_core::Result<BootstrappedApp> {
+    let zai_home = zai_home.as_ref();
+    if !zai_home.is_absolute() {
+        return Err(Error::InvalidData(format!(
+            "Zai Home must be an absolute path: '{}'",
+            zai_home.display()
+        )));
+    }
+
+    create_private_directory(zai_home)?;
+    let zai_home_lock = ZaiHomeLock::acquire(zai_home)?;
+    let userdata_dir = zai_home.join(USERDATA_DIR_NAME);
+    create_private_directory(&userdata_dir)?;
+
     let database = zai_db::connect_with_event_bus_and_clock(
-        app_data_dir,
+        userdata_dir,
         Arc::clone(&domain_alert_event_bus),
         Arc::clone(&clock),
     )?;
@@ -317,6 +405,7 @@ pub fn bootstrap_context_with_buses_and_clock(
             currency_state_event_bus,
             recurring_processing_supervisor: handle,
             currency_refresh_supervisor: currency_refresh_handle,
+            _zai_home_lock: zai_home_lock,
         },
         supervisor,
         currency_refresh,
@@ -357,8 +446,64 @@ mod tests {
         }
     }
 
+    #[test]
+    fn initialize_context_rejects_relative_zai_home() {
+        let error = initialize_context("relative-zai-home")
+            .err()
+            .expect("relative Zai Home should fail");
+
+        assert!(error.to_string().contains("must be an absolute path"));
+    }
+
     #[tokio::test]
-    async fn shared_context_initializes_services_from_app_data_dir() {
+    async fn initialize_context_rejects_zai_home_already_in_use() {
+        let zai_home = TempAppDataDir::new();
+        let _context = initialize_context(zai_home.path()).expect("first context");
+        let error = initialize_context(zai_home.path())
+            .err()
+            .expect("second context should fail");
+
+        assert!(error.to_string().contains("already in use"));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn initialize_context_creates_private_userdata() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let zai_home = TempAppDataDir::new();
+        let _context = initialize_context(zai_home.path()).expect("context");
+        let userdata = zai_home.path().join("userdata");
+        let db_path = userdata.join("zai.db");
+
+        assert_eq!(
+            fs::metadata(zai_home.path())
+                .expect("Zai Home metadata")
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
+        assert_eq!(
+            fs::metadata(userdata)
+                .expect("userdata metadata")
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
+        assert_eq!(
+            fs::metadata(db_path)
+                .expect("database metadata")
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+    }
+
+    #[tokio::test]
+    async fn shared_context_initializes_services_from_zai_home() {
         let app_data_dir = TempAppDataDir::new();
 
         let context = initialize_context(app_data_dir.path()).expect("context should initialize");
@@ -367,7 +512,7 @@ mod tests {
             .complete_initial_setup("EUR")
             .expect("confirm EUR setup");
 
-        assert!(app_data_dir.path().join("zai.db").exists());
+        assert!(app_data_dir.path().join("userdata").join("zai.db").exists());
 
         let categories = context
             .transaction_categories_service()
@@ -481,9 +626,15 @@ mod tests {
             .currency_service()
             .complete_initial_setup("EUR")
             .expect("confirm EUR");
-        let mut connection =
-            SqliteConnection::establish(app_data_dir.path().join("zai.db").to_str().expect("path"))
-                .expect("open sqlite");
+        let mut connection = SqliteConnection::establish(
+            app_data_dir
+                .path()
+                .join("userdata")
+                .join("zai.db")
+                .to_str()
+                .expect("path"),
+        )
+        .expect("open sqlite");
         sql_query(
             "INSERT INTO enabled_currencies (code, enabled_at, disabled_at) \
              VALUES ('USD', datetime('now'), NULL)",

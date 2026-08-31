@@ -1,24 +1,14 @@
-import { join } from "path";
+import { isAbsolute, join } from "path";
 import { homedir } from "os";
-import { unlink, readFile } from "fs/promises";
-import { platform } from "process";
+import { unlink } from "fs/promises";
 
 async function cleanDatabase() {
-  const tauriConfig = JSON.parse(
-    await readFile(new URL("../tauri.conf.json", import.meta.url), "utf-8")
-  );
+  const zaiHome = process.env.ZAI_HOME ?? join(homedir(), ".zai");
+  if (!isAbsolute(zaiHome)) {
+    throw new Error("ZAI_HOME must be an absolute path");
+  }
 
-  const appId = tauriConfig.identifier;
-  const dbName = "zai.db";
-
-  const basePath =
-    platform === "win32"
-      ? join(homedir(), "AppData", "Local", appId)
-      : platform === "darwin"
-        ? join(homedir(), "Library", "Application Support", appId)
-        : join(homedir(), ".config", appId);
-
-  const dbPath = join(basePath, dbName);
+  const dbPath = join(zaiHome, "userdata", "zai.db");
 
   console.log("Cleaning database at", dbPath);
 

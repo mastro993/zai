@@ -133,7 +133,7 @@ Use **web mode** in Cursor Cloud. Desktop Tauri (`pnpm dev:tauri`) needs GTK/Web
 - Frontend (Vite): `http://127.0.0.1:1420`
 - API (Axum `zai-server`): `http://127.0.0.1:3000`
 - Health check: `GET http://127.0.0.1:3000/health` → `{"status":"ok"}`
-- SQLite data directory: `.local/zai-web-data` when using the example env file
+- Zai Home: temporary per run unless `.env.web` sets an absolute `ZAI_HOME`; SQLite lives at `{ZAI_HOME}/userdata/zai.db`
 
 The API binds loopback only. Do not set `ZAI_BIND_ADDR` to a non-loopback address.
 
