@@ -11,7 +11,7 @@ interface AboutSettingsRowProps {
 
 export function AboutSettingsRow({ title, description, value, children }: AboutSettingsRowProps) {
   return (
-    <Item role="listitem" className="rounded-none border-0 px-4">
+    <Item role="listitem" className="rounded-none border-0 px-4 py-4">
       <ItemContent>
         <ItemTitle>{title}</ItemTitle>
         {description ? <ItemDescription>{description}</ItemDescription> : null}

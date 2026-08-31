@@ -157,7 +157,7 @@ describe("SettingsModal", () => {
     expect(sidebar?.contains(header)).toBe(false);
     expect(header?.contains(closeButton)).toBe(true);
     expect(header?.className).toContain("h-12");
-    expect(header?.className).toContain("border-b");
+    expect(header?.className).not.toContain("border-b");
 
     const search = screen.getByRole("searchbox", { name: "Search settings" });
     const sidebarSearch = document.querySelector('[data-slot="settings-modal-sidebar-search"]');

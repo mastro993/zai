@@ -92,7 +92,7 @@ export function DiagnosticsSettingsScreen() {
   const logs = diagnostics?.logs;
 
   return (
-    <ScreenBase>
+    <ScreenBase contentClassName="pt-4">
       <div className="flex max-w-3xl flex-col gap-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <SettingsSectionHeader title="Diagnostics" />

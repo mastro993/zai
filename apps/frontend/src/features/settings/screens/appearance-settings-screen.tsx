@@ -32,7 +32,7 @@ const isThemeMode = (value: string | undefined): value is ThemeMode =>
 
 export function AppearanceSettingsScreen() {
   return (
-    <ScreenBase>
+    <ScreenBase contentClassName="pt-4">
       <FieldGroup className="max-w-3xl gap-8">
         <SettingsSectionHeader title="Appearance" />
         <SettingsSection>

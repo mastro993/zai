@@ -73,7 +73,7 @@ export function SettingsModal({
               <FieldLabel htmlFor={searchId} className="sr-only">
                 Search settings
               </FieldLabel>
-              <InputGroup>
+              <InputGroup className="bg-background">
                 <InputGroupAddon align="inline-start">
                   <HugeiconsIcon icon={Search01Icon} strokeWidth={2} aria-hidden="true" />
                 </InputGroupAddon>
@@ -91,7 +91,7 @@ export function SettingsModal({
         >
           <header
             data-slot="settings-modal-header"
-            className="relative z-30 flex h-12 shrink-0 items-center justify-end border-b border-border bg-background px-4 text-foreground"
+            className="relative z-30 flex h-12 shrink-0 items-center justify-end bg-background px-4 text-foreground"
           >
             <div data-slot="settings-modal-header-actions" className="flex shrink-0 items-center">
               <DialogClose render={<Button variant="ghost" size="icon-sm" />}>
@@ -100,7 +100,7 @@ export function SettingsModal({
               </DialogClose>
             </div>
           </header>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col px-4">{children}</div>
         </div>
       </DialogContent>
     </Dialog>

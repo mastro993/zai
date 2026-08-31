@@ -110,7 +110,7 @@ export function AboutSettingsScreen() {
           : "Check for updates";
 
   return (
-    <ScreenBase>
+    <ScreenBase contentClassName="pt-4">
       <div className="flex max-w-3xl flex-col gap-8">
         <SettingsSectionHeader title="About" />
         <SettingsSection title="Version">
