@@ -52,15 +52,18 @@ export const settingsItem = {
 export const settingsGroups = [
   {
     label: "General",
-    items: [
-      { title: "Appearance", to: "/settings/appearance", icon: PaintBoardIcon },
-      { title: "About", to: "/settings/about", icon: InformationCircleIcon },
-      { title: "Diagnostics", to: "/settings/diagnostics", icon: Bug01Icon },
-    ],
+    items: [{ title: "Appearance", to: "/settings/appearance", icon: PaintBoardIcon }],
   },
   {
     label: "Finance",
     items: [{ title: "Currencies", to: "/settings/currencies", icon: DollarCircleIcon }],
+  },
+  {
+    label: "Other",
+    items: [
+      { title: "About", to: "/settings/about", icon: InformationCircleIcon },
+      { title: "Diagnostics", to: "/settings/diagnostics", icon: Bug01Icon },
+    ],
   },
 ] satisfies Array<{ label: string; items: Array<NavigationItem> }>;
 

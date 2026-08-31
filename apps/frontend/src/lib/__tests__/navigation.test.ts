@@ -72,15 +72,16 @@ describe("isSettingsPath", () => {
 });
 
 describe("settings groups", () => {
-  it("places general and finance settings in their groups", () => {
+  it("places settings in their groups", () => {
     expect(
       settingsGroups.map((group) => ({
         label: group.label,
         titles: group.items.map((item) => item.title),
       })),
     ).toEqual([
-      { label: "General", titles: ["Appearance", "About", "Diagnostics"] },
+      { label: "General", titles: ["Appearance"] },
       { label: "Finance", titles: ["Currencies"] },
+      { label: "Other", titles: ["About", "Diagnostics"] },
     ]);
   });
 });
