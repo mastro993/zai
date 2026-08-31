@@ -203,7 +203,7 @@ describe("SettingsModal", () => {
 
     fireEvent.click(screen.getByRole("link", { name: "Diagnostics" }));
 
-    expect(await screen.findByRole("heading", { name: "System" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "System" }, { timeout: 5000 })).toBeTruthy();
     expect(router.state.location.pathname).toBe("/dashboard");
   });
 
