@@ -80,6 +80,28 @@ Frontend command wrapper → invokeCommand → Tauri IPC
             crates/db (repository)
 ```
 
+### Testing or trying the app
+
+Keep automated tests isolated and deterministic. Before manually testing or
+trying the app, copy `~/.zai/userdata/zai.db` into this worktree's local
+sandbox. Never run a development process against the source database.
+
+```bash
+./scripts/snapshot.sh
+ZAI_HOME="$PWD/.local" pnpm dev:web
+# or
+ZAI_HOME="$PWD/.local" pnpm dev:tauri
+```
+
+The script creates `.local/userdata/zai.db` with a consistent SQLite snapshot
+and verifies it with `PRAGMA quick_check`. Set `ZAI_SOURCE_DB` only when the
+source lives elsewhere. Refresh the snapshot before each data-dependent session.
+If snapshot creation or verification fails, stop and report it.
+
+Keep real financial data inside ignored `.local/`. Inspect only values needed
+for the requested test. Never commit or publish databases, raw rows, exports,
+screenshots, or unredacted financial values. Redact reports.
+
 ---
 
 ## Conventions
