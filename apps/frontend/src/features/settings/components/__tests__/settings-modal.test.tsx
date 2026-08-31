@@ -179,6 +179,7 @@ describe("SettingsModal", () => {
     expect(screen.getByText("Appearance page")).toBeTruthy();
     expect(screen.getByText("General")).toBeTruthy();
     expect(screen.getByText("Finance")).toBeTruthy();
+    expect(screen.getByText("Other")).toBeTruthy();
   });
 
   it("switches sections without leaving the dialog", async () => {
