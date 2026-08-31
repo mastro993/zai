@@ -3,14 +3,8 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverDescription,
-  PopoverHeader,
-  PopoverTitle,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -38,8 +32,6 @@ function CategoryIconPicker({
   const [open, setOpen] = useState(false);
   const selected = getCategoryIconEntry(effectiveIcon);
   const { foreground } = getCategoryBadgeColors(effectiveColor);
-  const inheritLabel = isChild ? "Inherit from parent" : "Use default";
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -60,66 +52,72 @@ function CategoryIconPicker({
         />
         {selected.label}
       </PopoverTrigger>
-      <PopoverContent className="w-72 max-h-80 overflow-y-auto" align="start">
-        <PopoverHeader>
-          <PopoverTitle>Category icon</PopoverTitle>
-          <PopoverDescription>Choose a symbol from the curated catalogue.</PopoverDescription>
-        </PopoverHeader>
-        <Button
-          type="button"
-          variant="ghost"
-          aria-pressed={value === null}
-          className={cn("h-8 w-full justify-start", value === null && "bg-accent")}
-          onClick={() => {
-            onChange(null);
-            setOpen(false);
-          }}
-        >
-          {inheritLabel}
-        </Button>
-        <TooltipProvider>
-          {CATEGORY_ICON_GROUPS.map((group) => (
-            <div key={group} className="flex flex-col gap-1.5">
-              <p className="text-xs font-medium text-muted-foreground">{group}</p>
-              <div className="grid grid-cols-8 gap-1">
-                {CATEGORY_ICON_CATALOG.filter((entry) => entry.group === group).map((entry) => {
-                  const isSelected = value === entry.key;
-                  return (
-                    <Tooltip key={entry.key}>
-                      <TooltipTrigger
-                        render={
-                          <button
-                            type="button"
-                            aria-label={entry.label}
-                            aria-pressed={isSelected}
-                            className={cn(
-                              "relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                              isSelected && "ring-2 ring-ring",
-                            )}
-                            onClick={() => {
-                              onChange(entry.key);
-                              setOpen(false);
-                            }}
-                          />
-                        }
-                      >
-                        <HugeiconsIcon icon={entry.icon} className="size-4" strokeWidth={2} />
-                        {isSelected ? (
-                          <HugeiconsIcon
-                            icon={Tick02Icon}
-                            className="absolute -right-0.5 -bottom-0.5 size-2.5 text-primary"
-                            strokeWidth={2.5}
-                          />
-                        ) : null}
-                      </TooltipTrigger>
-                      <TooltipContent>{entry.label}</TooltipContent>
-                    </Tooltip>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </TooltipProvider>
+      <PopoverContent
+        className="w-72 overflow-hidden p-0"
+        align="start"
+        aria-label="Category icons"
+      >
+        <ScrollArea className="h-80">
+          <div className="flex flex-col gap-2.5 p-2.5">
+            {isChild ? (
+              <Button
+                type="button"
+                variant="ghost"
+                aria-pressed={value === null}
+                className={cn("h-8 w-full justify-start", value === null && "bg-accent")}
+                onClick={() => {
+                  onChange(null);
+                  setOpen(false);
+                }}
+              >
+                Inherit from parent
+              </Button>
+            ) : null}
+            <TooltipProvider>
+              {CATEGORY_ICON_GROUPS.map((group) => (
+                <div key={group} className="flex flex-col gap-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">{group}</p>
+                  <div className="grid grid-cols-8 gap-1">
+                    {CATEGORY_ICON_CATALOG.filter((entry) => entry.group === group).map((entry) => {
+                      const isSelected = value === entry.key;
+                      return (
+                        <Tooltip key={entry.key}>
+                          <TooltipTrigger
+                            render={
+                              <button
+                                type="button"
+                                aria-label={entry.label}
+                                aria-pressed={isSelected}
+                                className={cn(
+                                  "relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                  isSelected && "ring-2 ring-ring",
+                                )}
+                                onClick={() => {
+                                  onChange(entry.key);
+                                  setOpen(false);
+                                }}
+                              />
+                            }
+                          >
+                            <HugeiconsIcon icon={entry.icon} className="size-4" strokeWidth={2} />
+                            {isSelected ? (
+                              <HugeiconsIcon
+                                icon={Tick02Icon}
+                                className="absolute -right-0.5 -bottom-0.5 size-2.5 text-primary"
+                                strokeWidth={2.5}
+                              />
+                            ) : null}
+                          </TooltipTrigger>
+                          <TooltipContent>{entry.label}</TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </TooltipProvider>
+          </div>
+        </ScrollArea>
       </PopoverContent>
     </Popover>
   );

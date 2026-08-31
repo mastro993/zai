@@ -71,23 +71,20 @@ const getFormCopy = (mode: CategoryFormMode) => {
   if (mode.type === "edit") {
     return {
       title: "Edit category",
-      description:
-        "Update the name, role, parent, or color. Names must stay unique at the same level.",
+      description: "Names must be unique among siblings.",
     };
   }
 
   if (mode.type === "create-child") {
     return {
       title: "New subcategory",
-      description:
-        "Subcategories inherit their parent color in lists and reports. Pick a clear, specific name.",
+      description: "Names must be unique under this parent.",
     };
   }
 
   return {
     title: "New category",
-    description:
-      "Choose whether this category tracks spending or income. Names must be unique among other root categories.",
+    description: "Names must be unique among root categories.",
   };
 };
 
@@ -161,9 +158,6 @@ function CategoryFormDrawer({
               placeholder="Groceries"
               {...form.register("name")}
             />
-            <FieldDescription>
-              Required. Shown in transaction lists and category reports.
-            </FieldDescription>
             <FieldError id={nameErrorId}>{errors.name?.message}</FieldError>
           </Field>
 
@@ -175,7 +169,6 @@ function CategoryFormDrawer({
                   {lockedParent.name}
                 </CategoryBadge>
               </div>
-              <FieldDescription>Subcategories stay under this parent.</FieldDescription>
               <input type="hidden" {...form.register("parentId")} />
             </Field>
           ) : canChooseParent && rootOptions.length > 0 ? (
@@ -223,9 +216,7 @@ function CategoryFormDrawer({
                   />
                 )}
               />
-              <FieldDescription>
-                Leave as none for a root category, or nest one level under an existing root.
-              </FieldDescription>
+              <FieldDescription>Only one nesting level.</FieldDescription>
             </Field>
           ) : null}
 
@@ -237,9 +228,6 @@ function CategoryFormDrawer({
                   parentCategory?.role ?? (mode.type === "edit" ? mode.category.role : "spending"),
                 )}
               </div>
-              <FieldDescription>
-                Child categories inherit their root category role.
-              </FieldDescription>
             </Field>
           ) : (
             <Field data-invalid={Boolean(errors.role)}>
@@ -258,12 +246,19 @@ function CategoryFormDrawer({
                   />
                 )}
               />
-              <FieldDescription>
-                Income categories identify genuine income; spending categories can include refunds.
-              </FieldDescription>
               <FieldError>{errors.role?.message}</FieldError>
             </Field>
           )}
+
+          <Field>
+            <FieldLabel htmlFor="category-description">Description</FieldLabel>
+            <Textarea
+              id="category-description"
+              placeholder="Optional"
+              className="min-h-16 resize-y"
+              {...form.register("description")}
+            />
+          </Field>
 
           <Field>
             <FieldLabel>Icon</FieldLabel>
@@ -285,21 +280,9 @@ function CategoryFormDrawer({
                 />
               )}
             />
-            <FieldDescription>
-              {isChildCategory
-                ? "Leave inherited, or pick an icon to override the parent."
-                : "Used as the category symbol. Children inherit this unless they override it."}
-            </FieldDescription>
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="category-description">Description</FieldLabel>
-            <Textarea
-              id="category-description"
-              placeholder="Optional note for your own reference"
-              className="min-h-16 resize-y"
-              {...form.register("description")}
-            />
+            {isChildCategory ? null : (
+              <FieldDescription>Children inherit this unless they pick their own.</FieldDescription>
+            )}
           </Field>
 
           {!isChildCategory ? (
