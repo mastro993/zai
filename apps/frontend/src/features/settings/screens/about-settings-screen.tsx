@@ -4,7 +4,6 @@ import { Result } from "@praha/byethrow";
 import { toast } from "@/components/toaster/toast";
 import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { ItemGroup } from "@/components/ui/item";
 import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
 import {
@@ -18,6 +17,11 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 
 import { AboutSettingsRow } from "../components/about-settings-row";
+import {
+  SettingsSection,
+  SettingsSectionDivider,
+  SettingsSectionHeader,
+} from "../components/settings-section";
 import {
   ABOUT_APP_IDENTIFIER,
   ABOUT_LICENSE,
@@ -36,10 +40,6 @@ import {
   type UpdateChannel,
   type UpdateProgress,
 } from "../lib/updater";
-
-function AboutSettingsDivider() {
-  return <div className="mx-4 h-px bg-border" />;
-}
 
 const updateChannelItems: Array<{ label: string; value: UpdateChannel }> = [
   { label: "Stable", value: "stable" },
@@ -111,82 +111,79 @@ export function AboutSettingsScreen() {
 
   return (
     <ScreenBase>
-      <div className="flex max-w-3xl flex-col gap-6">
-        <Card className="gap-0! py-0!">
-          <CardContent className="px-0!">
-            <ItemGroup className="gap-0">
-              <AboutSettingsRow title="App version" value={appVersion} />
-              {isTauriBuild ? (
-                <>
-                  <AboutSettingsDivider />
-                  <AboutSettingsRow title="Update channel">
-                    <Select
-                      items={updateChannelItems}
-                      value={channel}
-                      onValueChange={handleChannelChange}
+      <div className="flex max-w-3xl flex-col gap-8">
+        <SettingsSectionHeader title="About" />
+        <SettingsSection title="Version">
+          <ItemGroup className="gap-0">
+            <AboutSettingsRow title="App version" value={appVersion} />
+            {isTauriBuild ? (
+              <>
+                <SettingsSectionDivider />
+                <AboutSettingsRow title="Update channel">
+                  <Select
+                    items={updateChannelItems}
+                    value={channel}
+                    onValueChange={handleChannelChange}
+                    disabled={!updaterAvailable || busy}
+                  >
+                    <SelectTrigger aria-label="Update channel">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {updateChannelItems.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </AboutSettingsRow>
+                <SettingsSectionDivider />
+                <AboutSettingsRow title="Check for a new version" description={updateDescription}>
+                  <div className="flex min-w-48 flex-col items-end gap-2">
+                    <Button
+                      type="button"
                       disabled={!updaterAvailable || busy}
+                      onClick={() => void handleUpdateCheck()}
                     >
-                      <SelectTrigger aria-label="Update channel">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {updateChannelItems.map((item) => (
-                            <SelectItem key={item.value} value={item.value}>
-                              {item.label}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </AboutSettingsRow>
-                  <AboutSettingsDivider />
-                  <AboutSettingsRow title="Check for a new version" description={updateDescription}>
-                    <div className="flex min-w-48 flex-col items-end gap-2">
-                      <Button
-                        type="button"
-                        disabled={!updaterAvailable || busy}
-                        onClick={() => void handleUpdateCheck()}
-                      >
-                        {busy ? <Spinner data-icon="inline-start" /> : null}
-                        {buttonLabel}
-                      </Button>
-                      {progress ? (
-                        <Progress value={progress.percent ?? null} className="w-48 gap-1">
-                          <ProgressLabel>
-                            {progress.phase === "installing" ? "Installing" : "Downloading"}
-                          </ProgressLabel>
-                          <ProgressValue>
-                            {() =>
-                              progress.percent === undefined ? "Working" : `${progress.percent}%`
-                            }
-                          </ProgressValue>
-                        </Progress>
-                      ) : null}
-                    </div>
-                  </AboutSettingsRow>
-                </>
-              ) : null}
-            </ItemGroup>
-          </CardContent>
-        </Card>
-        <Card className="gap-0! py-0!">
-          <CardContent className="px-0!">
-            <ItemGroup className="gap-0">
-              <AboutSettingsRow title="Build mode" value={buildMode} />
-              <AboutSettingsDivider />
-              <AboutSettingsRow title="Tauri version" value={ABOUT_TAURI_VERSION} />
-              {isTauriBuild ? (
-                <>
-                  <AboutSettingsDivider />
-                  <AboutSettingsRow title="App identifier" value={ABOUT_APP_IDENTIFIER} />
-                </>
-              ) : null}
-              <AboutSettingsDivider />
-              <AboutSettingsRow title="License" value={ABOUT_LICENSE} />
-            </ItemGroup>
-          </CardContent>
-        </Card>
+                      {busy ? <Spinner data-icon="inline-start" /> : null}
+                      {buttonLabel}
+                    </Button>
+                    {progress ? (
+                      <Progress value={progress.percent ?? null} className="w-48 gap-1">
+                        <ProgressLabel>
+                          {progress.phase === "installing" ? "Installing" : "Downloading"}
+                        </ProgressLabel>
+                        <ProgressValue>
+                          {() =>
+                            progress.percent === undefined ? "Working" : `${progress.percent}%`
+                          }
+                        </ProgressValue>
+                      </Progress>
+                    ) : null}
+                  </div>
+                </AboutSettingsRow>
+              </>
+            ) : null}
+          </ItemGroup>
+        </SettingsSection>
+        <SettingsSection title="Build">
+          <ItemGroup className="gap-0">
+            <AboutSettingsRow title="Build mode" value={buildMode} />
+            <SettingsSectionDivider />
+            <AboutSettingsRow title="Tauri version" value={ABOUT_TAURI_VERSION} />
+            {isTauriBuild ? (
+              <>
+                <SettingsSectionDivider />
+                <AboutSettingsRow title="App identifier" value={ABOUT_APP_IDENTIFIER} />
+              </>
+            ) : null}
+            <SettingsSectionDivider />
+            <AboutSettingsRow title="License" value={ABOUT_LICENSE} />
+          </ItemGroup>
+        </SettingsSection>
       </div>
     </ScreenBase>
   );
