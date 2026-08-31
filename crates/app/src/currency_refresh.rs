@@ -255,8 +255,9 @@ mod tests {
             .currency_service()
             .complete_initial_setup("EUR")
             .expect("confirm EUR");
-        insert_enabled_currency(&app_data_dir.path().join("zai.db"), "USD");
-        mark_provider_refresh_failed(&app_data_dir.path().join("zai.db"));
+        let db_path = app_data_dir.path().join("userdata").join("zai.db");
+        insert_enabled_currency(&db_path, "USD");
+        mark_provider_refresh_failed(&db_path);
 
         apply_refresh_outcome(
             context.currency_service().as_ref(),

@@ -14,13 +14,16 @@ use diesel::r2d2::{self, ConnectionManager, Pool, PooledConnection};
 use diesel::sqlite::SqliteConnection;
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use log::{error, info};
-use std::env;
 use std::fs;
+#[cfg(unix)]
+use std::fs::OpenOptions;
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use zai_core::Result;
 use zai_core::features::budgets::traits::{CalendarClock, LocalCalendarClock};
 use zai_core::features::domain_alerts::DomainAlertEventBus;
+use zai_core::{Error, Result};
 
 const PRE_CURRENCY_BACKUP_SUFFIX: &str = ".pre-multi-currency";
 
@@ -119,16 +122,16 @@ impl Database {
     }
 }
 
-pub fn connect(app_data_dir: impl AsRef<Path>) -> Result<Database> {
-    connect_with_client_format(app_data_dir, ClientFormat::MultiCurrencyV1)
+pub fn connect(userdata_dir: impl AsRef<Path>) -> Result<Database> {
+    connect_with_client_format(userdata_dir, ClientFormat::MultiCurrencyV1)
 }
 
 pub fn connect_with_client_format(
-    app_data_dir: impl AsRef<Path>,
+    userdata_dir: impl AsRef<Path>,
     client_format: ClientFormat,
 ) -> Result<Database> {
     connect_with_event_bus_clock_and_format(
-        app_data_dir,
+        userdata_dir,
         DomainAlertEventBus::new(),
         Arc::new(LocalCalendarClock),
         client_format,
@@ -137,23 +140,23 @@ pub fn connect_with_client_format(
 }
 
 pub fn connect_with_event_bus(
-    app_data_dir: impl AsRef<Path>,
+    userdata_dir: impl AsRef<Path>,
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
 ) -> Result<Database> {
     connect_with_event_bus_and_clock(
-        app_data_dir,
+        userdata_dir,
         domain_alert_event_bus,
         Arc::new(LocalCalendarClock),
     )
 }
 
 pub fn connect_with_event_bus_and_clock(
-    app_data_dir: impl AsRef<Path>,
+    userdata_dir: impl AsRef<Path>,
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
     clock: Arc<dyn CalendarClock>,
 ) -> Result<Database> {
     connect_with_event_bus_clock_and_format(
-        app_data_dir,
+        userdata_dir,
         domain_alert_event_bus,
         clock,
         ClientFormat::MultiCurrencyV1,
@@ -162,11 +165,11 @@ pub fn connect_with_event_bus_and_clock(
 }
 
 pub fn open_existing_with_client_format(
-    app_data_dir: impl AsRef<Path>,
+    userdata_dir: impl AsRef<Path>,
     client_format: ClientFormat,
 ) -> Result<Database> {
     connect_with_event_bus_clock_and_format(
-        app_data_dir,
+        userdata_dir,
         DomainAlertEventBus::new(),
         Arc::new(LocalCalendarClock),
         client_format,
@@ -181,13 +184,21 @@ pub fn pre_currency_backup_path(db_path: &Path) -> PathBuf {
 }
 
 fn connect_with_event_bus_clock_and_format(
-    app_data_dir: impl AsRef<Path>,
+    userdata_dir: impl AsRef<Path>,
     domain_alert_event_bus: Arc<DomainAlertEventBus>,
     clock: Arc<dyn CalendarClock>,
     client_format: ClientFormat,
     migrate: bool,
 ) -> Result<Database> {
-    let db_path = get_db_path(app_data_dir.as_ref());
+    let userdata_dir = userdata_dir.as_ref();
+    if !userdata_dir.is_absolute() {
+        return Err(Error::InvalidData(format!(
+            "Userdata must be an absolute path: '{}'",
+            userdata_dir.display()
+        )));
+    }
+
+    let db_path = userdata_dir.join(DEFAULT_DB_FILENAME);
     init(&db_path)?;
     let pool = if migrate {
         activate_currency_schema(&db_path)?
@@ -207,12 +218,6 @@ fn connect_with_event_bus_clock_and_format(
     })
 }
 
-fn get_db_path(app_data_dir: &Path) -> PathBuf {
-    env::var_os("DATABASE_URL")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| app_data_dir.join(DEFAULT_DB_FILENAME))
-}
-
 fn init(db_path: &Path) -> Result<()> {
     if let Some(db_dir) = db_path.parent()
         && !db_dir.exists()
@@ -224,6 +229,8 @@ fn init(db_path: &Path) -> Result<()> {
             })
             .into_core()?;
     }
+
+    create_private_database_file(db_path)?;
 
     let mut conn = SqliteConnection::establish(db_path.to_string_lossy().as_ref())
         .map_err(|err| {
@@ -237,6 +244,27 @@ fn init(db_path: &Path) -> Result<()> {
     )
     .into_core()?;
 
+    Ok(())
+}
+
+#[cfg(unix)]
+fn create_private_database_file(db_path: &Path) -> Result<()> {
+    OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .open(db_path)
+        .map(|_| ())
+        .map_err(|err| StorageError::FilePreparation {
+            path: db_path.display().to_string(),
+            reason: err.to_string(),
+        })
+        .into_core()
+}
+
+#[cfg(not(unix))]
+fn create_private_database_file(_db_path: &Path) -> Result<()> {
     Ok(())
 }
 
@@ -302,5 +330,19 @@ impl r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error> for Connec
         .map_err(r2d2::Error::QueryError)?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::connect;
+
+    #[test]
+    fn connect_rejects_relative_userdata_path() {
+        let error = connect("relative-userdata")
+            .err()
+            .expect("relative Userdata should fail");
+
+        assert!(error.to_string().contains("must be an absolute path"));
     }
 }

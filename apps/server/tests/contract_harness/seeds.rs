@@ -53,13 +53,13 @@ pub async fn seed_transaction_at(
     request_json(&harness.router, "POST", "/api/transactions", Some(payload)).await
 }
 
-pub async fn seed_alert(dir: &std::path::Path, occurrence_key: &str, title: &str) -> String {
+pub async fn seed_alert(zai_home: &std::path::Path, occurrence_key: &str, title: &str) -> String {
     use zai_core::features::domain_alerts::{
         AlertInsertOutcome, DomainAlertSeverity, NewDomainAlert,
     };
     use zai_db::connect;
 
-    let database = connect(dir).expect("database");
+    let database = connect(zai_home.join("userdata")).expect("database");
     let repository = database.domain_alerts_repository();
     let outcome = repository
         .insert(NewDomainAlert {

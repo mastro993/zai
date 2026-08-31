@@ -4,6 +4,14 @@ Personal finance context for tracking money movement and related organization.
 
 ## Language
 
+**Zai Home**:
+The absolute root directory for Zai-managed persistent application state. Desktop Zai Home defaults to the user's `.zai` directory; web Zai Home is explicitly configured. OS-keyring secrets, temporary OS or framework artifacts, and user-chosen exports are outside Zai Home.
+_Avoid_: Data directory, app data directory
+
+**Userdata**:
+Private user-owned application data stored in the `userdata` directory directly under Zai Home, including the Zai database.
+_Avoid_: User data directory, database directory
+
 **Release Version**:
 The exact unpadded UTC `Y.M.D.B` identifier shared by every shipped desktop
 build and used in public release identifiers.

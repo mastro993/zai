@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{ffi::OsString, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use axum::{Json, Router, middleware, routing::get};
 
@@ -38,19 +38,16 @@ pub enum ServerError {
 
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
-    pub data_dir: PathBuf,
+    pub zai_home: PathBuf,
     pub bind_addr: SocketAddr,
 }
 
 impl ServerConfig {
     pub fn from_env() -> CoreResult<Self> {
-        let data_dir = std::env::var("ZAI_DATA_DIR")
-            .map(PathBuf::from)
-            .map_err(|_| {
-                zai_core::Error::InvalidData(
-                    "ZAI_DATA_DIR must be set to a local data directory".to_string(),
-                )
-            })?;
+        let zai_home = parse_zai_home(
+            std::env::var_os("ZAI_HOME"),
+            std::env::var_os("ZAI_DATA_DIR").is_some(),
+        )?;
 
         let bind_addr = std::env::var("ZAI_BIND_ADDR")
             .ok()
@@ -58,7 +55,7 @@ impl ServerConfig {
             .unwrap_or_else(default_bind_addr);
 
         Ok(Self {
-            data_dir,
+            zai_home,
             bind_addr,
         })
     }
@@ -69,6 +66,25 @@ impl ServerConfig {
             .await
             .map_err(ServerError::BindListener)
     }
+}
+
+fn parse_zai_home(value: Option<OsString>, legacy_data_dir_is_set: bool) -> CoreResult<PathBuf> {
+    let Some(value) = value else {
+        let message = if legacy_data_dir_is_set {
+            "ZAI_DATA_DIR is no longer supported; set ZAI_HOME to an absolute root containing userdata/zai.db"
+        } else {
+            "ZAI_HOME must be set to an absolute path"
+        };
+        return Err(zai_core::Error::InvalidData(message.to_string()));
+    };
+
+    let path = PathBuf::from(value);
+    if !path.is_absolute() {
+        return Err(zai_core::Error::InvalidData(
+            "ZAI_HOME must be an absolute path".to_string(),
+        ));
+    }
+    Ok(path)
 }
 
 pub fn default_bind_addr() -> SocketAddr {
@@ -123,8 +139,8 @@ pub fn create_router(context: Arc<ServiceContext>) -> Router {
 }
 
 pub async fn serve(config: ServerConfig) -> Result<(), ServerError> {
-    validate_bind_addr(&config.bind_addr)?;
-    let bootstrapped = bootstrap_context(&config.data_dir)?;
+    let listener = config.bind_listener().await?;
+    let bootstrapped = bootstrap_context(&config.zai_home)?;
     let context = Arc::new(bootstrapped.context);
     let supervisor_handle = context.recurring_processing_supervisor();
     let currency_refresh_handle = context.currency_refresh_supervisor();
@@ -132,7 +148,6 @@ pub async fn serve(config: ServerConfig) -> Result<(), ServerError> {
     std::mem::drop(bootstrapped.currency_refresh.spawn());
     context.adopt_leftover_currency_jobs();
     let app = create_router(context);
-    let listener = config.bind_listener().await?;
     axum::serve(listener, app)
         .with_graceful_shutdown(async move {
             let _ = tokio::signal::ctrl_c().await;
@@ -141,4 +156,35 @@ pub async fn serve(config: ServerConfig) -> Result<(), ServerError> {
         })
         .await
         .map_err(ServerError::Serve)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_zai_home;
+
+    #[test]
+    fn parse_zai_home_requires_value() {
+        let error = parse_zai_home(None, false).expect_err("missing ZAI_HOME should fail");
+
+        assert!(error.to_string().contains("ZAI_HOME must be set"));
+    }
+
+    #[test]
+    fn parse_zai_home_rejects_relative_path() {
+        let error = parse_zai_home(Some("relative".into()), false)
+            .expect_err("relative ZAI_HOME should fail");
+
+        assert!(error.to_string().contains("must be an absolute path"));
+    }
+
+    #[test]
+    fn parse_zai_home_explains_legacy_variable() {
+        let error = parse_zai_home(None, true).expect_err("legacy variable should fail");
+
+        assert!(
+            error
+                .to_string()
+                .contains("ZAI_DATA_DIR is no longer supported")
+        );
+    }
 }

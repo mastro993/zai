@@ -34,14 +34,24 @@ const loadEnvFile = (relativePath) => {
 
 loadEnvFile(".env.web");
 
+if (process.env.ZAI_DATA_DIR !== undefined && process.env.ZAI_HOME === undefined) {
+  throw new Error(
+    "ZAI_DATA_DIR is no longer supported; set ZAI_HOME to an absolute root containing userdata/zai.db",
+  );
+}
+
 const apiOrigin = process.env.VITE_ZAI_API_ORIGIN ?? "http://127.0.0.1:3000";
-const usesTempDataDir = !process.env.ZAI_DATA_DIR;
-const dataDir =
-  process.env.ZAI_DATA_DIR ?? (await mkdtemp(path.join(tmpdir(), "zai-web-dev-")));
+const usesTempZaiHome = process.env.ZAI_HOME === undefined;
+const zaiHome =
+  process.env.ZAI_HOME ??
+  path.resolve(await mkdtemp(path.join(tmpdir(), "zai-web-dev-")));
+if (!path.isAbsolute(zaiHome)) {
+  throw new Error("ZAI_HOME must be an absolute path");
+}
 
 const sharedEnv = {
   ...process.env,
-  ZAI_DATA_DIR: dataDir,
+  ZAI_HOME: zaiHome,
   VITE_ZAI_API_ORIGIN: apiOrigin,
 };
 
@@ -66,17 +76,17 @@ const stopChildren = (signal = "SIGTERM") => {
   }
 };
 
-const removeTempDataDir = async () => {
-  if (!usesTempDataDir) {
+const removeTempZaiHome = async () => {
+  if (!usesTempZaiHome) {
     return;
   }
 
-  await rm(dataDir, { recursive: true, force: true }).catch(() => {});
+  await rm(zaiHome, { recursive: true, force: true }).catch(() => {});
 };
 
 const shutdown = async (exitCode = 0) => {
   stopChildren();
-  await removeTempDataDir();
+  await removeTempZaiHome();
   process.exit(exitCode);
 };
 
@@ -87,35 +97,16 @@ process.on("SIGTERM", () => {
   void shutdown(0);
 });
 
-const isApiHealthy = async (origin) => {
-  try {
-    const response = await fetch(`${origin}/health`, {
-      signal: AbortSignal.timeout(1500),
-    });
-    if (!response.ok) {
-      return false;
-    }
-    const body = await response.json();
-    return body.status === "ok";
-  } catch {
-    return false;
-  }
-};
-
-console.log(`Zai web dev using data directory: ${dataDir}`);
+console.log(`Zai web dev using Zai Home: ${zaiHome}`);
 console.log(`API origin: ${apiOrigin}`);
 
-if (await isApiHealthy(apiOrigin)) {
-  console.log(`Reusing existing API at ${apiOrigin}`);
-} else {
-  const server = run("cargo", ["run", "-p", "zai-server"]);
-  server.on("exit", (code, signal) => {
-    if (signal) {
-      return;
-    }
-    void shutdown(code ?? 0);
-  });
-}
+const server = run("cargo", ["run", "-p", "zai-server"]);
+server.on("exit", (code, signal) => {
+  if (signal) {
+    return;
+  }
+  void shutdown(code ?? 0);
+});
 
 const frontend = run("pnpm", ["--filter", "frontend", "dev:web"]);
 

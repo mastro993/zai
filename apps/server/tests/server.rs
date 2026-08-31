@@ -75,7 +75,7 @@ fn validate_bind_addr_rejects_non_loopback() {
 async fn serve_rejects_non_loopback_bind_before_initializing_database() {
     let app_data_dir = TempAppDataDir::new();
     let config = ServerConfig {
-        data_dir: app_data_dir.path().to_path_buf(),
+        zai_home: app_data_dir.path().to_path_buf(),
         bind_addr: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 3000),
     };
 
@@ -87,7 +87,7 @@ async fn serve_rejects_non_loopback_bind_before_initializing_database() {
         error,
         ServerError::Bind(BindError::NonLoopback(addr)) if addr.ip() == IpAddr::V4(Ipv4Addr::UNSPECIFIED)
     ));
-    assert!(!app_data_dir.path().join("zai.db").exists());
+    assert!(!app_data_dir.path().join("userdata").join("zai.db").exists());
 }
 
 #[tokio::test]
@@ -133,10 +133,10 @@ async fn legacy_cash_flow_api_route_returns_not_found() {
 }
 
 #[tokio::test]
-async fn server_starts_with_shared_context_from_app_data_dir() {
+async fn server_starts_with_shared_context_from_zai_home() {
     let app_data_dir = TempAppDataDir::new();
     let config = ServerConfig {
-        data_dir: app_data_dir.path().to_path_buf(),
+        zai_home: app_data_dir.path().to_path_buf(),
         bind_addr: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0),
     };
 
@@ -150,8 +150,8 @@ async fn server_starts_with_shared_context_from_app_data_dir() {
     assert!(bind_addr.ip().is_loopback());
 
     let context =
-        Arc::new(initialize_context(&config.data_dir).expect("shared context should initialize"));
-    assert!(config.data_dir.join("zai.db").exists());
+        Arc::new(initialize_context(&config.zai_home).expect("shared context should initialize"));
+    assert!(config.zai_home.join("userdata").join("zai.db").exists());
 
     let app = create_router(context);
     let handle = tokio::spawn(async move {

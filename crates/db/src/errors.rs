@@ -9,6 +9,9 @@ pub enum StorageError {
     #[error("Failed to create database directory '{path}': {reason}")]
     DirectoryCreation { path: String, reason: String },
 
+    #[error("Failed to prepare database file '{path}': {reason}")]
+    FilePreparation { path: String, reason: String },
+
     #[error("Database connection failed: {0}")]
     ConnectionFailed(#[from] diesel::ConnectionError),
 
@@ -30,6 +33,9 @@ impl From<StorageError> for Error {
         match err {
             StorageError::DirectoryCreation { path, reason } => {
                 Error::Database(DatabaseError::DirectoryCreation { path, reason })
+            }
+            StorageError::FilePreparation { path, reason } => {
+                Error::Database(DatabaseError::FilePreparation { path, reason })
             }
             StorageError::ConnectionFailed(err) => {
                 Error::Database(DatabaseError::ConnectionFailed(err.to_string()))

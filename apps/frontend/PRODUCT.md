@@ -46,8 +46,8 @@ development and transport verification, not as a hosted service.
 
 ## Capabilities and Constraints
 
-- Financial data is stored locally in `zai.db` under the operating system's
-  application-data directory.
+- Financial data is stored locally in `{ZAI_HOME}/userdata/zai.db`; desktop
+  Zai Home defaults to `~/.zai`.
 - Transaction and category workflows support local import and export.
 - Budgeting, recurring-transaction processing, forecasting, and alerts are
   implemented as local application workflows.
