@@ -517,7 +517,9 @@ describe("transaction screen request guard", () => {
     });
 
     const originalNode = screen.getByText(original);
-    expect(screen.getByText(converted).classList.contains("font-semibold")).toBe(true);
+    const convertedNode = screen.getByText(converted);
+    expect(convertedNode.classList.contains("font-semibold")).toBe(true);
+    expect(convertedNode.classList.contains("font-mono")).toBe(true);
     expect(originalNode.classList.contains("text-muted-foreground")).toBe(true);
     expect(originalNode.textContent).not.toContain("(");
   });
@@ -527,6 +529,49 @@ describe("transaction screen request guard", () => {
 
     const converted = formatCurrencyFromMinor(350, "EUR");
     expect(screen.getByText(converted)).toBeTruthy();
+  });
+
+  it("groups transactions by day and hides the selection column", async () => {
+    vi.setSystemTime(new Date("2026-09-01T12:00:00"));
+
+    await renderScreen({
+      transactions: page(
+        [
+          sampleListItem({
+            id: "tx-today",
+            description: "Morning coffee",
+            transactionDate: "2026-09-01T08:15:00",
+            transactionType: "expense",
+          }),
+          sampleListItem({
+            id: "tx-yesterday-income",
+            description: "Paycheck",
+            transactionDate: "2026-08-31T09:00:00",
+            transactionType: "income",
+            convertedAmount: 250000,
+          }),
+          sampleListItem({
+            id: "tx-august",
+            description: "Groceries",
+            transactionDate: "2026-08-30T18:40:00",
+            transactionType: "expense",
+          }),
+        ],
+        1,
+        1,
+      ),
+      categories: [food],
+    });
+
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    expect(screen.getByRole("heading", { name: "Today" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Yesterday" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "30 August" })).toBeTruthy();
+    expect(screen.getByText("08:15")).toBeTruthy();
+    expect(screen.getByText("09:00")).toBeTruthy();
+    expect(screen.getByText("18:40")).toBeTruthy();
+    expect(screen.getByLabelText("Edit Expense: Morning coffee")).toBeTruthy();
+    expect(screen.getByLabelText("Edit Income: Paycheck")).toBeTruthy();
   });
 
   it("styles missing descriptions as muted italic text", async () => {
