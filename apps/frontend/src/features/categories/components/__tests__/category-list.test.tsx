@@ -61,11 +61,11 @@ describe("CategoryList", () => {
 
     fireEvent.click(foodRow);
 
-    expect(
-      screen
-        .getByRole("list", { name: "Subcategories of Food" })
-        .classList.contains("overflow-hidden"),
-    ).toBe(true);
+    const childList = screen.getByRole("list", { name: "Subcategories of Food" });
+    expect(childList.classList.contains("overflow-hidden")).toBe(true);
+    expect(childList.querySelector(".group\\/row")?.classList.contains("px-3")).toBe(true);
+    expect(childList.querySelector(".group\\/row")?.classList.contains("pl-10")).toBe(false);
+    expect(foodRow.querySelector('[data-slot="category-stem"]')).toBeNull();
   });
 
   it("hides the child count while a parent is expanded and restores it when collapsed", async () => {
