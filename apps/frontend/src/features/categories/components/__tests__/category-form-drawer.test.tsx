@@ -204,7 +204,10 @@ describe("CategoryFormDrawer", () => {
       </Drawer>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Category icon, Default" }));
+    const iconTrigger = screen.getByRole("button", { name: "Category icon, Default" });
+    expect(iconTrigger.querySelector("svg")?.getAttribute("style")).toBeNull();
+
+    fireEvent.click(iconTrigger);
     fireEvent.click(screen.getByRole("button", { name: "Food" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Meals" } });
     fireEvent.click(screen.getByRole("button", { name: "Save category" }));
