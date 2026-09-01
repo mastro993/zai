@@ -117,6 +117,8 @@ function CategoryFormDrawer({
   });
   const parentId = useWatch({ control: form.control, name: "parentId" });
   const selectedIcon = useWatch({ control: form.control, name: "icon" });
+  const categoryName = useWatch({ control: form.control, name: "name" });
+  const categoryDescription = useWatch({ control: form.control, name: "description" });
   const isChildCategory = Boolean(parentId);
   const parentCategory = parentId ? categoryById.get(parentId) : undefined;
   const effectiveIcon =
@@ -264,6 +266,8 @@ function CategoryFormDrawer({
                   value={field.value ?? null}
                   effectiveIcon={effectiveIcon}
                   isChild={isChildCategory}
+                  name={categoryName}
+                  description={categoryDescription ?? ""}
                   onChange={(icon) =>
                     field.onChange(icon, {
                       shouldDirty: true,
