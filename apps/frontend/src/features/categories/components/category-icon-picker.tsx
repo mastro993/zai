@@ -8,7 +8,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-import { getCategoryBadgeColors } from "../lib/category-color";
 import {
   CATEGORY_ICON_CATALOG,
   CATEGORY_ICON_GROUPS,
@@ -19,19 +18,16 @@ import {
 function CategoryIconPicker({
   value,
   effectiveIcon,
-  effectiveColor,
   isChild,
   onChange,
 }: {
   value: CategoryIcon | null;
   effectiveIcon: CategoryIcon;
-  effectiveColor: string;
   isChild: boolean;
   onChange: (icon: CategoryIcon | null) => void;
 }) {
   const [open, setOpen] = useState(false);
   const selected = getCategoryIconEntry(effectiveIcon);
-  const { foreground } = getCategoryBadgeColors(effectiveColor);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -44,12 +40,7 @@ function CategoryIconPicker({
           />
         }
       >
-        <HugeiconsIcon
-          icon={selected.icon}
-          className="size-4"
-          strokeWidth={2}
-          style={{ color: foreground }}
-        />
+        <HugeiconsIcon icon={selected.icon} className="size-4" strokeWidth={2} />
         {selected.label}
       </PopoverTrigger>
       <PopoverContent

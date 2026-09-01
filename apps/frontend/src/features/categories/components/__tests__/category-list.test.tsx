@@ -10,7 +10,7 @@ const food = categorySchema.parse({
   id: "food",
   parentId: null,
   name: "Food",
-  description: null,
+  description: "Groceries and restaurants",
   color: "#C32828",
   role: "spending",
   parent: null,
@@ -55,14 +55,17 @@ describe("CategoryList", () => {
     expect(screen.getByRole("region", { name: "Spending" }).contains(foodRow)).toBe(true);
     expect(screen.getByRole("region", { name: "Income" }).contains(salaryRow)).toBe(true);
     expect(foodRow.textContent).not.toContain("Spending");
+    expect(foodRow.textContent).toContain("Food");
+    expect(foodRow.textContent).toContain("Groceries and restaurants");
+    expect(salaryRow.closest("li")?.querySelector("p")).toBeNull();
 
     fireEvent.click(foodRow);
 
-    expect(
-      screen
-        .getByRole("list", { name: "Subcategories of Food" })
-        .classList.contains("overflow-hidden"),
-    ).toBe(true);
+    const childList = screen.getByRole("list", { name: "Subcategories of Food" });
+    expect(childList.classList.contains("overflow-hidden")).toBe(true);
+    expect(childList.querySelector(".group\\/row")?.classList.contains("px-3")).toBe(true);
+    expect(childList.querySelector(".group\\/row")?.classList.contains("pl-10")).toBe(false);
+    expect(foodRow.querySelector('[data-slot="category-stem"]')).toBeNull();
   });
 
   it("hides the child count while a parent is expanded and restores it when collapsed", async () => {
@@ -86,5 +89,31 @@ describe("CategoryList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Collapse Food" }));
 
     expect(screen.getByText("+1")).toBeTruthy();
+  });
+
+  it("keeps a parent expanded when the category list is refreshed", () => {
+    const { rerender } = render(
+      <CategoryList
+        categories={[food, groceries]}
+        onAddChild={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Food" }));
+    expect(screen.getByRole("list", { name: "Subcategories of Food" })).toBeTruthy();
+
+    rerender(
+      <CategoryList
+        categories={[food, groceries, salary]}
+        onAddChild={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Collapse Food" })).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Subcategories of Food" })).toBeTruthy();
   });
 });

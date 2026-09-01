@@ -117,7 +117,6 @@ function CategoryFormDrawer({
   });
   const parentId = useWatch({ control: form.control, name: "parentId" });
   const selectedIcon = useWatch({ control: form.control, name: "icon" });
-  const selectedColor = useWatch({ control: form.control, name: "color" });
   const isChildCategory = Boolean(parentId);
   const parentCategory = parentId ? categoryById.get(parentId) : undefined;
   const effectiveIcon =
@@ -127,11 +126,6 @@ function CategoryFormDrawer({
         ? getCategoryDisplayIcon(parentCategory)
         : DEFAULT_CATEGORY_ICON
       : DEFAULT_CATEGORY_ICON);
-  const effectiveColor = isChildCategory
-    ? parentCategory
-      ? getCategoryDisplayColor(parentCategory)
-      : DEFAULT_CATEGORY_COLOR
-    : (selectedColor ?? DEFAULT_CATEGORY_COLOR);
   const { title, description } = getFormCopy(mode);
   const { errors, isSubmitting } = form.formState;
   const nameErrorId = "category-name-error";
@@ -269,7 +263,6 @@ function CategoryFormDrawer({
                 <CategoryIconPicker
                   value={field.value ?? null}
                   effectiveIcon={effectiveIcon}
-                  effectiveColor={effectiveColor}
                   isChild={isChildCategory}
                   onChange={(icon) =>
                     field.onChange(icon, {
@@ -294,6 +287,7 @@ function CategoryFormDrawer({
                 render={({ field }) => (
                   <CategoryColorPicker
                     value={field.value ?? DEFAULT_CATEGORY_COLOR}
+                    icon={effectiveIcon}
                     onChange={(color) =>
                       field.onChange(color, {
                         shouldDirty: true,

@@ -330,38 +330,40 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
         onImported={completeCategoryImport}
       />
 
-      {isLoading ? (
-        <CategoryListSkeleton />
-      ) : categories.length === 0 ? (
-        <Empty
-          role="region"
-          aria-labelledby="category-empty-state-title"
-          className="min-h-72 rounded-lg border px-6 py-10 sm:px-8"
-        >
-          <EmptyHeader className="max-w-md gap-1.5">
-            <EmptyMedia variant="icon">
-              <HugeiconsIcon icon={Tag01Icon} strokeWidth={2} aria-hidden="true" />
-            </EmptyMedia>
-            <EmptyTitle
-              id="category-empty-state-title"
-              role="heading"
-              aria-level={2}
-              className="text-base"
-            >
-              Set up your categories
-            </EmptyTitle>
-            <EmptyDescription>
-              Create your first spending or income category to organize transactions.
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent className="max-w-none flex-row flex-wrap justify-center">
-            <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
-            <Button type="button" variant="outline" onClick={() => setIsImportDialogOpen(true)}>
-              <HugeiconsIcon icon={UploadIcon} strokeWidth={2} />
-              Import categories
-            </Button>
-          </EmptyContent>
-        </Empty>
+      {categories.length === 0 ? (
+        isLoading ? (
+          <CategoryListSkeleton />
+        ) : (
+          <Empty
+            role="region"
+            aria-labelledby="category-empty-state-title"
+            className="min-h-72 rounded-lg border px-6 py-10 sm:px-8"
+          >
+            <EmptyHeader className="max-w-md gap-1.5">
+              <EmptyMedia variant="icon">
+                <HugeiconsIcon icon={Tag01Icon} strokeWidth={2} aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle
+                id="category-empty-state-title"
+                role="heading"
+                aria-level={2}
+                className="text-base"
+              >
+                Set up your categories
+              </EmptyTitle>
+              <EmptyDescription>
+                Create your first spending or income category to organize transactions.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent className="max-w-none flex-row flex-wrap justify-center">
+              <Button onClick={() => openFormDrawer({ type: "create-root" })}>New category</Button>
+              <Button type="button" variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+                <HugeiconsIcon icon={UploadIcon} strokeWidth={2} />
+                Import categories
+              </Button>
+            </EmptyContent>
+          </Empty>
+        )
       ) : (
         <CategoryList
           categories={categories}
