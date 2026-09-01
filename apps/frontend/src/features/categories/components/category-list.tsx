@@ -13,10 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-import { getCategoryDisplayColor } from "../lib/category";
+import { getCategoryDisplayColor, getCategoryDisplayIcon } from "../lib/category";
+import { getCategoryBadgeColors } from "../lib/category-color";
+import { getCategoryIconEntry } from "../lib/category-icon";
 import type { CategoryFormMode } from "../types/category-types";
 import type { CategoryRole, TransactionCategory } from "../types/model";
-import { CategoryBadge } from "./category-badge";
 
 interface CategoryListProps {
   categories: Array<TransactionCategory>;
@@ -75,6 +76,21 @@ function CategoryRowActions({
   );
 }
 
+function CategoryColorSquare({ category }: { category: TransactionCategory }) {
+  const { background, foreground } = getCategoryBadgeColors(getCategoryDisplayColor(category));
+  const icon = getCategoryIconEntry(getCategoryDisplayIcon(category));
+
+  return (
+    <span
+      className="flex size-9 shrink-0 items-center justify-center rounded-md"
+      style={{ backgroundColor: background, color: foreground }}
+      aria-hidden="true"
+    >
+      <HugeiconsIcon icon={icon.icon} className="size-4" strokeWidth={2} />
+    </span>
+  );
+}
+
 function CategoryRowContent({
   category,
   childCount,
@@ -84,12 +100,22 @@ function CategoryRowContent({
   childCount?: number;
   showChildCount?: boolean;
 }) {
+  const description = category.description?.trim() ?? "";
+
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
-      <CategoryBadge color={getCategoryDisplayColor(category)}>{category.name}</CategoryBadge>
-      {childCount !== undefined && childCount > 0 ? (
-        <CategoryChildCount count={childCount} isVisible={showChildCount} />
-      ) : null}
+    <div className="flex min-w-0 flex-1 items-center gap-3">
+      <CategoryColorSquare category={category} />
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium">{category.name}</span>
+          {childCount !== undefined && childCount > 0 ? (
+            <CategoryChildCount count={childCount} isVisible={showChildCount} />
+          ) : null}
+        </div>
+        {description ? (
+          <p className="truncate text-xs text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -272,8 +298,8 @@ function CategoryListSection({
   const headingId = `category-list-${role}`;
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <h2 id={headingId} className="text-sm font-medium">
+    <section aria-labelledby={headingId} className="flex flex-col gap-4">
+      <h2 id={headingId} className="pl-3 text-sm font-medium">
         {label}
       </h2>
       <div className="overflow-hidden rounded-lg border">
@@ -387,8 +413,12 @@ function CategoryListSkeleton() {
     <div className="overflow-hidden rounded-lg border">
       <ul className="divide-y">
         {[0, 1, 2, 3].map((row) => (
-          <li key={row} className="flex items-center gap-2 px-3 py-2.5">
-            <Skeleton className="h-5 w-28" />
+          <li key={row} className="flex items-center gap-3 px-3 py-2.5">
+            <Skeleton className="size-9 rounded-md" />
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-3 w-40" />
+            </div>
           </li>
         ))}
       </ul>
