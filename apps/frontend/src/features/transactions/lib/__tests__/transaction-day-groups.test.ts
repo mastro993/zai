@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { formatCurrencyFromMinor } from "@/lib/currency";
+
 import { sampleListItem } from "../../types/sample";
 import {
   formatTransactionDayHeading,
+  formatTransactionDayTotal,
   formatTransactionRowDate,
   groupTransactionsByDay,
   transactionDayKey,
@@ -27,6 +30,27 @@ describe("transaction day groups", () => {
 
   it("shows the time of day on each row", () => {
     expect(formatTransactionRowDate("2026-08-30T21:15:00")).toBe("21:15");
+  });
+
+  it("nets the day's converted income and expenses", () => {
+    const income = sampleListItem({
+      id: "tx-in",
+      transactionType: "income",
+      convertedAmount: 500,
+    });
+    const expense = sampleListItem({
+      id: "tx-out",
+      transactionType: "expense",
+      convertedAmount: 200,
+    });
+
+    expect(formatTransactionDayTotal([income, expense])).toBe(formatCurrencyFromMinor(300, "EUR"));
+    expect(formatTransactionDayTotal([expense])).toBe(formatCurrencyFromMinor(-200, "EUR"));
+    expect(
+      formatTransactionDayTotal([
+        sampleListItem({ id: "tx-incomplete", complete: false, convertedAmount: null }),
+      ]),
+    ).toBeNull();
   });
 
   it("groups transactions by day while keeping list order", () => {

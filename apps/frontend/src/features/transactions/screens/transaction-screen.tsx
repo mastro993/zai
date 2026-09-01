@@ -216,8 +216,8 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
             onEdit={(transactionId) => {
               void actions.openEditForm(transactionId);
             }}
-            onAdopt={(transaction, trigger) => {
-              void actions.openAdoptDrawer(transaction, trigger);
+            onAdopt={(transaction) => {
+              void actions.openAdoptDrawer(transaction);
             }}
             onDelete={actions.openDeleteDialog}
           />

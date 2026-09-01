@@ -1,7 +1,10 @@
 import { format, parseISO, subDays } from "date-fns";
 
-import { toDateTimeInputValue } from "./transaction";
+import { formatCurrencyFromMinor } from "@/lib/currency";
+
 import type { TransactionListItem } from "../types/model";
+import { toDateTimeInputValue } from "./transaction";
+import { isTransactionType } from "./transaction-type-display";
 
 export interface TransactionDayGroup {
   dayKey: string;
@@ -54,6 +57,37 @@ export const formatTransactionRowDate = (transactionDate: string): string => {
   }
 
   return format(parsed, "HH:mm");
+};
+
+export const formatTransactionDayTotal = (
+  transactions: Array<TransactionListItem>,
+): string | null => {
+  let net = 0;
+  let currency: string | undefined;
+
+  for (const transaction of transactions) {
+    if (!transaction.complete || transaction.convertedAmount === null) {
+      continue;
+    }
+    if (!isTransactionType(transaction.transactionType)) {
+      continue;
+    }
+    if (currency !== undefined && transaction.convertedCurrency !== currency) {
+      continue;
+    }
+
+    currency = transaction.convertedCurrency;
+    net +=
+      transaction.transactionType === "income"
+        ? transaction.convertedAmount
+        : -transaction.convertedAmount;
+  }
+
+  if (currency === undefined) {
+    return null;
+  }
+
+  return formatCurrencyFromMinor(net, currency);
 };
 
 export const groupTransactionsByDay = (

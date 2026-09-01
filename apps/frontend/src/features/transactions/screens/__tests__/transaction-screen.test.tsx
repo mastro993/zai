@@ -542,6 +542,7 @@ describe("transaction screen request guard", () => {
             description: "Morning coffee",
             transactionDate: "2026-09-01T08:15:00",
             transactionType: "expense",
+            transactionCategoryId: "cat-1",
           }),
           sampleListItem({
             id: "tx-yesterday-income",
@@ -567,9 +568,13 @@ describe("transaction screen request guard", () => {
     expect(screen.getByRole("heading", { name: "Today" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Yesterday" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "30 August" })).toBeTruthy();
-    expect(screen.getByText("08:15")).toBeTruthy();
-    expect(screen.getByText("09:00")).toBeTruthy();
-    expect(screen.getByText("18:40")).toBeTruthy();
+    expect(screen.getAllByLabelText(`Total ${formatCurrencyFromMinor(-350, "EUR")}`)).toHaveLength(
+      2,
+    );
+    expect(screen.getByLabelText(`Total ${formatCurrencyFromMinor(250000, "EUR")}`)).toBeTruthy();
+    expect(screen.getByText("08:15, Food")).toBeTruthy();
+    expect(screen.getByText("09:00, Uncategorized")).toBeTruthy();
+    expect(screen.getByText("18:40, Uncategorized")).toBeTruthy();
     expect(screen.getByLabelText("Edit Expense: Morning coffee")).toBeTruthy();
     expect(screen.getByLabelText("Edit Income: Paycheck")).toBeTruthy();
   });
@@ -619,7 +624,8 @@ describe("transaction screen request guard", () => {
   it("opens recurring adoption in the shared recurring form", async () => {
     await renderScreen();
 
-    fireEvent.click(screen.getByRole("button", { name: "Adopt Initial coffee as recurring" }));
+    fireEvent.contextMenu(screen.getByLabelText("Edit Expense: Initial coffee"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Make recurring" }));
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Adopt as recurring" })).toBeTruthy();
@@ -648,7 +654,8 @@ describe("transaction screen request guard", () => {
       categories: [],
     });
 
-    fireEvent.click(screen.getByTitle("Make recurring"));
+    fireEvent.contextMenu(screen.getByRole("button", { name: /Edit Expense/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Make recurring" }));
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
