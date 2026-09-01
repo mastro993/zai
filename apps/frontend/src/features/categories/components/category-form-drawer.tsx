@@ -294,6 +294,7 @@ function CategoryFormDrawer({
                 render={({ field }) => (
                   <CategoryColorPicker
                     value={field.value ?? DEFAULT_CATEGORY_COLOR}
+                    icon={effectiveIcon}
                     onChange={(color) =>
                       field.onChange(color, {
                         shouldDirty: true,

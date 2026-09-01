@@ -21,11 +21,22 @@ describe("CategoryColorPicker", () => {
     const redChoice = screen.getByRole("button", { name: "Select Red" });
 
     expect(referenceBadge).not.toBeNull();
-    expect(redChoice.textContent).toBe("Aa");
+    expect(redChoice.querySelector("svg")).not.toBeNull();
     expect(redChoice.style.backgroundColor).toBe(referenceBadge?.style.backgroundColor);
     expect(redChoice.style.color).toBe(referenceBadge?.style.color);
     expect(screen.getAllByRole("button")).toHaveLength(10);
     expect(screen.getByRole("button", { name: "Choose custom color" })).toBeTruthy();
+  });
+
+  it("previews the chosen category icon in each swatch", () => {
+    const { rerender } = render(
+      <CategoryColorPicker value="#C32828" icon="food" onChange={vi.fn()} />,
+    );
+    const foodMarkup = screen.getByRole("button", { name: "Select Red" }).innerHTML;
+
+    rerender(<CategoryColorPicker value="#C32828" icon="bank" onChange={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Select Red" }).innerHTML).not.toBe(foodMarkup);
   });
 
   it("uses only a rounded border to highlight the selected color", () => {
@@ -37,7 +48,7 @@ describe("CategoryColorPicker", () => {
     expect(selectedChoice.classList.contains("rounded-(--radius)")).toBe(true);
     expect(selectedChoice.classList.contains("border-foreground")).toBe(true);
     expect(selectedChoice.classList.contains("ring-2")).toBe(false);
-    expect(selectedChoice.querySelector("svg")).toBeNull();
+    expect(selectedChoice.querySelector("svg")).not.toBeNull();
   });
 
   it("previews and selects a stored custom color", () => {
@@ -52,7 +63,7 @@ describe("CategoryColorPicker", () => {
     const customChoice = screen.getByRole("button", { name: "Edit custom color" });
 
     expect(customChoice.getAttribute("aria-pressed")).toBe("true");
-    expect(customChoice.textContent).toBe("Aa");
+    expect(customChoice.querySelector("svg")).not.toBeNull();
     expect(customChoice.style.backgroundColor).toBe(referenceBadge?.style.backgroundColor);
     expect(customChoice.style.color).toBe(referenceBadge?.style.color);
   });
@@ -80,7 +91,10 @@ describe("CategoryColorPicker", () => {
     expect(gradientLayer).not.toBeNull();
     expect(gradientLayer?.classList.contains("opacity-60")).toBe(true);
     expect(gradientLayer?.style.backgroundImage).toContain("conic-gradient");
-    expect(icon?.classList.contains("text-white/80")).toBe(true);
+    expect(icon?.classList.contains("text-white")).toBe(true);
+    expect(icon?.innerHTML).toBe(
+      screen.getByRole("button", { name: "Select Red" }).querySelector("svg")?.innerHTML,
+    );
   });
 
   it("opens the custom picker at the current selected color", async () => {
