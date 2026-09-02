@@ -217,6 +217,28 @@ describe("CategoryFormDrawer", () => {
     );
   });
 
+  it("finds expanded category icons in the picker search", () => {
+    render(
+      <Drawer open swipeDirection="right">
+        <CategoryFormDrawer
+          open
+          mode={{ type: "create-root" }}
+          categories={[]}
+          onSubmit={vi.fn()}
+        />
+      </Drawer>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Category icon, Default" }));
+    fireEvent.change(screen.getByPlaceholderText("Search icons"), {
+      target: { value: "meal voucher" },
+    });
+    expect(screen.getByRole("button", { name: /^Meal voucher$/ })).not.toBeNull();
+
+    fireEvent.change(screen.getByPlaceholderText("Search icons"), { target: { value: "AI" } });
+    expect(screen.getByRole("button", { name: /^AI$/ })).not.toBeNull();
+  });
+
   it("lets a child inherit the parent icon", () => {
     render(
       <Drawer open swipeDirection="right">

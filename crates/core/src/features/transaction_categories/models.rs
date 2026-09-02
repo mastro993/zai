@@ -258,10 +258,19 @@ pub enum CategoryIcon {
     Supplements,
     Medicines,
     Doctors,
+    Ai,
+    Gambling,
+    Interest,
+    Mealvoucher,
+    Tolls,
+    Attractions,
+    Leisure,
+    Gas,
+    Events,
 }
 
 impl CategoryIcon {
-    pub const ALL: [Self; 183] = [
+    pub const ALL: [Self; 192] = [
         Self::Default,
         Self::Food,
         Self::Groceries,
@@ -445,6 +454,15 @@ impl CategoryIcon {
         Self::Supplements,
         Self::Medicines,
         Self::Doctors,
+        Self::Ai,
+        Self::Gambling,
+        Self::Interest,
+        Self::Mealvoucher,
+        Self::Tolls,
+        Self::Attractions,
+        Self::Leisure,
+        Self::Gas,
+        Self::Events,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -632,6 +650,15 @@ impl CategoryIcon {
             Self::Supplements => "supplements",
             Self::Medicines => "medicines",
             Self::Doctors => "doctors",
+            Self::Ai => "ai",
+            Self::Gambling => "gambling",
+            Self::Interest => "interest",
+            Self::Mealvoucher => "mealvoucher",
+            Self::Tolls => "tolls",
+            Self::Attractions => "attractions",
+            Self::Leisure => "leisure",
+            Self::Gas => "gas",
+            Self::Events => "events",
         }
     }
 }
@@ -976,7 +1003,7 @@ mod tests {
 
     #[test]
     fn category_icons_use_stable_wire_values() {
-        assert_eq!(CategoryIcon::ALL.len(), 183);
+        assert_eq!(CategoryIcon::ALL.len(), 192);
         assert_eq!(
             serde_json::to_string(&CategoryIcon::Default).unwrap(),
             "\"default\""
@@ -988,6 +1015,15 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&CategoryIcon::Childcare).unwrap(),
             "\"childcare\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CategoryIcon::Mealvoucher).unwrap(),
+            "\"mealvoucher\""
+        );
+        assert_eq!(serde_json::to_string(&CategoryIcon::Ai).unwrap(), "\"ai\"");
+        assert_eq!(
+            serde_json::to_string(&CategoryIcon::Gas).unwrap(),
+            "\"gas\""
         );
         for icon in CategoryIcon::ALL {
             assert_eq!(icon.as_str().parse::<CategoryIcon>(), Ok(icon));

@@ -1,5 +1,12 @@
 # Choices
 
+## 2026-09-02 — Category icons for AI, gambling, interest, meal voucher, tolls, attractions, leisure, gas, events
+
+- Keys: `ai`, `gambling`, `interest`, `mealvoucher`, `tolls`, `attractions`, `leisure`, `gas`, `events`.
+- `gas` = utility (Home, flame). `fuel` stays car petrol.
+- `mealvoucher` not `mealVoucher` — match `icecream`/`firstaid` wire style.
+- Glyphs: sparkles, cards, coins, voucher, road, ferris wheel, kite, flame, fireworks.
+
 ## 2026-08-25 — Snapshot sits below notification copy
 
 - Budget status Card uses `mt-3` so body and the rich render are not flush (xs ItemContent has no gap).

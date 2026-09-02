@@ -45,6 +45,20 @@ describe("category icons", () => {
         0,
       );
     }
+
+    expect(CATEGORY_ICONS).toEqual(
+      expect.arrayContaining([
+        "ai",
+        "gambling",
+        "interest",
+        "mealvoucher",
+        "tolls",
+        "attractions",
+        "leisure",
+        "gas",
+        "events",
+      ]),
+    );
   });
 
   it("filters catalog entries by label, key, or group", () => {
@@ -73,10 +87,19 @@ describe("category icons", () => {
       expect.arrayContaining(["parking", "metro"]),
     );
     expect(fromDescription.length).toBeLessThanOrEqual(8);
+
+    expect(suggestCategoryIcons("Meal voucher lunch", "").map((entry) => entry.key)).toContain(
+      "mealvoucher",
+    );
+    expect(suggestCategoryIcons("Gas bill", "").map((entry) => entry.key)).toContain("gas");
+    expect(suggestCategoryIcons("Highway tolls", "").map((entry) => entry.key)).toContain("tolls");
   });
 
   it("parses known keys and drops unknown values", () => {
     expect(parseCategoryIcon("food")).toBe("food");
+    expect(parseCategoryIcon("ai")).toBe("ai");
+    expect(parseCategoryIcon("mealvoucher")).toBe("mealvoucher");
+    expect(parseCategoryIcon("gas")).toBe("gas");
     expect(parseCategoryIcon("spaceship")).toBeNull();
     expect(parseCategoryIcon("")).toBeNull();
   });
