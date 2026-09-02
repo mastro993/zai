@@ -113,6 +113,7 @@ impl TransactionExchangeRateRevision {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionListRecurring {
+    pub recurring_transaction_id: String,
     pub fulfillment_position: i32,
     pub total_occurrences: Option<i32>,
 }
@@ -364,15 +365,18 @@ mod tests {
             converted_currency: "EUR".to_string(),
             complete: true,
             recurring: Some(TransactionListRecurring {
+                recurring_transaction_id: "rt-1".to_string(),
                 fulfillment_position: 2,
                 total_occurrences: Some(12),
             }),
         };
         let json = serde_json::to_value(&item).expect("serialize");
+        assert_eq!(json["recurring"]["recurringTransactionId"], "rt-1");
         assert_eq!(json["recurring"]["fulfillmentPosition"], 2);
         assert_eq!(json["recurring"]["totalOccurrences"], 12);
 
         let indefinite = TransactionListRecurring {
+            recurring_transaction_id: "rt-2".to_string(),
             fulfillment_position: 1,
             total_occurrences: None,
         };

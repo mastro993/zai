@@ -44,6 +44,7 @@ type TransactionListProps = {
   categoryById: Map<string, TransactionCategory>;
   onEdit: (transactionId: string) => void;
   onAdopt: (transaction: TransactionListItem) => void;
+  onOpenRecurring: (recurringTransactionId: string) => void;
   onDelete: (transaction: TransactionListItem) => void;
 };
 
@@ -125,12 +126,14 @@ function TransactionListRow({
   category,
   onEdit,
   onAdopt,
+  onOpenRecurring,
   onDelete,
 }: {
   transaction: TransactionListItem;
   category: TransactionCategory | undefined;
   onEdit: (transactionId: string) => void;
   onAdopt: (transaction: TransactionListItem) => void;
+  onOpenRecurring: (recurringTransactionId: string) => void;
   onDelete: (transaction: TransactionListItem) => void;
 }) {
   const transactionLabel = transaction.description || "No description";
@@ -139,53 +142,76 @@ function TransactionListRow({
     ? transaction.transactionType
     : undefined;
   const typeLabel = type ? TRANSACTION_TYPE_ARROWS[type].label : transaction.transactionType;
+  const recurring = transaction.recurring;
+  const rowClassName = "flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left";
+  const rowBody = (
+    <>
+      <CategoryIconTile category={category} />
+      <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+        <span className="flex min-w-0 items-center gap-1">
+          <span
+            className={cn(
+              "truncate text-sm font-medium",
+              !transaction.description && "italic text-muted-foreground",
+            )}
+          >
+            {transaction.description || "No description"}
+          </span>
+          {recurring ? <RecurringMarker recurring={recurring} /> : null}
+        </span>
+        <time
+          className="truncate text-xs text-muted-foreground"
+          dateTime={transaction.transactionDate}
+        >
+          {`${formatTransactionRowDate(transaction.transactionDate)}, ${categoryName}`}
+        </time>
+      </span>
+      <TransactionAmount transaction={transaction} />
+    </>
+  );
 
   return (
     <ContextMenu>
       <ContextMenuTrigger render={<div className="flex items-center hover:bg-muted/50" />}>
-        <button
-          type="button"
-          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50"
-          aria-label={`Edit ${typeLabel}: ${transactionLabel}`}
-          onClick={() => {
-            onEdit(transaction.id);
-          }}
-        >
-          <CategoryIconTile category={category} />
-          <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
-            <span className="flex min-w-0 items-center gap-1">
-              <span
-                className={cn(
-                  "truncate text-sm font-medium",
-                  !transaction.description && "italic text-muted-foreground",
-                )}
-              >
-                {transaction.description || "No description"}
-              </span>
-              {transaction.recurring ? <RecurringMarker recurring={transaction.recurring} /> : null}
-            </span>
-            <time
-              className="truncate text-xs text-muted-foreground"
-              dateTime={transaction.transactionDate}
-            >
-              {`${formatTransactionRowDate(transaction.transactionDate)}, ${categoryName}`}
-            </time>
-          </span>
-          <TransactionAmount transaction={transaction} />
-        </button>
+        {recurring ? (
+          <div className={rowClassName} aria-label={`${typeLabel}: ${transactionLabel}`}>
+            {rowBody}
+          </div>
+        ) : (
+          <button
+            type="button"
+            className={cn(
+              rowClassName,
+              "cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50",
+            )}
+            aria-label={`Edit ${typeLabel}: ${transactionLabel}`}
+            onClick={() => {
+              onEdit(transaction.id);
+            }}
+          >
+            {rowBody}
+          </button>
+        )}
       </ContextMenuTrigger>
       <ContextMenuContent className="min-w-44">
         <ContextMenuGroup>
-          {transaction.recurring ? null : (
-            <ContextMenuItem onClick={() => onAdopt(transaction)}>
+          {recurring ? (
+            <ContextMenuItem onClick={() => onOpenRecurring(recurring.recurringTransactionId)}>
               <HugeiconsIcon icon={RepeatIcon} data-icon="inline-start" strokeWidth={2} />
-              Make recurring
+              View recurring
             </ContextMenuItem>
+          ) : (
+            <>
+              <ContextMenuItem onClick={() => onAdopt(transaction)}>
+                <HugeiconsIcon icon={RepeatIcon} data-icon="inline-start" strokeWidth={2} />
+                Make recurring
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => onEdit(transaction.id)}>
+                <HugeiconsIcon icon={PencilEdit02Icon} data-icon="inline-start" strokeWidth={2} />
+                Edit
+              </ContextMenuItem>
+            </>
           )}
-          <ContextMenuItem onClick={() => onEdit(transaction.id)}>
-            <HugeiconsIcon icon={PencilEdit02Icon} data-icon="inline-start" strokeWidth={2} />
-            Edit
-          </ContextMenuItem>
           <ContextMenuItem variant="destructive" onClick={() => onDelete(transaction)}>
             <HugeiconsIcon icon={Delete02Icon} data-icon="inline-start" strokeWidth={2} />
             Delete
@@ -201,6 +227,7 @@ function TransactionList({
   categoryById,
   onEdit,
   onAdopt,
+  onOpenRecurring,
   onDelete,
 }: TransactionListProps) {
   const groups = groupTransactionsByDay(transactions);
@@ -240,6 +267,7 @@ function TransactionList({
                         category={category}
                         onEdit={onEdit}
                         onAdopt={onAdopt}
+                        onOpenRecurring={onOpenRecurring}
                         onDelete={onDelete}
                       />
                     </li>

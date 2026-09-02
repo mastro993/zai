@@ -114,10 +114,18 @@ describe("transaction result schemas", () => {
       convertedAmount: 120000,
       convertedCurrency: "EUR",
       complete: true,
-      recurring: { fulfillmentPosition: 2, totalOccurrences: 12 },
+      recurring: {
+        recurringTransactionId: "rt-rent",
+        fulfillmentPosition: 2,
+        totalOccurrences: 12,
+      },
     });
 
-    expect(parsed.recurring).toEqual({ fulfillmentPosition: 2, totalOccurrences: 12 });
+    expect(parsed.recurring).toEqual({
+      recurringTransactionId: "rt-rent",
+      fulfillmentPosition: 2,
+      totalOccurrences: 12,
+    });
   });
 
   it("rejects a list item without original money", () => {

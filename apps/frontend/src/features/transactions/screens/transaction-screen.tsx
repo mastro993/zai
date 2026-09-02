@@ -1,5 +1,6 @@
 import { DownloadIcon, TransactionHistoryIcon, UploadIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "@/components/toaster/toast";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
@@ -40,6 +41,7 @@ interface TransactionScreenProps {
 }
 
 export function TransactionScreen({ initialData }: TransactionScreenProps) {
+  const navigate = useNavigate();
   const controller = useTransactionListController(initialData);
   const actions = useTransactionActions(controller);
   const showFilters = controller.transactions.length > 0 || controller.hasActiveFilters;
@@ -218,6 +220,12 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
             }}
             onAdopt={(transaction) => {
               void actions.openAdoptDrawer(transaction);
+            }}
+            onOpenRecurring={(recurringTransactionId) => {
+              void navigate({
+                to: "/cash-flow/recurring/$recurringTransactionId",
+                params: { recurringTransactionId },
+              });
             }}
             onDelete={actions.openDeleteDialog}
           />

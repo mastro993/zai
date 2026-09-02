@@ -250,8 +250,13 @@ async function renderScreen(
     path: "/cash-flow/categories",
     component: () => <div>Categories</div>,
   });
+  const recurringRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/recurring/$recurringTransactionId",
+    component: () => <div>Recurring parent</div>,
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, categoriesRoute]),
+    routeTree: rootRoute.addChildren([indexRoute, categoriesRoute, recurringRoute]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
   await router.load();
@@ -621,21 +626,29 @@ describe("transaction screen request guard", () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Amount")));
   });
 
-  it("shows a recurring marker and omits make recurring on recurring rows", async () => {
+  it("shows a recurring marker and omits edit actions on recurring rows", async () => {
     await renderScreen({
       transactions: page(
         [
           sampleListItem({
             id: "tx-rent",
             description: "Rent",
-            recurring: { fulfillmentPosition: 2, totalOccurrences: 12 },
+            recurring: {
+              recurringTransactionId: "rt-rent",
+              fulfillmentPosition: 2,
+              totalOccurrences: 12,
+            },
           }),
           sampleListItem({
             id: "tx-salary",
             description: "Salary",
             transactionDate: "2026-07-01T11:00:00",
             transactionType: "income",
-            recurring: { fulfillmentPosition: 1, totalOccurrences: null },
+            recurring: {
+              recurringTransactionId: "rt-salary",
+              fulfillmentPosition: 1,
+              totalOccurrences: null,
+            },
           }),
         ],
         1,
@@ -647,9 +660,40 @@ describe("transaction screen request guard", () => {
     expect(screen.getByLabelText("Recurring (2/12)")).toBeTruthy();
     expect(screen.getByLabelText("Recurring")).toBeTruthy();
 
-    fireEvent.contextMenu(screen.getByLabelText("Edit Expense: Rent"));
+    fireEvent.click(screen.getByLabelText("Expense: Rent"));
+    expect(screen.queryByRole("heading", { name: "Edit transaction" })).toBeNull();
+
+    fireEvent.contextMenu(screen.getByLabelText("Expense: Rent"));
     expect(screen.queryByRole("menuitem", { name: "Make recurring" })).toBeNull();
-    expect(screen.getByRole("menuitem", { name: "Edit" })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "Edit" })).toBeNull();
+    expect(screen.getByRole("menuitem", { name: "View recurring" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeTruthy();
+  });
+
+  it("opens the parent recurring transaction from the context menu", async () => {
+    await renderScreen({
+      transactions: page(
+        [
+          sampleListItem({
+            id: "tx-rent",
+            description: "Rent",
+            recurring: {
+              recurringTransactionId: "rt-rent",
+              fulfillmentPosition: 2,
+              totalOccurrences: 12,
+            },
+          }),
+        ],
+        1,
+        1,
+      ),
+      categories: [],
+    });
+
+    fireEvent.contextMenu(screen.getByLabelText("Expense: Rent"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "View recurring" }));
+
+    await waitFor(() => expect(screen.getByText("Recurring parent")).toBeTruthy());
   });
 
   it("opens recurring adoption in the shared recurring form", async () => {

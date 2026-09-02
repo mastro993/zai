@@ -226,18 +226,25 @@ pub fn list_recurring_for_transactions(
         .filter(recurring_occurrences::transaction_id.eq_any(transaction_ids))
         .select((
             recurring_occurrences::transaction_id,
+            recurring_occurrences::recurring_transaction_id,
             recurring_occurrences::fulfillment_position,
             recurring_transactions::total_occurrences,
         ))
-        .load::<(String, i32, Option<i32>)>(conn)
+        .load::<(String, String, i32, Option<i32>)>(conn)
         .into_core()?;
     Ok(rows
         .into_iter()
         .map(
-            |(transaction_id, fulfillment_position, total_occurrences)| {
+            |(
+                transaction_id,
+                recurring_transaction_id,
+                fulfillment_position,
+                total_occurrences,
+            )| {
                 (
                     transaction_id,
                     TransactionListRecurring {
+                        recurring_transaction_id,
                         fulfillment_position,
                         total_occurrences,
                     },

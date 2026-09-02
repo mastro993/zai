@@ -77,6 +77,7 @@ export const transactionFormSchema = z
   });
 
 export const transactionListRecurringSchema = z.object({
+  recurringTransactionId: z.string().min(1),
   fulfillmentPosition: z.number().int().positive(),
   totalOccurrences: z.number().int().positive().nullable(),
 });

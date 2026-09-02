@@ -120,6 +120,7 @@ async fn provenance_and_failure_queries_are_indexed() {
     let recurring =
         list_recurring_for_transactions(&mut conn, &["txn-1".to_string()]).expect("list recurring");
     let marker = recurring.get("txn-1").expect("recurring marker");
+    assert_eq!(marker.recurring_transaction_id, "rt-prov");
     assert_eq!(marker.fulfillment_position, 1);
     assert_eq!(marker.total_occurrences, Some(12));
 
