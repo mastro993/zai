@@ -29,6 +29,49 @@ export const WEB_CHROME_WITH_HISTORY_LEADING_INSET = `calc(${TRAFFIC_LIGHT_TO_TR
 /** Title-bar inset when overlay chrome is toggle only (web / mobile). */
 export const WEB_CHROME_LEADING_INSET = `calc(0.5rem + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_CONTENT_GAP})`;
 
+export interface OverlayChrome {
+  showFixedTrigger: boolean;
+  showHistory: boolean;
+  triggerPaddingLeft: string;
+  showTitleBarSeparator: boolean;
+  titleBarLeadingInset: string;
+}
+
+interface OverlayChromeInput {
+  buildTarget: CommandBuildTarget;
+  state: "expanded" | "collapsed";
+  isMobile: boolean;
+  hasDesktopWindowChrome: boolean;
+}
+
+export function resolveOverlayChrome({
+  buildTarget,
+  state,
+  isMobile,
+  hasDesktopWindowChrome,
+}: OverlayChromeInput): OverlayChrome {
+  const collapsed = state === "collapsed";
+  const showFixedTrigger = isMobile || collapsed || hasDesktopWindowChrome;
+  const showHistory = buildTarget === "tauri" && showFixedTrigger;
+  const needsTitleBarClearance = isMobile || collapsed;
+
+  return {
+    showFixedTrigger,
+    showHistory,
+    triggerPaddingLeft: hasDesktopWindowChrome
+      ? NATIVE_TOGGLE_LEADING_INSET
+      : TRAFFIC_LIGHT_TO_TRIGGER_GAP,
+    showTitleBarSeparator: collapsed && !isMobile,
+    titleBarLeadingInset: !needsTitleBarClearance
+      ? "1rem"
+      : hasDesktopWindowChrome
+        ? NATIVE_CHROME_LEADING_INSET
+        : showHistory
+          ? WEB_CHROME_WITH_HISTORY_LEADING_INSET
+          : WEB_CHROME_LEADING_INSET,
+  };
+}
+
 const isPrimaryEmptyRegionPointer = (
   event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>,
 ) => event.button === 0 && event.currentTarget === event.target;

@@ -17,6 +17,7 @@ import {
   ApplicationTitleBarProvider,
 } from "../application-title-bar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { WEB_CHROME_LEADING_INSET } from "@/components/window-drag-region";
 import * as screenBreadcrumbs from "@/hooks/use-screen-breadcrumbs";
 import * as windowChrome from "@/lib/window-chrome";
 
@@ -165,13 +166,26 @@ describe("ApplicationTitleBar", () => {
     expect(breadcrumbs).not.toBeNull();
   });
 
-  it("keeps history chrome out of the web title bar when the sidebar is collapsed", async () => {
+  it("clears overlay toggle chrome without history when the web sidebar is collapsed", async () => {
     await renderTitleBar("web", undefined, false);
 
     const banner = screen.getByRole("banner");
+    const leading = banner.querySelector<HTMLElement>('[data-slot="title-bar-leading"]');
+    const breadcrumbs = banner.querySelector('[data-slot="title-bar-breadcrumbs"]');
+    const padding = leading?.style.paddingLeft ?? "";
+    const serializedInset = document.createElement("div");
+    serializedInset.style.paddingLeft = WEB_CHROME_LEADING_INSET;
+
     expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Go forward" })).toBeNull();
     expect(banner.querySelector('[data-slot="navigation-history-buttons"]')).toBeNull();
-    expect(banner.querySelector('[data-slot="title-bar-history-separator"]')).toBeNull();
+    expect(padding).toBe(serializedInset.style.paddingLeft);
+    expect(WEB_CHROME_LEADING_INSET).toContain("0.5rem");
+    expect(WEB_CHROME_LEADING_INSET).toContain("2rem");
+    expect(padding).not.toContain("76px");
+    expect(padding).not.toContain("3.5rem");
+    const separator = banner.querySelector('[data-slot="title-bar-history-separator"]');
+    expect(separator).not.toBeNull();
+    expect(separator?.nextElementSibling).toBe(breadcrumbs);
   });
 });
