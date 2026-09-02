@@ -577,11 +577,51 @@ describe("transaction screen request guard", () => {
       2,
     );
     expect(screen.getByLabelText(`Total ${formatCurrencyFromMinor(250000, "EUR")}`)).toBeTruthy();
-    expect(screen.getByText("08:15, Food")).toBeTruthy();
-    expect(screen.getByText("09:00, Uncategorized")).toBeTruthy();
-    expect(screen.getByText("18:40, Uncategorized")).toBeTruthy();
+    expect(screen.getByText("08:15")).toBeTruthy();
+    expect(screen.getByText("09:00")).toBeTruthy();
+    expect(screen.getByText("18:40")).toBeTruthy();
+    expect(screen.getByLabelText("Food")).toBeTruthy();
+    expect(screen.getAllByLabelText("Uncategorized")).toHaveLength(2);
     expect(screen.getByLabelText("Edit Expense: Morning coffee")).toBeTruthy();
     expect(screen.getByLabelText("Edit Income: Paycheck")).toBeTruthy();
+  });
+
+  it("shows time only and puts the category path on the icon", async () => {
+    const movies = categorySchema.parse({
+      id: "cat-movies",
+      parentId: null,
+      name: "Movies",
+      role: "spending",
+      color: "#284EC3",
+    });
+    const shows = categorySchema.parse({
+      id: "cat-shows",
+      parentId: movies.id,
+      name: "Shows",
+      role: "spending",
+      parent: movies,
+    });
+
+    await renderScreen({
+      transactions: page(
+        [
+          sampleListItem({
+            id: "tx-netflix",
+            description: "Netflix",
+            transactionDate: "2026-07-21T19:41:00",
+            transactionType: "expense",
+            transactionCategoryId: shows.id,
+          }),
+        ],
+        1,
+        1,
+      ),
+      categories: [movies, shows],
+    });
+
+    expect(screen.getByText("19:41")).toBeTruthy();
+    expect(screen.queryByText("19:41 - Movies, Shows")).toBeNull();
+    expect(screen.getByLabelText("Movies, Shows")).toBeTruthy();
   });
 
   it("styles missing descriptions as muted italic text", async () => {

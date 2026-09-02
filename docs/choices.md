@@ -1,5 +1,20 @@
 # Choices
 
+## 2026-09-02 — Transaction row time is datetime only
+
+- Subtitle is `{HH:mm}`. Category path lives on the icon tooltip: immediate parent + assigned name, comma-separated. Uncategorized when none.
+
+## 2026-09-02 — Category icon picker cells have no tooltip
+
+- Grid cells keep `aria-label` only. Search + group labels name the icon. Hover tooltip on 56px cells was noise.
+
+## 2026-09-02 — Category icons for AI, gambling, interest, meal voucher, tolls, attractions, leisure, gas, events
+
+- Keys: `ai`, `gambling`, `interest`, `mealvoucher`, `tolls`, `attractions`, `leisure`, `gas`, `events`.
+- `gas` = utility (Home, flame). `fuel` stays car petrol.
+- `mealvoucher` not `mealVoucher` — match `icecream`/`firstaid` wire style.
+- Glyphs: sparkles, cards, coins, voucher, road, ferris wheel, kite, flame, fireworks.
+
 ## 2026-08-25 — Snapshot sits below notification copy
 
 - Budget status Card uses `mt-3` so body and the rich render are not flush (xs ItemContent has no gap).

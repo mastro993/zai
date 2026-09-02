@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import {
   getCategoryDisplayColor,
   getCategoryDisplayIcon,
+  getCategoryPathNames,
 } from "@/features/categories/lib/category";
 import { getCategoryBadgeColors } from "@/features/categories/lib/category-color";
 import {
@@ -53,19 +54,33 @@ const TRANSACTION_TYPE_ARROWS = {
   expense: { icon: ArrowDownRight01Icon, className: "text-destructive", label: "Expense" },
 } as const;
 
-function CategoryIconTile({ category }: { category: TransactionCategory | undefined }) {
+function CategoryIconTile({
+  category,
+  label,
+}: {
+  category: TransactionCategory | undefined;
+  label: string;
+}) {
   const color = category ? getCategoryDisplayColor(category) : DEFAULT_CATEGORY_COLOR;
   const { background, foreground } = getCategoryBadgeColors(color);
   const icon = getCategoryIconEntry(
     category ? getCategoryDisplayIcon(category) : DEFAULT_CATEGORY_ICON,
   );
   return (
-    <span
-      className="flex size-9 shrink-0 items-center justify-center rounded-md"
-      style={{ backgroundColor: background, color: foreground }}
-    >
-      <HugeiconsIcon icon={icon.icon} className="size-4" strokeWidth={2} aria-hidden="true" />
-    </span>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            className="flex size-9 shrink-0 items-center justify-center rounded-md"
+            style={{ backgroundColor: background, color: foreground }}
+            aria-label={label}
+          />
+        }
+      >
+        <HugeiconsIcon icon={icon.icon} className="size-4" strokeWidth={2} aria-hidden="true" />
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -121,9 +136,21 @@ function TransactionAmount({ transaction }: { transaction: TransactionListItem }
   );
 }
 
+function formatTransactionRowCategory(
+  category: TransactionCategory | undefined,
+  categoryById: Map<string, TransactionCategory>,
+): string {
+  if (!category) {
+    return "Uncategorized";
+  }
+
+  return getCategoryPathNames(category, categoryById).join(", ");
+}
+
 function TransactionListRow({
   transaction,
   category,
+  categoryById,
   onEdit,
   onAdopt,
   onOpenRecurring,
@@ -131,13 +158,14 @@ function TransactionListRow({
 }: {
   transaction: TransactionListItem;
   category: TransactionCategory | undefined;
+  categoryById: Map<string, TransactionCategory>;
   onEdit: (transactionId: string) => void;
   onAdopt: (transaction: TransactionListItem) => void;
   onOpenRecurring: (recurringTransactionId: string) => void;
   onDelete: (transaction: TransactionListItem) => void;
 }) {
   const transactionLabel = transaction.description || "No description";
-  const categoryName = category?.name ?? "Uncategorized";
+  const categoryName = formatTransactionRowCategory(category, categoryById);
   const type = isTransactionType(transaction.transactionType)
     ? transaction.transactionType
     : undefined;
@@ -146,7 +174,7 @@ function TransactionListRow({
   const rowClassName = "flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left";
   const rowBody = (
     <>
-      <CategoryIconTile category={category} />
+      <CategoryIconTile category={category} label={categoryName} />
       <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
         <span className="flex min-w-0 items-center gap-1">
           <span
@@ -163,7 +191,7 @@ function TransactionListRow({
           className="truncate text-xs text-muted-foreground"
           dateTime={transaction.transactionDate}
         >
-          {`${formatTransactionRowDate(transaction.transactionDate)}, ${categoryName}`}
+          {formatTransactionRowDate(transaction.transactionDate)}
         </time>
       </span>
       <TransactionAmount transaction={transaction} />
@@ -265,6 +293,7 @@ function TransactionList({
                       <TransactionListRow
                         transaction={transaction}
                         category={category}
+                        categoryById={categoryById}
                         onEdit={onEdit}
                         onAdopt={onAdopt}
                         onOpenRecurring={onOpenRecurring}

@@ -27,16 +27,21 @@ export const getCategoryDisplayIcon = (category: TransactionCategory): CategoryI
   return DEFAULT_CATEGORY_ICON;
 };
 
-export const getCategoryDisplayName = (
+export const getCategoryPathNames = (
   category: TransactionCategory,
   categoryById?: Map<string, TransactionCategory>,
-) => {
+): Array<string> => {
   const parentName =
     category.parent?.name ??
     (category.parentId ? categoryById?.get(category.parentId)?.name : undefined);
 
-  return parentName ? `${parentName} / ${category.name}` : category.name;
+  return parentName ? [parentName, category.name] : [category.name];
 };
+
+export const getCategoryDisplayName = (
+  category: TransactionCategory,
+  categoryById?: Map<string, TransactionCategory>,
+) => getCategoryPathNames(category, categoryById).join(" / ");
 
 export const getCategoryRoleLabel = (role: CategoryRole) =>
   role === "income" ? "Income" : "Spending";
