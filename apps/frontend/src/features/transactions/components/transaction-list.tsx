@@ -58,21 +58,37 @@ function CategoryIconTile({ category }: { category: TransactionCategory | undefi
   const icon = getCategoryIconEntry(
     category ? getCategoryDisplayIcon(category) : DEFAULT_CATEGORY_ICON,
   );
-  const name = category?.name ?? "Uncategorized";
+  return (
+    <span
+      className="flex size-9 shrink-0 items-center justify-center rounded-md"
+      style={{ backgroundColor: background, color: foreground }}
+    >
+      <HugeiconsIcon icon={icon.icon} className="size-4" strokeWidth={2} aria-hidden="true" />
+    </span>
+  );
+}
+
+function recurringHoverLabel(recurring: NonNullable<TransactionListItem["recurring"]>): string {
+  return recurring.totalOccurrences == null
+    ? "Recurring"
+    : `Recurring (${recurring.fulfillmentPosition}/${recurring.totalOccurrences})`;
+}
+
+function RecurringMarker({
+  recurring,
+}: {
+  recurring: NonNullable<TransactionListItem["recurring"]>;
+}) {
+  const label = recurringHoverLabel(recurring);
 
   return (
     <Tooltip>
       <TooltipTrigger
-        render={
-          <span
-            className="flex size-9 shrink-0 items-center justify-center rounded-md"
-            style={{ backgroundColor: background, color: foreground }}
-          />
-        }
+        render={<span className="inline-flex shrink-0 text-muted-foreground" aria-label={label} />}
       >
-        <HugeiconsIcon icon={icon.icon} className="size-4" strokeWidth={2} aria-hidden="true" />
+        <HugeiconsIcon icon={RepeatIcon} className="size-3" strokeWidth={2} aria-hidden="true" />
       </TooltipTrigger>
-      <TooltipContent>{name}</TooltipContent>
+      <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   );
 }
@@ -137,13 +153,16 @@ function TransactionListRow({
         >
           <CategoryIconTile category={category} />
           <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
-            <span
-              className={cn(
-                "truncate text-sm font-medium",
-                !transaction.description && "italic text-muted-foreground",
-              )}
-            >
-              {transaction.description || "No description"}
+            <span className="flex min-w-0 items-center gap-1">
+              <span
+                className={cn(
+                  "truncate text-sm font-medium",
+                  !transaction.description && "italic text-muted-foreground",
+                )}
+              >
+                {transaction.description || "No description"}
+              </span>
+              {transaction.recurring ? <RecurringMarker recurring={transaction.recurring} /> : null}
             </span>
             <time
               className="truncate text-xs text-muted-foreground"
@@ -157,10 +176,12 @@ function TransactionListRow({
       </ContextMenuTrigger>
       <ContextMenuContent className="min-w-44">
         <ContextMenuGroup>
-          <ContextMenuItem onClick={() => onAdopt(transaction)}>
-            <HugeiconsIcon icon={RepeatIcon} data-icon="inline-start" strokeWidth={2} />
-            Make recurring
-          </ContextMenuItem>
+          {transaction.recurring ? null : (
+            <ContextMenuItem onClick={() => onAdopt(transaction)}>
+              <HugeiconsIcon icon={RepeatIcon} data-icon="inline-start" strokeWidth={2} />
+              Make recurring
+            </ContextMenuItem>
+          )}
           <ContextMenuItem onClick={() => onEdit(transaction.id)}>
             <HugeiconsIcon icon={PencilEdit02Icon} data-icon="inline-start" strokeWidth={2} />
             Edit

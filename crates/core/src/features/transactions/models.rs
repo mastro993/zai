@@ -110,6 +110,13 @@ impl TransactionExchangeRateRevision {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionListRecurring {
+    pub fulfillment_position: i32,
+    pub total_occurrences: Option<i32>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionListItem {
@@ -124,6 +131,7 @@ pub struct TransactionListItem {
     pub converted_amount: Option<i32>,
     pub converted_currency: String,
     pub complete: bool,
+    pub recurring: Option<TransactionListRecurring>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -339,5 +347,37 @@ mod tests {
     #[test]
     fn list_paging_rejects_offset_overflow() {
         assert!(validate_list_paging(i64::MAX, 2).is_err());
+    }
+
+    #[test]
+    fn list_item_serializes_finite_and_indefinite_recurring() {
+        let item = TransactionListItem {
+            id: "txn-1".to_string(),
+            description: Some("Rent".to_string()),
+            transaction_date: sample_date(),
+            transaction_type: "expense".to_string(),
+            transaction_category_id: None,
+            notes: None,
+            amount: 1200,
+            currency: "EUR".to_string(),
+            converted_amount: Some(1200),
+            converted_currency: "EUR".to_string(),
+            complete: true,
+            recurring: Some(TransactionListRecurring {
+                fulfillment_position: 2,
+                total_occurrences: Some(12),
+            }),
+        };
+        let json = serde_json::to_value(&item).expect("serialize");
+        assert_eq!(json["recurring"]["fulfillmentPosition"], 2);
+        assert_eq!(json["recurring"]["totalOccurrences"], 12);
+
+        let indefinite = TransactionListRecurring {
+            fulfillment_position: 1,
+            total_occurrences: None,
+        };
+        let json = serde_json::to_value(indefinite).expect("serialize");
+        assert_eq!(json["fulfillmentPosition"], 1);
+        assert!(json["totalOccurrences"].is_null());
     }
 }

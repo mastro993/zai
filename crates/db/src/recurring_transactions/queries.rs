@@ -11,10 +11,12 @@ use crate::schema::{
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
+use std::collections::HashMap;
 use zai_core::features::recurring_transactions::{
     MAX_FAILURE_LIMIT, MAX_FEED_LIMIT, RecurringFailurePage, RecurringGenerationFailure,
     RecurringOccurrence, RecurringOccurrenceHead, RecurringOccurrencePage, RecurringTransaction,
 };
+use zai_core::features::transactions::models::TransactionListRecurring;
 use zai_core::{Error, Result};
 
 #[cfg(test)]
@@ -210,6 +212,39 @@ pub fn find_provenance_by_transaction(
         .optional()
         .into_core()?;
     row.map(build_occurrence).transpose()
+}
+
+pub fn list_recurring_for_transactions(
+    conn: &mut SqliteConnection,
+    transaction_ids: &[String],
+) -> Result<HashMap<String, TransactionListRecurring>> {
+    if transaction_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let rows = recurring_occurrences::table
+        .inner_join(recurring_transactions::table)
+        .filter(recurring_occurrences::transaction_id.eq_any(transaction_ids))
+        .select((
+            recurring_occurrences::transaction_id,
+            recurring_occurrences::fulfillment_position,
+            recurring_transactions::total_occurrences,
+        ))
+        .load::<(String, i32, Option<i32>)>(conn)
+        .into_core()?;
+    Ok(rows
+        .into_iter()
+        .map(
+            |(transaction_id, fulfillment_position, total_occurrences)| {
+                (
+                    transaction_id,
+                    TransactionListRecurring {
+                        fulfillment_position,
+                        total_occurrences,
+                    },
+                )
+            },
+        )
+        .collect())
 }
 
 pub fn list_failure_history(

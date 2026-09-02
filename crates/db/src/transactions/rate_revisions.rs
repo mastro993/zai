@@ -444,6 +444,8 @@ pub(crate) fn transaction_list_items(
     let generation = active_generation(conn)?;
     let ids = rows.iter().map(|row| row.id.clone()).collect::<Vec<_>>();
     let valuations = load_valuations(conn, &generation.id, &ids)?;
+    let mut recurring_by_id =
+        crate::recurring_transactions::list_recurring_for_transactions(conn, &ids)?;
     let mut by_id = valuations
         .into_iter()
         .map(|(id, amount, currency, complete)| (id, (amount, currency, complete)))
@@ -453,6 +455,7 @@ pub(crate) fn transaction_list_items(
             let (converted_amount, converted_currency, complete) = by_id
                 .remove(&row.id)
                 .unwrap_or((None, generation.target_currency.clone(), false));
+            let recurring = recurring_by_id.remove(&row.id);
             Ok(TransactionListItem {
                 id: row.id,
                 description: row.description,
@@ -465,6 +468,7 @@ pub(crate) fn transaction_list_items(
                 converted_amount,
                 converted_currency,
                 complete,
+                recurring,
             })
         })
         .collect()

@@ -621,6 +621,37 @@ describe("transaction screen request guard", () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Amount")));
   });
 
+  it("shows a recurring marker and omits make recurring on recurring rows", async () => {
+    await renderScreen({
+      transactions: page(
+        [
+          sampleListItem({
+            id: "tx-rent",
+            description: "Rent",
+            recurring: { fulfillmentPosition: 2, totalOccurrences: 12 },
+          }),
+          sampleListItem({
+            id: "tx-salary",
+            description: "Salary",
+            transactionDate: "2026-07-01T11:00:00",
+            transactionType: "income",
+            recurring: { fulfillmentPosition: 1, totalOccurrences: null },
+          }),
+        ],
+        1,
+        1,
+      ),
+      categories: [],
+    });
+
+    expect(screen.getByLabelText("Recurring (2/12)")).toBeTruthy();
+    expect(screen.getByLabelText("Recurring")).toBeTruthy();
+
+    fireEvent.contextMenu(screen.getByLabelText("Edit Expense: Rent"));
+    expect(screen.queryByRole("menuitem", { name: "Make recurring" })).toBeNull();
+    expect(screen.getByRole("menuitem", { name: "Edit" })).toBeTruthy();
+  });
+
   it("opens recurring adoption in the shared recurring form", async () => {
     await renderScreen();
 

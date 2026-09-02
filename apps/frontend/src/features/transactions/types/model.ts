@@ -76,6 +76,11 @@ export const transactionFormSchema = z
     };
   });
 
+export const transactionListRecurringSchema = z.object({
+  fulfillmentPosition: z.number().int().positive(),
+  totalOccurrences: z.number().int().positive().nullable(),
+});
+
 export const transactionListItemSchema = z.object({
   id: z.string().min(1),
   description: nullableStringSchema,
@@ -88,6 +93,7 @@ export const transactionListItemSchema = z.object({
   convertedAmount: z.number().int().nullable(),
   convertedCurrency: z.string().length(3),
   complete: z.boolean(),
+  recurring: transactionListRecurringSchema.nullable().default(null),
 });
 
 export const transactionSchema = z.object({
