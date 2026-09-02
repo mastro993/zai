@@ -1,24 +1,41 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Blockchain01Icon,
   CodeIcon,
   Moon02Icon,
+  RefreshIcon,
   Settings01Icon,
   Sun01Icon,
+  Tick02Icon,
 } from "@hugeicons/core-free-icons";
+import { Result } from "@praha/byethrow";
 import { useTheme } from "next-themes";
 
+import {
+  STATUS_BAR_CURRENT_FEEDBACK_MS,
+  reduceStatusBarUpdateIconPhase,
+} from "@/components/status-bar-update-icon";
+import { toast } from "@/components/toaster/toast";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { AlertsBell } from "@/features/alerts/components/alerts-bell";
 import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
 import { useOpenSettings } from "@/features/settings/hooks/use-settings-modal";
+import {
+  checkForUpdates,
+  isUpdaterAvailable,
+  isUpdaterTarget,
+  readUpdateChannel,
+  type UpdaterTarget,
+} from "@/features/settings/lib/updater";
 import { settingsItem } from "@/lib/navigation";
 import { applyStatusBarTheme, nextStatusBarTheme } from "@/lib/theme-toggle";
 
 const statusBarControlClassName =
   "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground";
+
+const statusBarVersionRowClassName = "flex min-w-0 items-center gap-1 text-xs tabular-nums";
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme, systemTheme } = useTheme();
@@ -68,8 +85,114 @@ function TanStackDevtoolsButton() {
   );
 }
 
+function resolveStatusBarUpdaterTarget(
+  buildTarget: string | undefined,
+  packageVersion: string,
+  updaterTarget: string | undefined,
+): UpdaterTarget | null {
+  if (!isUpdaterAvailable(buildTarget, packageVersion, updaterTarget)) {
+    return null;
+  }
+  if (!isUpdaterTarget(updaterTarget)) {
+    return null;
+  }
+  return updaterTarget;
+}
+
+interface StatusBarVersionProps {
+  appVersion: string;
+  updaterTarget: UpdaterTarget | null;
+}
+
+function StatusBarVersion({ appVersion, updaterTarget }: StatusBarVersionProps) {
+  const [phase, dispatch] = useReducer(reduceStatusBarUpdateIconPhase, "idle");
+
+  useEffect(() => {
+    if (phase !== "current") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      dispatch({ type: "current-feedback-expired" });
+    }, STATUS_BAR_CURRENT_FEEDBACK_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [phase]);
+
+  const versionLabel = `Version ${appVersion}`;
+  const versionText = <span className="truncate leading-none">{appVersion}</span>;
+
+  if (updaterTarget === null) {
+    return (
+      <span
+        className="flex min-w-0 items-center gap-1 px-1.5 text-xs leading-none text-muted-foreground tabular-nums"
+        aria-label={versionLabel}
+      >
+        <HugeiconsIcon icon={Blockchain01Icon} strokeWidth={2} className="size-3 shrink-0" />
+        {versionText}
+      </span>
+    );
+  }
+
+  const icon =
+    phase === "checking" ? RefreshIcon : phase === "current" ? Tick02Icon : Blockchain01Icon;
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="xs"
+      className={`${statusBarControlClassName} ${statusBarVersionRowClassName}`}
+      aria-label={versionLabel}
+      aria-busy={phase === "checking"}
+      onClick={() => {
+        if (phase === "checking") {
+          return;
+        }
+
+        dispatch({ type: "check-started" });
+        void checkForUpdates(readUpdateChannel(), updaterTarget).then((result) => {
+          if (Result.isFailure(result)) {
+            toast.error(result.error.message);
+            dispatch({ type: "check-failed" });
+            return;
+          }
+
+          dispatch({ type: "check-completed", status: result.value });
+        });
+      }}
+    >
+      <HugeiconsIcon
+        icon={icon}
+        strokeWidth={2}
+        className={
+          phase === "checking"
+            ? "size-3 shrink-0 animate-spin motion-reduce:animate-none"
+            : "size-3 shrink-0"
+        }
+      />
+      {versionText}
+      <span className="sr-only" role="status">
+        {phase === "checking"
+          ? "Checking for updates"
+          : phase === "current"
+            ? "Zai is up to date"
+            : ""}
+      </span>
+    </Button>
+  );
+}
+
 export function ApplicationStatusBar() {
-  const appVersion = resolveAboutAppVersion(aboutPackageVersion());
+  const packageVersion = aboutPackageVersion();
+  const appVersion = resolveAboutAppVersion(packageVersion);
+  const updaterTarget = resolveStatusBarUpdaterTarget(
+    import.meta.env.VITE_ZAI_BUILD_TARGET,
+    packageVersion,
+    import.meta.env.VITE_ZAI_UPDATER_TARGET,
+  );
   const openSettings = useOpenSettings();
 
   return (
@@ -94,13 +217,7 @@ export function ApplicationStatusBar() {
           data-slot="status-bar-version-separator"
           className="bg-sidebar-border data-vertical:h-3 data-vertical:self-center"
         />
-        <span
-          className="flex min-w-0 items-center gap-1 px-1.5 text-xs leading-none text-muted-foreground tabular-nums"
-          aria-label={`Version ${appVersion}`}
-        >
-          <HugeiconsIcon icon={Blockchain01Icon} strokeWidth={2} className="size-3 shrink-0" />
-          <span className="truncate leading-none">{appVersion}</span>
-        </span>
+        <StatusBarVersion appVersion={appVersion} updaterTarget={updaterTarget} />
         {import.meta.env.DEV ? <TanStackDevtoolsButton /> : null}
       </div>
       <div className="flex shrink-0 items-center">
