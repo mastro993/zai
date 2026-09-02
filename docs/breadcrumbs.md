@@ -2,6 +2,7 @@
 
 ## 2026-09-02
 
+- Transaction list: time is `{HH:mm}` only. Category path is icon tooltip (`parent, child`).
 - Category icon picker: drop per-cell tooltip. `aria-label` stays.
 - Category icon catalogue +9: AI, gambling, interest, meal voucher, tolls, attractions, leisure, gas (utility), events. Rust `CategoryIcon` 183 → 192.
 
