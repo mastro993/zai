@@ -125,7 +125,7 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
           {overlay.showTitleBarSeparator ? (
             <Separator
               orientation="vertical"
-              data-slot="title-bar-history-separator"
+              data-slot="title-bar-overlay-separator"
               className="mr-2 data-vertical:h-4 data-vertical:self-center"
             />
           ) : null}
