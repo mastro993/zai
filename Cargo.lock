@@ -6323,7 +6323,7 @@ dependencies = [
 
 [[package]]
 name = "zai"
-version = "2026.9.1000"
+version = "2026.9.2000"
 dependencies = [
  "chrono",
  "log",
@@ -6347,7 +6347,7 @@ dependencies = [
 
 [[package]]
 name = "zai-app"
-version = "2026.9.1000"
+version = "2026.9.2000"
 dependencies = [
  "async-trait",
  "chrono",
@@ -6364,7 +6364,7 @@ dependencies = [
 
 [[package]]
 name = "zai-core"
-version = "2026.9.1000"
+version = "2026.9.2000"
 dependencies = [
  "async-trait",
  "chrono",
@@ -6380,7 +6380,7 @@ dependencies = [
 
 [[package]]
 name = "zai-db"
-version = "2026.9.1000"
+version = "2026.9.2000"
 dependencies = [
  "async-trait",
  "chrono",
@@ -6399,7 +6399,7 @@ dependencies = [
 
 [[package]]
 name = "zai-server"
-version = "2026.9.1000"
+version = "2026.9.2000"
 dependencies = [
  "axum",
  "chrono",
