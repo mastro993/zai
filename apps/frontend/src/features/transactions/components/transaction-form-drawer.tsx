@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  ArrowDown01Icon,
-  ArrowUp01Icon,
+  ArrowDownRight01Icon,
+  ArrowUpRight01Icon,
   Calendar03Icon,
   Clock01Icon,
 } from "@hugeicons/core-free-icons";
@@ -76,8 +76,8 @@ const getLocalDateTimeInputValue = () => {
 };
 
 const TRANSACTION_TYPE_CONTROLS = {
-  expense: { icon: ArrowDown01Icon, iconClassName: "text-destructive" },
-  income: { icon: ArrowUp01Icon, iconClassName: "text-primary" },
+  expense: { icon: ArrowDownRight01Icon, iconClassName: "text-destructive" },
+  income: { icon: ArrowUpRight01Icon, iconClassName: "text-primary" },
 } as const;
 
 const selectableCodes = (currencies: Array<CurrencySettingsRow>, current: string | undefined) => {

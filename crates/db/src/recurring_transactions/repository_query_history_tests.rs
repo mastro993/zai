@@ -2,7 +2,8 @@
 
 use super::queries::{
     find_provenance_by_transaction, list_due_heads, list_failure_history, list_feed,
-    list_occurrences, list_unresolved_failures, normalize_failure_limit, normalize_feed_limit,
+    list_occurrences, list_recurring_for_transactions, list_unresolved_failures,
+    normalize_failure_limit, normalize_feed_limit,
 };
 use super::seed::{SeedRecurringSource, seed_active_interval_source};
 use crate::connection::{create_pool, get_connection, run_migrations};
@@ -115,6 +116,13 @@ async fn provenance_and_failure_queries_are_indexed() {
         .expect("present");
     assert_eq!(provenance.transaction_id, "txn-1");
     assert_eq!(provenance.fulfillment_kind.as_str(), "adopted");
+
+    let recurring =
+        list_recurring_for_transactions(&mut conn, &["txn-1".to_string()]).expect("list recurring");
+    let marker = recurring.get("txn-1").expect("recurring marker");
+    assert_eq!(marker.recurring_transaction_id, "rt-prov");
+    assert_eq!(marker.fulfillment_position, 1);
+    assert_eq!(marker.total_occurrences, Some(12));
 
     let unresolved = list_unresolved_failures(&mut conn, 20).expect("unresolved");
     assert_eq!(unresolved.len(), 1);

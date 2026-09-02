@@ -250,8 +250,13 @@ async function renderScreen(
     path: "/cash-flow/categories",
     component: () => <div>Categories</div>,
   });
+  const recurringRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/cash-flow/recurring/$recurringTransactionId",
+    component: () => <div>Recurring parent</div>,
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, categoriesRoute]),
+    routeTree: rootRoute.addChildren([indexRoute, categoriesRoute, recurringRoute]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
   await router.load();
@@ -517,7 +522,9 @@ describe("transaction screen request guard", () => {
     });
 
     const originalNode = screen.getByText(original);
-    expect(screen.getByText(converted).classList.contains("font-semibold")).toBe(true);
+    const convertedNode = screen.getByText(converted);
+    expect(convertedNode.classList.contains("font-semibold")).toBe(true);
+    expect(convertedNode.classList.contains("font-mono")).toBe(true);
     expect(originalNode.classList.contains("text-muted-foreground")).toBe(true);
     expect(originalNode.textContent).not.toContain("(");
   });
@@ -527,6 +534,54 @@ describe("transaction screen request guard", () => {
 
     const converted = formatCurrencyFromMinor(350, "EUR");
     expect(screen.getByText(converted)).toBeTruthy();
+  });
+
+  it("groups transactions by day and hides the selection column", async () => {
+    vi.setSystemTime(new Date("2026-09-01T12:00:00"));
+
+    await renderScreen({
+      transactions: page(
+        [
+          sampleListItem({
+            id: "tx-today",
+            description: "Morning coffee",
+            transactionDate: "2026-09-01T08:15:00",
+            transactionType: "expense",
+            transactionCategoryId: "cat-1",
+          }),
+          sampleListItem({
+            id: "tx-yesterday-income",
+            description: "Paycheck",
+            transactionDate: "2026-08-31T09:00:00",
+            transactionType: "income",
+            convertedAmount: 250000,
+          }),
+          sampleListItem({
+            id: "tx-august",
+            description: "Groceries",
+            transactionDate: "2026-08-30T18:40:00",
+            transactionType: "expense",
+          }),
+        ],
+        1,
+        1,
+      ),
+      categories: [food],
+    });
+
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    expect(screen.getByRole("heading", { name: "Today" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Yesterday" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "30 August" })).toBeTruthy();
+    expect(screen.getAllByLabelText(`Total ${formatCurrencyFromMinor(-350, "EUR")}`)).toHaveLength(
+      2,
+    );
+    expect(screen.getByLabelText(`Total ${formatCurrencyFromMinor(250000, "EUR")}`)).toBeTruthy();
+    expect(screen.getByText("08:15, Food")).toBeTruthy();
+    expect(screen.getByText("09:00, Uncategorized")).toBeTruthy();
+    expect(screen.getByText("18:40, Uncategorized")).toBeTruthy();
+    expect(screen.getByLabelText("Edit Expense: Morning coffee")).toBeTruthy();
+    expect(screen.getByLabelText("Edit Income: Paycheck")).toBeTruthy();
   });
 
   it("styles missing descriptions as muted italic text", async () => {
@@ -571,10 +626,81 @@ describe("transaction screen request guard", () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Amount")));
   });
 
+  it("shows a recurring marker and omits edit actions on recurring rows", async () => {
+    await renderScreen({
+      transactions: page(
+        [
+          sampleListItem({
+            id: "tx-rent",
+            description: "Rent",
+            recurring: {
+              recurringTransactionId: "rt-rent",
+              fulfillmentPosition: 2,
+              totalOccurrences: 12,
+            },
+          }),
+          sampleListItem({
+            id: "tx-salary",
+            description: "Salary",
+            transactionDate: "2026-07-01T11:00:00",
+            transactionType: "income",
+            recurring: {
+              recurringTransactionId: "rt-salary",
+              fulfillmentPosition: 1,
+              totalOccurrences: null,
+            },
+          }),
+        ],
+        1,
+        1,
+      ),
+      categories: [],
+    });
+
+    expect(screen.getByLabelText("Recurring (2/12)")).toBeTruthy();
+    expect(screen.getByLabelText("Recurring")).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("Expense: Rent"));
+    expect(screen.queryByRole("heading", { name: "Edit transaction" })).toBeNull();
+
+    fireEvent.contextMenu(screen.getByLabelText("Expense: Rent"));
+    expect(screen.queryByRole("menuitem", { name: "Make recurring" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Edit" })).toBeNull();
+    expect(screen.getByRole("menuitem", { name: "View recurring" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeTruthy();
+  });
+
+  it("opens the parent recurring transaction from the context menu", async () => {
+    await renderScreen({
+      transactions: page(
+        [
+          sampleListItem({
+            id: "tx-rent",
+            description: "Rent",
+            recurring: {
+              recurringTransactionId: "rt-rent",
+              fulfillmentPosition: 2,
+              totalOccurrences: 12,
+            },
+          }),
+        ],
+        1,
+        1,
+      ),
+      categories: [],
+    });
+
+    fireEvent.contextMenu(screen.getByLabelText("Expense: Rent"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "View recurring" }));
+
+    await waitFor(() => expect(screen.getByText("Recurring parent")).toBeTruthy());
+  });
+
   it("opens recurring adoption in the shared recurring form", async () => {
     await renderScreen();
 
-    fireEvent.click(screen.getByRole("button", { name: "Adopt Initial coffee as recurring" }));
+    fireEvent.contextMenu(screen.getByLabelText("Edit Expense: Initial coffee"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Make recurring" }));
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Adopt as recurring" })).toBeTruthy();
@@ -603,7 +729,8 @@ describe("transaction screen request guard", () => {
       categories: [],
     });
 
-    fireEvent.click(screen.getByTitle("Make recurring"));
+    fireEvent.contextMenu(screen.getByRole("button", { name: /Edit Expense/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Make recurring" }));
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(

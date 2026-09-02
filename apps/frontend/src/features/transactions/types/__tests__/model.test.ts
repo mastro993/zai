@@ -97,7 +97,35 @@ describe("transaction result schemas", () => {
     expect(parsed.amount).toBe(4550);
     expect(parsed.currency).toBe("USD");
     expect(parsed.convertedAmount).toBe(4000);
+    expect(parsed.recurring).toBeNull();
     expect(parsed).not.toHaveProperty("exchangeRate");
+  });
+
+  it("decodes a list item with finite recurring provenance", () => {
+    const parsed = transactionListItemSchema.parse({
+      id: "tx-rent",
+      description: "Rent",
+      transactionDate: "2026-07-01T10:00:00",
+      transactionType: "expense",
+      transactionCategoryId: null,
+      notes: null,
+      amount: 120000,
+      currency: "EUR",
+      convertedAmount: 120000,
+      convertedCurrency: "EUR",
+      complete: true,
+      recurring: {
+        recurringTransactionId: "rt-rent",
+        fulfillmentPosition: 2,
+        totalOccurrences: 12,
+      },
+    });
+
+    expect(parsed.recurring).toEqual({
+      recurringTransactionId: "rt-rent",
+      fulfillmentPosition: 2,
+      totalOccurrences: 12,
+    });
   });
 
   it("rejects a list item without original money", () => {

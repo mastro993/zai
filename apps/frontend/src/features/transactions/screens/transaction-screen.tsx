@@ -1,5 +1,6 @@
 import { DownloadIcon, TransactionHistoryIcon, UploadIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "@/components/toaster/toast";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
@@ -24,9 +25,9 @@ import { TransactionDateFilter } from "../components/transaction-date-filter";
 import { TransactionDeleteConfirmationDialog } from "../components/transaction-delete-confirmation-dialog";
 import { TransactionFormDrawer } from "../components/transaction-form-drawer";
 import { TransactionImportDialog } from "../components/transaction-import-dialog";
+import { TransactionList } from "../components/transaction-list";
 import { TransactionPagination } from "../components/transaction-pagination";
 import { TransactionSelectionBar } from "../components/transaction-selection-bar";
-import { TransactionTable } from "../components/transaction-table";
 import { TransactionTypeFilter } from "../components/transaction-type-filter";
 import { RecurringFormDrawer } from "@/features/recurring-transactions/components/recurring-form-drawer";
 import { useTransactionActions } from "../hooks/use-transaction-actions";
@@ -40,6 +41,7 @@ interface TransactionScreenProps {
 }
 
 export function TransactionScreen({ initialData }: TransactionScreenProps) {
+  const navigate = useNavigate();
   const controller = useTransactionListController(initialData);
   const actions = useTransactionActions(controller);
   const showFilters = controller.transactions.length > 0 || controller.hasActiveFilters;
@@ -209,26 +211,21 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
       ) : null}
 
       {controller.transactions.length > 0 ? (
-        <div className="flex flex-col gap-0">
-          <TransactionTable
+        <div className="flex flex-col gap-4">
+          <TransactionList
             transactions={controller.transactions}
             categoryById={controller.categoryById}
-            selectedIds={actions.selectedIds}
-            pageCheckboxState={actions.pageCheckboxState}
-            selectAllMatching={actions.selectAllMatching}
-            page={controller.page}
-            perPage={controller.perPage}
-            totalPages={controller.totalPages}
-            onToggleRow={actions.toggleRow}
-            onTogglePage={(selectAll) => {
-              actions.togglePage(controller.transactions, selectAll);
-            }}
-            onSelectAllMatching={actions.selectAllMatchingTransactions}
             onEdit={(transactionId) => {
               void actions.openEditForm(transactionId);
             }}
-            onAdopt={(transaction, trigger) => {
-              void actions.openAdoptDrawer(transaction, trigger);
+            onAdopt={(transaction) => {
+              void actions.openAdoptDrawer(transaction);
+            }}
+            onOpenRecurring={(recurringTransactionId) => {
+              void navigate({
+                to: "/cash-flow/recurring/$recurringTransactionId",
+                params: { recurringTransactionId },
+              });
             }}
             onDelete={actions.openDeleteDialog}
           />

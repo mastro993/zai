@@ -74,4 +74,5 @@ mod seed;
 pub use crash_child::run_crash_child_from_env;
 #[cfg(any(test, feature = "failpoints"))]
 pub use failpoints::FulfillmentFailpoint;
+pub(crate) use queries::list_recurring_for_transactions;
 pub use repository::RecurringTransactionsRepository;
