@@ -14,6 +14,10 @@ import { ThemeProvider } from "next-themes";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationStatusBar } from "../application-status-bar";
+import {
+  STATUS_BAR_CURRENT_FEEDBACK_MS,
+  STATUS_BAR_DEV_FAKE_CHECK_MS,
+} from "../status-bar-update-icon";
 import { toast } from "@/components/toaster/toast";
 import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
 import * as alertsBell from "@/features/alerts/components/alerts-bell";
@@ -120,15 +124,52 @@ describe("StatusBarVersion", () => {
     document.documentElement.classList.remove("dark");
   });
 
-  it("keeps a non-interactive span when the updater is unavailable", async () => {
+  it("fakes an up-to-date check in DEV when the updater is unavailable", async () => {
     vi.stubEnv("VITE_ZAI_BUILD_TARGET", "web");
+    vi.useFakeTimers();
     await renderStatusBar();
 
-    const version = screen.getByLabelText(versionLabel());
+    const version = screen.getByRole("button", { name: versionLabel() });
     fireEvent.click(version);
 
-    expect(version.tagName).toBe("SPAN");
-    expect(screen.queryByRole("button", { name: versionLabel() })).toBeNull();
+    expect(updater.checkForUpdates).not.toHaveBeenCalled();
+    expect(version.querySelector(".animate-spin")).not.toBeNull();
+    expect(screen.getByRole("status").textContent).toBe("Checking for updates");
+
+    act(() => {
+      vi.advanceTimersByTime(STATUS_BAR_DEV_FAKE_CHECK_MS - 1);
+    });
+    expect(screen.getByText("Checking for updates")).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.getByText("Zai is up to date")).toBeTruthy();
+    expect(version.querySelector(".animate-spin")).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(STATUS_BAR_CURRENT_FEEDBACK_MS);
+    });
+    expect(screen.queryByText("Zai is up to date")).toBeNull();
+    expect(updater.checkForUpdates).not.toHaveBeenCalled();
+  });
+
+  it("ignores a second DEV fake click while the delay is in flight", async () => {
+    vi.stubEnv("VITE_ZAI_BUILD_TARGET", "web");
+    vi.useFakeTimers();
+    await renderStatusBar();
+
+    const version = screen.getByRole("button", { name: versionLabel() });
+    fireEvent.click(version);
+    act(() => {
+      vi.advanceTimersByTime(STATUS_BAR_DEV_FAKE_CHECK_MS / 2);
+    });
+    fireEvent.click(version);
+
+    act(() => {
+      vi.advanceTimersByTime(STATUS_BAR_DEV_FAKE_CHECK_MS / 2);
+    });
+    expect(screen.getByText("Zai is up to date")).toBeTruthy();
     expect(updater.checkForUpdates).not.toHaveBeenCalled();
   });
 

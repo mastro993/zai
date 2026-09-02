@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Blockchain01Icon,
@@ -14,6 +14,8 @@ import { useTheme } from "next-themes";
 
 import {
   STATUS_BAR_CURRENT_FEEDBACK_MS,
+  STATUS_BAR_DEV_FAKE_CHECK_MS,
+  isStatusBarVersionInteractive,
   reduceStatusBarUpdateIconPhase,
 } from "@/components/status-bar-update-icon";
 import { toast } from "@/components/toaster/toast";
@@ -106,6 +108,7 @@ interface StatusBarVersionProps {
 
 function StatusBarVersion({ appVersion, updaterTarget }: StatusBarVersionProps) {
   const [phase, dispatch] = useReducer(reduceStatusBarUpdateIconPhase, "idle");
+  const fakeCheckTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (phase !== "current") {
@@ -121,10 +124,18 @@ function StatusBarVersion({ appVersion, updaterTarget }: StatusBarVersionProps) 
     };
   }, [phase]);
 
+  useEffect(() => {
+    return () => {
+      if (fakeCheckTimeoutRef.current !== null) {
+        window.clearTimeout(fakeCheckTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const versionLabel = `Version ${appVersion}`;
   const versionText = <span className="truncate leading-none">{appVersion}</span>;
 
-  if (updaterTarget === null) {
+  if (!isStatusBarVersionInteractive(import.meta.env.DEV, updaterTarget)) {
     return (
       <span
         className="flex min-w-0 items-center gap-1 px-1.5 text-xs leading-none text-muted-foreground tabular-nums"
@@ -153,6 +164,18 @@ function StatusBarVersion({ appVersion, updaterTarget }: StatusBarVersionProps) 
         }
 
         dispatch({ type: "check-started" });
+
+        if (updaterTarget === null) {
+          if (fakeCheckTimeoutRef.current !== null) {
+            window.clearTimeout(fakeCheckTimeoutRef.current);
+          }
+          fakeCheckTimeoutRef.current = window.setTimeout(() => {
+            fakeCheckTimeoutRef.current = null;
+            dispatch({ type: "check-completed", status: "current" });
+          }, STATUS_BAR_DEV_FAKE_CHECK_MS);
+          return;
+        }
+
         void checkForUpdates(readUpdateChannel(), updaterTarget).then((result) => {
           if (Result.isFailure(result)) {
             toast.error(result.error.message);

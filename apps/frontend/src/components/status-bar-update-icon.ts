@@ -1,6 +1,14 @@
 import type { UpdateCheckStatus } from "@/features/settings/lib/updater";
 
 export const STATUS_BAR_CURRENT_FEEDBACK_MS = 2_000;
+export const STATUS_BAR_DEV_FAKE_CHECK_MS = 800;
+
+export function isStatusBarVersionInteractive(
+  isDev: boolean,
+  updaterTarget: string | null,
+): boolean {
+  return updaterTarget !== null || isDev;
+}
 
 export type StatusBarUpdateIconPhase = "idle" | "checking" | "current";
 

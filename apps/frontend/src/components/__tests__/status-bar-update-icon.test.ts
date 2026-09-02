@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isStatusBarVersionInteractive,
   reduceStatusBarUpdateIconPhase,
   type StatusBarUpdateIconPhase,
 } from "../status-bar-update-icon";
@@ -17,6 +18,20 @@ const completedStatusCases: Array<{
   { status: "declined", phase: "idle" },
   { status: "restarting", phase: "idle" },
 ];
+
+describe("isStatusBarVersionInteractive", () => {
+  it("keeps production unsigned/web as a span", () => {
+    expect(isStatusBarVersionInteractive(false, null)).toBe(false);
+  });
+
+  it("lets DEV fake a check when the updater is unavailable", () => {
+    expect(isStatusBarVersionInteractive(true, null)).toBe(true);
+  });
+
+  it("keeps the real check when an updater target is present", () => {
+    expect(isStatusBarVersionInteractive(false, "macos-aarch64")).toBe(true);
+  });
+});
 
 describe("reduceStatusBarUpdateIconPhase", () => {
   it.each(completedStatusCases)(
