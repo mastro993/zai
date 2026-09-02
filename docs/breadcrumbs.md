@@ -2,6 +2,7 @@
 
 ## 2026-09-02
 
+- Category icon picker: drop per-cell tooltip. `aria-label` stays.
 - Category icon catalogue +9: AI, gambling, interest, meal voucher, tolls, attractions, leisure, gas (utility), events. Rust `CategoryIcon` 183 → 192.
 
 ## 2026-08-25

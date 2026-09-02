@@ -7,7 +7,6 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 import {
@@ -29,32 +28,25 @@ function IconChoice({
   onSelect: (icon: CategoryIcon) => void;
 }) {
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <button
-            type="button"
-            aria-label={entry.label}
-            aria-pressed={isSelected}
-            className={cn(
-              "relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              isSelected && "ring-2 ring-ring",
-            )}
-            onClick={() => onSelect(entry.key)}
-          />
-        }
-      >
-        <HugeiconsIcon icon={entry.icon} className="size-4" strokeWidth={2} />
-        {isSelected ? (
-          <HugeiconsIcon
-            icon={Tick02Icon}
-            className="absolute -right-0.5 -bottom-0.5 size-2.5 text-primary"
-            strokeWidth={2.5}
-          />
-        ) : null}
-      </TooltipTrigger>
-      <TooltipContent>{entry.label}</TooltipContent>
-    </Tooltip>
+    <button
+      type="button"
+      aria-label={entry.label}
+      aria-pressed={isSelected}
+      className={cn(
+        "relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        isSelected && "ring-2 ring-ring",
+      )}
+      onClick={() => onSelect(entry.key)}
+    >
+      <HugeiconsIcon icon={entry.icon} className="size-4" strokeWidth={2} />
+      {isSelected ? (
+        <HugeiconsIcon
+          icon={Tick02Icon}
+          className="absolute -right-0.5 -bottom-0.5 size-2.5 text-primary"
+          strokeWidth={2.5}
+        />
+      ) : null}
+    </button>
   );
 }
 
@@ -158,7 +150,7 @@ function CategoryIconPicker({
             {suggestedIcons.length === 0 && !hasCatalogMatches ? (
               <p className="px-1 py-6 text-center text-xs text-muted-foreground">No icons match</p>
             ) : (
-              <TooltipProvider>
+              <>
                 {suggestedIcons.length > 0 ? (
                   <div className="flex flex-col gap-1.5">
                     <p className="text-xs font-medium text-muted-foreground">Suggested</p>
@@ -196,7 +188,7 @@ function CategoryIconPicker({
                     </div>
                   );
                 })}
-              </TooltipProvider>
+              </>
             )}
           </div>
         </ScrollArea>

@@ -1,5 +1,9 @@
 # Choices
 
+## 2026-09-02 — Category icon picker cells have no tooltip
+
+- Grid cells keep `aria-label` only. Search + group labels name the icon. Hover tooltip on 56px cells was noise.
+
 ## 2026-09-02 — Category icons for AI, gambling, interest, meal voucher, tolls, attractions, leisure, gas, events
 
 - Keys: `ai`, `gambling`, `interest`, `mealvoucher`, `tolls`, `attractions`, `leisure`, `gas`, `events`.
