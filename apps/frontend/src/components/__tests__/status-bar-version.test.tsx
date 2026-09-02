@@ -18,8 +18,8 @@ import { toast } from "@/components/toaster/toast";
 import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
 import * as alertsBell from "@/features/alerts/components/alerts-bell";
 import * as updater from "@/features/settings/lib/updater";
+import { UpdaterError, type UpdateCheckStatus } from "@/features/settings/lib/updater";
 import { THEME_STORAGE_KEY } from "@/lib/theme-toggle";
-import type { UpdateCheckStatus } from "@/features/settings/lib/updater";
 
 const DESKTOP_PACKAGE_VERSION = "2026.9.2000";
 
@@ -197,7 +197,7 @@ describe("StatusBarVersion", () => {
   it("toasts the error and skips the check mark when the check fails", async () => {
     stubDesktopUpdaterEnv();
     vi.mocked(updater.checkForUpdates).mockResolvedValue(
-      Result.fail(new Error("Update check failed.")),
+      Result.fail(new UpdaterError("Update check failed.")),
     );
     await renderStatusBar();
 
