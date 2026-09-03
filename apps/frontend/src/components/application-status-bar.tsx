@@ -21,7 +21,6 @@ import {
 import { toast } from "@/components/toaster/toast";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { AlertsBell } from "@/features/alerts/components/alerts-bell";
 import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
 import { useOpenSettings } from "@/features/settings/hooks/use-settings-modal";
 import {
@@ -221,7 +220,7 @@ export function ApplicationStatusBar() {
   return (
     <footer
       data-slot="application-status-bar"
-      className="relative z-40 flex h-8 shrink-0 items-center justify-between border-t border-sidebar-border bg-sidebar px-2 text-sidebar-foreground"
+      className="relative z-40 flex h-8 shrink-0 items-center border-t border-sidebar-border bg-sidebar px-2 text-sidebar-foreground"
     >
       <div className="flex min-w-0 items-center gap-1.5">
         <Button
@@ -242,9 +241,6 @@ export function ApplicationStatusBar() {
         />
         <StatusBarVersion appVersion={appVersion} updaterTarget={updaterTarget} />
         {import.meta.env.DEV ? <TanStackDevtoolsButton /> : null}
-      </div>
-      <div className="flex shrink-0 items-center">
-        <AlertsBell />
       </div>
     </footer>
   );

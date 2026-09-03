@@ -224,10 +224,11 @@ describe("alerts bell label", () => {
 
     const bell = await screen.findByRole("button", { name: "Alerts, 0 unread" });
     expect(bell.classList.contains("border-transparent")).toBe(true);
+    expect(bell.className).toContain("text-muted-foreground/70");
     expect(bell.textContent).toBe("");
   });
 
-  it("renders a static unread badge with a sidebar ring, offset toward the corner", async () => {
+  it("renders a static unread badge with a header ring, offset toward the corner", async () => {
     stubMatchMedia();
     vi.spyOn(alertsCommands, "listAlerts").mockResolvedValue(
       Result.succeed({ items: [sampleAlert], nextCursor: null }),
@@ -241,7 +242,7 @@ describe("alerts bell label", () => {
     expect(badge?.className).toContain("size-1.5");
     expect(badge?.className).toContain("rounded-full");
     expect(badge?.className).toContain("[corner-shape:round]");
-    expect(badge?.className).toContain("ring-sidebar");
+    expect(badge?.className).toContain("ring-background");
     expect(badge?.className).toContain("top-1");
     expect(badge?.className).toContain("right-1");
     expect(badge?.className).not.toContain("animate-pulse");
