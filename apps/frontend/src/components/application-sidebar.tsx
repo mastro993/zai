@@ -89,7 +89,7 @@ function WebSidebarChrome({ itemPad }: { itemPad: string }) {
     >
       <SidebarBrandMark />
       <div className="relative z-10 flex size-8 shrink-0 items-center justify-center">
-        <SidebarTrigger />
+        <SidebarTrigger className="text-muted-foreground/70" />
       </div>
     </div>
   );

@@ -35,7 +35,7 @@ export function FixedSidebarTrigger({ buildTarget }: FixedSidebarTriggerProps) {
       }}
     >
       <div className="pointer-events-auto flex size-8 items-center justify-center">
-        <SidebarTrigger />
+        <SidebarTrigger className="text-muted-foreground/70" />
       </div>
       {overlay.showHistory ? (
         <div data-slot="window-chrome-history" className="pointer-events-auto">
