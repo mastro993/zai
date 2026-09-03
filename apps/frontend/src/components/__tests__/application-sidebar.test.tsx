@@ -131,6 +131,9 @@ describe("ApplicationSidebar", () => {
     expect(header?.contains(brand)).toBe(true);
     expect(header?.contains(toggle)).toBe(true);
     expect(header?.className).not.toContain("border-b");
+    expect(document.querySelector('[data-slot="sidebar-container"]')?.className).toContain(
+      "group-data-[collapsible=offcanvas]:bottom-0",
+    );
   });
 
   it("puts the desktop logo below the traffic-light chrome, not beside the toggle", async () => {

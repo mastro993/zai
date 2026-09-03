@@ -83,6 +83,18 @@ describe("FixedSidebarTrigger", () => {
     expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
   });
 
+  it("shows the overlay toggle without history when the web sidebar is collapsed", async () => {
+    mockWindowChrome(false);
+    await renderOverlay("web", false);
+
+    const host = document.querySelector<HTMLElement>('[data-slot="fixed-sidebar-trigger"]');
+    expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Go forward" })).toBeNull();
+    expect(host?.style.paddingLeft).toBe(TRAFFIC_LIGHT_TO_TRIGGER_GAP);
+    expect(document.querySelector('[data-slot="window-chrome-history"]')).toBeNull();
+  });
+
   it("sits after the traffic lights on overlay-chrome desktops, with history arrows next to the toggle", async () => {
     mockWindowChrome(true);
     await renderOverlay("tauri");

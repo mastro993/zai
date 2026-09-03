@@ -17,6 +17,7 @@ import {
   ApplicationTitleBarProvider,
 } from "../application-title-bar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { WEB_CHROME_LEADING_INSET } from "@/components/window-drag-region";
 import * as screenBreadcrumbs from "@/hooks/use-screen-breadcrumbs";
 import * as windowChrome from "@/lib/window-chrome";
 
@@ -87,7 +88,6 @@ describe("ApplicationTitleBar", () => {
 
     expect(screen.getByRole("banner").getAttribute("data-build-target")).toBe("web");
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeTruthy();
-    // Toggle lives in FixedSidebarTrigger (shell), not the title bar.
     expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Alerts" })).toBeNull();
     expect(screen.getByRole("button", { name: "Route action" })).toBeTruthy();
@@ -97,7 +97,7 @@ describe("ApplicationTitleBar", () => {
       screen.getByRole("banner").querySelector('[data-slot="navigation-history-buttons"]'),
     ).toBeNull();
     expect(
-      screen.getByRole("banner").querySelector('[data-slot="title-bar-history-separator"]'),
+      screen.getByRole("banner").querySelector('[data-slot="title-bar-overlay-separator"]'),
     ).toBeNull();
     expect(
       screen.getByRole("banner").querySelector('[data-slot="title-bar-drag-region"]'),
@@ -111,12 +111,11 @@ describe("ApplicationTitleBar", () => {
     const dragRegion = banner.querySelector<HTMLElement>('[data-slot="title-bar-drag-region"]');
     const routeAction = screen.getByRole("button", { name: "Route action" });
 
-    // Expanded desktop: overlay chrome owns history; title bar only has breadcrumbs.
     expect(leading?.style.paddingLeft).toBe("1rem");
     expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Go forward" })).toBeNull();
     expect(banner.querySelector('[data-slot="navigation-history-buttons"]')).toBeNull();
-    expect(banner.querySelector('[data-slot="title-bar-history-separator"]')).toBeNull();
+    expect(banner.querySelector('[data-slot="title-bar-overlay-separator"]')).toBeNull();
     expect(banner.querySelector("[data-tauri-drag-region]")).toBeNull();
     expect(dragRegion).not.toBeNull();
     if (!dragRegion) {
@@ -156,7 +155,7 @@ describe("ApplicationTitleBar", () => {
     expect(padding).toContain("2rem");
     expect(padding).toContain("3.5rem");
     expect(banner.querySelector('[data-slot="navigation-history-buttons"]')).toBeNull();
-    const separator = banner.querySelector('[data-slot="title-bar-history-separator"]');
+    const separator = banner.querySelector('[data-slot="title-bar-overlay-separator"]');
     expect(separator).not.toBeNull();
     // data-vertical: beats Separator's data-vertical:self-stretch (plain self-center loses).
     expect(separator?.className).toContain("data-vertical:h-4");
@@ -165,13 +164,26 @@ describe("ApplicationTitleBar", () => {
     expect(breadcrumbs).not.toBeNull();
   });
 
-  it("keeps history chrome out of the web title bar when the sidebar is collapsed", async () => {
+  it("clears overlay toggle chrome without history when the web sidebar is collapsed", async () => {
     await renderTitleBar("web", undefined, false);
 
     const banner = screen.getByRole("banner");
+    const leading = banner.querySelector<HTMLElement>('[data-slot="title-bar-leading"]');
+    const breadcrumbs = banner.querySelector('[data-slot="title-bar-breadcrumbs"]');
+    const padding = leading?.style.paddingLeft ?? "";
+    const serializedInset = document.createElement("div");
+    serializedInset.style.paddingLeft = WEB_CHROME_LEADING_INSET;
+
     expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Go forward" })).toBeNull();
     expect(banner.querySelector('[data-slot="navigation-history-buttons"]')).toBeNull();
-    expect(banner.querySelector('[data-slot="title-bar-history-separator"]')).toBeNull();
+    expect(padding).toBe(serializedInset.style.paddingLeft);
+    expect(WEB_CHROME_LEADING_INSET).toContain("0.5rem");
+    expect(WEB_CHROME_LEADING_INSET).toContain("2rem");
+    expect(padding).not.toContain("76px");
+    expect(padding).not.toContain("3.5rem");
+    const separator = banner.querySelector('[data-slot="title-bar-overlay-separator"]');
+    expect(separator).not.toBeNull();
+    expect(separator?.nextElementSibling).toBe(breadcrumbs);
   });
 });

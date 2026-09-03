@@ -10,12 +10,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import {
-  NATIVE_CHROME_LEADING_INSET,
-  WEB_CHROME_LEADING_INSET,
-  WEB_CHROME_WITH_HISTORY_LEADING_INSET,
-  WindowDragRegion,
-} from "@/components/window-drag-region";
+import { resolveOverlayChrome, WindowDragRegion } from "@/components/window-drag-region";
 import { Separator } from "@/components/ui/separator";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useScreenBreadcrumbs } from "@/hooks/use-screen-breadcrumbs";
@@ -104,22 +99,12 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
   const { isMobile, state } = useSidebar();
   const titleBarContextValue = useContext(titleBarContext);
   const windowChrome = useMemo(() => createWindowChromeAdapter(buildTarget), [buildTarget]);
-  const hasDesktopWindowChrome = buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
-  // Toggle is fixed to the window. Clear it only when the title bar sits under that
-  // zone: mobile sheet, or Tauri offcanvas collapsed (no sidebar column).
-  const needsFixedTriggerClearance = isMobile || (buildTarget === "tauri" && state === "collapsed");
-  const overlayHasHistory = buildTarget === "tauri";
-  const showHistorySeparator = overlayHasHistory && state === "collapsed";
-
-  const leadingStyle = {
-    paddingLeft: needsFixedTriggerClearance
-      ? hasDesktopWindowChrome
-        ? NATIVE_CHROME_LEADING_INSET
-        : overlayHasHistory
-          ? WEB_CHROME_WITH_HISTORY_LEADING_INSET
-          : WEB_CHROME_LEADING_INSET
-      : "1rem",
-  };
+  const overlay = resolveOverlayChrome({
+    buildTarget,
+    state,
+    isMobile,
+    hasDesktopWindowChrome: buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome,
+  });
 
   return (
     <header
@@ -133,14 +118,14 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
         <div
           data-slot="title-bar-leading"
           className="flex min-w-0 shrink-0 items-center transition-[padding] duration-200 ease-linear"
-          style={leadingStyle}
+          style={{ paddingLeft: overlay.titleBarLeadingInset }}
           aria-hidden
         />
         <div className="flex h-12 min-w-0 flex-1 items-center gap-2">
-          {showHistorySeparator ? (
+          {overlay.showTitleBarSeparator ? (
             <Separator
               orientation="vertical"
-              data-slot="title-bar-history-separator"
+              data-slot="title-bar-overlay-separator"
               className="mr-2 data-vertical:h-4 data-vertical:self-center"
             />
           ) : null}

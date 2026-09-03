@@ -17,7 +17,6 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import { SidebarBrandMark } from "@/components/sidebar-brand-mark";
 import { useSettingsReturnHrefValue } from "@/features/settings/hooks/use-settings-return-href";
@@ -27,31 +26,6 @@ import { createWindowChromeAdapter } from "@/lib/window-chrome";
 
 interface ApplicationSidebarProps {
   buildTarget: CommandBuildTarget;
-}
-
-/**
- * Collapsed icon-rail chrome: show 財 by default; hover/focus reveals the toggle
- * with a short cross-fade so the user can expand the sidebar.
- */
-function CollapsedSidebarChrome() {
-  return (
-    <div
-      data-slot="sidebar-collapsed-chrome"
-      className="group/collapsed-chrome relative z-10 flex size-8 items-center justify-center"
-    >
-      <span
-        data-slot="sidebar-brand"
-        data-wordmark="false"
-        aria-hidden
-        className="pointer-events-none absolute inset-0 flex items-center justify-center text-lg leading-none font-semibold text-primary transition-[opacity,transform] duration-200 ease-out group-hover/collapsed-chrome:scale-95 group-hover/collapsed-chrome:opacity-0 group-focus-within/collapsed-chrome:scale-95 group-focus-within/collapsed-chrome:opacity-0 motion-reduce:transition-none"
-      >
-        財
-      </span>
-      <div className="pointer-events-none absolute inset-0 flex scale-95 items-center justify-center opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover/collapsed-chrome:pointer-events-auto group-hover/collapsed-chrome:scale-100 group-hover/collapsed-chrome:opacity-100 group-focus-within/collapsed-chrome:pointer-events-auto group-focus-within/collapsed-chrome:scale-100 group-focus-within/collapsed-chrome:opacity-100 motion-reduce:transition-none">
-        <SidebarTrigger />
-      </div>
-    </div>
-  );
 }
 
 function AppNav({ pathname }: { pathname: string }) {
@@ -103,29 +77,20 @@ function AppNav({ pathname }: { pathname: string }) {
   );
 }
 
-function WebSidebarChrome({ isExpanded, itemPad }: { isExpanded: boolean; itemPad: string }) {
+function WebSidebarChrome({ itemPad }: { itemPad: string }) {
   return (
     <div
       data-slot="sidebar-chrome-header"
-      className={cn(
-        "relative flex h-12 w-full items-center",
-        isExpanded ? "justify-between" : "justify-center",
-      )}
+      className="relative flex h-12 w-full items-center justify-between"
       style={{
         paddingLeft: itemPad,
         paddingRight: itemPad,
       }}
     >
-      {isExpanded ? (
-        <>
-          <SidebarBrandMark />
-          <div className="relative z-10 flex size-8 shrink-0 items-center justify-center">
-            <SidebarTrigger />
-          </div>
-        </>
-      ) : (
-        <CollapsedSidebarChrome />
-      )}
+      <SidebarBrandMark />
+      <div className="relative z-10 flex size-8 shrink-0 items-center justify-center">
+        <SidebarTrigger className="text-muted-foreground/70" />
+      </div>
     </div>
   );
 }
@@ -135,16 +100,14 @@ export function ApplicationSidebar({ buildTarget }: ApplicationSidebarProps) {
     select: (state) => state.location.pathname,
   });
   const returnHref = useSettingsReturnHrefValue();
-  const { state: sidebarState } = useSidebar();
   const windowChrome = useMemo(() => createWindowChromeAdapter(buildTarget), [buildTarget]);
   const hasDesktopWindowChrome = buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome;
-  const isExpanded = sidebarState === "expanded";
   const navPathname = isSettingsPath(pathname) ? returnHref : pathname;
   const itemPad = "0.5rem";
 
   return (
     <Sidebar
-      collapsible={buildTarget === "tauri" ? "offcanvas" : "icon"}
+      collapsible="offcanvas"
       className="top-0 bottom-8 h-auto group-data-[collapsible=offcanvas]:bottom-0 group-data-[collapsible=offcanvas]:h-svh"
     >
       {hasDesktopWindowChrome ? (
@@ -158,11 +121,7 @@ export function ApplicationSidebar({ buildTarget }: ApplicationSidebarProps) {
         </div>
       ) : null}
       <SidebarHeader className={cn("shrink-0 gap-0", hasDesktopWindowChrome ? "px-2 py-1" : "p-0")}>
-        {hasDesktopWindowChrome ? (
-          <SidebarBrandMark />
-        ) : (
-          <WebSidebarChrome isExpanded={isExpanded} itemPad={itemPad} />
-        )}
+        {hasDesktopWindowChrome ? <SidebarBrandMark /> : <WebSidebarChrome itemPad={itemPad} />}
       </SidebarHeader>
       <SidebarContent>
         <AppNav pathname={navPathname} />
