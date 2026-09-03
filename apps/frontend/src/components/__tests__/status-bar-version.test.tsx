@@ -20,7 +20,6 @@ import {
 } from "../status-bar-update-icon";
 import { toast } from "@/components/toaster/toast";
 import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
-import * as alertsBell from "@/features/alerts/components/alerts-bell";
 import * as updater from "@/features/settings/lib/updater";
 import { UpdaterError, type UpdateCheckStatus } from "@/features/settings/lib/updater";
 import { THEME_STORAGE_KEY } from "@/lib/theme-toggle";
@@ -107,9 +106,6 @@ describe("StatusBarVersion", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.classList.remove("dark");
-    vi.spyOn(alertsBell, "AlertsBell").mockImplementation(() => (
-      <button type="button">Alerts</button>
-    ));
     vi.spyOn(toast, "error");
     vi.spyOn(updater, "checkForUpdates");
   });

@@ -14,7 +14,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationStatusBar } from "../application-status-bar";
 import { aboutPackageVersion, resolveAboutAppVersion } from "@/features/settings/lib/about-info";
-import * as alertsBell from "@/features/alerts/components/alerts-bell";
 import { THEME_STORAGE_KEY } from "@/lib/theme-toggle";
 
 const stubColorScheme = (system: "light" | "dark") => {
@@ -83,9 +82,6 @@ describe("ApplicationStatusBar", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.classList.remove("dark");
-    vi.spyOn(alertsBell, "AlertsBell").mockImplementation(() => (
-      <button type="button">Alerts</button>
-    ));
   });
 
   afterEach(() => {
@@ -175,18 +171,16 @@ describe("ApplicationStatusBar", () => {
     expect(separator?.nextElementSibling).toBe(version);
   });
 
-  it("shows the current app version with alerts on the trailing edge", async () => {
+  it("shows the current app version", async () => {
     await renderStatusBar();
 
     const bar = document.querySelector('[data-slot="application-status-bar"]');
     const appVersion = resolveAboutAppVersion(aboutPackageVersion());
     const version = screen.getByLabelText(`Version ${appVersion}`);
-    const alerts = screen.getByRole("button", { name: "Alerts" });
 
     expect(version.textContent).toContain(appVersion);
     expect(bar?.contains(version)).toBe(true);
-    expect(bar?.contains(alerts)).toBe(true);
-    expect(version.compareDocumentPosition(alerts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Alerts" })).toBeNull();
   });
 
   it("toggles TanStack Devtools from a control after the version", async () => {
@@ -202,14 +196,10 @@ describe("ApplicationStatusBar", () => {
     const appVersion = resolveAboutAppVersion(aboutPackageVersion());
     const version = screen.getByLabelText(`Version ${appVersion}`);
     const devtools = screen.getByRole("button", { name: "TanStack Devtools" });
-    const alerts = screen.getByRole("button", { name: "Alerts" });
 
     expect(bar?.contains(devtools)).toBe(true);
     expect(
       version.compareDocumentPosition(devtools) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      devtools.compareDocumentPosition(alerts) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
 
     fireEvent.click(devtools);

@@ -18,6 +18,7 @@ import {
 } from "../application-title-bar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { WEB_CHROME_LEADING_INSET } from "@/components/window-drag-region";
+import * as alertsBell from "@/features/alerts/components/alerts-bell";
 import * as screenBreadcrumbs from "@/hooks/use-screen-breadcrumbs";
 import * as windowChrome from "@/lib/window-chrome";
 
@@ -66,6 +67,9 @@ describe("ApplicationTitleBar", () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1024 });
     startDragging.mockReset();
     toggleMaximize.mockReset();
+    vi.spyOn(alertsBell, "AlertsBell").mockImplementation(() => (
+      <button type="button">Alerts</button>
+    ));
     vi.spyOn(screenBreadcrumbs, "useScreenBreadcrumbs").mockReturnValue([{ label: "Dashboard" }]);
     vi.spyOn(windowChrome, "createWindowChromeAdapter").mockReturnValue({
       supportsNativeWindowChrome: true,
@@ -89,7 +93,7 @@ describe("ApplicationTitleBar", () => {
     expect(screen.getByRole("banner").getAttribute("data-build-target")).toBe("web");
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Toggle Sidebar" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Alerts" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Alerts" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Route action" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Go forward" })).toBeNull();
@@ -102,6 +106,22 @@ describe("ApplicationTitleBar", () => {
     expect(
       screen.getByRole("banner").querySelector('[data-slot="title-bar-drag-region"]'),
     ).toBeNull();
+  });
+
+  it("pins the alerts bell on the trailing edge of the title bar", async () => {
+    await renderTitleBar("web", <button type="button">Route action</button>);
+
+    const banner = screen.getByRole("banner");
+    const actions = banner.querySelector('[data-slot="title-bar-actions"]');
+    const routeActions = banner.querySelector('[data-slot="title-bar-route-actions"]');
+    const alerts = screen.getByRole("button", { name: "Alerts" });
+    const routeAction = screen.getByRole("button", { name: "Route action" });
+
+    expect(actions?.contains(alerts)).toBe(true);
+    expect(routeActions?.nextElementSibling).toBe(alerts);
+    expect(
+      routeAction.compareDocumentPosition(alerts) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("aligns expanded title-bar breadcrumbs with page content", async () => {

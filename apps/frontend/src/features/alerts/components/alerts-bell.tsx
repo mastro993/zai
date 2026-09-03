@@ -16,15 +16,15 @@ export function AlertsBell() {
         ref={bellRef}
         type="button"
         variant="ghost"
-        size="icon-xs"
-        className="relative text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        size="icon-sm"
+        className="relative text-muted-foreground/70 hover:text-foreground"
         aria-label={alertsBellLabel(unreadCount)}
         onClick={openLedger}
       >
         <HugeiconsIcon icon={Notification03Icon} strokeWidth={2} />
         {unreadCount > 0 ? (
           <span
-            className="absolute top-1 right-1 size-1.5 rounded-full bg-primary ring-1 ring-sidebar [corner-shape:round]"
+            className="absolute top-1 right-1 size-1.5 rounded-full bg-primary ring-1 ring-background [corner-shape:round]"
             aria-hidden
           />
         ) : null}
