@@ -2,7 +2,7 @@
   "name": "frontend",
   "private": true,
   "license": "GPL-3.0-only",
-  "version": "2026.9.3000",
+  "version": "2026.9.4000",
   "type": "module",
   "imports": {
     "#/*": "./src/*"
