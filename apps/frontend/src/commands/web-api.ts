@@ -25,11 +25,8 @@ export const resolveWebApiBaseUrl = (): string =>
 
 export const resolveHealthUrl = (): string => joinWebApiUrl(resolveWebApiOrigin(), "health");
 
-export const resolveAlertsEventUrl = (): string =>
-  joinWebApiUrl(resolveWebApiBaseUrl(), "alerts/events");
+export const LIVE_EVENT_ALERTS = "alerts";
+export const LIVE_EVENT_CURRENCY = "currency";
+export const LIVE_EVENT_RECURRING = "recurring";
 
-export const resolveRecurringProcessingEventUrl = (): string =>
-  joinWebApiUrl(resolveWebApiBaseUrl(), "recurring-processing/events");
-
-export const resolveCurrencyStateEventUrl = (): string =>
-  joinWebApiUrl(resolveWebApiBaseUrl(), "currencies/events");
+export const resolveLiveEventsUrl = (): string => joinWebApiUrl(resolveWebApiBaseUrl(), "events");

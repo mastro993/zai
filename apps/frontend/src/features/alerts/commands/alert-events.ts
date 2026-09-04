@@ -1,9 +1,9 @@
 import { Result } from "@praha/byethrow";
 
 import { parseCommandBuildTarget, type CommandBuildTarget } from "@/commands/build-target";
-import { resolveAlertsEventUrl } from "@/commands/web-api";
+import { LIVE_EVENT_ALERTS } from "@/commands/web-api";
+import { subscribeSharedLiveEvents } from "@/commands/web-live-events";
 import { hasEventSource } from "@/lib/runtime-globals";
-import { asWireString } from "@/lib/wire";
 
 import { DOMAIN_ALERT_EVENT_NAME } from "../types/domain-alert-event";
 
@@ -26,16 +26,6 @@ export interface AlertEventTransportMap {
   tauri: AlertEventTransport;
   web: AlertEventTransport;
 }
-
-const payloadFromMessageEvent = (event: Event): string | undefined => {
-  if (event instanceof MessageEvent) {
-    return asWireString(event.data);
-  }
-  if ("data" in event) {
-    return asWireString(event.data);
-  }
-  return undefined;
-};
 
 const noOpSubscription = (): AlertEventSubscription => ({
   ready: Promise.resolve(),
@@ -79,30 +69,20 @@ export const createWebAlertEventTransport = (): AlertEventTransport => ({
       return noOpSubscription();
     }
 
-    const source = new EventSource(resolveAlertsEventUrl());
     let hasOpened = false;
-    const handleMessage = (event: Event) => {
-      const payload = payloadFromMessageEvent(event);
-      if (payload !== undefined) {
-        onEvent(payload);
-      }
-    };
-    const handleOpen = () => {
-      if (hasOpened) {
-        onReconnect();
-      }
-      hasOpened = true;
-    };
-    source.addEventListener("message", handleMessage);
-    source.addEventListener("open", handleOpen);
+    const subscription = subscribeSharedLiveEvents(LIVE_EVENT_ALERTS, {
+      onEvent,
+      onOpen: () => {
+        if (hasOpened) {
+          onReconnect();
+        }
+        hasOpened = true;
+      },
+    });
 
     return {
       ready: Promise.resolve(),
-      close: () => {
-        source.removeEventListener("message", handleMessage);
-        source.removeEventListener("open", handleOpen);
-        source.close();
-      },
+      close: subscription.close,
     };
   },
 });

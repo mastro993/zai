@@ -1,7 +1,8 @@
 import { Result } from "@praha/byethrow";
 
 import { parseCommandBuildTarget, type CommandBuildTarget } from "@/commands/build-target";
-import { resolveCurrencyStateEventUrl } from "@/commands/web-api";
+import { LIVE_EVENT_CURRENCY } from "@/commands/web-api";
+import { subscribeSharedLiveEvents } from "@/commands/web-live-events";
 import { hasEventSource } from "@/lib/runtime-globals";
 
 import { CURRENCY_STATE_EVENT_NAME } from "../types/currency-state-event";
@@ -100,27 +101,15 @@ export const createTauriCurrencyStateEventTransport = (): CurrencyStateEventTran
 
 export const createWebCurrencyStateEventTransport = (): CurrencyStateEventTransport => ({
   subscribe: (onEvent, onReconnect, onFailure) => {
-    const sourceResult = !hasEventSource()
-      ? Result.fail(
-          new CurrencyStateEventError(
-            "subscription_unavailable",
-            "Currency state updates are unavailable in this runtime.",
-          ),
-        )
-      : Result.try({
-          try: () => new EventSource(resolveCurrencyStateEventUrl()),
-          catch: (cause) =>
-            new CurrencyStateEventError(
-              "subscription_failed",
-              "Currency state updates could not be subscribed to.",
-              cause,
-            ),
-        });
-    if (Result.isFailure(sourceResult)) {
-      return failedSubscription(sourceResult.error);
+    if (!hasEventSource()) {
+      return failedSubscription(
+        new CurrencyStateEventError(
+          "subscription_unavailable",
+          "Currency state updates are unavailable in this runtime.",
+        ),
+      );
     }
 
-    const source = sourceResult.value;
     let hasOpened = false;
     let hadError = false;
     let readySettled = false;
@@ -134,38 +123,44 @@ export const createWebCurrencyStateEventTransport = (): CurrencyStateEventTransp
         resolveReady(result);
       }
     };
-    const handleMessage = (event: Event) => {
-      // SAFETY: EventSource "message" listeners receive MessageEvent; tests emit the same `.data` contract.
-      const message = event as MessageEvent<string>;
-      onEvent(message.data);
-    };
-    const handleOpen = () => {
-      if (hasOpened || hadError) {
-        onReconnect();
-      }
-      hasOpened = true;
-      settleReady(Result.succeed(undefined));
-    };
-    const handleError = () => {
-      const error = subscriptionFailure(new Error("EventSource connection failed"));
-      hadError = true;
-      if (!hasOpened) {
-        settleReady(Result.fail(error));
-      } else {
-        onFailure?.(error);
-      }
-    };
-    source.addEventListener("message", handleMessage);
-    source.addEventListener("open", handleOpen);
-    source.addEventListener("error", handleError);
 
+    const sourceResult = Result.try({
+      try: () =>
+        subscribeSharedLiveEvents(LIVE_EVENT_CURRENCY, {
+          onEvent,
+          onOpen: () => {
+            if (hasOpened || hadError) {
+              onReconnect();
+            }
+            hasOpened = true;
+            settleReady(Result.succeed(undefined));
+          },
+          onError: () => {
+            const error = subscriptionFailure(new Error("EventSource connection failed"));
+            hadError = true;
+            if (!hasOpened) {
+              settleReady(Result.fail(error));
+            } else {
+              onFailure?.(error);
+            }
+          },
+        }),
+      catch: (cause) =>
+        new CurrencyStateEventError(
+          "subscription_failed",
+          "Currency state updates could not be subscribed to.",
+          cause,
+        ),
+    });
+    if (Result.isFailure(sourceResult)) {
+      return failedSubscription(sourceResult.error);
+    }
+
+    const subscription = sourceResult.value;
     return {
       ready,
       close: () => {
-        source.removeEventListener("message", handleMessage);
-        source.removeEventListener("open", handleOpen);
-        source.removeEventListener("error", handleError);
-        source.close();
+        subscription.close();
         settleReady(
           Result.fail(
             new CurrencyStateEventError(

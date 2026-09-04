@@ -1,7 +1,8 @@
 import { Result } from "@praha/byethrow";
 
 import { parseCommandBuildTarget, type CommandBuildTarget } from "@/commands/build-target";
-import { resolveRecurringProcessingEventUrl } from "@/commands/web-api";
+import { LIVE_EVENT_RECURRING } from "@/commands/web-api";
+import { subscribeSharedLiveEvents } from "@/commands/web-live-events";
 import { hasEventSource } from "@/lib/runtime-globals";
 
 import { RECURRING_PROCESSING_EVENT_NAME } from "../types/recurring-processing-event";
@@ -104,27 +105,15 @@ export const createTauriRecurringProcessingEventTransport =
 export const createWebRecurringProcessingEventTransport =
   (): RecurringProcessingEventTransport => ({
     subscribe: (onEvent, onReconnect, onFailure) => {
-      const sourceResult = !hasEventSource()
-        ? Result.fail(
-            new RecurringProcessingEventError(
-              "subscription_unavailable",
-              "Recurring processing updates are unavailable in this runtime.",
-            ),
-          )
-        : Result.try({
-            try: () => new EventSource(resolveRecurringProcessingEventUrl()),
-            catch: (cause) =>
-              new RecurringProcessingEventError(
-                "subscription_failed",
-                "Recurring processing updates could not be subscribed to.",
-                cause,
-              ),
-          });
-      if (Result.isFailure(sourceResult)) {
-        return failedSubscription(sourceResult.error);
+      if (!hasEventSource()) {
+        return failedSubscription(
+          new RecurringProcessingEventError(
+            "subscription_unavailable",
+            "Recurring processing updates are unavailable in this runtime.",
+          ),
+        );
       }
 
-      const source = sourceResult.value;
       let hasOpened = false;
       let hadError = false;
       let readySettled = false;
@@ -138,38 +127,44 @@ export const createWebRecurringProcessingEventTransport =
           resolveReady(result);
         }
       };
-      const handleMessage = (event: Event) => {
-        // SAFETY: EventSource "message" listeners receive MessageEvent; tests emit the same `.data` contract.
-        const message = event as MessageEvent<string>;
-        onEvent(message.data);
-      };
-      const handleOpen = () => {
-        if (hasOpened || hadError) {
-          onReconnect();
-        }
-        hasOpened = true;
-        settleReady(Result.succeed(undefined));
-      };
-      const handleError = () => {
-        const error = subscriptionFailure(new Error("EventSource connection failed"));
-        hadError = true;
-        if (!hasOpened) {
-          settleReady(Result.fail(error));
-        } else {
-          onFailure?.(error);
-        }
-      };
-      source.addEventListener("message", handleMessage);
-      source.addEventListener("open", handleOpen);
-      source.addEventListener("error", handleError);
 
+      const sourceResult = Result.try({
+        try: () =>
+          subscribeSharedLiveEvents(LIVE_EVENT_RECURRING, {
+            onEvent,
+            onOpen: () => {
+              if (hasOpened || hadError) {
+                onReconnect();
+              }
+              hasOpened = true;
+              settleReady(Result.succeed(undefined));
+            },
+            onError: () => {
+              const error = subscriptionFailure(new Error("EventSource connection failed"));
+              hadError = true;
+              if (!hasOpened) {
+                settleReady(Result.fail(error));
+              } else {
+                onFailure?.(error);
+              }
+            },
+          }),
+        catch: (cause) =>
+          new RecurringProcessingEventError(
+            "subscription_failed",
+            "Recurring processing updates could not be subscribed to.",
+            cause,
+          ),
+      });
+      if (Result.isFailure(sourceResult)) {
+        return failedSubscription(sourceResult.error);
+      }
+
+      const subscription = sourceResult.value;
       return {
         ready,
         close: () => {
-          source.removeEventListener("message", handleMessage);
-          source.removeEventListener("open", handleOpen);
-          source.removeEventListener("error", handleError);
-          source.close();
+          subscription.close();
           settleReady(
             Result.fail(
               new RecurringProcessingEventError(

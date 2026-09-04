@@ -1,4 +1,4 @@
-import { Wallet03Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Wallet03Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
 import { Link } from "@tanstack/react-router";
@@ -16,7 +16,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -128,22 +128,23 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
   const [listError, setListError] = useState<string>();
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  const changeFilter = async (values: Array<string>) => {
-    const nextFilter = values.at(-1);
+  const changeFilter = async (nextFilter: string) => {
     const typedFilter = BUDGET_LIST_FILTERS.find((candidate) => candidate === nextFilter);
     if (!typedFilter || typedFilter === filter || isListLoading) {
       return;
     }
+    const previousFilter = filter;
+    setFilter(typedFilter);
     setIsListLoading(true);
     setListError(undefined);
     const result = await getBudgets(typedFilter);
     if (Result.isSuccess(result)) {
-      setFilter(typedFilter);
       setBudgets(result.value);
       if (typedFilter === "all") {
         setHasAnyBudgets(result.value.length > 0);
       }
     } else {
+      setFilter(previousFilter);
       setListError(result.error.message);
     }
     setIsListLoading(false);
@@ -163,31 +164,26 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
   };
 
   return (
-    <ScreenBase
-      actions={
-        hasAnyBudgets ? (
-          <Button size="sm" onClick={() => setIsFormOpen(true)}>
-            New budget
-          </Button>
-        ) : undefined
-      }
-    >
+    <ScreenBase>
       {hasAnyBudgets ? (
-        <div className="flex justify-end">
-          <ToggleGroup
-            aria-label="Budget filter"
-            disabled={isListLoading}
-            spacing={0}
-            value={[filter]}
-            variant="outline"
-            onValueChange={(values) => void changeFilter(values)}
+        <div className="flex items-center justify-between gap-2">
+          <Tabs
+            className="w-fit"
+            value={filter}
+            onValueChange={(value) => void changeFilter(value)}
           >
-            {BUDGET_LIST_FILTERS.map((value) => (
-              <ToggleGroupItem key={value} value={value}>
-                {budgetListFilterLabel[value]}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+            <TabsList aria-label="Budget filter">
+              {BUDGET_LIST_FILTERS.map((value) => (
+                <TabsTrigger key={value} value={value} disabled={isListLoading}>
+                  {budgetListFilterLabel[value]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <Button onClick={() => setIsFormOpen(true)}>
+            <HugeiconsIcon icon={Add01Icon} strokeWidth={2} data-icon="inline-start" />
+            Add budget
+          </Button>
         </div>
       ) : null}
       {listError ? (
@@ -228,7 +224,10 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent className="max-w-none flex-row flex-wrap justify-center">
-            <Button onClick={() => setIsFormOpen(true)}>New budget</Button>
+            <Button onClick={() => setIsFormOpen(true)}>
+              <HugeiconsIcon icon={Add01Icon} strokeWidth={2} data-icon="inline-start" />
+              Add budget
+            </Button>
           </EmptyContent>
         </Empty>
       ) : (
