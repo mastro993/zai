@@ -113,7 +113,7 @@ export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
       data-build-target={buildTarget}
       data-sidebar-state={state}
       data-sidebar-collapsed={state === "collapsed"}
-      className="relative z-30 flex h-12 shrink-0 items-center border-b border-border bg-background text-foreground"
+      className="relative z-30 flex h-12 shrink-0 items-center bg-background text-foreground"
     >
       <div className="flex min-w-0 flex-1 items-center">
         <div

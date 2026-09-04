@@ -112,6 +112,35 @@ async fn health_route_returns_ok() {
 }
 
 #[tokio::test]
+async fn live_events_route_opens_event_stream() {
+    let app_data_dir = TempAppDataDir::new();
+    let context = Arc::new(
+        initialize_context(app_data_dir.path()).expect("shared context should initialize"),
+    );
+    let app = create_router(context);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/events")
+                .header("Accept", "text/event-stream")
+                .body(Body::empty())
+                .expect("live events request should build"),
+        )
+        .await
+        .expect("live events request should complete");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response
+            .headers()
+            .get("content-type")
+            .and_then(|value| value.to_str().ok()),
+        Some("text/event-stream")
+    );
+}
+
+#[tokio::test]
 async fn diagnostics_route_reports_local_database_without_web_logs() {
     let app_data_dir = TempAppDataDir::new();
     let context = Arc::new(
