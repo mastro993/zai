@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resetSharedLiveEventSourceForTests } from "@/commands/web-live-events";
 import {
   createTauriRecurringProcessingEventTransport,
   createWebRecurringProcessingEventTransport,
@@ -37,6 +38,7 @@ describe("recurring processing event transports", () => {
   });
 
   afterEach(() => {
+    resetSharedLiveEventSourceForTests();
     vi.unstubAllGlobals();
   });
 
@@ -50,17 +52,17 @@ describe("recurring processing event transports", () => {
     const source = FakeEventSource.instances[0];
 
     source?.emit(new Event("open"));
-    expect(source?.url).toBe("http://127.0.0.1:3000/api/recurring-processing/events");
+    expect(source?.url).toBe("http://127.0.0.1:3000/api/events");
     await subscription.ready;
 
-    source?.emit(new MessageEvent("message", { data: "payload" }));
+    source?.emit(new MessageEvent("recurring", { data: "payload" }));
     source?.emit(new Event("open"));
 
     expect(onEvent).toHaveBeenCalledWith("payload");
     expect(onReconnect).toHaveBeenCalledOnce();
 
     subscription.close();
-    source?.emit(new MessageEvent("message", { data: "ignored" }));
+    source?.emit(new MessageEvent("recurring", { data: "ignored" }));
     expect(source?.closed).toBe(true);
     expect(onEvent).toHaveBeenCalledOnce();
   });
@@ -106,7 +108,7 @@ describe("recurring processing event transports", () => {
     const webSource = FakeEventSource.instances[0];
     webSource?.emit(new Event("open"));
     await webSubscription.ready;
-    webSource?.emit(new MessageEvent("message", { data: "state hint" }));
+    webSource?.emit(new MessageEvent("recurring", { data: "state hint" }));
 
     expect(reconcileFromDurableState).toHaveBeenCalledWith("state hint");
   });

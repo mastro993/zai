@@ -277,7 +277,7 @@ describe("cash-flow budget navigation", () => {
   it("shows a newly created budget in the active list", async () => {
     await renderBudgetApp();
 
-    fireEvent.click(await screen.findByRole("button", { name: "New budget" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add budget" }));
     fireEvent.change(await screen.findByLabelText("Name"), {
       target: { value: "New monthly budget" },
     });
@@ -292,11 +292,11 @@ describe("cash-flow budget navigation", () => {
   it("shows a newly created budget in the all list", async () => {
     await renderBudgetApp();
 
-    const allFilter = await screen.findByRole("button", { name: "All" });
+    const allFilter = await screen.findByRole("tab", { name: "All" });
     fireEvent.click(allFilter);
-    await waitFor(() => expect(allFilter.getAttribute("aria-pressed")).toBe("true"));
+    await waitFor(() => expect(allFilter.getAttribute("aria-selected")).toBe("true"));
 
-    fireEvent.click(screen.getByRole("button", { name: "New budget" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add budget" }));
     fireEvent.change(await screen.findByLabelText("Name"), {
       target: { value: "New monthly budget" },
     });
@@ -313,10 +313,10 @@ describe("cash-flow budget navigation", () => {
     await renderBudgetApp();
 
     expect(await screen.findByText("No active budgets")).toBeTruthy();
-    const pausedFilter = screen.getByRole("button", { name: "Paused" });
+    const pausedFilter = screen.getByRole("tab", { name: "Paused" });
     fireEvent.click(pausedFilter);
 
-    await waitFor(() => expect(pausedFilter.getAttribute("aria-pressed")).toBe("true"));
+    await waitFor(() => expect(pausedFilter.getAttribute("aria-selected")).toBe("true"));
     expect(await screen.findByRole("link", { name: budget.name })).toBeTruthy();
   });
 
@@ -329,7 +329,7 @@ describe("cash-flow budget navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Back to budgets" }));
 
     expect(await screen.findByText("No active budgets")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Paused" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Paused" })).toBeTruthy();
   });
 
   it("refreshes the budget list after deleting a budget", async () => {

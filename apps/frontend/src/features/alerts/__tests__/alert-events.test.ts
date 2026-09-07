@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resetSharedLiveEventSourceForTests } from "@/commands/web-live-events";
 import {
   createWebAlertEventTransport,
   resolveAlertEventTransport,
@@ -36,6 +37,7 @@ describe("alert event transports", () => {
   });
 
   afterEach(() => {
+    resetSharedLiveEventSourceForTests();
     vi.unstubAllGlobals();
   });
 
@@ -45,10 +47,10 @@ describe("alert event transports", () => {
     const subscription = createWebAlertEventTransport().subscribe(onEvent, onReconnect);
     const source = FakeEventSource.instances[0];
 
-    expect(source?.url).toBe("http://127.0.0.1:3000/api/alerts/events");
+    expect(source?.url).toBe("http://127.0.0.1:3000/api/events");
     await subscription.ready;
 
-    source?.emit(new MessageEvent("message", { data: "payload" }));
+    source?.emit(new MessageEvent("alerts", { data: "payload" }));
     source?.emit(new Event("open"));
     source?.emit(new Event("open"));
 
@@ -56,7 +58,7 @@ describe("alert event transports", () => {
     expect(onReconnect).toHaveBeenCalledOnce();
 
     subscription.close();
-    source?.emit(new MessageEvent("message", { data: "ignored" }));
+    source?.emit(new MessageEvent("alerts", { data: "ignored" }));
     expect(source?.closed).toBe(true);
     expect(onEvent).toHaveBeenCalledOnce();
   });
