@@ -586,6 +586,49 @@ describe("transaction screen request guard", () => {
     expect(screen.getByLabelText("Edit Income: Paycheck")).toBeTruthy();
   });
 
+  it("selects and deselects a transaction with Cmd-click", async () => {
+    await renderScreen({
+      transactions: page(
+        [
+          sampleListItem({
+            id: "tx-food",
+            description: "Groceries",
+            transactionCategoryId: food.id,
+          }),
+          sampleListItem({
+            id: "tx-coffee",
+            description: "Coffee",
+            transactionDate: "2026-07-02T10:00:00",
+          }),
+        ],
+        1,
+        1,
+      ),
+      categories: [food],
+    });
+
+    const row = screen.getByRole("button", { name: "Edit Expense: Groceries" });
+    const secondRow = screen.getByRole("button", { name: "Edit Expense: Coffee" });
+    fireEvent.click(row, { metaKey: true });
+
+    expect(screen.getByText("1 selected")).toBeTruthy();
+    expect(row.getAttribute("data-selected")).toBe("true");
+    expect(screen.getByLabelText("Food").getAttribute("data-selected")).toBe("true");
+    expect(screen.getByLabelText("Food").classList.contains("bg-primary")).toBe(true);
+    expect(screen.queryByRole("heading", { name: "Edit transaction" })).toBeNull();
+
+    fireEvent.click(secondRow);
+
+    expect(screen.getByText("2 selected")).toBeTruthy();
+    expect(secondRow.getAttribute("data-selected")).toBe("true");
+    expect(screen.queryByRole("heading", { name: "Edit transaction" })).toBeNull();
+
+    fireEvent.click(row, { metaKey: true });
+
+    expect(screen.getByText("1 selected")).toBeTruthy();
+    expect(row.getAttribute("data-selected")).toBeNull();
+  });
+
   it("shows time only and puts the category path on the icon", async () => {
     const movies = categorySchema.parse({
       id: "cat-movies",

@@ -228,6 +228,8 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
               });
             }}
             onDelete={actions.openDeleteDialog}
+            selectedIds={actions.selectedIds}
+            onToggleSelection={actions.toggleRow}
           />
           <TransactionPagination
             page={controller.page}

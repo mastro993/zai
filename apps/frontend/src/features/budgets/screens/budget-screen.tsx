@@ -1,4 +1,9 @@
-import { Add01Icon, Wallet03Icon } from "@hugeicons/core-free-icons";
+import {
+  Add01Icon,
+  Alert02Icon,
+  InformationCircleIcon,
+  Wallet03Icon,
+} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
 import { Link } from "@tanstack/react-router";
@@ -6,6 +11,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Drawer } from "@/components/ui/drawer";
 import {
   Empty,
@@ -15,108 +21,243 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScreenBase } from "@/components/screen-base";
+import type { TransactionCategory } from "@/features/categories/types/model";
+import { cn } from "@/lib/utils";
 
 import { createBudget, getBudgets } from "../commands/budgets";
-import {
-  budgetCadenceLabel,
-  budgetListFilterLabel,
-  budgetPeriodStatusPresentation,
-  formatBudgetMinor,
-  formatBudgetPeriod,
-} from "../lib/budget";
+import { BudgetFormDrawer } from "../components/budget-form-drawer";
+import { createBudgetChartData, type BudgetChartData } from "../lib/budget-chart";
+import { budgetListFilterLabel, formatBudgetMinor } from "../lib/budget";
 import {
   BUDGET_LIST_FILTERS,
   type Budget,
   type BudgetFormValues,
   type BudgetListFilter,
 } from "../types/budget";
-import type { TransactionCategory } from "@/features/categories/types/model";
-import { BudgetFormDrawer } from "../components/budget-form-drawer";
 
 interface BudgetScreenProps {
   initialBudgets: Array<Budget>;
   categories: Array<TransactionCategory>;
 }
 
+export interface BudgetCardData {
+  budget: Budget;
+  allowanceLabel: string;
+  spendingLabel: string;
+  remainingLabel: string;
+  percentage: number | null;
+  scopeLabel: string;
+  chart: BudgetChartData;
+}
+
+const budgetCadenceBadgeLabel = {
+  day: "Daily",
+  week: "Weekly",
+  month: "Monthly",
+  year: "Yearly",
+} satisfies Record<Budget["cadence"], string>;
+
 const formatScope = (categoryIds: Array<string>) =>
   categoryIds.length === 0 ? "All transactions" : `${categoryIds.length} categories`;
 
-function BudgetRows({ budgets }: { budgets: Array<Budget> }) {
+const buildBudgetCardData = (budget: Budget, now: Date): BudgetCardData => {
+  const period = budget.currentPeriod;
+  const allowance = period.effectiveAllowance;
+  const percentage =
+    allowance !== null && allowance > 0
+      ? Math.round((period.netBudgetSpending / allowance) * 100)
+      : null;
+  return {
+    budget,
+    allowanceLabel: formatBudgetMinor(allowance, period.currency),
+    spendingLabel: formatBudgetMinor(period.netBudgetSpending, period.currency),
+    remainingLabel: formatBudgetMinor(period.remainingAllowance, period.currency),
+    percentage,
+    scopeLabel: formatScope(budget.categoryIds),
+    chart: createBudgetChartData(budget, now),
+  };
+};
+
+function BudgetStatusBadge({ budget }: { budget: Budget }) {
+  if (budget.currentPeriod.status === "onTrack") {
+    return null;
+  }
+
+  if (budget.currentPeriod.status === "warning") {
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Badge
+              variant="secondary"
+              className="size-5 bg-amber-500/10 p-0 text-amber-600 dark:bg-amber-400/15 dark:text-amber-500"
+              aria-label="Warning"
+            />
+          }
+        >
+          <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} aria-hidden="true" />
+        </TooltipTrigger>
+        <TooltipContent>Warning</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  if (budget.currentPeriod.status === "overspent") {
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={<Badge variant="destructive" className="size-5 p-0" aria-label="Overspent" />}
+        >
+          <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} aria-hidden="true" />
+        </TooltipTrigger>
+        <TooltipContent>Overspent</TooltipContent>
+      </Tooltip>
+    );
+  }
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Budget</TableHead>
-          <TableHead>Cadence / period</TableHead>
-          <TableHead>Scope</TableHead>
-          <TableHead className="text-right">Allowance</TableHead>
-          <TableHead className="text-right">Spending</TableHead>
-          <TableHead className="text-right">Remaining</TableHead>
-          <TableHead>Status</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {budgets.map((budget) => (
-          <TableRow key={budget.id}>
-            <TableCell className="font-medium">
-              <div className="flex items-center gap-2">
-                <Link
-                  className="underline-offset-3 hover:underline"
-                  to="/cash-flow/budgets/$budgetId"
-                  params={{ budgetId: budget.id }}
-                >
-                  {budget.name}
-                </Link>
-                {budget.paused ? <Badge variant="secondary">Paused</Badge> : null}
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="flex flex-col gap-1">
-                <span>{budgetCadenceLabel[budget.cadence]}</span>
-                <span className="text-xs text-muted-foreground">
-                  {formatBudgetPeriod(budget.currentPeriod.start, budget.currentPeriod.end)}
-                </span>
-              </div>
-            </TableCell>
-            <TableCell>{formatScope(budget.categoryIds)}</TableCell>
-            <TableCell className="text-right tabular-nums">
-              {formatBudgetMinor(
-                budget.currentPeriod.effectiveAllowance,
-                budget.currentPeriod.currency,
-              )}
-            </TableCell>
-            <TableCell className="text-right tabular-nums">
-              {formatBudgetMinor(
-                budget.currentPeriod.netBudgetSpending,
-                budget.currentPeriod.currency,
-              )}
-            </TableCell>
-            <TableCell className="text-right tabular-nums">
-              {formatBudgetMinor(
-                budget.currentPeriod.remainingAllowance,
-                budget.currentPeriod.currency,
-              )}
-            </TableCell>
-            <TableCell>
-              <Badge variant={budgetPeriodStatusPresentation(budget.currentPeriod).variant}>
-                {budgetPeriodStatusPresentation(budget.currentPeriod).label}
-              </Badge>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <Badge variant="outline">
+      <HugeiconsIcon icon={InformationCircleIcon} strokeWidth={2} aria-hidden="true" />
+      Incomplete
+    </Badge>
+  );
+}
+
+function BudgetPaceChart({ budget, chart }: { budget: Budget; chart: BudgetChartData }) {
+  const chartId = `budget-chart-${budget.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+  return (
+    <figure className="flex flex-col gap-2" aria-labelledby={`${chartId}-caption`}>
+      <figcaption
+        id={`${chartId}-caption`}
+        className="flex items-center justify-between gap-2 text-xs"
+      >
+        <span className="font-medium">Current-period pace</span>
+        <span className="text-muted-foreground">Actual · projected</span>
+      </figcaption>
+      <svg
+        className="h-28 w-full overflow-visible"
+        viewBox="0 0 320 120"
+        role="img"
+        aria-labelledby={`${chartId}-title ${chartId}-description`}
+      >
+        <title id={`${chartId}-title`}>{budget.name} spending pace</title>
+        <desc id={`${chartId}-description`}>{chart.summary}</desc>
+        <g aria-hidden="true" className="text-border">
+          <line x1="0" y1="8" x2="320" y2="8" stroke="currentColor" strokeDasharray="3 5" />
+          <line x1="0" y1="52" x2="320" y2="52" stroke="currentColor" strokeDasharray="3 5" />
+          <line x1="0" y1="96" x2="320" y2="96" stroke="currentColor" strokeDasharray="3 5" />
+        </g>
+        <path
+          aria-hidden="true"
+          d={chart.actualPath}
+          fill="none"
+          stroke="var(--primary)"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+        <path
+          aria-hidden="true"
+          d={chart.projectionPath}
+          fill="none"
+          stroke="var(--primary)"
+          strokeWidth="3"
+          strokeDasharray="6 5"
+          strokeLinecap="round"
+          opacity="0.45"
+        />
+        <g className="fill-muted-foreground text-[10px]" aria-hidden="true">
+          {chart.labels.map((label) => (
+            <text
+              key={`${label.label}-${label.position}`}
+              x={`${label.position * 320}`}
+              y="116"
+              textAnchor="middle"
+            >
+              {label.label}
+            </text>
+          ))}
+        </g>
+      </svg>
+      <p className="sr-only">{chart.summary}</p>
+    </figure>
+  );
+}
+
+function BudgetCard({ data }: { data: BudgetCardData }) {
+  const { budget, percentage, chart } = data;
+  const progressValue = percentage === null ? null : Math.min(Math.max(percentage, 0), 100);
+  return (
+    <Card className={cn("min-w-0 bg-muted/30", budget.paused && "border border-dashed")}>
+      <CardHeader className="gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle className="min-w-0 text-lg">
+            <Link
+              className="break-words underline-offset-3 hover:underline"
+              to="/cash-flow/budgets/$budgetId"
+              params={{ budgetId: budget.id }}
+            >
+              {budget.name}
+            </Link>
+          </CardTitle>
+          <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+            <Badge variant="secondary">{budgetCadenceBadgeLabel[budget.cadence]}</Badge>
+            {budget.paused ? <Badge variant="secondary">Paused</Badge> : null}
+            <BudgetStatusBadge budget={budget} />
+          </div>
+        </div>
+        <CardDescription>{data.scopeLabel}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex items-end justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted-foreground">Spending</span>
+            <span className="text-2xl font-semibold tabular-nums">{data.spendingLabel}</span>
+          </div>
+          <div className="text-right">
+            <span className="text-xs text-muted-foreground">of {data.allowanceLabel}</span>
+            <span className="block text-lg font-medium tabular-nums">
+              {percentage === null ? "Progress unavailable" : `${percentage}%`}
+            </span>
+          </div>
+        </div>
+        <Progress value={progressValue} aria-label={`${budget.name} spending progress`}>
+          <ProgressLabel className="text-xs text-muted-foreground">Used this period</ProgressLabel>
+          <ProgressValue className="text-xs">
+            {() => (percentage === null ? "Unavailable" : `${percentage}%`)}
+          </ProgressValue>
+        </Progress>
+        <BudgetPaceChart budget={budget} chart={chart} />
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-3 border-t pt-3 text-sm">
+          <div className="flex min-w-0 flex-col gap-1">
+            <dt className="text-xs text-muted-foreground">Allowance</dt>
+            <dd className="truncate font-medium tabular-nums">{data.allowanceLabel}</dd>
+          </div>
+          <div className="flex min-w-0 flex-col gap-1">
+            <dt className="text-xs text-muted-foreground">Remaining</dt>
+            <dd className="truncate font-medium tabular-nums">{data.remainingLabel}</dd>
+          </div>
+        </dl>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BudgetCards({ budgets, now }: { budgets: Array<Budget>; now: Date }) {
+  return (
+    <div
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      role="region"
+      aria-label="Budgets"
+    >
+      {budgets.map((budget) => (
+        <BudgetCard key={budget.id} data={buildBudgetCardData(budget, now)} />
+      ))}
+    </div>
   );
 }
 
@@ -127,6 +268,7 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
   const [isListLoading, setIsListLoading] = useState(false);
   const [listError, setListError] = useState<string>();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const now = new Date();
 
   const changeFilter = async (nextFilter: string) => {
     const typedFilter = BUDGET_LIST_FILTERS.find((candidate) => candidate === nextFilter);
@@ -231,9 +373,8 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
           </EmptyContent>
         </Empty>
       ) : (
-        <div className="border" aria-busy={isListLoading}>
-          <div className="border-b bg-muted/40 px-3 py-2 text-xs font-medium">Budgets</div>
-          <BudgetRows budgets={budgets} />
+        <div aria-busy={isListLoading}>
+          <BudgetCards budgets={budgets} now={now} />
         </div>
       )}
       <Drawer open={isFormOpen} onOpenChange={setIsFormOpen} swipeDirection="right">
@@ -251,15 +392,21 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
 export function BudgetScreenSkeleton() {
   return (
     <ScreenBase>
-      <div className="border">
-        <div className="border-b bg-muted/40 px-3 py-2">
-          <Skeleton className="h-4 w-20" />
-        </div>
-        <div className="flex flex-col gap-3 p-3">
-          {[0, 1, 2].map((row) => (
-            <Skeleton key={row} className="h-8 w-full" />
-          ))}
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {[0, 1, 2].map((card) => (
+          <div
+            key={card}
+            className="flex flex-col gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+            </div>
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+        ))}
       </div>
     </ScreenBase>
   );
