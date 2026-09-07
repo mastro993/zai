@@ -177,6 +177,10 @@ describe("ApplicationTitleBar", () => {
     expect(banner.querySelector('[data-slot="navigation-history-buttons"]')).toBeNull();
     const separator = banner.querySelector('[data-slot="title-bar-overlay-separator"]');
     expect(separator).not.toBeNull();
+    expect(leading?.className).not.toContain("ease-linear");
+    expect(separator?.className).toContain("absolute");
+    expect(separator?.className).toContain("-left-4");
+    expect(separator?.className).not.toContain("mr-2");
     // data-vertical: beats Separator's data-vertical:self-stretch (plain self-center loses).
     expect(separator?.className).toContain("data-vertical:h-4");
     expect(separator?.className).toContain("data-vertical:self-center");
@@ -200,8 +204,10 @@ describe("ApplicationTitleBar", () => {
     expect(padding).toBe(serializedInset.style.paddingLeft);
     expect(WEB_CHROME_LEADING_INSET).toContain("0.5rem");
     expect(WEB_CHROME_LEADING_INSET).toContain("2rem");
+    expect(WEB_CHROME_LEADING_INSET).toContain("0.75rem");
+    expect(WEB_CHROME_LEADING_INSET).toContain("1rem");
+    expect(WEB_CHROME_LEADING_INSET).not.toContain("3.5rem");
     expect(padding).not.toContain("76px");
-    expect(padding).not.toContain("3.5rem");
     const separator = banner.querySelector('[data-slot="title-bar-overlay-separator"]');
     expect(separator).not.toBeNull();
     expect(separator?.nextElementSibling).toBe(breadcrumbs);

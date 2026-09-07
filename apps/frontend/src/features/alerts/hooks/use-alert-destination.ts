@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 
 import { getBudget } from "@/features/budgets/commands/budgets";
-import { useOpenSettings } from "@/features/settings/hooks/use-settings-modal";
+import { useOpenSettings } from "@/features/settings/hooks/use-open-settings";
 
 import { markAlertRead } from "../commands/alerts";
 import { isNavigableAlertDestination, isUnreadAlert } from "../lib/parse";

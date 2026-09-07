@@ -7,10 +7,9 @@ import { cn } from "@/lib/utils";
 
 interface SettingsNavProps {
   pathname: string;
-  onNavigate?: (pathname: string) => void;
 }
 
-export function SettingsNav({ pathname, onNavigate }: SettingsNavProps) {
+export function SettingsNav({ pathname }: SettingsNavProps) {
   return (
     <nav
       aria-label="Settings sections"
@@ -29,13 +28,7 @@ export function SettingsNav({ pathname, onNavigate }: SettingsNavProps) {
                 <li key={section.to}>
                   <Link
                     to={section.to}
-                    preload={onNavigate ? false : "intent"}
-                    onClick={(event) => {
-                      if (onNavigate) {
-                        event.preventDefault();
-                        onNavigate(section.to);
-                      }
-                    }}
+                    preload="intent"
                     className={cn(
                       buttonVariants({ variant: "ghost" }),
                       "w-full justify-start text-sidebar-foreground",
