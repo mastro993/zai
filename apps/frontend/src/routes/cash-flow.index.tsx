@@ -1,11 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-
-import { ScreenBase } from "@/components/screen-base";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/cash-flow/")({
-  component: CashFlowOverviewPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/cash-flow/transactions" });
+  },
 });
-
-function CashFlowOverviewPage() {
-  return <ScreenBase />;
-}

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 import { SelectSeparator } from "@/components/ui/select";
-import { useOpenSettings } from "@/features/settings/hooks/use-settings-modal";
+import { useOpenSettings } from "@/features/settings/hooks/use-open-settings";
 
 export function AddCurrencySelectFooter() {
   const openSettings = useOpenSettings();

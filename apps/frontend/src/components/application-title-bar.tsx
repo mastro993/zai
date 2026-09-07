@@ -16,6 +16,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { AlertsBell } from "@/features/alerts/components/alerts-bell";
 import { useScreenBreadcrumbs } from "@/hooks/use-screen-breadcrumbs";
 import { createWindowChromeAdapter } from "@/lib/window-chrome";
+import { useWorkspaceChrome } from "@/lib/workspace-chrome";
 import type { CommandBuildTarget } from "@/commands/build-target";
 
 type TitleBarActionsTarget = HTMLElement | null;
@@ -98,36 +99,39 @@ interface ApplicationTitleBarProps {
 
 export function ApplicationTitleBar({ buildTarget }: ApplicationTitleBarProps) {
   const { isMobile, state } = useSidebar();
+  const chrome = useWorkspaceChrome();
   const titleBarContextValue = useContext(titleBarContext);
   const windowChrome = useMemo(() => createWindowChromeAdapter(buildTarget), [buildTarget]);
+  const overlayState = chrome.kind === "settings" ? "expanded" : state;
   const overlay = resolveOverlayChrome({
     buildTarget,
-    state,
+    state: overlayState,
     isMobile,
     hasDesktopWindowChrome: buildTarget === "tauri" && windowChrome.supportsNativeWindowChrome,
+    hideSidebarToggle: chrome.kind === "settings",
   });
 
   return (
     <header
       data-slot="application-title-bar"
       data-build-target={buildTarget}
-      data-sidebar-state={state}
-      data-sidebar-collapsed={state === "collapsed"}
-      className="relative z-30 flex h-12 shrink-0 items-center bg-background text-foreground"
+      data-sidebar-state={overlayState}
+      data-sidebar-collapsed={overlayState === "collapsed"}
+      className="relative z-30 flex h-12 shrink-0 items-center border-b border-border bg-background text-foreground"
     >
       <div className="flex min-w-0 flex-1 items-center">
         <div
           data-slot="title-bar-leading"
-          className="flex min-w-0 shrink-0 items-center transition-[padding] duration-200 ease-linear"
+          className="flex min-w-0 shrink-0 items-center transition-[padding] duration-200"
           style={{ paddingLeft: overlay.titleBarLeadingInset }}
           aria-hidden
         />
-        <div className="flex h-12 min-w-0 flex-1 items-center gap-2">
+        <div className="relative flex h-12 min-w-0 flex-1 items-center gap-2">
           {overlay.showTitleBarSeparator ? (
             <Separator
               orientation="vertical"
               data-slot="title-bar-overlay-separator"
-              className="mr-2 data-vertical:h-4 data-vertical:self-center"
+              className="pointer-events-none absolute top-1/2 -left-4 -translate-y-1/2 data-vertical:h-4 data-vertical:self-center"
             />
           ) : null}
           <div data-slot="title-bar-breadcrumbs" className="min-w-0 shrink-0">

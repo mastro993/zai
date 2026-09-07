@@ -5,7 +5,6 @@ import { Result } from "@praha/byethrow";
 import { useCallback, useEffect, useState } from "react";
 
 import { ApplicationSidebar } from "@/components/application-sidebar";
-import { ApplicationStatusBar } from "@/components/application-status-bar";
 import {
   ApplicationTitleBar,
   ApplicationTitleBarProvider,
@@ -18,7 +17,6 @@ import {
   useCurrencyBootstrap,
 } from "@/features/currency/hooks/use-currency-bootstrap";
 import { InitialCurrencySetupScreen } from "@/features/currency/screens/initial-currency-setup-screen";
-import { SettingsModalProvider } from "@/features/settings/hooks/use-settings-modal";
 import { SettingsReturnHrefProvider } from "@/features/settings/hooks/use-settings-return-href";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -31,6 +29,11 @@ import {
   readSidebarOpen,
   writeSidebarOpen,
 } from "@/lib/sidebar-preference";
+import {
+  sidebarOpenForChrome,
+  shouldPersistSidebarOpen,
+  useWorkspaceChrome,
+} from "@/lib/workspace-chrome";
 
 export const Route = createRootRoute({
   component: AppLayout,
@@ -105,38 +108,79 @@ function ApplicationWorkspace({ buildTarget }: ApplicationShellProps) {
 
   return (
     <AlertsControllerProvider>
-      <SettingsModalProvider>
-        <SettingsReturnHrefProvider>
-          <SidebarProvider
-            open={sidebarOpen}
-            onOpenChange={handleSidebarOpenChange}
-            className="flex h-svh flex-col overflow-hidden"
-          >
-            <ApplicationTitleBarProvider>
-              <div className="flex min-h-0 flex-1 overflow-hidden">
-                <FixedSidebarTrigger buildTarget={buildTarget} />
-                <ApplicationSidebar buildTarget={buildTarget} />
-                <SidebarInset className="min-h-0 overflow-hidden">
-                  <ApplicationTitleBar buildTarget={buildTarget} />
-                  <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                    <Outlet />
-                  </main>
-                </SidebarInset>
-              </div>
-              <ApplicationStatusBar />
-              <Toaster />
-              <TanStackDevtools
-                plugins={[
-                  {
-                    name: "Tanstack Router",
-                    render: <TanStackRouterDevtoolsPanel />,
-                  },
-                ]}
-              />
-            </ApplicationTitleBarProvider>
-          </SidebarProvider>
-        </SettingsReturnHrefProvider>
-      </SettingsModalProvider>
+      <SettingsReturnHrefProvider>
+        <ApplicationWorkspaceChrome
+          buildTarget={buildTarget}
+          sidebarOpen={sidebarOpen}
+          onSidebarOpenChange={handleSidebarOpenChange}
+        />
+      </SettingsReturnHrefProvider>
     </AlertsControllerProvider>
+  );
+}
+
+interface ApplicationWorkspaceChromeProps {
+  buildTarget: CommandBuildTarget;
+  sidebarOpen: boolean;
+  onSidebarOpenChange: (open: boolean) => void;
+}
+
+function ApplicationWorkspaceChrome({
+  buildTarget,
+  sidebarOpen,
+  onSidebarOpenChange,
+}: ApplicationWorkspaceChromeProps) {
+  const chrome = useWorkspaceChrome();
+  const persistOpen = shouldPersistSidebarOpen(chrome);
+
+  const handleSidebarOpenChange = useCallback(
+    (open: boolean) => {
+      if (!persistOpen) {
+        clearSidebarStateCookie();
+        return;
+      }
+      onSidebarOpenChange(open);
+    },
+    [onSidebarOpenChange, persistOpen],
+  );
+
+  return (
+    <SidebarProvider
+      open={sidebarOpenForChrome(chrome, sidebarOpen)}
+      onOpenChange={handleSidebarOpenChange}
+      className="flex h-svh flex-col overflow-hidden"
+    >
+      <ApplicationTitleBarProvider>
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:inline-flex focus:rounded-lg focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:text-foreground focus:ring-3 focus:ring-ring/50"
+          >
+            Skip to content
+          </a>
+          <FixedSidebarTrigger buildTarget={buildTarget} />
+          <ApplicationSidebar buildTarget={buildTarget} />
+          <SidebarInset className="min-h-0 overflow-hidden">
+            <ApplicationTitleBar buildTarget={buildTarget} />
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="flex min-h-0 flex-1 flex-col overflow-hidden"
+            >
+              <Outlet />
+            </main>
+          </SidebarInset>
+        </div>
+        <Toaster />
+        <TanStackDevtools
+          plugins={[
+            {
+              name: "Tanstack Router",
+              render: <TanStackRouterDevtoolsPanel />,
+            },
+          ]}
+        />
+      </ApplicationTitleBarProvider>
+    </SidebarProvider>
   );
 }

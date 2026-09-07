@@ -42,7 +42,11 @@ const mockWindowChrome = (supportsNativeWindowChrome: boolean) => {
   });
 };
 
-const renderOverlay = async (buildTarget: "tauri" | "web", sidebarOpen = true) => {
+const renderOverlay = async (
+  buildTarget: "tauri" | "web",
+  sidebarOpen = true,
+  initialEntry = "/",
+) => {
   const rootRoute = createRootRoute({
     component: () => (
       <SidebarProvider defaultOpen={sidebarOpen}>
@@ -55,9 +59,19 @@ const renderOverlay = async (buildTarget: "tauri" | "web", sidebarOpen = true) =
     path: "/",
     component: () => null,
   });
+  const settingsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/settings",
+    component: () => null,
+  });
+  const appearanceRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: "appearance",
+    component: () => null,
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute]),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    routeTree: rootRoute.addChildren([indexRoute, settingsRoute.addChildren([appearanceRoute])]),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
   });
 
   await router.load();
@@ -88,7 +102,7 @@ describe("FixedSidebarTrigger", () => {
     await renderOverlay("web", false);
 
     const host = document.querySelector<HTMLElement>('[data-slot="fixed-sidebar-trigger"]');
-    expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Go back" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Go forward" })).toBeNull();
     expect(host?.style.paddingLeft).toBe(TRAFFIC_LIGHT_TO_TRIGGER_GAP);
@@ -101,7 +115,7 @@ describe("FixedSidebarTrigger", () => {
 
     const host = document.querySelector<HTMLElement>('[data-slot="fixed-sidebar-trigger"]');
     const history = document.querySelector<HTMLElement>('[data-slot="window-chrome-history"]');
-    expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Collapse sidebar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Go back" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Go forward" })).toBeTruthy();
     expect(host?.contains(screen.getByRole("button", { name: "Go back" }))).toBe(true);
@@ -118,7 +132,7 @@ describe("FixedSidebarTrigger", () => {
 
     const host = document.querySelector<HTMLElement>('[data-slot="fixed-sidebar-trigger"]');
     const history = document.querySelector<HTMLElement>('[data-slot="window-chrome-history"]');
-    expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Go back" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Go forward" })).toBeTruthy();
     expect(host?.style.paddingLeft).toBe(TRAFFIC_LIGHT_TO_TRIGGER_GAP);
@@ -136,5 +150,25 @@ describe("FixedSidebarTrigger", () => {
     expect(host?.style.gap).toBe(TRIGGER_TO_HISTORY_GAP);
     expect(host?.className).not.toContain("w-(--sidebar-width)");
     expect(document.querySelector('[data-slot="sidebar-brand"]')).toBeNull();
+  });
+
+  it("hides the overlay collapse control on settings paths and keeps Tauri history", async () => {
+    mockWindowChrome(true);
+    await renderOverlay("tauri", true, "/settings/appearance");
+
+    expect(screen.queryByRole("button", { name: "Collapse sidebar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Expand sidebar" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Go back" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go forward" })).toBeTruthy();
+    expect(document.querySelector('[data-slot="window-chrome-history"]')).not.toBeNull();
+  });
+
+  it("treats settings as expanded even when the stored preference is collapsed", async () => {
+    mockWindowChrome(true);
+    await renderOverlay("tauri", false, "/settings/appearance");
+
+    expect(screen.queryByRole("button", { name: "Expand sidebar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Collapse sidebar" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Go back" })).toBeTruthy();
   });
 });
