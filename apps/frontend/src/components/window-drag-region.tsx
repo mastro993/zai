@@ -9,18 +9,24 @@ export const SIDEBAR_TRIGGER_SLOT_WIDTH = "2rem";
 export const HISTORY_BUTTONS_SLOT_WIDTH = "3.5rem";
 export const TRAFFIC_LIGHT_TO_TRIGGER_GAP = "0.5rem";
 export const TRIGGER_TO_HISTORY_GAP = "0.25rem";
-export const TRIGGER_TO_CONTENT_GAP = TRAFFIC_LIGHT_TO_TRIGGER_GAP;
+export const TRIGGER_TO_CONTENT_GAP = "1rem";
+export const TRIGGER_TO_SEPARATOR_GAP = "0.75rem";
 
 export const NATIVE_TOGGLE_LEADING_INSET = `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP})`;
 
-export const NATIVE_CHROME_LEADING_INSET = `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP} + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_HISTORY_GAP} + ${HISTORY_BUTTONS_SLOT_WIDTH} + ${TRIGGER_TO_CONTENT_GAP})`;
+export const NATIVE_CHROME_LEADING_INSET = `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP} + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_HISTORY_GAP} + ${HISTORY_BUTTONS_SLOT_WIDTH} + ${TRIGGER_TO_SEPARATOR_GAP} + ${TRIGGER_TO_CONTENT_GAP})`;
 
-export const WEB_CHROME_WITH_HISTORY_LEADING_INSET = `calc(${TRAFFIC_LIGHT_TO_TRIGGER_GAP} + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_HISTORY_GAP} + ${HISTORY_BUTTONS_SLOT_WIDTH} + ${TRIGGER_TO_CONTENT_GAP})`;
+export const WEB_CHROME_WITH_HISTORY_LEADING_INSET = `calc(${TRAFFIC_LIGHT_TO_TRIGGER_GAP} + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_HISTORY_GAP} + ${HISTORY_BUTTONS_SLOT_WIDTH} + ${TRIGGER_TO_SEPARATOR_GAP} + ${TRIGGER_TO_CONTENT_GAP})`;
 
-export const WEB_CHROME_LEADING_INSET = `calc(0.5rem + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_CONTENT_GAP})`;
+export const WEB_CHROME_LEADING_INSET = `calc(0.5rem + ${SIDEBAR_TRIGGER_SLOT_WIDTH} + ${TRIGGER_TO_SEPARATOR_GAP} + ${TRIGGER_TO_CONTENT_GAP})`;
+
+export const NATIVE_HISTORY_LEADING_INSET = `calc(${TRAFFIC_LIGHT_LEADING_WIDTH} + ${TRAFFIC_LIGHT_TO_TRIGGER_GAP} + ${HISTORY_BUTTONS_SLOT_WIDTH} + ${TRIGGER_TO_SEPARATOR_GAP} + ${TRIGGER_TO_CONTENT_GAP})`;
+
+export const WEB_HISTORY_LEADING_INSET = `calc(${TRAFFIC_LIGHT_TO_TRIGGER_GAP} + ${HISTORY_BUTTONS_SLOT_WIDTH} + ${TRIGGER_TO_SEPARATOR_GAP} + ${TRIGGER_TO_CONTENT_GAP})`;
 
 export interface OverlayChrome {
   showFixedTrigger: boolean;
+  showToggle: boolean;
   showHistory: boolean;
   triggerPaddingLeft: string;
   showTitleBarSeparator: boolean;
@@ -32,6 +38,7 @@ interface OverlayChromeInput {
   state: "expanded" | "collapsed";
   isMobile: boolean;
   hasDesktopWindowChrome: boolean;
+  hideSidebarToggle?: boolean;
 }
 
 export function resolveOverlayChrome({
@@ -39,14 +46,18 @@ export function resolveOverlayChrome({
   state,
   isMobile,
   hasDesktopWindowChrome,
+  hideSidebarToggle = false,
 }: OverlayChromeInput): OverlayChrome {
   const collapsed = state === "collapsed";
-  const showFixedTrigger = isMobile || collapsed || hasDesktopWindowChrome;
-  const showHistory = buildTarget === "tauri" && showFixedTrigger;
+  const overlayHostWanted = isMobile || collapsed || hasDesktopWindowChrome;
+  const showToggle = overlayHostWanted && !hideSidebarToggle;
+  const showHistory = buildTarget === "tauri" && overlayHostWanted;
+  const showFixedTrigger = showToggle || showHistory;
   const needsTitleBarClearance = isMobile || collapsed;
 
   return {
     showFixedTrigger,
+    showToggle,
     showHistory,
     triggerPaddingLeft: hasDesktopWindowChrome
       ? NATIVE_TOGGLE_LEADING_INSET
@@ -55,10 +66,16 @@ export function resolveOverlayChrome({
     titleBarLeadingInset: !needsTitleBarClearance
       ? "1rem"
       : hasDesktopWindowChrome
-        ? NATIVE_CHROME_LEADING_INSET
+        ? showToggle
+          ? NATIVE_CHROME_LEADING_INSET
+          : NATIVE_HISTORY_LEADING_INSET
         : showHistory
-          ? WEB_CHROME_WITH_HISTORY_LEADING_INSET
-          : WEB_CHROME_LEADING_INSET,
+          ? showToggle
+            ? WEB_CHROME_WITH_HISTORY_LEADING_INSET
+            : WEB_HISTORY_LEADING_INSET
+          : showToggle
+            ? WEB_CHROME_LEADING_INSET
+            : "1rem",
   };
 }
 

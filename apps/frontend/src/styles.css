@@ -228,6 +228,38 @@
   }
 }
 
+/* Mix offcanvas slide with width clip. Inner keeps --sidebar-width so labels
+   clip instead of reflowing. Ceiling: width still lays out the gap; upgrade
+   is transform-only if the gap ever janks. */
+[data-slot="sidebar-inner"] {
+  min-width: var(--sidebar-width);
+}
+
+[data-slot="sidebar-gap"],
+[data-slot="sidebar-container"],
+[data-slot="title-bar-leading"] {
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+[data-slot="sidebar-container"] {
+  overflow: hidden;
+  transition-property: width, transform, left, right;
+}
+
+[data-slot="sidebar"][data-collapsible="offcanvas"][data-side="left"]
+  [data-slot="sidebar-container"] {
+  left: 0;
+  width: 0;
+  transform: translateX(calc(var(--sidebar-width) * -0.25));
+}
+
+[data-slot="sidebar"][data-collapsible="offcanvas"][data-side="right"]
+  [data-slot="sidebar-container"] {
+  right: 0;
+  width: 0;
+  transform: translateX(calc(var(--sidebar-width) * 0.25));
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-slot="sidebar-gap"],
   [data-slot="sidebar-container"],
@@ -241,15 +273,12 @@
   }
 }
 
-/* ponytail: palm is unused; panel default is z-index 99999. Keep it below the
-   status bar (z-40) so the panel slides out from behind the h-8 bar, and below
-   overlay z-50 so drawer/dialog backdrops cover the bar. Padding keeps panel
-   content from ending under the bar. */
+/* ponytail: palm is unused; panel default is z-index 99999. Keep it below
+   overlay z-50 so drawer/dialog backdrops cover it. */
 button[aria-label="Open TanStack Devtools"] {
   display: none !important;
 }
 
 #tanstack_devtools {
   z-index: 30 !important;
-  padding-bottom: 2rem;
 }
