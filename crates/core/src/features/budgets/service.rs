@@ -1,5 +1,5 @@
 use super::models::{
-    Budget, BudgetLifecycleUpdate, BudgetListFilter, BudgetUpdate, NewBudget,
+    Budget, BudgetLifecycleUpdate, BudgetListFilter, BudgetOverview, BudgetUpdate, NewBudget,
     normalize_budget_name, validate_history_paging,
 };
 use super::traits::{BudgetsRepositoryTrait, BudgetsServiceTrait};
@@ -32,6 +32,11 @@ impl BudgetsServiceTrait for BudgetsService {
     async fn list_budgets(&self, filter: BudgetListFilter) -> Result<Vec<Budget>> {
         self.currency_setup.require_setup()?;
         self.repository.list_budgets(filter).await
+    }
+
+    async fn list_budget_overviews(&self, filter: BudgetListFilter) -> Result<Vec<BudgetOverview>> {
+        self.currency_setup.require_setup()?;
+        self.repository.list_budget_overviews(filter).await
     }
 
     async fn get_budget(&self, id: &str) -> Result<Budget> {

@@ -1,6 +1,7 @@
 import { DownloadIcon, TransactionHistoryIcon, UploadIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
 import { toast } from "@/components/toaster/toast";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
@@ -8,6 +9,7 @@ import { ScreenBase } from "@/components/screen-base";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Drawer } from "@/components/ui/drawer";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Empty,
   EmptyContent,
@@ -26,7 +28,6 @@ import { TransactionDeleteConfirmationDialog } from "../components/transaction-d
 import { TransactionFormDrawer } from "../components/transaction-form-drawer";
 import { TransactionImportDialog } from "../components/transaction-import-dialog";
 import { TransactionList } from "../components/transaction-list";
-import { TransactionPagination } from "../components/transaction-pagination";
 import { TransactionSelectionBar } from "../components/transaction-selection-bar";
 import { TransactionTypeFilter } from "../components/transaction-type-filter";
 import { RecurringFormDrawer } from "@/features/recurring-transactions/components/recurring-form-drawer";
@@ -38,6 +39,92 @@ import {
 
 interface TransactionScreenProps {
   initialData: TransactionScreenInitialData;
+}
+
+const TRANSACTION_LOADING_ROW_COUNT = 3;
+
+function TransactionLoadingRows() {
+  return (
+    <div
+      aria-hidden="true"
+      className="overflow-hidden rounded-lg border shadow-xs"
+      data-slot="transaction-loading-rows"
+    >
+      {Array.from({ length: TRANSACTION_LOADING_ROW_COUNT }, (_, index) => (
+        <div
+          key={index}
+          className={
+            index > 0
+              ? "flex items-center gap-3 border-t px-3 py-2.5"
+              : "flex items-center gap-3 px-3 py-2.5"
+          }
+        >
+          <Skeleton className="size-9 shrink-0" />
+          <span className="flex min-w-0 flex-1 flex-col gap-1">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-1/3" />
+          </span>
+          <Skeleton className="h-4 w-20 shrink-0" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TransactionListSentinel({
+  hasMore,
+  isLoadingMore,
+  errorMessage,
+  onLoadMore,
+}: {
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  errorMessage: string | null;
+  onLoadMore: () => Promise<void>;
+}) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const Observer = globalThis.IntersectionObserver;
+    if (!sentinel || !hasMore || isLoadingMore || !Observer) {
+      return;
+    }
+
+    const observer = new Observer((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        void onLoadMore();
+      }
+    });
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, onLoadMore]);
+
+  return (
+    <div
+      ref={sentinelRef}
+      className="flex min-h-8 flex-col gap-2 py-2 text-sm text-muted-foreground"
+    >
+      {isLoadingMore ? (
+        <>
+          <p role="status" className="text-center">
+            Loading more transactions...
+          </p>
+          <TransactionLoadingRows />
+        </>
+      ) : null}
+      {errorMessage ? (
+        <div className="flex flex-col items-center gap-2">
+          <p>{errorMessage}</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => void onLoadMore()}>
+            Try again
+          </Button>
+        </div>
+      ) : null}
+      {!hasMore && !errorMessage ? <p>All transactions loaded.</p> : null}
+    </div>
+  );
 }
 
 export function TransactionScreen({ initialData }: TransactionScreenProps) {
@@ -228,14 +315,14 @@ export function TransactionScreen({ initialData }: TransactionScreenProps) {
               });
             }}
             onDelete={actions.openDeleteDialog}
+            selectedIds={actions.selectedIds}
+            onToggleSelection={actions.toggleRow}
           />
-          <TransactionPagination
-            page={controller.page}
-            perPage={controller.perPage}
-            totalPages={controller.totalPages}
-            visibleCount={controller.transactions.length}
-            onPageChange={controller.setPage}
-            onPerPageChange={controller.changeRowsPerPage}
+          <TransactionListSentinel
+            hasMore={controller.hasMore}
+            isLoadingMore={controller.isLoadingMore}
+            errorMessage={controller.loadMoreError}
+            onLoadMore={controller.loadNextPage}
           />
         </div>
       ) : null}

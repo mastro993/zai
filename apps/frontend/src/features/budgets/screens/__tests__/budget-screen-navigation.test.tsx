@@ -20,9 +20,10 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import * as alertsController from "@/features/alerts/hooks/use-alerts-controller";
 import type { AlertsControllerValue } from "@/features/alerts/hooks/alerts-controller-context";
 import * as breadcrumbs from "@/hooks/use-screen-breadcrumbs";
+import { categorySchema, type TransactionCategory } from "@/features/categories/types/model";
 
 import * as budgets from "../../commands/budgets";
-import { budgetSchema, type Budget } from "../../types/budget";
+import { budgetSchema, type Budget, type BudgetOverview } from "../../types/budget";
 import { BudgetDetailScreen } from "../budget-detail-screen";
 import { BudgetScreen } from "../budget-screen";
 
@@ -50,6 +51,29 @@ const budget = budgetSchema.parse({
   },
 });
 
+const budgetOverview: BudgetOverview = {
+  ...budget,
+  spendingBuckets: [
+    { start: "2026-07-01T00:00:00", value: 1000, complete: true },
+    { start: "2026-07-15T00:00:00", value: 1500, complete: true },
+  ],
+};
+
+const categoryFixtures = [
+  ["category-food", "Food", "food", "#C32828"],
+  ["category-dining", "Dining", "dining", "#C39B28"],
+  ["category-travel", "Travel", "travel", "#75C328"],
+  ["category-home", "Home", "home", "#28C34E"],
+  ["category-health", "Health", "health", "#28C3C3"],
+].map(([id, name, icon, color]) =>
+  categorySchema.parse({ id, name, icon, color, role: "spending" }),
+);
+
+const categoryScopeBudget = {
+  ...budgetOverview,
+  categoryIds: categoryFixtures.map((category) => category.id),
+};
+
 const history = {
   data: [],
   page: 1,
@@ -58,6 +82,7 @@ const history = {
 };
 
 interface BudgetListState {
+  createdBudgetName: string | undefined;
   deferRefresh: boolean;
   deleted: boolean;
   lifecyclePaused: boolean;
@@ -66,6 +91,7 @@ interface BudgetListState {
 }
 
 const budgetState: BudgetListState = {
+  createdBudgetName: undefined,
   deferRefresh: false,
   deleted: false,
   lifecyclePaused: false,
@@ -111,14 +137,18 @@ function currentBudget(): Budget {
   return budget;
 }
 
-function listForFilter(filter: string | undefined): Array<Budget> {
+function listForFilter(filter: string | undefined): Array<BudgetOverview> {
   if (budgetState.deleted) {
     return [];
   }
   if (budgetState.pausedOnly || budgetState.lifecyclePaused) {
-    return filter === "all" || filter === "paused" ? [{ ...budget, paused: true }] : [];
+    return filter === "all" || filter === "paused" ? [{ ...budgetOverview, paused: true }] : [];
   }
-  return [budget];
+  const listed = [budgetOverview];
+  if (budgetState.createdBudgetName) {
+    listed.push({ ...budgetOverview, id: "budget-2", name: budgetState.createdBudgetName });
+  }
+  return listed;
 }
 
 function stubWindowChrome() {
@@ -141,7 +171,13 @@ function stubWindowChrome() {
   });
 }
 
-async function renderBudgetApp() {
+async function renderBudgetApp({
+  initialBudgets,
+  categories = [],
+}: {
+  initialBudgets?: Array<BudgetOverview>;
+  categories?: Array<TransactionCategory>;
+} = {}) {
   const rootRoute = createRootRoute({
     component: () => (
       <SidebarProvider>
@@ -155,7 +191,7 @@ async function renderBudgetApp() {
   const listRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/cash-flow/budgets/",
-    loader: async (): Promise<{ budgets: Budget[] }> => {
+    loader: async (): Promise<{ budgets: BudgetOverview[] }> => {
       const result = await budgets.getBudgets("all");
       if (Result.isFailure(result)) {
         return { budgets: [] };
@@ -163,12 +199,18 @@ async function renderBudgetApp() {
       return { budgets: result.value };
     },
     component: function BudgetListPage() {
-      // SAFETY: list loader always returns { budgets: Budget[] }.
-      const data = listRoute.useLoaderData() as { budgets: Budget[] };
+      // SAFETY: list loader always returns { budgets: BudgetOverview[] }.
+      const data = listRoute.useLoaderData() as { budgets: BudgetOverview[] };
       const budgetListKey = data.budgets
         .map((item) => `${item.id}:${item.revision}:${item.paused}`)
         .join("|");
-      return <BudgetScreen key={budgetListKey} initialBudgets={data.budgets} categories={[]} />;
+      return (
+        <BudgetScreen
+          key={budgetListKey}
+          initialBudgets={initialBudgets ?? data.budgets}
+          categories={categories}
+        />
+      );
     },
   });
   const detailRoute = createRoute({
@@ -204,6 +246,7 @@ async function renderBudgetApp() {
 
 describe("cash-flow budget navigation", () => {
   beforeEach(() => {
+    budgetState.createdBudgetName = undefined;
     budgetState.deferRefresh = false;
     budgetState.deleted = false;
     budgetState.lifecyclePaused = false;
@@ -212,9 +255,10 @@ describe("cash-flow budget navigation", () => {
     stubWindowChrome();
     vi.spyOn(breadcrumbs, "useScreenBreadcrumbs").mockReturnValue([{ label: "Budgets" }]);
     vi.spyOn(alertsController, "useAlertsController").mockReturnValue(idleAlertsController);
-    vi.spyOn(budgets, "createBudget").mockImplementation(async (values) =>
-      Result.succeed({ ...budget, id: "budget-2", name: values.name }),
-    );
+    vi.spyOn(budgets, "createBudget").mockImplementation(async (values) => {
+      budgetState.createdBudgetName = values.name;
+      return Result.succeed({ ...budget, id: "budget-2", name: values.name });
+    });
     vi.spyOn(budgets, "deleteBudget").mockImplementation(async () => {
       budgetState.deleted = true;
       return Result.succeed(undefined);
@@ -245,14 +289,47 @@ describe("cash-flow budget navigation", () => {
     vi.restoreAllMocks();
   });
 
+  it("renders category icons with an overflow count and left-to-right stacking", async () => {
+    await renderBudgetApp({ initialBudgets: [categoryScopeBudget], categories: categoryFixtures });
+
+    const categoryGroup = screen.getByLabelText("Categories: Food, Dining, Travel, Home, 1 more");
+    expect(categoryGroup.querySelectorAll("svg")).toHaveLength(4);
+    expect(within(categoryGroup).getByText("+1")).toBeTruthy();
+    expect(
+      Array.from(categoryGroup.querySelectorAll<HTMLElement>("[title]")).map(
+        (icon) => icon.style.zIndex,
+      ),
+    ).toEqual(["4", "3", "2", "1"]);
+  });
+
   it("renders the budget detail screen after selecting a budget", async () => {
     const router = await renderBudgetApp();
 
     const budgetLink = await screen.findByRole("link", { name: budget.name });
-    fireEvent.click(budgetLink);
+    expect(within(budgetLink).getByText("Spent")).toBeTruthy();
+    fireEvent.click(within(budgetLink).getByText("Spent"));
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/cash-flow/budgets/budget-1"));
     expect(await screen.findByRole("button", { name: "Delete budget" })).toBeTruthy();
+  });
+
+  it("removes spending progress and rounds budget metric boxes", async () => {
+    await renderBudgetApp();
+
+    const budgetLink = await screen.findByRole("link", { name: budget.name });
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(
+      within(budgetLink).getByRole("img", {
+        name: new RegExp(`^${budget.name} budget progress`),
+      }),
+    ).toBeTruthy();
+
+    const metricBoxes = ["Allowance", "Spent", "Remaining"].map((label) => {
+      const metricLabel = within(budgetLink).getByText(label, { exact: true });
+      return metricLabel.parentElement;
+    });
+    expect(metricBoxes).toHaveLength(3);
+    expect(metricBoxes.every((box) => box?.classList.contains("rounded-md"))).toBe(true);
   });
 
   it("renders Back to budgets as a semantic link without native-button warnings", async () => {

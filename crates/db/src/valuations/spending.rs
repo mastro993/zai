@@ -13,14 +13,13 @@ pub struct SpendingAggregate {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(not(test), allow(dead_code))]
 pub enum SpendingBucketGrain {
+    Hour,
     Day,
     Month,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(not(test), allow(dead_code))]
 pub struct SpendingBucket {
     pub bucket_start: NaiveDateTime,
     pub known_sum: i64,
@@ -36,7 +35,6 @@ struct SpendingRow {
 }
 
 #[derive(QueryableByName)]
-#[cfg_attr(not(test), allow(dead_code))]
 struct SpendingBucketRow {
     #[diesel(sql_type = Text)]
     bucket_start: String,
@@ -94,7 +92,6 @@ pub(crate) fn sum_period_spending(
     })
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn sum_spending_buckets(
     conn: &mut SqliteConnection,
     start: chrono::NaiveDateTime,
@@ -104,8 +101,9 @@ pub(crate) fn sum_spending_buckets(
     grain: SpendingBucketGrain,
 ) -> crate::errors::Result<Vec<SpendingBucket>> {
     let bucket_expr = match grain {
-        SpendingBucketGrain::Day => "strftime('%Y-%m-%d', t.transaction_date)",
-        SpendingBucketGrain::Month => "strftime('%Y-%m-01', t.transaction_date)",
+        SpendingBucketGrain::Hour => "strftime('%Y-%m-%d %H:00:00', t.transaction_date)",
+        SpendingBucketGrain::Day => "strftime('%Y-%m-%d 00:00:00', t.transaction_date)",
+        SpendingBucketGrain::Month => "strftime('%Y-%m-01 00:00:00', t.transaction_date)",
     };
     let sql = format!(
         "SELECT {bucket_expr} AS bucket_start, \
@@ -140,19 +138,14 @@ fn spending_binds(
     Ok((measurement_mode.as_str(), scope))
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
 fn parse_bucket_row(row: SpendingBucketRow) -> crate::errors::Result<SpendingBucket> {
-    let date = chrono::NaiveDate::parse_from_str(&row.bucket_start, "%Y-%m-%d").map_err(|_| {
-        crate::errors::StorageError::CoreError(zai_core::Error::InvalidData(format!(
-            "Invalid spending bucket start: {}",
-            row.bucket_start
-        )))
-    })?;
-    let bucket_start = date.and_hms_opt(0, 0, 0).ok_or_else(|| {
-        crate::errors::StorageError::CoreError(zai_core::Error::InvalidData(
-            "Invalid spending bucket midnight".to_string(),
-        ))
-    })?;
+    let bucket_start = NaiveDateTime::parse_from_str(&row.bucket_start, "%Y-%m-%d %H:%M:%S")
+        .map_err(|_| {
+            crate::errors::StorageError::CoreError(zai_core::Error::InvalidData(format!(
+                "Invalid spending bucket start: {}",
+                row.bucket_start
+            )))
+        })?;
     Ok(SpendingBucket {
         bucket_start,
         known_sum: row.known_sum,

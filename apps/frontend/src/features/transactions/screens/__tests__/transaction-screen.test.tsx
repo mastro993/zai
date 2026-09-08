@@ -97,7 +97,6 @@ interface TransactionRequestState {
   holdStale: boolean;
   holdCurrent: boolean;
   returnInitialEmpty: boolean;
-  returnEmptyOnPage2: boolean;
   returnEmptyForQuery: boolean;
 }
 
@@ -107,7 +106,6 @@ const transactionState: TransactionRequestState = {
   holdStale: false,
   holdCurrent: false,
   returnInitialEmpty: false,
-  returnEmptyOnPage2: false,
   returnEmptyForQuery: false,
 };
 
@@ -163,6 +161,56 @@ function stubWindowChrome() {
   });
 }
 
+function stubIntersectionObserver() {
+  const callbacks: Array<IntersectionObserverCallback> = [];
+  class TestIntersectionObserver {
+    readonly root = null;
+    readonly rootMargin = "";
+    readonly thresholds: Array<number> = [];
+
+    constructor(readonly callback: IntersectionObserverCallback) {
+      callbacks.push(callback);
+    }
+
+    disconnect() {}
+
+    observe() {}
+
+    takeRecords(): Array<IntersectionObserverEntry> {
+      return [];
+    }
+
+    unobserve() {}
+  }
+
+  vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
+  return callbacks;
+}
+
+function createIntersectionEntry(): IntersectionObserverEntry {
+  return {
+    boundingClientRect: new DOMRect(),
+    intersectionRatio: 1,
+    intersectionRect: new DOMRect(),
+    isIntersecting: true,
+    rootBounds: null,
+    target: document.createElement("div"),
+    time: 0,
+  };
+}
+
+function createIntersectionObserver(): IntersectionObserver {
+  return {
+    disconnect: () => undefined,
+    observe: () => undefined,
+    root: null,
+    rootMargin: "",
+    takeRecords: () => [],
+    thresholds: [],
+    unobserve: () => undefined,
+  };
+}
+
 function resolveTransactions(
   currentPage: number,
   query: string,
@@ -207,14 +255,14 @@ function resolveTransactions(
     return Result.succeed(page([], 1, 1));
   }
 
-  if (currentPage === 2 && transactionState.returnEmptyOnPage2) {
-    return Result.succeed(page([], 2, 2));
-  }
-
   if (currentPage === 2 && !query && transactionState.holdStale) {
     return new Promise((resolve) => {
       transactionState.releaseStale = () => resolve(Result.succeed(page([], 2, 2)));
     });
+  }
+
+  if (currentPage === 2 && !query) {
+    return Result.succeed(page([freshSalary], 2, 2));
   }
 
   return Result.succeed(page([coffee], currentPage, 2));
@@ -270,17 +318,12 @@ const typeSearchQuery = (value: string) => {
   vi.advanceTimersByTime(250);
 };
 
-const goToNextPage = () => {
-  fireEvent.click(screen.getByLabelText("Go to next page"));
-};
-
 describe("transaction screen request guard", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     transactionState.holdStale = false;
     transactionState.holdCurrent = false;
     transactionState.returnInitialEmpty = false;
-    transactionState.returnEmptyOnPage2 = false;
     transactionState.returnEmptyForQuery = false;
     transactionState.releaseStale = undefined;
     transactionState.releaseCurrent = undefined;
@@ -378,6 +421,17 @@ describe("transaction screen request guard", () => {
     cleanup();
     vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps initial transactions after the initial query debounce", async () => {
+    await renderScreen();
+
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(screen.getByText("Initial coffee")).toBeTruthy();
   });
 
   it("ignores older success after a newer success", async () => {
@@ -442,35 +496,46 @@ describe("transaction screen request guard", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
   });
 
-  it("runs empty-page fallback only for the active request", async () => {
-    transactionState.holdStale = true;
+  it("appends next page when the list sentinel intersects", async () => {
+    const callbacks = stubIntersectionObserver();
 
     await renderScreen();
-    goToNextPage();
-    await waitFor(() =>
-      expect(transactions.getTransactions).toHaveBeenLastCalledWith(2, 50, undefined),
-    );
 
-    typeSearchQuery("current");
+    await act(async () => {
+      callbacks[0]?.([createIntersectionEntry()], createIntersectionObserver());
+    });
+
     await waitFor(() => expect(screen.getByText("Fresh salary")).toBeTruthy());
-
-    transactionState.releaseStale?.();
-    await vi.runOnlyPendingTimersAsync();
-
-    expect(screen.getByText("Fresh salary")).toBeTruthy();
-    expect(screen.queryByText("No transactions on this page")).toBeNull();
+    expect(screen.getByText("Initial coffee")).toBeTruthy();
+    expect(transactions.getTransactions).toHaveBeenLastCalledWith(2, 50, undefined);
+    expect(screen.getByText("All transactions loaded.")).toBeTruthy();
   });
 
-  it("corrects to the previous page when the active request returns an empty page", async () => {
-    transactionState.returnEmptyOnPage2 = true;
+  it("shows skeleton rows while loading the next page", async () => {
+    transactionState.holdStale = true;
+    const callbacks = stubIntersectionObserver();
 
     await renderScreen();
 
-    goToNextPage();
+    await act(async () => {
+      callbacks[0]?.([createIntersectionEntry()], createIntersectionObserver());
+    });
 
-    await waitFor(() =>
-      expect(transactions.getTransactions).toHaveBeenLastCalledWith(1, 50, undefined),
+    expect(screen.getByText("Initial coffee")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe("Loading more transactions...");
+    const skeletons = document.querySelectorAll(
+      '[data-slot="transaction-loading-rows"] [data-slot="skeleton"]',
     );
+    expect(skeletons).toHaveLength(12);
+    expect(
+      document.querySelector('[data-slot="transaction-loading-rows"]')?.getAttribute("aria-hidden"),
+    ).toBe("true");
+
+    transactionState.releaseStale?.();
+    await waitFor(() => expect(screen.getByText("All transactions loaded.")).toBeTruthy());
+    expect(
+      document.querySelectorAll('[data-slot="transaction-loading-rows"] [data-slot="skeleton"]'),
+    ).toHaveLength(0);
   });
 
   it("opens the import wizard from the header action", async () => {
@@ -584,6 +649,49 @@ describe("transaction screen request guard", () => {
     expect(screen.getAllByLabelText("Uncategorized")).toHaveLength(2);
     expect(screen.getByLabelText("Edit Expense: Morning coffee")).toBeTruthy();
     expect(screen.getByLabelText("Edit Income: Paycheck")).toBeTruthy();
+  });
+
+  it("selects and deselects a transaction with Cmd-click", async () => {
+    await renderScreen({
+      transactions: page(
+        [
+          sampleListItem({
+            id: "tx-food",
+            description: "Groceries",
+            transactionCategoryId: food.id,
+          }),
+          sampleListItem({
+            id: "tx-coffee",
+            description: "Coffee",
+            transactionDate: "2026-07-02T10:00:00",
+          }),
+        ],
+        1,
+        1,
+      ),
+      categories: [food],
+    });
+
+    const row = screen.getByRole("button", { name: "Edit Expense: Groceries" });
+    const secondRow = screen.getByRole("button", { name: "Edit Expense: Coffee" });
+    fireEvent.click(row, { metaKey: true });
+
+    expect(screen.getByText("1 selected")).toBeTruthy();
+    expect(row.getAttribute("data-selected")).toBe("true");
+    expect(screen.getByLabelText("Food").getAttribute("data-selected")).toBe("true");
+    expect(screen.getByLabelText("Food").classList.contains("bg-primary")).toBe(true);
+    expect(screen.queryByRole("heading", { name: "Edit transaction" })).toBeNull();
+
+    fireEvent.click(secondRow);
+
+    expect(screen.getByText("2 selected")).toBeTruthy();
+    expect(secondRow.getAttribute("data-selected")).toBe("true");
+    expect(screen.queryByRole("heading", { name: "Edit transaction" })).toBeNull();
+
+    fireEvent.click(row, { metaKey: true });
+
+    expect(screen.getByText("1 selected")).toBeTruthy();
+    expect(row.getAttribute("data-selected")).toBeNull();
   });
 
   it("shows time only and puts the category path on the icon", async () => {

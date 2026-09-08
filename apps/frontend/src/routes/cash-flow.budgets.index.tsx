@@ -4,11 +4,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getBudgets } from "@/features/budgets/commands/budgets";
 import { getTransactionCategories } from "@/features/categories/commands/transaction-categories";
 import { BudgetErrorScreen, BudgetScreen } from "@/features/budgets/screens/budget-screen";
-import type { Budget } from "@/features/budgets/types/budget";
+import type { BudgetOverview } from "@/features/budgets/types/budget";
 import type { TransactionCategory } from "@/features/categories/types/model";
 
 export interface BudgetRouteData {
-  budgets?: Array<Budget>;
+  budgets?: Array<BudgetOverview>;
   categories?: Array<TransactionCategory>;
   errorMessage?: string;
 }

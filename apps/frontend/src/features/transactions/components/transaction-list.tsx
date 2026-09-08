@@ -4,8 +4,10 @@ import {
   Delete02Icon,
   PencilEdit02Icon,
   RepeatIcon,
+  Tick02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import type { MouseEvent } from "react";
 
 import {
   ContextMenu,
@@ -47,6 +49,12 @@ type TransactionListProps = {
   onAdopt: (transaction: TransactionListItem) => void;
   onOpenRecurring: (recurringTransactionId: string) => void;
   onDelete: (transaction: TransactionListItem) => void;
+  selectedIds: ReadonlySet<string>;
+  onToggleSelection: (
+    transaction: TransactionListItem,
+    selected: boolean,
+    shiftKey: boolean,
+  ) => void;
 };
 
 const TRANSACTION_TYPE_ARROWS = {
@@ -57,27 +65,39 @@ const TRANSACTION_TYPE_ARROWS = {
 function CategoryIconTile({
   category,
   label,
+  selected,
 }: {
   category: TransactionCategory | undefined;
   label: string;
+  selected: boolean;
 }) {
   const color = category ? getCategoryDisplayColor(category) : DEFAULT_CATEGORY_COLOR;
   const { background, foreground } = getCategoryBadgeColors(color);
-  const icon = getCategoryIconEntry(
-    category ? getCategoryDisplayIcon(category) : DEFAULT_CATEGORY_ICON,
-  );
+  const icon = selected
+    ? Tick02Icon
+    : getCategoryIconEntry(category ? getCategoryDisplayIcon(category) : DEFAULT_CATEGORY_ICON)
+        .icon;
   return (
     <Tooltip>
       <TooltipTrigger
         render={
           <span
-            className="flex size-9 shrink-0 items-center justify-center rounded-md"
-            style={{ backgroundColor: background, color: foreground }}
+            className={cn(
+              "flex size-9 shrink-0 items-center justify-center rounded-md",
+              selected && "bg-primary text-primary-foreground",
+            )}
+            style={selected ? undefined : { backgroundColor: background, color: foreground }}
             aria-label={label}
+            data-selected={selected || undefined}
           />
         }
       >
-        <HugeiconsIcon icon={icon.icon} className="size-4" strokeWidth={2} aria-hidden="true" />
+        <HugeiconsIcon
+          icon={icon}
+          className="size-4"
+          strokeWidth={selected ? 2.5 : 2}
+          aria-hidden="true"
+        />
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -155,6 +175,9 @@ function TransactionListRow({
   onAdopt,
   onOpenRecurring,
   onDelete,
+  selected,
+  selectionActive,
+  onToggleSelection,
 }: {
   transaction: TransactionListItem;
   category: TransactionCategory | undefined;
@@ -163,6 +186,9 @@ function TransactionListRow({
   onAdopt: (transaction: TransactionListItem) => void;
   onOpenRecurring: (recurringTransactionId: string) => void;
   onDelete: (transaction: TransactionListItem) => void;
+  selected: boolean;
+  selectionActive: boolean;
+  onToggleSelection: TransactionListProps["onToggleSelection"];
 }) {
   const transactionLabel = transaction.description || "No description";
   const categoryName = formatTransactionRowCategory(category, categoryById);
@@ -172,9 +198,20 @@ function TransactionListRow({
   const typeLabel = type ? TRANSACTION_TYPE_ARROWS[type].label : transaction.transactionType;
   const recurring = transaction.recurring;
   const rowClassName = "flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left";
+  const handleRowClick = (event: MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    if (event.metaKey || event.ctrlKey || selectionActive) {
+      event.preventDefault();
+      onToggleSelection(transaction, !selected, event.shiftKey);
+      return;
+    }
+
+    if (!recurring) {
+      onEdit(transaction.id);
+    }
+  };
   const rowBody = (
     <>
-      <CategoryIconTile category={category} label={categoryName} />
+      <CategoryIconTile category={category} label={categoryName} selected={selected} />
       <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
         <span className="flex min-w-0 items-center gap-1">
           <span
@@ -200,9 +237,24 @@ function TransactionListRow({
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger render={<div className="flex items-center hover:bg-muted/50" />}>
+      <ContextMenuTrigger
+        render={
+          <div
+            className={cn(
+              "flex items-center hover:bg-muted/50",
+              selected && "bg-primary/5 hover:bg-primary/10",
+            )}
+            data-selected={selected || undefined}
+          />
+        }
+      >
         {recurring ? (
-          <div className={rowClassName} aria-label={`${typeLabel}: ${transactionLabel}`}>
+          <div
+            className={cn(rowClassName, "cursor-pointer")}
+            aria-label={`${typeLabel}: ${transactionLabel}`}
+            data-selected={selected || undefined}
+            onClick={handleRowClick}
+          >
             {rowBody}
           </div>
         ) : (
@@ -211,11 +263,11 @@ function TransactionListRow({
             className={cn(
               rowClassName,
               "cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50",
+              selected && "bg-primary/5 hover:bg-primary/10",
             )}
             aria-label={`Edit ${typeLabel}: ${transactionLabel}`}
-            onClick={() => {
-              onEdit(transaction.id);
-            }}
+            data-selected={selected || undefined}
+            onClick={handleRowClick}
           >
             {rowBody}
           </button>
@@ -257,6 +309,8 @@ function TransactionList({
   onAdopt,
   onOpenRecurring,
   onDelete,
+  selectedIds,
+  onToggleSelection,
 }: TransactionListProps) {
   const groups = groupTransactionsByDay(transactions);
 
@@ -298,6 +352,9 @@ function TransactionList({
                         onAdopt={onAdopt}
                         onOpenRecurring={onOpenRecurring}
                         onDelete={onDelete}
+                        selected={selectedIds.has(transaction.id)}
+                        selectionActive={selectedIds.size > 0}
+                        onToggleSelection={onToggleSelection}
                       />
                     </li>
                   );

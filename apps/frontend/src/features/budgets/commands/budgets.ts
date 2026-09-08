@@ -1,10 +1,18 @@
 import { invokeDecodedCommand } from "@/commands/shared";
 import type { CommandResult } from "@/commands/shared";
 
-import type { Budget, BudgetFormValues, BudgetHistory, BudgetListFilter } from "../types/budget";
+import type {
+  Budget,
+  BudgetFormValues,
+  BudgetHistory,
+  BudgetListFilter,
+  BudgetOverview,
+} from "../types/budget";
 import { BUDGET_COMMANDS } from "./registry";
 
-export const getBudgets = (filter: BudgetListFilter = "active"): CommandResult<Array<Budget>> => {
+export const getBudgets = (
+  filter: BudgetListFilter = "active",
+): CommandResult<Array<BudgetOverview>> => {
   return invokeDecodedCommand(BUDGET_COMMANDS.get_budgets, filter === "active" ? {} : { filter });
 };
 

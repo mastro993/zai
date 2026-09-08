@@ -1,5 +1,6 @@
 use super::models::{
-    Budget, BudgetLifecycleUpdate, BudgetListFilter, BudgetPeriodHistory, BudgetUpdate, NewBudget,
+    Budget, BudgetLifecycleUpdate, BudgetListFilter, BudgetOverview, BudgetPeriodHistory,
+    BudgetUpdate, NewBudget,
 };
 use crate::Result;
 use async_trait::async_trait;
@@ -7,6 +8,7 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait BudgetsRepositoryTrait: Send + Sync {
     async fn list_budgets(&self, filter: BudgetListFilter) -> Result<Vec<Budget>>;
+    async fn list_budget_overviews(&self, filter: BudgetListFilter) -> Result<Vec<BudgetOverview>>;
     async fn get_budget(&self, id: &str) -> Result<Budget>;
     async fn get_budget_history(
         &self,
@@ -24,6 +26,7 @@ pub trait BudgetsRepositoryTrait: Send + Sync {
 #[async_trait]
 pub trait BudgetsServiceTrait: Send + Sync {
     async fn list_budgets(&self, filter: BudgetListFilter) -> Result<Vec<Budget>>;
+    async fn list_budget_overviews(&self, filter: BudgetListFilter) -> Result<Vec<BudgetOverview>>;
     async fn get_budget(&self, id: &str) -> Result<Budget>;
     async fn get_budget_history(
         &self,

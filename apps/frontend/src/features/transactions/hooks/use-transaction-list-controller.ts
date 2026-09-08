@@ -9,11 +9,7 @@ import {
   resolveSelection,
   type DateRangeSelection,
 } from "../lib/date-range";
-import {
-  DEFAULT_TRANSACTION_ROWS_PER_PAGE,
-  TRANSACTION_ROWS_PER_PAGE_OPTIONS,
-  type TransactionRowsPerPage,
-} from "../lib/pagination";
+import { DEFAULT_TRANSACTION_ROWS_PER_PAGE } from "../lib/pagination";
 import {
   DEFAULT_CATEGORY_FILTER_SELECTION,
   expandCategoryIdsForApi,
@@ -25,12 +21,23 @@ import {
   isActiveTypeFilter,
   type TypeFilterSelection,
 } from "../lib/transaction-type-filter";
-import type { PaginatedTransactions } from "../types/model";
 import type { TransactionCategory } from "@/features/categories/types/model";
+import type { PaginatedTransactions, TransactionListItem } from "../types/model";
 
 export interface TransactionScreenInitialData {
   transactions: PaginatedTransactions;
   categories: Array<TransactionCategory>;
+}
+
+interface LoadTransactionsOptions {
+  searchQuery: string;
+  page: number;
+  dateSelection: DateRangeSelection;
+  typeSelection: TypeFilterSelection;
+  categorySelection: CategoryFilterSelection;
+  categories: Array<TransactionCategory>;
+  append: boolean;
+  includeCategories?: boolean;
 }
 
 const buildTransactionFilters = (
@@ -68,16 +75,19 @@ const buildTransactionFilters = (
   return Object.keys(filters).length > 0 ? filters : undefined;
 };
 
+const appendTransactions = (
+  current: Array<TransactionListItem>,
+  next: Array<TransactionListItem>,
+): Array<TransactionListItem> => {
+  const ids = new Set(current.map((transaction) => transaction.id));
+  return [...current, ...next.filter((transaction) => !ids.has(transaction.id))];
+};
+
 export function useTransactionListController(initialData: TransactionScreenInitialData) {
+  const initialTotalPages = Math.max(initialData.transactions.totalPages, 1);
   const [transactions, setTransactions] = useState(initialData.transactions.data);
-  const [page, setPage] = useState(initialData.transactions.page);
-  const [perPage, setPerPage] = useState<TransactionRowsPerPage>(() => {
-    const selected = TRANSACTION_ROWS_PER_PAGE_OPTIONS.find(
-      (option) => option === initialData.transactions.perPage,
-    );
-    return selected ?? DEFAULT_TRANSACTION_ROWS_PER_PAGE;
-  });
-  const [totalPages, setTotalPages] = useState(Math.max(initialData.transactions.totalPages, 1));
+  const [nextPage, setNextPage] = useState(initialData.transactions.page + 1);
+  const [totalPages, setTotalPages] = useState(initialTotalPages);
   const [categories, setCategories] = useState(initialData.categories);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -89,9 +99,14 @@ export function useTransactionListController(initialData: TransactionScreenIniti
     DEFAULT_TYPE_FILTER_SELECTION,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const hasSkippedInitialFetch = useRef(false);
   const listRequestIdRef = useRef(0);
+  const nextPageRef = useRef(nextPage);
+  const hasMoreRef = useRef(nextPage <= initialTotalPages);
+  const isLoadingMoreRef = useRef(false);
 
   const activeFilters = useMemo(
     () =>
@@ -110,122 +125,174 @@ export function useTransactionListController(initialData: TransactionScreenIniti
     [categories],
   );
 
-  const loadData = useCallback(
-    async (
-      searchQuery: string,
-      pageToLoad: number,
-      rowsPerPage: TransactionRowsPerPage,
-      nextDateSelection: DateRangeSelection,
-      nextTypeSelection: TypeFilterSelection,
-      nextCategorySelection: CategoryFilterSelection,
-      categoriesForFilters: Array<TransactionCategory>,
+  const resetList = useCallback(() => {
+    listRequestIdRef.current += 1;
+    nextPageRef.current = 1;
+    hasMoreRef.current = true;
+    isLoadingMoreRef.current = false;
+    setTransactions([]);
+    setNextPage(1);
+    setTotalPages(1);
+    setErrorMessage(null);
+    setLoadMoreError(null);
+    setIsLoadingMore(false);
+  }, []);
+
+  const loadData = useCallback(async (options: LoadTransactionsOptions) => {
+    const {
+      searchQuery,
+      page,
+      dateSelection: nextDateSelection,
+      typeSelection: nextTypeSelection,
+      categorySelection: nextCategorySelection,
+      categories: categoriesForFilters,
+      append,
       includeCategories = false,
-    ) => {
-      const requestId = ++listRequestIdRef.current;
+    } = options;
+
+    if (append) {
+      if (isLoadingMoreRef.current || !hasMoreRef.current) {
+        return;
+      }
+      isLoadingMoreRef.current = true;
+      setIsLoadingMore(true);
+    } else {
       setIsLoading(true);
-      const transactionsResult = await getTransactions(
-        pageToLoad,
-        rowsPerPage,
-        buildTransactionFilters(
-          searchQuery,
-          nextDateSelection,
-          nextTypeSelection,
-          nextCategorySelection,
-          categoriesForFilters,
-        ),
+      setLoadMoreError(null);
+    }
+
+    const requestId = ++listRequestIdRef.current;
+    const transactionsResult = await getTransactions(
+      page,
+      DEFAULT_TRANSACTION_ROWS_PER_PAGE,
+      buildTransactionFilters(
+        searchQuery,
+        nextDateSelection,
+        nextTypeSelection,
+        nextCategorySelection,
+        categoriesForFilters,
+      ),
+    );
+
+    if (requestId !== listRequestIdRef.current) {
+      if (append) {
+        isLoadingMoreRef.current = false;
+        setIsLoadingMore(false);
+      }
+      return;
+    }
+
+    const applyTransactions = (
+      result: typeof transactionsResult,
+      shouldAppend: boolean,
+    ): boolean => {
+      if (Result.isFailure(result)) {
+        if (shouldAppend) {
+          setLoadMoreError(result.error.message);
+        } else {
+          setErrorMessage(result.error.message);
+        }
+        return false;
+      }
+
+      const loaded = result.value;
+      const loadedTotalPages = Math.max(loaded.totalPages, loaded.page);
+      setTransactions((current) =>
+        shouldAppend ? appendTransactions(current, loaded.data) : loaded.data,
       );
+      nextPageRef.current = loaded.page + 1;
+      hasMoreRef.current = loaded.page < loadedTotalPages;
+      setNextPage(loaded.page + 1);
+      setTotalPages(loadedTotalPages);
+      if (shouldAppend) {
+        setLoadMoreError(null);
+      } else {
+        setErrorMessage(null);
+      }
+      return true;
+    };
+
+    applyTransactions(transactionsResult, append);
+
+    if (includeCategories) {
+      const categoriesResult = await getTransactionCategories();
 
       if (requestId !== listRequestIdRef.current) {
+        if (append) {
+          isLoadingMoreRef.current = false;
+          setIsLoadingMore(false);
+        }
         return;
       }
 
-      if (Result.isFailure(transactionsResult)) {
-        setErrorMessage(transactionsResult.error.message);
+      if (Result.isFailure(categoriesResult)) {
+        setErrorMessage(categoriesResult.error.message);
       } else {
-        const { data, page: loadedPage, totalPages: loadedTotalPages } = transactionsResult.value;
-
-        if (data.length === 0 && loadedPage > 1) {
-          setPage(loadedPage - 1);
-          setIsLoading(false);
-          return;
+        const loadedCategories = categoriesResult.value;
+        setCategories(loadedCategories);
+        if (Result.isSuccess(transactionsResult)) {
+          setErrorMessage(null);
         }
 
-        setTransactions(data);
-        setPage(loadedPage);
-        setTotalPages(Math.max(loadedTotalPages, 1));
-        setErrorMessage(null);
-      }
+        if (isActiveCategoryFilter(nextCategorySelection)) {
+          const refetchResult = await getTransactions(
+            page,
+            DEFAULT_TRANSACTION_ROWS_PER_PAGE,
+            buildTransactionFilters(
+              searchQuery,
+              nextDateSelection,
+              nextTypeSelection,
+              nextCategorySelection,
+              loadedCategories,
+            ),
+          );
 
-      if (includeCategories) {
-        const categoriesResult = await getTransactionCategories();
-
-        if (requestId !== listRequestIdRef.current) {
-          return;
-        }
-
-        if (Result.isFailure(categoriesResult)) {
-          setErrorMessage(categoriesResult.error.message);
-        } else {
-          const loadedCategories = categoriesResult.value;
-          setCategories(loadedCategories);
-          if (Result.isSuccess(transactionsResult)) {
-            setErrorMessage(null);
+          if (requestId !== listRequestIdRef.current) {
+            if (append) {
+              isLoadingMoreRef.current = false;
+              setIsLoadingMore(false);
+            }
+            return;
           }
 
-          if (isActiveCategoryFilter(nextCategorySelection)) {
-            const refetchResult = await getTransactions(
-              pageToLoad,
-              rowsPerPage,
-              buildTransactionFilters(
-                searchQuery,
-                nextDateSelection,
-                nextTypeSelection,
-                nextCategorySelection,
-                loadedCategories,
-              ),
-            );
-
-            if (requestId !== listRequestIdRef.current) {
-              return;
-            }
-
-            if (Result.isFailure(refetchResult)) {
-              setErrorMessage(refetchResult.error.message);
-            } else {
-              const { data, page: loadedPage, totalPages: loadedTotalPages } = refetchResult.value;
-
-              if (data.length === 0 && loadedPage > 1) {
-                setPage(loadedPage - 1);
-                setIsLoading(false);
-                return;
-              }
-
-              setTransactions(data);
-              setPage(loadedPage);
-              setTotalPages(Math.max(loadedTotalPages, 1));
-              setErrorMessage(null);
-            }
-          }
+          applyTransactions(refetchResult, false);
         }
       }
+    }
 
-      if (requestId === listRequestIdRef.current) {
-        setIsLoading(false);
-      }
-    },
-    [],
-  );
+    if (append) {
+      isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
+    } else if (requestId === listRequestIdRef.current) {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loadNextPage = useCallback(() => {
+    return loadData({
+      searchQuery: debouncedQuery,
+      page: nextPageRef.current,
+      dateSelection,
+      typeSelection,
+      categorySelection,
+      categories,
+      append: true,
+    });
+  }, [categories, categorySelection, dateSelection, debouncedQuery, loadData, typeSelection]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      setDebouncedQuery(query.trim());
-      setPage(1);
+      const nextQuery = query.trim();
+      setDebouncedQuery(nextQuery);
+      if (nextQuery !== debouncedQuery) {
+        resetList();
+      }
     }, 250);
 
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [query]);
+  }, [debouncedQuery, query, resetList]);
 
   useEffect(() => {
     if (!hasSkippedInitialFetch.current) {
@@ -233,44 +300,30 @@ export function useTransactionListController(initialData: TransactionScreenIniti
       return;
     }
 
-    void loadData(
-      debouncedQuery,
-      page,
-      perPage,
+    void loadData({
+      searchQuery: debouncedQuery,
+      page: 1,
       dateSelection,
       typeSelection,
       categorySelection,
       categories,
-    );
-  }, [
-    categories,
-    categorySelection,
-    dateSelection,
-    debouncedQuery,
-    loadData,
-    page,
-    perPage,
-    typeSelection,
-  ]);
-
-  const changeRowsPerPage = (nextPerPage: TransactionRowsPerPage) => {
-    setPerPage(nextPerPage);
-    setPage(1);
-  };
+      append: false,
+    });
+  }, [categories, categorySelection, dateSelection, debouncedQuery, loadData, typeSelection]);
 
   const changeDateSelection = (selection: DateRangeSelection) => {
     setDateSelection(selection);
-    setPage(1);
+    resetList();
   };
 
   const changeCategorySelection = (selection: CategoryFilterSelection) => {
     setCategorySelection(selection);
-    setPage(1);
+    resetList();
   };
 
   const changeTypeSelection = (selection: TypeFilterSelection) => {
     setTypeSelection(selection);
-    setPage(1);
+    resetList();
   };
 
   const clearFilters = () => {
@@ -279,29 +332,30 @@ export function useTransactionListController(initialData: TransactionScreenIniti
     setDateSelection(DEFAULT_DATE_SELECTION);
     setTypeSelection(DEFAULT_TYPE_FILTER_SELECTION);
     setCategorySelection(DEFAULT_CATEGORY_FILTER_SELECTION);
-    setPage(1);
+    resetList();
   };
 
   const refreshList = useCallback(
-    (includeCategories = false) =>
-      loadData(
-        debouncedQuery,
-        page,
-        perPage,
+    (includeCategories = false) => {
+      resetList();
+      return loadData({
+        searchQuery: debouncedQuery,
+        page: 1,
         dateSelection,
         typeSelection,
         categorySelection,
         categories,
+        append: false,
         includeCategories,
-      ),
+      });
+    },
     [
       categories,
       categorySelection,
       dateSelection,
       debouncedQuery,
       loadData,
-      page,
-      perPage,
+      resetList,
       typeSelection,
     ],
   );
@@ -319,23 +373,21 @@ export function useTransactionListController(initialData: TransactionScreenIniti
     categorySelection,
     changeCategorySelection,
     changeDateSelection,
-    changeRowsPerPage,
     changeTypeSelection,
     clearFilters,
     dateSelection,
     debouncedQuery,
     errorMessage,
     hasActiveFilters,
+    hasMore: nextPage <= totalPages,
     isLoading,
-    loadData,
-    page,
-    perPage,
+    isLoadingMore,
+    loadMoreError,
+    loadNextPage,
     query,
     refreshList,
     setErrorMessage,
-    setPage,
     setQuery,
-    totalPages,
     transactions,
     typeSelection,
   };

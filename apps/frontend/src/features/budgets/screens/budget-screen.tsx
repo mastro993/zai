@@ -1,11 +1,28 @@
-import { Add01Icon, Wallet03Icon } from "@hugeicons/core-free-icons";
+import {
+  Add01Icon,
+  Alert02Icon,
+  GridViewIcon,
+  InformationCircleIcon,
+  Wallet03Icon,
+} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import {
+  Area,
+  AreaChart,
+  Tooltip as ChartTooltip,
+  ReferenceLine,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from "recharts";
 
-import { Button } from "@/components/ui/button";
+import { ScreenBase } from "@/components/screen-base";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Drawer } from "@/components/ui/drawer";
 import {
   Empty,
@@ -17,106 +34,408 @@ import {
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ScreenBase } from "@/components/screen-base";
+  getCategoryDisplayColor,
+  getCategoryDisplayIcon,
+} from "@/features/categories/lib/category";
+import { getCategoryBadgeColors } from "@/features/categories/lib/category-color";
+import { getCategoryIconEntry } from "@/features/categories/lib/category-icon";
+import type { TransactionCategory } from "@/features/categories/types/model";
+import { cn } from "@/lib/utils";
 
 import { createBudget, getBudgets } from "../commands/budgets";
-import {
-  budgetCadenceLabel,
-  budgetListFilterLabel,
-  budgetPeriodStatusPresentation,
-  formatBudgetMinor,
-  formatBudgetPeriod,
-} from "../lib/budget";
+import { BudgetFormDrawer } from "../components/budget-form-drawer";
+import { budgetListFilterLabel, formatBudgetMinor } from "../lib/budget";
+import { createBudgetChartData, type BudgetChartData } from "../lib/budget-chart";
 import {
   BUDGET_LIST_FILTERS,
   type Budget,
   type BudgetFormValues,
   type BudgetListFilter,
+  type BudgetOverview,
 } from "../types/budget";
-import type { TransactionCategory } from "@/features/categories/types/model";
-import { BudgetFormDrawer } from "../components/budget-form-drawer";
 
 interface BudgetScreenProps {
-  initialBudgets: Array<Budget>;
+  initialBudgets: Array<BudgetOverview>;
   categories: Array<TransactionCategory>;
 }
 
-const formatScope = (categoryIds: Array<string>) =>
-  categoryIds.length === 0 ? "All transactions" : `${categoryIds.length} categories`;
+export interface BudgetCardData {
+  budget: BudgetOverview;
+  allowanceLabel: string;
+  spendingLabel: string;
+  remainingLabel: string;
+  percentage: number | null;
+  chart: BudgetChartData;
+}
 
-function BudgetRows({ budgets }: { budgets: Array<Budget> }) {
+const budgetCadenceBadgeLabel = {
+  day: "Daily",
+  week: "Weekly",
+  month: "Monthly",
+  year: "Yearly",
+} satisfies Record<Budget["cadence"], string>;
+
+const buildBudgetCardData = (budget: BudgetOverview): BudgetCardData => {
+  const period = budget.currentPeriod;
+  const allowance = period.effectiveAllowance;
+  const percentage =
+    allowance !== null && allowance > 0
+      ? Math.round((period.netBudgetSpending / allowance) * 100)
+      : null;
+  return {
+    budget,
+    allowanceLabel: formatBudgetMinor(allowance, period.currency),
+    spendingLabel: formatBudgetMinor(period.netBudgetSpending, period.currency),
+    remainingLabel: formatBudgetMinor(period.remainingAllowance, period.currency),
+    percentage,
+    chart: createBudgetChartData(budget),
+  };
+};
+
+function BudgetStatusBadge({ budget }: { budget: Budget }) {
+  if (budget.currentPeriod.status === "onTrack") {
+    return null;
+  }
+
+  if (budget.currentPeriod.status === "warning") {
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Badge
+              variant="secondary"
+              className="size-5 bg-amber-500/10 p-0 text-amber-600 dark:bg-amber-400/15 dark:text-amber-500"
+              aria-label="Warning"
+            />
+          }
+        >
+          <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} aria-hidden="true" />
+        </TooltipTrigger>
+        <TooltipContent>Warning</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  if (budget.currentPeriod.status === "overspent") {
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={<Badge variant="destructive" className="size-5 p-0" aria-label="Overspent" />}
+        >
+          <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} aria-hidden="true" />
+        </TooltipTrigger>
+        <TooltipContent>Overspent</TooltipContent>
+      </Tooltip>
+    );
+  }
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Budget</TableHead>
-          <TableHead>Cadence / period</TableHead>
-          <TableHead>Scope</TableHead>
-          <TableHead className="text-right">Allowance</TableHead>
-          <TableHead className="text-right">Spending</TableHead>
-          <TableHead className="text-right">Remaining</TableHead>
-          <TableHead>Status</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <Badge variant="outline">
+      <HugeiconsIcon icon={InformationCircleIcon} strokeWidth={2} aria-hidden="true" />
+      Incomplete
+    </Badge>
+  );
+}
+
+function BudgetPaceChart({ budget, chart }: { budget: Budget; chart: BudgetChartData }) {
+  const chartId = `budget-chart-${budget.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+  const xAxisLabels = new Map(chart.labels.map((label) => [label.position, label.label]));
+  const yAxisLabels = new Map(chart.yAxisLabels.map((label) => [label.value, label.label]));
+  const allowance = budget.currentPeriod.effectiveAllowance;
+  const budgetExceeded = allowance !== null && chart.yAxisDomain[1] > allowance;
+  const budgetFillOffset =
+    budgetExceeded && allowance !== null
+      ? `${Math.min(
+          100,
+          Math.max(
+            0,
+            ((chart.yAxisDomain[1] - allowance) / (chart.yAxisDomain[1] - chart.yAxisDomain[0])) *
+              100,
+          ),
+        )}%`
+      : null;
+  return (
+    <figure
+      className="h-40"
+      role="img"
+      aria-label={`${budget.name} budget progress. ${chart.summary}`}
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={chart.series} margin={{ top: 8, right: 0, left: 4, bottom: 0 }}>
+          <defs>
+            <linearGradient id={`${chartId}-area-gradient`} x1="0" y1="0" x2="0" y2="1">
+              {budgetFillOffset ? (
+                <>
+                  <stop offset="0%" stopColor="var(--destructive)" stopOpacity={0.4} />
+                  <stop
+                    offset={budgetFillOffset}
+                    stopColor="var(--destructive)"
+                    stopOpacity={0.4}
+                  />
+                  <stop offset={budgetFillOffset} stopColor="var(--chart-1)" stopOpacity={0.4} />
+                </>
+              ) : (
+                <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.4} />
+              )}
+              <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <XAxis
+            dataKey="position"
+            type="number"
+            domain={[0, 1]}
+            ticks={chart.labels.map((label) => label.position)}
+            tickFormatter={(value) => xAxisLabels.get(Number(value)) ?? ""}
+            tick={{
+              fill: "var(--muted-foreground)",
+              fontSize: 10,
+              opacity: 0.5,
+            }}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+          />
+          <YAxis
+            domain={chart.yAxisDomain}
+            ticks={chart.yAxisLabels.map((label) => label.value)}
+            tickFormatter={(value) => yAxisLabels.get(Number(value)) ?? ""}
+            tick={{
+              fill: "var(--muted-foreground)",
+              fontSize: 10,
+              opacity: 0.5,
+            }}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={4}
+            width={35}
+          />
+          <ChartTooltip
+            cursor={{
+              stroke: "var(--muted-foreground)",
+              strokeDasharray: "4 4",
+              opacity: 0.5,
+            }}
+            content={() => null}
+          />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke="var(--chart-2)"
+            strokeWidth={3}
+            fill={`url(#${chartId}-area-gradient)`}
+            activeDot={{
+              r: 4,
+              fill: "var(--background)",
+              stroke: "var(--chart-2)",
+              strokeWidth: 2,
+            }}
+            isAnimationActive={true}
+          />
+          {allowance !== null ? (
+            <ReferenceLine
+              y={allowance}
+              stroke="var(--muted-foreground)"
+              strokeDasharray="4 4"
+              strokeOpacity={0.5}
+            />
+          ) : null}
+        </AreaChart>
+      </ResponsiveContainer>
+    </figure>
+  );
+}
+
+function BudgetCategoryScope({
+  categoryIds,
+  categoryById,
+}: {
+  categoryIds: Array<string>;
+  categoryById: ReadonlyMap<string, TransactionCategory>;
+}) {
+  if (categoryIds.length === 0) {
+    return (
+      <CardDescription>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span
+                aria-label="All categories"
+                className="relative flex size-6 items-center justify-center rounded-full border-[0.5px]"
+                style={{
+                  backgroundColor: "color-mix(in oklab, var(--muted) 30%, var(--background))",
+                  borderColor: "color-mix(in oklab, var(--muted) 30%, var(--background))",
+                }}
+                title="All categories"
+              />
+            }
+          >
+            <span aria-hidden="true" className="absolute inset-0.5 rounded-full bg-primary/10" />
+            <HugeiconsIcon
+              icon={GridViewIcon}
+              className="relative size-3 text-primary"
+              strokeWidth={2}
+              aria-hidden="true"
+            />
+          </TooltipTrigger>
+          <TooltipContent>All categories</TooltipContent>
+        </Tooltip>
+      </CardDescription>
+    );
+  }
+
+  const selectedCategories = categoryIds
+    .map((categoryId) => categoryById.get(categoryId))
+    .filter((category): category is TransactionCategory => category !== undefined);
+
+  if (selectedCategories.length === 0) {
+    return <CardDescription>{`${categoryIds.length} categories`}</CardDescription>;
+  }
+
+  const visibleCategories = selectedCategories.slice(0, 4);
+  const remainingCount = selectedCategories.length - visibleCategories.length;
+  const categoryLabel = `Categories: ${visibleCategories.map((category) => category.name).join(", ")}${remainingCount > 0 ? `, ${remainingCount} more` : ""}`;
+
+  return (
+    <CardDescription>
+      <div className="flex items-center" role="img" aria-label={categoryLabel}>
+        {visibleCategories.map((category, index) => {
+          const { background, foreground } = getCategoryBadgeColors(
+            getCategoryDisplayColor(category),
+          );
+          const icon = getCategoryIconEntry(getCategoryDisplayIcon(category)).icon;
+
+          return (
+            <Tooltip key={category.id}>
+              <TooltipTrigger
+                render={
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "relative flex size-6 items-center justify-center rounded-full border-[0.5px]",
+                      index > 0 && "-ml-1.5",
+                    )}
+                    style={{
+                      backgroundColor: "color-mix(in oklab, var(--muted) 30%, var(--background))",
+                      borderColor: "color-mix(in oklab, var(--muted) 30%, var(--background))",
+                      color: foreground,
+                      zIndex: visibleCategories.length - index,
+                    }}
+                    title={category.name}
+                  />
+                }
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-0.5 rounded-full"
+                  style={{ backgroundColor: background }}
+                />
+                <HugeiconsIcon
+                  icon={icon}
+                  className="relative size-3"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              </TooltipTrigger>
+              <TooltipContent>{category.name}</TooltipContent>
+            </Tooltip>
+          );
+        })}
+        {remainingCount > 0 ? <span className="ml-1 text-xs">+{remainingCount}</span> : null}
+      </div>
+    </CardDescription>
+  );
+}
+
+function BudgetCard({
+  data,
+  categoryById,
+}: {
+  data: BudgetCardData;
+  categoryById: ReadonlyMap<string, TransactionCategory>;
+}) {
+  const { budget, percentage, chart } = data;
+  return (
+    <Link
+      aria-label={budget.name}
+      className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      to="/cash-flow/budgets/$budgetId"
+      params={{ budgetId: budget.id }}
+    >
+      <Card className={cn("min-w-0 bg-muted/30", budget.paused && "border border-dashed ring-0")}>
+        <CardHeader className="gap-1.5">
+          <div className="flex items-start justify-between gap-3">
+            <CardTitle className="min-w-0 break-words text-base">{budget.name}</CardTitle>
+            <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+              <BudgetStatusBadge budget={budget} />
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            {budget.paused ? <Badge variant="secondary">Paused</Badge> : null}
+            <Badge variant="secondary">{budgetCadenceBadgeLabel[budget.cadence]}</Badge>
+            <BudgetCategoryScope categoryIds={budget.categoryIds} categoryById={categoryById} />
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex items-end justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Spending</span>
+              <span className="text-2xl font-semibold tabular-nums">{data.spendingLabel}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-xs text-muted-foreground">of {data.allowanceLabel}</span>
+              <span className="block text-lg font-medium tabular-nums">
+                {percentage === null ? "Progress unavailable" : `${percentage}%`}
+              </span>
+            </div>
+          </div>
+          <BudgetPaceChart budget={budget} chart={chart} />
+          <dl className="grid grid-cols-3 gap-2 border-t pt-3 text-sm">
+            <div className="flex min-w-0 flex-col gap-1 rounded-md border p-2">
+              <dt className="text-xs text-muted-foreground">Allowance</dt>
+              <dd className="truncate font-medium tabular-nums">{data.allowanceLabel}</dd>
+            </div>
+            <div className="flex min-w-0 flex-col gap-1 rounded-md border p-2">
+              <dt className="text-xs text-muted-foreground">Spent</dt>
+              <dd className="truncate font-medium tabular-nums">{data.spendingLabel}</dd>
+            </div>
+            <div className="flex min-w-0 flex-col gap-1 rounded-md border p-2">
+              <dt className="text-xs text-muted-foreground">Remaining</dt>
+              <dd className="truncate font-medium tabular-nums">{data.remainingLabel}</dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+function BudgetCards({
+  budgets,
+  categories,
+}: {
+  budgets: Array<BudgetOverview>;
+  categories: Array<TransactionCategory>;
+}) {
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
+
+  return (
+    <TooltipProvider>
+      <div
+        className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3"
+        role="region"
+        aria-label="Budgets"
+      >
         {budgets.map((budget) => (
-          <TableRow key={budget.id}>
-            <TableCell className="font-medium">
-              <div className="flex items-center gap-2">
-                <Link
-                  className="underline-offset-3 hover:underline"
-                  to="/cash-flow/budgets/$budgetId"
-                  params={{ budgetId: budget.id }}
-                >
-                  {budget.name}
-                </Link>
-                {budget.paused ? <Badge variant="secondary">Paused</Badge> : null}
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="flex flex-col gap-1">
-                <span>{budgetCadenceLabel[budget.cadence]}</span>
-                <span className="text-xs text-muted-foreground">
-                  {formatBudgetPeriod(budget.currentPeriod.start, budget.currentPeriod.end)}
-                </span>
-              </div>
-            </TableCell>
-            <TableCell>{formatScope(budget.categoryIds)}</TableCell>
-            <TableCell className="text-right tabular-nums">
-              {formatBudgetMinor(
-                budget.currentPeriod.effectiveAllowance,
-                budget.currentPeriod.currency,
-              )}
-            </TableCell>
-            <TableCell className="text-right tabular-nums">
-              {formatBudgetMinor(
-                budget.currentPeriod.netBudgetSpending,
-                budget.currentPeriod.currency,
-              )}
-            </TableCell>
-            <TableCell className="text-right tabular-nums">
-              {formatBudgetMinor(
-                budget.currentPeriod.remainingAllowance,
-                budget.currentPeriod.currency,
-              )}
-            </TableCell>
-            <TableCell>
-              <Badge variant={budgetPeriodStatusPresentation(budget.currentPeriod).variant}>
-                {budgetPeriodStatusPresentation(budget.currentPeriod).label}
-              </Badge>
-            </TableCell>
-          </TableRow>
+          <BudgetCard
+            key={budget.id}
+            data={buildBudgetCardData(budget)}
+            categoryById={categoryById}
+          />
         ))}
-      </TableBody>
-    </Table>
+      </div>
+    </TooltipProvider>
   );
 }
 
@@ -155,9 +474,12 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
     if (Result.isSuccess(result)) {
       setHasAnyBudgets(true);
       if (filter !== "paused") {
-        setBudgets((current) =>
-          [...current, result.value].toSorted((left, right) => left.name.localeCompare(right.name)),
-        );
+        const refreshed = await getBudgets(filter);
+        if (Result.isSuccess(refreshed)) {
+          setBudgets(refreshed.value);
+        } else {
+          setListError(refreshed.error.message);
+        }
       }
     }
     return result;
@@ -231,9 +553,8 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
           </EmptyContent>
         </Empty>
       ) : (
-        <div className="border" aria-busy={isListLoading}>
-          <div className="border-b bg-muted/40 px-3 py-2 text-xs font-medium">Budgets</div>
-          <BudgetRows budgets={budgets} />
+        <div aria-busy={isListLoading}>
+          <BudgetCards budgets={budgets} categories={categories} />
         </div>
       )}
       <Drawer open={isFormOpen} onOpenChange={setIsFormOpen} swipeDirection="right">
@@ -251,15 +572,21 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
 export function BudgetScreenSkeleton() {
   return (
     <ScreenBase>
-      <div className="border">
-        <div className="border-b bg-muted/40 px-3 py-2">
-          <Skeleton className="h-4 w-20" />
-        </div>
-        <div className="flex flex-col gap-3 p-3">
-          {[0, 1, 2].map((row) => (
-            <Skeleton key={row} className="h-8 w-full" />
-          ))}
-        </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        {[0, 1, 2].map((card) => (
+          <div
+            key={card}
+            className="flex flex-col gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+            </div>
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+        ))}
       </div>
     </ScreenBase>
   );
