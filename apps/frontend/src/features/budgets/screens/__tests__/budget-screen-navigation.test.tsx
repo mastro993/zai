@@ -20,6 +20,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import * as alertsController from "@/features/alerts/hooks/use-alerts-controller";
 import type { AlertsControllerValue } from "@/features/alerts/hooks/alerts-controller-context";
 import * as breadcrumbs from "@/hooks/use-screen-breadcrumbs";
+import { categorySchema, type TransactionCategory } from "@/features/categories/types/model";
 
 import * as budgets from "../../commands/budgets";
 import { budgetSchema, type Budget } from "../../types/budget";
@@ -49,6 +50,21 @@ const budget = budgetSchema.parse({
     currency: "EUR",
   },
 });
+
+const categoryFixtures = [
+  ["category-food", "Food", "food", "#C32828"],
+  ["category-dining", "Dining", "dining", "#C39B28"],
+  ["category-travel", "Travel", "travel", "#75C328"],
+  ["category-home", "Home", "home", "#28C34E"],
+  ["category-health", "Health", "health", "#28C3C3"],
+].map(([id, name, icon, color]) =>
+  categorySchema.parse({ id, name, icon, color, role: "spending" }),
+);
+
+const categoryScopeBudget = {
+  ...budget,
+  categoryIds: categoryFixtures.map((category) => category.id),
+};
 
 const history = {
   data: [],
@@ -141,7 +157,13 @@ function stubWindowChrome() {
   });
 }
 
-async function renderBudgetApp() {
+async function renderBudgetApp({
+  initialBudgets,
+  categories = [],
+}: {
+  initialBudgets?: Array<Budget>;
+  categories?: Array<TransactionCategory>;
+} = {}) {
   const rootRoute = createRootRoute({
     component: () => (
       <SidebarProvider>
@@ -168,7 +190,13 @@ async function renderBudgetApp() {
       const budgetListKey = data.budgets
         .map((item) => `${item.id}:${item.revision}:${item.paused}`)
         .join("|");
-      return <BudgetScreen key={budgetListKey} initialBudgets={data.budgets} categories={[]} />;
+      return (
+        <BudgetScreen
+          key={budgetListKey}
+          initialBudgets={initialBudgets ?? data.budgets}
+          categories={categories}
+        />
+      );
     },
   });
   const detailRoute = createRoute({
@@ -243,6 +271,19 @@ describe("cash-flow budget navigation", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+  });
+
+  it("renders category icons with an overflow count and left-to-right stacking", async () => {
+    await renderBudgetApp({ initialBudgets: [categoryScopeBudget], categories: categoryFixtures });
+
+    const categoryGroup = screen.getByLabelText("Categories: Food, Dining, Travel, Home, 1 more");
+    expect(categoryGroup.querySelectorAll("svg")).toHaveLength(4);
+    expect(within(categoryGroup).getByText("+1")).toBeTruthy();
+    expect(
+      Array.from(categoryGroup.querySelectorAll<HTMLElement>("[title]")).map(
+        (icon) => icon.style.zIndex,
+      ),
+    ).toEqual(["4", "3", "2", "1"]);
   });
 
   it("renders the budget detail screen after selecting a budget", async () => {

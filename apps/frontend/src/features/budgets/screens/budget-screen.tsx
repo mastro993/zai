@@ -1,6 +1,7 @@
 import {
   Add01Icon,
   Alert02Icon,
+  GridViewIcon,
   InformationCircleIcon,
   Wallet03Icon,
 } from "@hugeicons/core-free-icons";
@@ -24,8 +25,14 @@ import {
 import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScreenBase } from "@/components/screen-base";
+import {
+  getCategoryDisplayColor,
+  getCategoryDisplayIcon,
+} from "@/features/categories/lib/category";
+import { getCategoryBadgeColors } from "@/features/categories/lib/category-color";
+import { getCategoryIconEntry } from "@/features/categories/lib/category-icon";
 import type { TransactionCategory } from "@/features/categories/types/model";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +58,6 @@ export interface BudgetCardData {
   spendingLabel: string;
   remainingLabel: string;
   percentage: number | null;
-  scopeLabel: string;
   chart: BudgetChartData;
 }
 
@@ -61,9 +67,6 @@ const budgetCadenceBadgeLabel = {
   month: "Monthly",
   year: "Yearly",
 } satisfies Record<Budget["cadence"], string>;
-
-const formatScope = (categoryIds: Array<string>) =>
-  categoryIds.length === 0 ? "All transactions" : `${categoryIds.length} categories`;
 
 const buildBudgetCardData = (budget: Budget, now: Date): BudgetCardData => {
   const period = budget.currentPeriod;
@@ -78,7 +81,6 @@ const buildBudgetCardData = (budget: Budget, now: Date): BudgetCardData => {
     spendingLabel: formatBudgetMinor(period.netBudgetSpending, period.currency),
     remainingLabel: formatBudgetMinor(period.remainingAllowance, period.currency),
     percentage,
-    scopeLabel: formatScope(budget.categoryIds),
     chart: createBudgetChartData(budget, now),
   };
 };
@@ -188,12 +190,119 @@ function BudgetPaceChart({ budget, chart }: { budget: Budget; chart: BudgetChart
   );
 }
 
-function BudgetCard({ data }: { data: BudgetCardData }) {
+function BudgetCategoryScope({
+  categoryIds,
+  categoryById,
+}: {
+  categoryIds: Array<string>;
+  categoryById: ReadonlyMap<string, TransactionCategory>;
+}) {
+  if (categoryIds.length === 0) {
+    return (
+      <CardDescription>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span
+                aria-label="All categories"
+                className="relative flex size-6 items-center justify-center rounded-full border-[0.5px]"
+                style={{
+                  backgroundColor: "color-mix(in oklab, var(--muted) 30%, var(--background))",
+                  borderColor: "color-mix(in oklab, var(--muted) 30%, var(--background))",
+                }}
+                title="All categories"
+              />
+            }
+          >
+            <span aria-hidden="true" className="absolute inset-0.5 rounded-full bg-primary/10" />
+            <HugeiconsIcon
+              icon={GridViewIcon}
+              className="relative size-3 text-primary"
+              strokeWidth={2}
+              aria-hidden="true"
+            />
+          </TooltipTrigger>
+          <TooltipContent>All categories</TooltipContent>
+        </Tooltip>
+      </CardDescription>
+    );
+  }
+
+  const selectedCategories = categoryIds
+    .map((categoryId) => categoryById.get(categoryId))
+    .filter((category): category is TransactionCategory => category !== undefined);
+
+  if (selectedCategories.length === 0) {
+    return <CardDescription>{`${categoryIds.length} categories`}</CardDescription>;
+  }
+
+  const visibleCategories = selectedCategories.slice(0, 4);
+  const remainingCount = selectedCategories.length - visibleCategories.length;
+  const categoryLabel = `Categories: ${visibleCategories.map((category) => category.name).join(", ")}${remainingCount > 0 ? `, ${remainingCount} more` : ""}`;
+
+  return (
+    <CardDescription>
+      <div className="flex items-center" role="img" aria-label={categoryLabel}>
+        {visibleCategories.map((category, index) => {
+          const { background, foreground } = getCategoryBadgeColors(
+            getCategoryDisplayColor(category),
+          );
+          const icon = getCategoryIconEntry(getCategoryDisplayIcon(category)).icon;
+
+          return (
+            <Tooltip key={category.id}>
+              <TooltipTrigger
+                render={
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "relative flex size-6 items-center justify-center rounded-full border-[0.5px]",
+                      index > 0 && "-ml-1.5",
+                    )}
+                    style={{
+                      backgroundColor: "color-mix(in oklab, var(--muted) 30%, var(--background))",
+                      borderColor: "color-mix(in oklab, var(--muted) 30%, var(--background))",
+                      color: foreground,
+                      zIndex: visibleCategories.length - index,
+                    }}
+                    title={category.name}
+                  />
+                }
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-0.5 rounded-full"
+                  style={{ backgroundColor: background }}
+                />
+                <HugeiconsIcon
+                  icon={icon}
+                  className="relative size-3"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              </TooltipTrigger>
+              <TooltipContent>{category.name}</TooltipContent>
+            </Tooltip>
+          );
+        })}
+        {remainingCount > 0 ? <span className="ml-1 text-xs">+{remainingCount}</span> : null}
+      </div>
+    </CardDescription>
+  );
+}
+
+function BudgetCard({
+  data,
+  categoryById,
+}: {
+  data: BudgetCardData;
+  categoryById: ReadonlyMap<string, TransactionCategory>;
+}) {
   const { budget, percentage, chart } = data;
   const progressValue = percentage === null ? null : Math.min(Math.max(percentage, 0), 100);
   return (
-    <Card className={cn("min-w-0 bg-muted/30", budget.paused && "border border-dashed")}>
-      <CardHeader className="gap-3">
+    <Card className={cn("min-w-0 bg-muted/30", budget.paused && "border border-dashed ring-0")}>
+      <CardHeader className="gap-1.5">
         <div className="flex items-start justify-between gap-3">
           <CardTitle className="min-w-0 text-lg">
             <Link
@@ -205,12 +314,14 @@ function BudgetCard({ data }: { data: BudgetCardData }) {
             </Link>
           </CardTitle>
           <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
-            <Badge variant="secondary">{budgetCadenceBadgeLabel[budget.cadence]}</Badge>
             {budget.paused ? <Badge variant="secondary">Paused</Badge> : null}
             <BudgetStatusBadge budget={budget} />
           </div>
         </div>
-        <CardDescription>{data.scopeLabel}</CardDescription>
+        <div className="flex items-center gap-1">
+          <Badge variant="secondary">{budgetCadenceBadgeLabel[budget.cadence]}</Badge>
+          <BudgetCategoryScope categoryIds={budget.categoryIds} categoryById={categoryById} />
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-3">
@@ -247,17 +358,33 @@ function BudgetCard({ data }: { data: BudgetCardData }) {
   );
 }
 
-function BudgetCards({ budgets, now }: { budgets: Array<Budget>; now: Date }) {
+function BudgetCards({
+  budgets,
+  categories,
+  now,
+}: {
+  budgets: Array<Budget>;
+  categories: Array<TransactionCategory>;
+  now: Date;
+}) {
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
+
   return (
-    <div
-      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-      role="region"
-      aria-label="Budgets"
-    >
-      {budgets.map((budget) => (
-        <BudgetCard key={budget.id} data={buildBudgetCardData(budget, now)} />
-      ))}
-    </div>
+    <TooltipProvider>
+      <div
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        role="region"
+        aria-label="Budgets"
+      >
+        {budgets.map((budget) => (
+          <BudgetCard
+            key={budget.id}
+            data={buildBudgetCardData(budget, now)}
+            categoryById={categoryById}
+          />
+        ))}
+      </div>
+    </TooltipProvider>
   );
 }
 
@@ -374,7 +501,7 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
         </Empty>
       ) : (
         <div aria-busy={isListLoading}>
-          <BudgetCards budgets={budgets} now={now} />
+          <BudgetCards budgets={budgets} categories={categories} now={now} />
         </div>
       )}
       <Drawer open={isFormOpen} onOpenChange={setIsFormOpen} swipeDirection="right">
