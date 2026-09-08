@@ -9,7 +9,14 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  Tooltip as ChartTooltip,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { ScreenBase } from "@/components/screen-base";
 import { Badge } from "@/components/ui/badge";
@@ -178,12 +185,26 @@ function BudgetPaceChart({ budget, chart }: { budget: Budget; chart: BudgetChart
             tickMargin={4}
             width={35}
           />
+          <ChartTooltip
+            cursor={{
+              stroke: "var(--muted-foreground)",
+              strokeDasharray: "4 4",
+              opacity: 0.5,
+            }}
+            content={() => null}
+          />
           <Area
             type="monotone"
             dataKey="value"
             stroke="var(--chart-2)"
             strokeWidth={3}
             fill={`url(#${chartId}-area-gradient)`}
+            activeDot={{
+              r: 4,
+              fill: "var(--background)",
+              stroke: "var(--chart-2)",
+              strokeWidth: 2,
+            }}
             isAnimationActive={false}
           />
         </AreaChart>
@@ -368,7 +389,7 @@ function BudgetCards({
   return (
     <TooltipProvider>
       <div
-        className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3"
+        className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3"
         role="region"
         aria-label="Budgets"
       >
