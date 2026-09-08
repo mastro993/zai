@@ -2,7 +2,7 @@
   "name": "frontend",
   "private": true,
   "license": "GPL-3.0-only",
-  "version": "2026.9.7000",
+  "version": "2026.9.8000",
   "type": "module",
   "imports": {
     "#/*": "./src/*"
@@ -26,6 +26,7 @@
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/mona-sans": "^5.3.0",
     "@hookform/resolvers": "^5.7.1",
     "@hugeicons/core-free-icons": "^4.2.2",
@@ -43,6 +44,7 @@
     "@tauri-apps/plugin-updater": "2.10.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cn": "^0.2.6",
     "color": "^5.0.3",
     "date-fns": "^4.4.0",
     "motion": "^12.43.0",
@@ -52,7 +54,7 @@
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.6",
     "react-hook-form": "^7.83.0",
-    "shadcn": "^4.12.0",
+    "shadcn": "^4.21.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
