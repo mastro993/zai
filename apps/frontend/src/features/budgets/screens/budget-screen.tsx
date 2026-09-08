@@ -9,9 +9,11 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Result } from "@praha/byethrow";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
-import { Button } from "@/components/ui/button";
+import { ScreenBase } from "@/components/screen-base";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Drawer } from "@/components/ui/drawer";
 import {
@@ -25,7 +27,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ScreenBase } from "@/components/screen-base";
 import {
   getCategoryDisplayColor,
   getCategoryDisplayIcon,
@@ -37,13 +38,8 @@ import { cn } from "@/lib/utils";
 
 import { createBudget, getBudgets } from "../commands/budgets";
 import { BudgetFormDrawer } from "../components/budget-form-drawer";
-import {
-  BUDGET_CHART_Y_AXIS_LABEL_GAP,
-  BUDGET_CHART_Y_AXIS_WIDTH,
-  createBudgetChartData,
-  type BudgetChartData,
-} from "../lib/budget-chart";
 import { budgetListFilterLabel, formatBudgetMinor } from "../lib/budget";
+import { createBudgetChartData, type BudgetChartData } from "../lib/budget-chart";
 import {
   BUDGET_LIST_FILTERS,
   type Budget,
@@ -137,66 +133,61 @@ function BudgetStatusBadge({ budget }: { budget: Budget }) {
 
 function BudgetPaceChart({ budget, chart }: { budget: Budget; chart: BudgetChartData }) {
   const chartId = `budget-chart-${budget.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+  const xAxisLabels = new Map(chart.labels.map((label) => [label.position, label.label]));
+  const yAxisLabels = new Map(chart.yAxisLabels.map((label) => [label.value, label.label]));
   return (
-    <figure className="mx-2 overflow-hidden">
-      <svg
-        className="block h-24 w-full"
-        viewBox={`0 0 ${320 + BUDGET_CHART_Y_AXIS_WIDTH} 96`}
-        preserveAspectRatio="none"
-        role="img"
-        aria-labelledby={`${chartId}-title ${chartId}-description`}
-      >
-        <title id={`${chartId}-title`}>{budget.name} budget progress</title>
-        <desc id={`${chartId}-description`}>{chart.summary}</desc>
-        {chart.yAxisLabels.map((label) => (
-          <text
-            key={label.position}
-            x={BUDGET_CHART_Y_AXIS_WIDTH - BUDGET_CHART_Y_AXIS_LABEL_GAP}
-            y={label.y}
-            textAnchor="end"
-            className="fill-muted-foreground text-[10px]"
-            dominantBaseline="middle"
-            aria-hidden="true"
-          >
-            {label.label}
-          </text>
-        ))}
-        <g transform={`translate(${BUDGET_CHART_Y_AXIS_WIDTH} 0)`}>
+    <figure
+      className="h-40"
+      role="img"
+      aria-label={`${budget.name} budget progress. ${chart.summary}`}
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={chart.points} margin={{ top: 8, right: 0, left: 4, bottom: 0 }}>
           <defs>
-            <linearGradient id={`${chartId}-actual-fill`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--chart-2)" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="var(--chart-2)" stopOpacity="0.02" />
+            <linearGradient id={`${chartId}-area-gradient`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.4} />
+              <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <path aria-hidden="true" d={chart.actualAreaPath} fill={`url(#${chartId}-actual-fill)`} />
-          <path
-            aria-hidden="true"
-            d={chart.actualPath}
-            fill="none"
-            stroke="var(--chart-2)"
-            strokeWidth="3"
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
+          <XAxis
+            dataKey="position"
+            type="number"
+            domain={[0, 1]}
+            ticks={chart.labels.map((label) => label.position)}
+            tickFormatter={(value) => xAxisLabels.get(Number(value)) ?? ""}
+            tick={{
+              fill: "var(--muted-foreground)",
+              fontSize: 10,
+              opacity: 0.5,
+            }}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
           />
-        </g>
-      </svg>
-      <div
-        className="relative mt-2 h-4 text-[10px] text-muted-foreground"
-        style={{
-          marginLeft: `${(BUDGET_CHART_Y_AXIS_WIDTH / (320 + BUDGET_CHART_Y_AXIS_WIDTH)) * 100}%`,
-        }}
-        aria-hidden="true"
-      >
-        {chart.labels.map((label) => (
-          <span
-            key={label.position}
-            className="absolute -translate-x-1/2 first:translate-x-0 last:-translate-x-full"
-            style={{ left: `${label.position * 100}%` }}
-          >
-            {label.label}
-          </span>
-        ))}
-      </div>
+          <YAxis
+            domain={chart.yAxisDomain}
+            ticks={chart.yAxisLabels.map((label) => label.value)}
+            tickFormatter={(value) => yAxisLabels.get(Number(value)) ?? ""}
+            tick={{
+              fill: "var(--muted-foreground)",
+              fontSize: 10,
+              opacity: 0.5,
+            }}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={4}
+            width={35}
+          />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke="var(--chart-2)"
+            strokeWidth={3}
+            fill={`url(#${chartId}-area-gradient)`}
+            isAnimationActive={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </figure>
   );
 }

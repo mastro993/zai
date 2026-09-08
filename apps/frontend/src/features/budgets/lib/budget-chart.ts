@@ -18,42 +18,16 @@ export interface BudgetChartPoint {
 export interface BudgetChartYAxisLabel {
   label: string;
   position: number;
-  y: number;
+  value: number;
 }
 
 export interface BudgetChartData {
   labels: Array<BudgetChartLabel>;
   points: Array<BudgetChartPoint>;
   yAxisLabels: Array<BudgetChartYAxisLabel>;
-  actualPath: string;
-  actualAreaPath: string;
+  yAxisDomain: [number, number];
   summary: string;
 }
-
-interface ChartCoordinate {
-  x: number;
-  y: number;
-}
-
-const CHART_WIDTH = 320;
-export const BUDGET_CHART_Y_AXIS_WIDTH = 34;
-export const BUDGET_CHART_Y_AXIS_LABEL_GAP = 6;
-const CHART_TOP = 8;
-const CHART_BOTTOM = 92;
-const Y_AXIS_LABEL_TOP = 12;
-const Y_AXIS_LABEL_BOTTOM = 90;
-
-const chartPath = (coordinates: Array<ChartCoordinate>) =>
-  coordinates
-    .map((point, index) => {
-      if (index === 0) {
-        return `M ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
-      }
-      const previous = coordinates[index - 1];
-      const controlOffset = (point.x - previous.x) * 0.4;
-      return `C ${(previous.x + controlOffset).toFixed(2)} ${previous.y.toFixed(2)} ${(point.x - controlOffset).toFixed(2)} ${point.y.toFixed(2)} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
-    })
-    .join(" ");
 
 const formatAxisValue = (minorUnits: number, currency: string) => {
   const fractionDigits = isoFractionDigits(currency);
@@ -81,15 +55,6 @@ const formatAxisValue = (minorUnits: number, currency: string) => {
       ? `${currencyPart}${displayNumber}${suffix}`
       : `${displayNumber}${suffix}${currencyPart}`;
   return label.replace(/\s/g, "");
-};
-
-const chartAreaPath = (coordinates: Array<ChartCoordinate>) => {
-  const first = coordinates[0];
-  const last = coordinates.at(-1);
-  if (!first || !last) {
-    return "";
-  }
-  return `${chartPath(coordinates)} L ${last.x.toFixed(2)} ${CHART_BOTTOM} L ${first.x.toFixed(2)} ${CHART_BOTTOM} Z`;
 };
 
 const intervalStarts = (budget: BudgetOverview): Array<Date> => {
@@ -177,28 +142,23 @@ export const createBudgetChartData = (
   const values = points.map(({ value }) => value);
   const min = Math.min(0, ...values);
   const max = Math.max(budget.currentPeriod.effectiveAllowance ?? 0, ...values, 1);
-  const valueSpan = Math.max(max - min, 1);
   const currentPosition = chartPositionAt(now, starts, parseISO(budget.currentPeriod.end));
   const visiblePoints = points.filter(({ position }) => position <= currentPosition);
-  const coordinates = visiblePoints.map(({ position, value }) => ({
-    x: position * CHART_WIDTH,
-    y: CHART_BOTTOM - ((value - min) / valueSpan) * (CHART_BOTTOM - CHART_TOP),
-  }));
-  const lastVisiblePoint = visiblePoints.at(-1);
+  const chartPoints = [...visiblePoints];
+  const lastVisiblePoint = chartPoints.at(-1);
   if (lastVisiblePoint && lastVisiblePoint.position < currentPosition) {
-    coordinates.push({
-      x: currentPosition * CHART_WIDTH,
-      y: CHART_BOTTOM - ((lastVisiblePoint.value - min) / valueSpan) * (CHART_BOTTOM - CHART_TOP),
+    chartPoints.push({
+      ...lastVisiblePoint,
+      position: currentPosition,
     });
   }
   const labels = chartLabels(budget, starts);
   const yAxisLabels = Array.from({ length: 4 }, (_, index) => {
     const value = max * (1 - index / 3);
-    const y = CHART_BOTTOM - ((value - min) / valueSpan) * (CHART_BOTTOM - CHART_TOP);
     return {
       label: formatAxisValue(value, budget.currentPeriod.currency),
       position: index,
-      y: Math.min(Y_AXIS_LABEL_BOTTOM, Math.max(Y_AXIS_LABEL_TOP, y)),
+      value,
     };
   });
   const summary = starts
@@ -210,10 +170,9 @@ export const createBudgetChartData = (
 
   return {
     labels,
-    points,
+    points: chartPoints,
     yAxisLabels,
-    actualPath: chartPath(coordinates),
-    actualAreaPath: chartAreaPath(coordinates),
+    yAxisDomain: [min, max],
     summary: `${complete ? "Actual cumulative spending" : "Known cumulative spending; some conversions are incomplete"}: ${summary}.`,
   };
 };
