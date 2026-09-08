@@ -219,6 +219,7 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
       type="button"
       variant="outline"
       size="icon-sm"
+      className="size-7"
       aria-label="Import categories"
       disabled={isLoading}
       onClick={() => setIsImportDialogOpen(true)}
@@ -231,6 +232,7 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
       type="button"
       variant="outline"
       size="icon-sm"
+      className="size-7"
       aria-label={isExporting ? "Exporting categories" : "Export categories"}
       aria-busy={isExporting}
       disabled={isLoading || isExporting || categoriesInScreenOrder.length === 0}
@@ -260,7 +262,11 @@ export function CategoryScreen({ initialCategories }: CategoryScreenProps) {
             </TooltipProvider>
           ) : null}
           {hasCategories ? (
-            <Button size="sm" onClick={() => openFormDrawer({ type: "create-root" })}>
+            <Button
+              size="sm"
+              className="h-7"
+              onClick={() => openFormDrawer({ type: "create-root" })}
+            >
               New category
             </Button>
           ) : null}
