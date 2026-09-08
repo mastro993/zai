@@ -24,7 +24,10 @@ pub async fn run_tauri_for_http(context: &ServiceContext, call: &HttpCall) -> Va
         ("GET", "/api/budgets") => {
             let filter = parse_budget_list_filter(&call.path);
             tauri_success(
-                context.budgets_service().list_budgets(filter).await,
+                context
+                    .budgets_service()
+                    .list_budget_overviews(filter)
+                    .await,
                 "Failed to load budgets",
             )
         }

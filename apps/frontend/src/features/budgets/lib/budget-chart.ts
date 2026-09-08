@@ -1,120 +1,137 @@
-import {
-  addDays,
-  differenceInCalendarDays,
-  endOfWeek,
-  format,
-  getDaysInMonth,
-  parseISO,
-  startOfWeek,
-} from "date-fns";
+import { addDays, addHours, addMonths, differenceInCalendarDays, format, parseISO } from "date-fns";
 
 import { formatBudgetMinor } from "./budget";
-import type { Budget } from "../types/budget";
+import type { BudgetOverview } from "../types/budget";
 
 export interface BudgetChartLabel {
   label: string;
   position: number;
 }
 
+export interface BudgetChartPoint {
+  complete: boolean;
+  position: number;
+  value: number;
+}
+
 export interface BudgetChartData {
   labels: Array<BudgetChartLabel>;
+  points: Array<BudgetChartPoint>;
   actualPath: string;
-  projectionPath: string;
+  actualAreaPath: string;
   summary: string;
 }
 
-interface ChartPoint {
-  date: Date;
-  value: number;
+interface ChartCoordinate {
+  x: number;
+  y: number;
 }
 
 const CHART_WIDTH = 320;
 const CHART_TOP = 8;
-const CHART_BOTTOM = 96;
+const CHART_BOTTOM = 92;
 
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
-
-const chartPath = (points: Array<ChartPoint>, start: Date, end: Date, min: number, max: number) => {
-  const span = Math.max(end.getTime() - start.getTime(), 1);
-  const valueSpan = Math.max(max - min, 1);
-  return points
+const chartPath = (coordinates: Array<ChartCoordinate>) =>
+  coordinates
     .map((point, index) => {
-      const x = ((point.date.getTime() - start.getTime()) / span) * CHART_WIDTH;
-      const y = CHART_BOTTOM - ((point.value - min) / valueSpan) * (CHART_BOTTOM - CHART_TOP);
-      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+      if (index === 0) {
+        return `M ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
+      }
+      const previous = coordinates[index - 1];
+      const controlOffset = (point.x - previous.x) * 0.4;
+      return `C ${(previous.x + controlOffset).toFixed(2)} ${previous.y.toFixed(2)} ${(point.x - controlOffset).toFixed(2)} ${point.y.toFixed(2)} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
     })
     .join(" ");
+
+const chartAreaPath = (coordinates: Array<ChartCoordinate>) => {
+  const first = coordinates[0];
+  const last = coordinates.at(-1);
+  if (!first || !last) {
+    return "";
+  }
+  return `${chartPath(coordinates)} L ${last.x.toFixed(2)} ${CHART_BOTTOM} L ${first.x.toFixed(2)} ${CHART_BOTTOM} Z`;
 };
 
-const chartRange = (budget: Budget, now: Date) => {
-  const periodStart = parseISO(budget.currentPeriod.start);
-  const periodEnd = addDays(parseISO(budget.currentPeriod.end), -1);
+const intervalStarts = (budget: BudgetOverview): Array<Date> => {
+  const start = parseISO(budget.currentPeriod.start);
+  const end = parseISO(budget.currentPeriod.end);
   if (budget.cadence === "day") {
-    return {
-      start: startOfWeek(now, { weekStartsOn: 1 }),
-      end: endOfWeek(now, { weekStartsOn: 1 }),
-    };
-  }
-  if (budget.cadence === "week") {
-    return { start: periodStart, end: periodEnd };
+    return Array.from({ length: 24 }, (_, index) => addHours(start, index));
   }
   if (budget.cadence === "year") {
-    return { start: periodStart, end: periodEnd };
+    return Array.from({ length: 12 }, (_, index) => addMonths(start, index));
   }
-  return { start: periodStart, end: periodEnd };
+  return Array.from({ length: Math.max(differenceInCalendarDays(end, start), 1) }, (_, index) =>
+    addDays(start, index),
+  );
 };
 
-const chartLabels = (budget: Budget, start: Date, end: Date): Array<BudgetChartLabel> => {
+const chartLabels = (budget: BudgetOverview, starts: Array<Date>): Array<BudgetChartLabel> => {
+  if (budget.cadence === "day") {
+    return [0, 6, 12, 18, 24].map((hour) => ({
+      label: format(addHours(starts[0], hour), "ha").toLowerCase(),
+      position: hour / 24,
+    }));
+  }
   if (budget.cadence === "year") {
-    return Array.from({ length: 12 }, (_, month) => ({
-      label: format(new Date(start.getFullYear(), month, 1), "MMM"),
-      position: month / 11,
+    return starts.map((date, index) => ({
+      label: format(date, "MMM"),
+      position: index / Math.max(starts.length - 1, 1),
     }));
   }
-
-  const days = differenceInCalendarDays(end, start) + 1;
   if (budget.cadence === "month") {
-    const labelDays = [1, 8, 15, 22, 29].filter((day) => day <= getDaysInMonth(start));
-    return labelDays.map((day) => ({
-      label: String(day),
-      position: (day - 1) / Math.max(days - 1, 1),
+    const offsets = [0, 7, 14, 21, starts.length - 1].filter(
+      (offset, index, values) => offset >= 0 && values.indexOf(offset) === index,
+    );
+    return offsets.map((offset) => ({
+      label: format(starts[offset], "d"),
+      position: offset / Math.max(starts.length - 1, 1),
     }));
   }
-
-  return Array.from({ length: days }, (_, index) => ({
-    label: format(addDays(start, index), "EEE"),
-    position: index / Math.max(days - 1, 1),
+  return starts.map((date, index) => ({
+    label: format(date, "EEE"),
+    position: index / Math.max(starts.length - 1, 1),
   }));
 };
 
-export const createBudgetChartData = (budget: Budget, now: Date): BudgetChartData => {
-  const { start, end } = chartRange(budget, now);
-  const currentDate = new Date(clamp(now.getTime(), start.getTime(), end.getTime()));
-  const spending = budget.currentPeriod.netBudgetSpending;
-  const elapsed = clamp(
-    (currentDate.getTime() - start.getTime()) / Math.max(end.getTime() - start.getTime(), 1),
-    0,
-    1,
+export const createBudgetChartData = (budget: BudgetOverview): BudgetChartData => {
+  const starts = intervalStarts(budget);
+  const buckets = new Map(
+    budget.spendingBuckets.map((bucket) => [parseISO(bucket.start).getTime(), bucket]),
   );
-  const projected = elapsed > 0 ? spending / elapsed : spending;
-  const allowance = budget.currentPeriod.effectiveAllowance ?? 0;
-  const min = Math.min(0, spending, projected);
-  const max = Math.max(allowance, spending, projected, 1);
-  const actualPoints = [
-    { date: start, value: 0 },
-    { date: currentDate, value: spending },
-  ];
-  const projectionPoints = [
-    { date: currentDate, value: spending },
-    { date: end, value: projected },
-  ];
-  const projectedLabel = formatBudgetMinor(Math.round(projected), budget.currentPeriod.currency);
-  const spendingLabel = formatBudgetMinor(spending, budget.currentPeriod.currency);
+  let cumulative = 0;
+  let complete = true;
+  const points = starts.map((start, index): BudgetChartPoint => {
+    const bucket = buckets.get(start.getTime());
+    cumulative += bucket?.value ?? 0;
+    complete &&= bucket?.complete ?? true;
+    return {
+      complete,
+      position: index / Math.max(starts.length - 1, 1),
+      value: cumulative,
+    };
+  });
+  const values = points.map(({ value }) => value);
+  const min = Math.min(0, ...values);
+  const max = Math.max(budget.currentPeriod.effectiveAllowance ?? 0, ...values, 1);
+  const valueSpan = Math.max(max - min, 1);
+  const coordinates = points.map(({ position, value }) => ({
+    x: position * CHART_WIDTH,
+    y: CHART_BOTTOM - ((value - min) / valueSpan) * (CHART_BOTTOM - CHART_TOP),
+  }));
+  const labels = chartLabels(budget, starts);
+  const summary = starts
+    .map(
+      (start, index) =>
+        `${format(start, budget.cadence === "year" ? "MMM" : budget.cadence === "day" ? "ha" : "MMM d")} ${formatBudgetMinor(points[index].value, budget.currentPeriod.currency)}`,
+    )
+    .join(", ");
 
   return {
-    labels: chartLabels(budget, start, end),
-    actualPath: chartPath(actualPoints, start, end, min, max),
-    projectionPath: chartPath(projectionPoints, start, end, min, max),
-    summary: `${spendingLabel} spent at current pace. Pace-based projection is ${projectedLabel} by period end.`,
+    labels,
+    points,
+    actualPath: chartPath(coordinates),
+    actualAreaPath: chartAreaPath(coordinates),
+    summary: `${complete ? "Actual cumulative spending" : "Known cumulative spending; some conversions are incomplete"}: ${summary}.`,
   };
 };

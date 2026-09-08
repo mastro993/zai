@@ -71,6 +71,16 @@ export const budgetSchema = z.object({
   currentPeriod: budgetPeriodSchema,
 });
 
+const budgetSpendingBucketSchema = z.object({
+  start: z.string(),
+  value: z.number().int(),
+  complete: z.boolean(),
+});
+
+export const budgetOverviewSchema = budgetSchema.extend({
+  spendingBuckets: z.array(budgetSpendingBucketSchema),
+});
+
 export const budgetHistorySchema = z.object({
   data: z.array(budgetPeriodSchema),
   page: z.number().int(),
@@ -81,6 +91,7 @@ export const budgetHistorySchema = z.object({
 export type BudgetFormInput = z.input<typeof budgetFormSchema>;
 export type BudgetFormValues = z.infer<typeof budgetFormSchema>;
 export type Budget = z.infer<typeof budgetSchema>;
+export type BudgetOverview = z.infer<typeof budgetOverviewSchema>;
 export type BudgetCadence = (typeof BUDGET_CADENCES)[number];
 export type BudgetMeasurementMode = (typeof BUDGET_MEASUREMENT_MODES)[number];
 export type BudgetRolloverMode = (typeof BUDGET_ROLLOVER_MODES)[number];

@@ -3,6 +3,7 @@ mod common;
 mod contract_harness;
 
 use axum::http::StatusCode;
+use serde_json::json;
 
 use budget_contract::{
     assert_read_parity, cadence_validation_error, compare_http_and_tauri, create_success,
@@ -34,6 +35,11 @@ async fn budget_contract_create_list_detail_and_history_match_across_transports(
     let harness = setup_contract("zai-budget-contract-lifecycle").await;
     let (_, created) = seed_budget(&harness, "Monthly spending").await;
     let budget_id = created["id"].as_str().expect("budget id");
+
+    let (status, listed) = common::request_json(&harness.router, "GET", "/api/budgets", None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(listed[0]["spendingBuckets"], json!([]));
+    assert!(listed[0].get("budget").is_none());
 
     assert_read_parity(&harness, list_active_success()).await;
     assert_read_parity(&harness, detail_success(budget_id)).await;

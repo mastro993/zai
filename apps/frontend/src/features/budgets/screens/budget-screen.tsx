@@ -22,7 +22,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -45,15 +44,16 @@ import {
   type Budget,
   type BudgetFormValues,
   type BudgetListFilter,
+  type BudgetOverview,
 } from "../types/budget";
 
 interface BudgetScreenProps {
-  initialBudgets: Array<Budget>;
+  initialBudgets: Array<BudgetOverview>;
   categories: Array<TransactionCategory>;
 }
 
 export interface BudgetCardData {
-  budget: Budget;
+  budget: BudgetOverview;
   allowanceLabel: string;
   spendingLabel: string;
   remainingLabel: string;
@@ -68,7 +68,7 @@ const budgetCadenceBadgeLabel = {
   year: "Yearly",
 } satisfies Record<Budget["cadence"], string>;
 
-const buildBudgetCardData = (budget: Budget, now: Date): BudgetCardData => {
+const buildBudgetCardData = (budget: BudgetOverview): BudgetCardData => {
   const period = budget.currentPeriod;
   const allowance = period.effectiveAllowance;
   const percentage =
@@ -81,7 +81,7 @@ const buildBudgetCardData = (budget: Budget, now: Date): BudgetCardData => {
     spendingLabel: formatBudgetMinor(period.netBudgetSpending, period.currency),
     remainingLabel: formatBudgetMinor(period.remainingAllowance, period.currency),
     percentage,
-    chart: createBudgetChartData(budget, now),
+    chart: createBudgetChartData(budget),
   };
 };
 
@@ -133,59 +133,44 @@ function BudgetStatusBadge({ budget }: { budget: Budget }) {
 function BudgetPaceChart({ budget, chart }: { budget: Budget; chart: BudgetChartData }) {
   const chartId = `budget-chart-${budget.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
   return (
-    <figure className="flex flex-col gap-2" aria-labelledby={`${chartId}-caption`}>
-      <figcaption
-        id={`${chartId}-caption`}
-        className="flex items-center justify-between gap-2 text-xs"
-      >
-        <span className="font-medium">Current-period pace</span>
-        <span className="text-muted-foreground">Actual · projected</span>
-      </figcaption>
+    <figure className="-mx-4 overflow-hidden">
       <svg
-        className="h-28 w-full overflow-visible"
-        viewBox="0 0 320 120"
+        className="block h-24 w-full"
+        viewBox="0 0 320 96"
+        preserveAspectRatio="none"
         role="img"
         aria-labelledby={`${chartId}-title ${chartId}-description`}
       >
-        <title id={`${chartId}-title`}>{budget.name} spending pace</title>
+        <title id={`${chartId}-title`}>{budget.name} budget progress</title>
         <desc id={`${chartId}-description`}>{chart.summary}</desc>
-        <g aria-hidden="true" className="text-border">
-          <line x1="0" y1="8" x2="320" y2="8" stroke="currentColor" strokeDasharray="3 5" />
-          <line x1="0" y1="52" x2="320" y2="52" stroke="currentColor" strokeDasharray="3 5" />
-          <line x1="0" y1="96" x2="320" y2="96" stroke="currentColor" strokeDasharray="3 5" />
-        </g>
+        <defs>
+          <linearGradient id={`${chartId}-actual-fill`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--chart-2)" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="var(--chart-2)" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <path aria-hidden="true" d={chart.actualAreaPath} fill={`url(#${chartId}-actual-fill)`} />
         <path
           aria-hidden="true"
           d={chart.actualPath}
           fill="none"
-          stroke="var(--primary)"
+          stroke="var(--chart-2)"
           strokeWidth="3"
           strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
         />
-        <path
-          aria-hidden="true"
-          d={chart.projectionPath}
-          fill="none"
-          stroke="var(--primary)"
-          strokeWidth="3"
-          strokeDasharray="6 5"
-          strokeLinecap="round"
-          opacity="0.45"
-        />
-        <g className="fill-muted-foreground text-[10px]" aria-hidden="true">
-          {chart.labels.map((label) => (
-            <text
-              key={`${label.label}-${label.position}`}
-              x={`${label.position * 320}`}
-              y="116"
-              textAnchor="middle"
-            >
-              {label.label}
-            </text>
-          ))}
-        </g>
       </svg>
-      <p className="sr-only">{chart.summary}</p>
+      <div className="relative mx-4 h-4 text-[10px] text-muted-foreground" aria-hidden="true">
+        {chart.labels.map((label) => (
+          <span
+            key={label.position}
+            className="absolute -translate-x-1/2 first:translate-x-0 last:-translate-x-full"
+            style={{ left: `${label.position * 100}%` }}
+          >
+            {label.label}
+          </span>
+        ))}
+      </div>
     </figure>
   );
 }
@@ -299,77 +284,67 @@ function BudgetCard({
   categoryById: ReadonlyMap<string, TransactionCategory>;
 }) {
   const { budget, percentage, chart } = data;
-  const progressValue = percentage === null ? null : Math.min(Math.max(percentage, 0), 100);
   return (
-    <Card className={cn("min-w-0 bg-muted/30", budget.paused && "border border-dashed ring-0")}>
-      <CardHeader className="gap-1.5">
-        <div className="flex items-start justify-between gap-3">
-          <CardTitle className="min-w-0 text-base">
-            <Link
-              className="break-words underline-offset-3 hover:underline"
-              to="/cash-flow/budgets/$budgetId"
-              params={{ budgetId: budget.id }}
-            >
-              {budget.name}
-            </Link>
-          </CardTitle>
-          <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
-            <BudgetStatusBadge budget={budget} />
+    <Link
+      aria-label={budget.name}
+      className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      to="/cash-flow/budgets/$budgetId"
+      params={{ budgetId: budget.id }}
+    >
+      <Card className={cn("min-w-0 bg-muted/30", budget.paused && "border border-dashed ring-0")}>
+        <CardHeader className="gap-1.5">
+          <div className="flex items-start justify-between gap-3">
+            <CardTitle className="min-w-0 break-words text-base">{budget.name}</CardTitle>
+            <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+              <BudgetStatusBadge budget={budget} />
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-1">
-          {budget.paused ? <Badge variant="secondary">Paused</Badge> : null}
-          <Badge variant="secondary">{budgetCadenceBadgeLabel[budget.cadence]}</Badge>
-          <BudgetCategoryScope categoryIds={budget.categoryIds} categoryById={categoryById} />
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Spending</span>
-            <span className="text-2xl font-semibold tabular-nums">{data.spendingLabel}</span>
+          <div className="flex items-center gap-1">
+            {budget.paused ? <Badge variant="secondary">Paused</Badge> : null}
+            <Badge variant="secondary">{budgetCadenceBadgeLabel[budget.cadence]}</Badge>
+            <BudgetCategoryScope categoryIds={budget.categoryIds} categoryById={categoryById} />
           </div>
-          <div className="text-right">
-            <span className="text-xs text-muted-foreground">of {data.allowanceLabel}</span>
-            <span className="block text-lg font-medium tabular-nums">
-              {percentage === null ? "Progress unavailable" : `${percentage}%`}
-            </span>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex items-end justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Spending</span>
+              <span className="text-2xl font-semibold tabular-nums">{data.spendingLabel}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-xs text-muted-foreground">of {data.allowanceLabel}</span>
+              <span className="block text-lg font-medium tabular-nums">
+                {percentage === null ? "Progress unavailable" : `${percentage}%`}
+              </span>
+            </div>
           </div>
-        </div>
-        <Progress value={progressValue} aria-label={`${budget.name} spending progress`}>
-          <ProgressLabel className="text-xs text-muted-foreground">Used this period</ProgressLabel>
-          <ProgressValue className="text-xs">
-            {() => (percentage === null ? "Unavailable" : `${percentage}%`)}
-          </ProgressValue>
-        </Progress>
-        <BudgetPaceChart budget={budget} chart={chart} />
-        <dl className="grid grid-cols-3 gap-2 border-t pt-3 text-sm">
-          <div className="flex min-w-0 flex-col gap-1 border p-2">
-            <dt className="text-xs text-muted-foreground">Allowance</dt>
-            <dd className="truncate font-medium tabular-nums">{data.allowanceLabel}</dd>
-          </div>
-          <div className="flex min-w-0 flex-col gap-1 border p-2">
-            <dt className="text-xs text-muted-foreground">Spent</dt>
-            <dd className="truncate font-medium tabular-nums">{data.spendingLabel}</dd>
-          </div>
-          <div className="flex min-w-0 flex-col gap-1 border p-2">
-            <dt className="text-xs text-muted-foreground">Remaining</dt>
-            <dd className="truncate font-medium tabular-nums">{data.remainingLabel}</dd>
-          </div>
-        </dl>
-      </CardContent>
-    </Card>
+          <BudgetPaceChart budget={budget} chart={chart} />
+          <dl className="grid grid-cols-3 gap-2 border-t pt-3 text-sm">
+            <div className="flex min-w-0 flex-col gap-1 rounded-md border p-2">
+              <dt className="text-xs text-muted-foreground">Allowance</dt>
+              <dd className="truncate font-medium tabular-nums">{data.allowanceLabel}</dd>
+            </div>
+            <div className="flex min-w-0 flex-col gap-1 rounded-md border p-2">
+              <dt className="text-xs text-muted-foreground">Spent</dt>
+              <dd className="truncate font-medium tabular-nums">{data.spendingLabel}</dd>
+            </div>
+            <div className="flex min-w-0 flex-col gap-1 rounded-md border p-2">
+              <dt className="text-xs text-muted-foreground">Remaining</dt>
+              <dd className="truncate font-medium tabular-nums">{data.remainingLabel}</dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
 function BudgetCards({
   budgets,
   categories,
-  now,
 }: {
-  budgets: Array<Budget>;
+  budgets: Array<BudgetOverview>;
   categories: Array<TransactionCategory>;
-  now: Date;
 }) {
   const categoryById = new Map(categories.map((category) => [category.id, category]));
 
@@ -383,7 +358,7 @@ function BudgetCards({
         {budgets.map((budget) => (
           <BudgetCard
             key={budget.id}
-            data={buildBudgetCardData(budget, now)}
+            data={buildBudgetCardData(budget)}
             categoryById={categoryById}
           />
         ))}
@@ -399,7 +374,6 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
   const [isListLoading, setIsListLoading] = useState(false);
   const [listError, setListError] = useState<string>();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const now = new Date();
 
   const changeFilter = async (nextFilter: string) => {
     const typedFilter = BUDGET_LIST_FILTERS.find((candidate) => candidate === nextFilter);
@@ -428,9 +402,12 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
     if (Result.isSuccess(result)) {
       setHasAnyBudgets(true);
       if (filter !== "paused") {
-        setBudgets((current) =>
-          [...current, result.value].toSorted((left, right) => left.name.localeCompare(right.name)),
-        );
+        const refreshed = await getBudgets(filter);
+        if (Result.isSuccess(refreshed)) {
+          setBudgets(refreshed.value);
+        } else {
+          setListError(refreshed.error.message);
+        }
       }
     }
     return result;
@@ -505,7 +482,7 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
         </Empty>
       ) : (
         <div aria-busy={isListLoading}>
-          <BudgetCards budgets={budgets} categories={categories} now={now} />
+          <BudgetCards budgets={budgets} categories={categories} />
         </div>
       )}
       <Drawer open={isFormOpen} onOpenChange={setIsFormOpen} swipeDirection="right">

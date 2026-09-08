@@ -294,6 +294,22 @@ async fn spending_buckets_keep_known_sum_and_mark_incomplete_days() {
         .with_ymd_and_hms(2026, 9, 1, 0, 0, 0)
         .unwrap()
         .naive_utc();
+    let hours = sum_spending_buckets(
+        &mut conn,
+        start,
+        end,
+        BudgetMeasurementMode::Spending,
+        &[],
+        SpendingBucketGrain::Hour,
+    )
+    .expect("hours");
+    assert_eq!(hours.len(), 2);
+    assert_eq!(
+        hours[0].bucket_start,
+        Utc.with_ymd_and_hms(2026, 8, 10, 12, 0, 0)
+            .unwrap()
+            .naive_utc()
+    );
     let days = sum_spending_buckets(
         &mut conn,
         start,

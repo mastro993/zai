@@ -10,7 +10,8 @@ use axum::{
 use serde::Deserialize;
 use zai_app::ServiceContext;
 use zai_core::features::budgets::models::{
-    Budget, BudgetLifecycleUpdate, BudgetListFilter, BudgetPeriodHistory, BudgetUpdate, NewBudget,
+    Budget, BudgetLifecycleUpdate, BudgetListFilter, BudgetOverview, BudgetPeriodHistory,
+    BudgetUpdate, NewBudget,
 };
 
 use crate::api::error::{bad_request, command_error};
@@ -56,11 +57,11 @@ pub fn router() -> Router<Arc<ServiceContext>> {
 async fn list_budgets(
     State(context): State<Arc<ServiceContext>>,
     query: Result<Query<BudgetListQuery>, QueryRejection>,
-) -> BudgetResult<Json<Vec<Budget>>> {
+) -> BudgetResult<Json<Vec<BudgetOverview>>> {
     let Query(query) = query.map_err(|rejection| bad_request(rejection.body_text()))?;
     context
         .budgets_service()
-        .list_budgets(query.filter)
+        .list_budget_overviews(query.filter)
         .await
         .map(Json)
         .map_err(|error| command_error("Failed to load budgets", error))

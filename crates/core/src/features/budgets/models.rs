@@ -214,6 +214,22 @@ pub struct Budget {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct BudgetSpendingBucket {
+    pub start: NaiveDateTime,
+    pub value: i64,
+    pub complete: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BudgetOverview {
+    #[serde(flatten)]
+    pub budget: Budget,
+    pub spending_buckets: Vec<BudgetSpendingBucket>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NewBudget {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createBudgetChartData } from "../budget-chart";
-import { budgetSchema } from "../../types/budget";
+import { budgetSchema, type BudgetOverview } from "../../types/budget";
 
 const makeBudget = (cadence: "day" | "week" | "month" | "year") =>
   budgetSchema.parse({
@@ -42,24 +42,45 @@ const makeBudget = (cadence: "day" | "week" | "month" | "year") =>
     },
   });
 
+const makeOverview = (
+  cadence: "day" | "week" | "month" | "year",
+  spendingBuckets: BudgetOverview["spendingBuckets"],
+): BudgetOverview => ({ ...makeBudget(cadence), spendingBuckets });
+
 describe("createBudgetChartData", () => {
-  const now = new Date("2026-07-15T12:00:00");
+  it("uses real daily values for monthly budgets", () => {
+    const chart = createBudgetChartData(
+      makeOverview("month", [
+        { start: "2026-07-01T00:00:00", value: 100, complete: true },
+        { start: "2026-07-15T00:00:00", value: 300, complete: true },
+      ]),
+    );
 
-  it("uses month days for monthly budgets", () => {
-    const chart = createBudgetChartData(makeBudget("month"), now);
-
-    expect(chart.labels.map(({ label }) => label)).toEqual(["1", "8", "15", "22", "29"]);
-    expect(chart.actualPath).toContain("M");
-    expect(chart.projectionPath).toContain("L");
+    expect(chart.labels.map(({ label }) => label)).toEqual(["1", "8", "15", "22", "31"]);
+    expect(chart.actualPath).toMatch(/^M 0\.00 .* C /);
+    expect(chart.actualAreaPath).toMatch(/Z$/);
+    expect(chart.points[0]?.value).toBe(100);
+    expect(chart.points[14]?.value).toBe(400);
   });
 
-  it("uses weekdays for daily and weekly budgets", () => {
-    expect(createBudgetChartData(makeBudget("day"), now).labels).toHaveLength(7);
-    expect(createBudgetChartData(makeBudget("week"), now).labels).toHaveLength(7);
+  it("uses the budget's one-day period for daily progress", () => {
+    const chart = createBudgetChartData(makeOverview("day", []));
+
+    expect(chart.labels.map(({ label }) => label)).toEqual(["12am", "6am", "12pm", "6pm", "12am"]);
+    expect(chart.points).toHaveLength(24);
   });
 
-  it("uses month labels for yearly budgets and explains pace projection", () => {
-    const chart = createBudgetChartData(makeBudget("year"), now);
+  it("uses weekdays for weekly budgets", () => {
+    expect(createBudgetChartData(makeOverview("week", [])).labels).toHaveLength(7);
+  });
+
+  it("uses real monthly values for yearly budgets without projecting future spending", () => {
+    const chart = createBudgetChartData(
+      makeOverview("year", [
+        { start: "2026-01-01T00:00:00", value: 100, complete: true },
+        { start: "2026-03-01T00:00:00", value: 300, complete: true },
+      ]),
+    );
 
     expect(chart.labels.map(({ label }) => label)).toEqual([
       "Jan",
@@ -75,6 +96,11 @@ describe("createBudgetChartData", () => {
       "Nov",
       "Dec",
     ]);
-    expect(chart.summary).toContain("Pace-based projection");
+    expect(chart.points.map(({ value }) => value)).toEqual([
+      100, 100, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400,
+    ]);
+    expect(chart.summary).toContain("Jan €1.00");
+    expect(chart.summary).toContain("Mar €4.00");
+    expect(chart.summary).not.toContain("projected");
   });
 });

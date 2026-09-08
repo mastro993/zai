@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { createCommandDescriptor, type CommandDescriptor } from "@/commands/command-descriptor";
 
-import { budgetHistorySchema, budgetSchema } from "../types/budget";
+import { budgetHistorySchema, budgetOverviewSchema, budgetSchema } from "../types/budget";
 import {
   buildCreateBudgetRequest,
   buildDeleteBudgetRequest,
@@ -14,7 +14,7 @@ import {
   buildUpdateBudgetRequest,
 } from "./web-requests";
 
-const budgetArraySchema = z.array(budgetSchema);
+const budgetOverviewArraySchema = z.array(budgetOverviewSchema);
 
 const backendCommand = <TArgs, T>(
   name: string,
@@ -28,7 +28,7 @@ const voidBackendCommand = <TArgs>(
 ): CommandDescriptor<TArgs, void> => createCommandDescriptor(name, "void", webRequest);
 
 export const BUDGET_COMMANDS = {
-  get_budgets: backendCommand("get_budgets", budgetArraySchema, buildGetBudgetsRequest),
+  get_budgets: backendCommand("get_budgets", budgetOverviewArraySchema, buildGetBudgetsRequest),
   get_budget: backendCommand("get_budget", budgetSchema, buildGetBudgetRequest),
   create_budget: backendCommand("create_budget", budgetSchema, buildCreateBudgetRequest),
   update_budget: backendCommand("update_budget", budgetSchema, buildUpdateBudgetRequest),

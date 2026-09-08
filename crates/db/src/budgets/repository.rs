@@ -15,6 +15,7 @@ use crate::blocking::run_blocking;
 use crate::connection::{DbPool, get_connection};
 use crate::errors::IntoCore;
 use crate::schema::budgets;
+use crate::valuations::{SpendingBucketGrain, sum_spending_buckets};
 use crate::write_actor::WriteHandle;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
@@ -22,8 +23,9 @@ use diesel::prelude::*;
 use std::sync::Arc;
 use zai_core::features::budgets::alerts::BudgetAlertMode;
 use zai_core::features::budgets::models::{
-    Budget, BudgetCadence, BudgetLifecycleUpdate, BudgetListFilter, BudgetPeriodHistory,
-    BudgetUpdate, NewBudget, canonicalize_category_ids,
+    Budget, BudgetCadence, BudgetLifecycleUpdate, BudgetListFilter, BudgetOverview,
+    BudgetPeriodHistory, BudgetSpendingBucket, BudgetUpdate, NewBudget, canonicalize_category_ids,
+    expand_category_scope,
 };
 use zai_core::features::budgets::traits::{BudgetsRepositoryTrait, CalendarClock};
 use zai_core::features::domain_alerts::{
@@ -167,6 +169,48 @@ impl BudgetsRepositoryTrait for BudgetsRepository {
                 TimelineInspectEntry::Stale { id } => repaired_by_id.get(&id).cloned(),
             })
             .collect())
+    }
+
+    async fn list_budget_overviews(&self, filter: BudgetListFilter) -> Result<Vec<BudgetOverview>> {
+        let budgets = self.list_budgets(filter).await?;
+        let pool = Arc::clone(&self.pool);
+        run_blocking(move || {
+            let mut conn = get_connection(&pool)?;
+            let categories = load_category_hierarchy(&mut conn).into_core()?;
+            // ponytail: one aggregate query per budget; replace with a set-based query if lists grow large.
+            budgets
+                .into_iter()
+                .map(|budget| {
+                    let scope_ids = expand_category_scope(&budget.category_ids, &categories);
+                    let grain = match budget.cadence {
+                        BudgetCadence::Day => SpendingBucketGrain::Hour,
+                        BudgetCadence::Week | BudgetCadence::Month => SpendingBucketGrain::Day,
+                        BudgetCadence::Year => SpendingBucketGrain::Month,
+                    };
+                    let spending_buckets = sum_spending_buckets(
+                        &mut conn,
+                        budget.current_period.start,
+                        budget.current_period.end,
+                        budget.measurement_mode,
+                        &scope_ids,
+                        grain,
+                    )
+                    .into_core()?
+                    .into_iter()
+                    .map(|bucket| BudgetSpendingBucket {
+                        start: bucket.bucket_start,
+                        value: bucket.known_sum,
+                        complete: bucket.complete,
+                    })
+                    .collect();
+                    Ok(BudgetOverview {
+                        budget,
+                        spending_buckets,
+                    })
+                })
+                .collect()
+        })
+        .await
     }
 
     async fn get_budget(&self, id: &str) -> Result<Budget> {

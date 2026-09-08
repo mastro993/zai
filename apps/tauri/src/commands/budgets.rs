@@ -4,7 +4,8 @@ use log::debug;
 use tauri::State;
 use zai_app::ServiceContext;
 use zai_core::features::budgets::models::{
-    Budget, BudgetLifecycleUpdate, BudgetListFilter, BudgetPeriodHistory, BudgetUpdate, NewBudget,
+    Budget, BudgetLifecycleUpdate, BudgetListFilter, BudgetOverview, BudgetPeriodHistory,
+    BudgetUpdate, NewBudget,
 };
 
 use super::{CommandResult, command_error};
@@ -13,11 +14,11 @@ use super::{CommandResult, command_error};
 pub async fn get_budgets(
     filter: Option<BudgetListFilter>,
     state: State<'_, Arc<ServiceContext>>,
-) -> CommandResult<Vec<Budget>> {
+) -> CommandResult<Vec<BudgetOverview>> {
     debug!("Getting budgets...");
     state
         .budgets_service()
-        .list_budgets(filter.unwrap_or_default())
+        .list_budget_overviews(filter.unwrap_or_default())
         .await
         .map_err(|error| command_error("Failed to load budgets", error))
 }
