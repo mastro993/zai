@@ -242,7 +242,12 @@ export function RecurringScreen({
     <ScreenBase
       actions={
         showFilters ? (
-          <Button ref={createButtonRef} size="sm" onClick={() => setIsCreateOpen(true)}>
+          <Button
+            ref={createButtonRef}
+            size="sm"
+            className="h-7"
+            onClick={() => setIsCreateOpen(true)}
+          >
             New recurring
           </Button>
         ) : undefined
