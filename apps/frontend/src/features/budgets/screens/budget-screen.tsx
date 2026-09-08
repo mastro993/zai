@@ -37,7 +37,12 @@ import { cn } from "@/lib/utils";
 
 import { createBudget, getBudgets } from "../commands/budgets";
 import { BudgetFormDrawer } from "../components/budget-form-drawer";
-import { createBudgetChartData, type BudgetChartData } from "../lib/budget-chart";
+import {
+  BUDGET_CHART_Y_AXIS_LABEL_GAP,
+  BUDGET_CHART_Y_AXIS_WIDTH,
+  createBudgetChartData,
+  type BudgetChartData,
+} from "../lib/budget-chart";
 import { budgetListFilterLabel, formatBudgetMinor } from "../lib/budget";
 import {
   BUDGET_LIST_FILTERS,
@@ -133,34 +138,55 @@ function BudgetStatusBadge({ budget }: { budget: Budget }) {
 function BudgetPaceChart({ budget, chart }: { budget: Budget; chart: BudgetChartData }) {
   const chartId = `budget-chart-${budget.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
   return (
-    <figure className="-mx-4 overflow-hidden">
+    <figure className="mx-2 overflow-hidden">
       <svg
         className="block h-24 w-full"
-        viewBox="0 0 320 96"
+        viewBox={`0 0 ${320 + BUDGET_CHART_Y_AXIS_WIDTH} 96`}
         preserveAspectRatio="none"
         role="img"
         aria-labelledby={`${chartId}-title ${chartId}-description`}
       >
         <title id={`${chartId}-title`}>{budget.name} budget progress</title>
         <desc id={`${chartId}-description`}>{chart.summary}</desc>
-        <defs>
-          <linearGradient id={`${chartId}-actual-fill`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--chart-2)" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="var(--chart-2)" stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        <path aria-hidden="true" d={chart.actualAreaPath} fill={`url(#${chartId}-actual-fill)`} />
-        <path
-          aria-hidden="true"
-          d={chart.actualPath}
-          fill="none"
-          stroke="var(--chart-2)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          vectorEffect="non-scaling-stroke"
-        />
+        {chart.yAxisLabels.map((label) => (
+          <text
+            key={label.position}
+            x={BUDGET_CHART_Y_AXIS_WIDTH - BUDGET_CHART_Y_AXIS_LABEL_GAP}
+            y={label.y}
+            textAnchor="end"
+            className="fill-muted-foreground text-[10px]"
+            dominantBaseline="middle"
+            aria-hidden="true"
+          >
+            {label.label}
+          </text>
+        ))}
+        <g transform={`translate(${BUDGET_CHART_Y_AXIS_WIDTH} 0)`}>
+          <defs>
+            <linearGradient id={`${chartId}-actual-fill`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--chart-2)" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="var(--chart-2)" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          <path aria-hidden="true" d={chart.actualAreaPath} fill={`url(#${chartId}-actual-fill)`} />
+          <path
+            aria-hidden="true"
+            d={chart.actualPath}
+            fill="none"
+            stroke="var(--chart-2)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </g>
       </svg>
-      <div className="relative mx-4 h-4 text-[10px] text-muted-foreground" aria-hidden="true">
+      <div
+        className="relative mt-2 h-4 text-[10px] text-muted-foreground"
+        style={{
+          marginLeft: `${(BUDGET_CHART_Y_AXIS_WIDTH / (320 + BUDGET_CHART_Y_AXIS_WIDTH)) * 100}%`,
+        }}
+        aria-hidden="true"
+      >
         {chart.labels.map((label) => (
           <span
             key={label.position}
