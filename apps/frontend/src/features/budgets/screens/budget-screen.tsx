@@ -304,7 +304,7 @@ function BudgetCard({
     <Card className={cn("min-w-0 bg-muted/30", budget.paused && "border border-dashed ring-0")}>
       <CardHeader className="gap-1.5">
         <div className="flex items-start justify-between gap-3">
-          <CardTitle className="min-w-0 text-lg">
+          <CardTitle className="min-w-0 text-base">
             <Link
               className="break-words underline-offset-3 hover:underline"
               to="/cash-flow/budgets/$budgetId"
@@ -372,7 +372,7 @@ function BudgetCards({
   return (
     <TooltipProvider>
       <div
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
         role="region"
         aria-label="Budgets"
       >
@@ -519,7 +519,7 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
 export function BudgetScreenSkeleton() {
   return (
     <ScreenBase>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {[0, 1, 2].map((card) => (
           <div
             key={card}
