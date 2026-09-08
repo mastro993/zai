@@ -15,6 +15,12 @@ export interface BudgetChartPoint {
   value: number;
 }
 
+export interface BudgetChartSeriesPoint {
+  position: number;
+  projectionValue: number | null;
+  value: number | null;
+}
+
 export interface BudgetChartYAxisLabel {
   label: string;
   position: number;
@@ -24,6 +30,8 @@ export interface BudgetChartYAxisLabel {
 export interface BudgetChartData {
   labels: Array<BudgetChartLabel>;
   points: Array<BudgetChartPoint>;
+  projectionPoints: Array<BudgetChartPoint>;
+  series: Array<BudgetChartSeriesPoint>;
   yAxisLabels: Array<BudgetChartYAxisLabel>;
   yAxisDomain: [number, number];
   summary: string;
@@ -139,9 +147,6 @@ export const createBudgetChartData = (
       value: cumulative,
     };
   });
-  const values = points.map(({ value }) => value);
-  const min = Math.min(0, ...values);
-  const max = Math.max(budget.currentPeriod.effectiveAllowance ?? 0, ...values, 1);
   const currentPosition = chartPositionAt(now, starts, parseISO(budget.currentPeriod.end));
   const visiblePoints = points.filter(({ position }) => position <= currentPosition);
   const chartPoints = [...visiblePoints];
@@ -152,9 +157,43 @@ export const createBudgetChartData = (
       position: currentPosition,
     });
   }
+  const projectionStart = chartPoints.at(-1);
+  const projectionPoints =
+    projectionStart && currentPosition > 0 && currentPosition < 1
+      ? [
+          projectionStart,
+          {
+            ...projectionStart,
+            position: 1,
+            value: projectionStart.value / currentPosition,
+          },
+        ]
+      : [];
+  const values = [
+    ...points.map(({ value }) => value),
+    ...projectionPoints.map(({ value }) => value),
+  ];
+  const min = Math.min(0, ...values);
+  const allowanceHeadroom = (budget.currentPeriod.effectiveAllowance ?? 0) * 1.1;
+  const max = Math.max(allowanceHeadroom, ...values, 1);
+  const series: Array<BudgetChartSeriesPoint> = chartPoints.map((point, index) => ({
+    position: point.position,
+    projectionValue:
+      index === chartPoints.length - 1 && projectionPoints.length > 1 ? point.value : null,
+    value: point.value,
+  }));
+  const projectionEnd = projectionPoints.at(-1);
+  if (projectionEnd && projectionPoints.length > 1) {
+    series.push({
+      position: projectionEnd.position,
+      projectionValue: projectionEnd.value,
+      value: null,
+    });
+  }
   const labels = chartLabels(budget, starts);
+  const tickMax = budget.currentPeriod.effectiveAllowance ?? max;
   const yAxisLabels = Array.from({ length: 4 }, (_, index) => {
-    const value = max * (1 - index / 3);
+    const value = tickMax * (1 - index / 3);
     return {
       label: formatAxisValue(value, budget.currentPeriod.currency),
       position: index,
@@ -171,6 +210,8 @@ export const createBudgetChartData = (
   return {
     labels,
     points: chartPoints,
+    projectionPoints,
+    series,
     yAxisLabels,
     yAxisDomain: [min, max],
     summary: `${complete ? "Actual cumulative spending" : "Known cumulative spending; some conversions are incomplete"}: ${summary}.`,

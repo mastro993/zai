@@ -59,7 +59,9 @@ describe("createBudgetChartData", () => {
     expect(chart.labels.map(({ label }) => label)).toEqual(["1", "8", "15", "22", "31"]);
     expect(chart.yAxisLabels).toHaveLength(4);
     expect(chart.yAxisLabels[0]?.label).toBe("€0.1k");
+    expect(chart.yAxisLabels[0]?.value).toBe(10_000);
     expect(chart.yAxisLabels.at(-1)?.label).toBe("€0");
+    expect(chart.yAxisDomain[1]).toBe(11_000);
     expect(chart.points).toHaveLength(31);
     expect(chart.points[0]?.value).toBe(100);
     expect(chart.points[14]?.value).toBe(400);
@@ -107,9 +109,19 @@ describe("createBudgetChartData", () => {
     expect(chart.summary).not.toContain("projected");
   });
 
-  it("stops current-year charts at the current date", () => {
-    const chart = createBudgetChartData(makeOverview("year", []), new Date("2026-09-08T00:00:00"));
+  it("stops current-year charts at the current date and projects remaining period", () => {
+    const chart = createBudgetChartData(
+      makeOverview("year", [{ start: "2026-01-01T00:00:00", value: 100, complete: true }]),
+      new Date("2026-09-08T00:00:00"),
+    );
 
     expect(chart.points.at(-1)?.position).toBeLessThan(1);
+    expect(chart.projectionPoints).toHaveLength(2);
+    expect(chart.projectionPoints.at(-1)?.position).toBe(1);
+    expect(chart.projectionPoints.at(-1)?.value).toBeGreaterThan(
+      chart.projectionPoints[0]?.value ?? 0,
+    );
+    expect(chart.series.at(-1)?.value).toBeNull();
+    expect(chart.series.at(-1)?.projectionValue).toBe(chart.projectionPoints.at(-1)?.value);
   });
 });

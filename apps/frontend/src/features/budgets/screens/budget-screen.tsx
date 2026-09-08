@@ -13,6 +13,7 @@ import {
   Area,
   AreaChart,
   Tooltip as ChartTooltip,
+  ReferenceLine,
   ResponsiveContainer,
   XAxis,
   YAxis,
@@ -142,6 +143,19 @@ function BudgetPaceChart({ budget, chart }: { budget: Budget; chart: BudgetChart
   const chartId = `budget-chart-${budget.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
   const xAxisLabels = new Map(chart.labels.map((label) => [label.position, label.label]));
   const yAxisLabels = new Map(chart.yAxisLabels.map((label) => [label.value, label.label]));
+  const allowance = budget.currentPeriod.effectiveAllowance;
+  const budgetExceeded = allowance !== null && chart.yAxisDomain[1] > allowance;
+  const budgetFillOffset =
+    budgetExceeded && allowance !== null
+      ? `${Math.min(
+          100,
+          Math.max(
+            0,
+            ((chart.yAxisDomain[1] - allowance) / (chart.yAxisDomain[1] - chart.yAxisDomain[0])) *
+              100,
+          ),
+        )}%`
+      : null;
   return (
     <figure
       className="h-40"
@@ -149,10 +163,22 @@ function BudgetPaceChart({ budget, chart }: { budget: Budget; chart: BudgetChart
       aria-label={`${budget.name} budget progress. ${chart.summary}`}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={chart.points} margin={{ top: 8, right: 0, left: 4, bottom: 0 }}>
+        <AreaChart data={chart.series} margin={{ top: 8, right: 0, left: 4, bottom: 0 }}>
           <defs>
             <linearGradient id={`${chartId}-area-gradient`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.4} />
+              {budgetFillOffset ? (
+                <>
+                  <stop offset="0%" stopColor="var(--destructive)" stopOpacity={0.4} />
+                  <stop
+                    offset={budgetFillOffset}
+                    stopColor="var(--destructive)"
+                    stopOpacity={0.4}
+                  />
+                  <stop offset={budgetFillOffset} stopColor="var(--chart-1)" stopOpacity={0.4} />
+                </>
+              ) : (
+                <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.4} />
+              )}
               <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
             </linearGradient>
           </defs>
@@ -205,8 +231,16 @@ function BudgetPaceChart({ budget, chart }: { budget: Budget; chart: BudgetChart
               stroke: "var(--chart-2)",
               strokeWidth: 2,
             }}
-            isAnimationActive={false}
+            isAnimationActive={true}
           />
+          {allowance !== null ? (
+            <ReferenceLine
+              y={allowance}
+              stroke="var(--muted-foreground)"
+              strokeDasharray="4 4"
+              strokeOpacity={0.5}
+            />
+          ) : null}
         </AreaChart>
       </ResponsiveContainer>
     </figure>
