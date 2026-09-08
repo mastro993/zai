@@ -314,11 +314,11 @@ function BudgetCard({
             </Link>
           </CardTitle>
           <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
-            {budget.paused ? <Badge variant="secondary">Paused</Badge> : null}
             <BudgetStatusBadge budget={budget} />
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {budget.paused ? <Badge variant="secondary">Paused</Badge> : null}
           <Badge variant="secondary">{budgetCadenceBadgeLabel[budget.cadence]}</Badge>
           <BudgetCategoryScope categoryIds={budget.categoryIds} categoryById={categoryById} />
         </div>
@@ -343,12 +343,16 @@ function BudgetCard({
           </ProgressValue>
         </Progress>
         <BudgetPaceChart budget={budget} chart={chart} />
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-3 border-t pt-3 text-sm">
-          <div className="flex min-w-0 flex-col gap-1">
+        <dl className="grid grid-cols-3 gap-2 border-t pt-3 text-sm">
+          <div className="flex min-w-0 flex-col gap-1 border p-2">
             <dt className="text-xs text-muted-foreground">Allowance</dt>
             <dd className="truncate font-medium tabular-nums">{data.allowanceLabel}</dd>
           </div>
-          <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1 border p-2">
+            <dt className="text-xs text-muted-foreground">Spent</dt>
+            <dd className="truncate font-medium tabular-nums">{data.spendingLabel}</dd>
+          </div>
+          <div className="flex min-w-0 flex-col gap-1 border p-2">
             <dt className="text-xs text-muted-foreground">Remaining</dt>
             <dd className="truncate font-medium tabular-nums">{data.remainingLabel}</dd>
           </div>
@@ -372,7 +376,7 @@ function BudgetCards({
   return (
     <TooltipProvider>
       <div
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3"
         role="region"
         aria-label="Budgets"
       >
@@ -519,7 +523,7 @@ export function BudgetScreen({ initialBudgets, categories }: BudgetScreenProps) 
 export function BudgetScreenSkeleton() {
   return (
     <ScreenBase>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {[0, 1, 2].map((card) => (
           <div
             key={card}
