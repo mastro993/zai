@@ -32,7 +32,7 @@
     "benchmark:currency": "node scripts/currency-reference-runner.mjs"
   },
   "devDependencies": {
-    "@oxlint/plugins": "1.78.0",
+    "@oxlint/plugins": "1.83.0",
     "@praha/byethrow-docs": "^0.12.0",
     "@praha/byethrow-oxlint": "^0.12.0",
     "@tauri-apps/cli": "~2.11.4",
