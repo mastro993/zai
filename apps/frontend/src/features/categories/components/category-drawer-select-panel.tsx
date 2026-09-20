@@ -1,7 +1,7 @@
 import { ArrowLeft01Icon, Search01Icon, Tag01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Link } from "@tanstack/react-router";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -84,6 +84,7 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
     searchInputId,
   } = props;
   const [query, setQuery] = useState("");
+  const [prevOpen, setPrevOpen] = useState(open);
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase());
   const groups = useMemo(
@@ -99,9 +100,10 @@ function CategoryDrawerSelectPanel(props: CategoryDrawerSelectPanelProps) {
         ? 1
         : 0;
 
-  useEffect(() => {
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (!open) setQuery("");
-  }, [open]);
+  }
 
   const toggleExpanded = (categoryId: string) => {
     setExpandedIds((current) => {

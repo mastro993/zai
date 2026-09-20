@@ -16,6 +16,11 @@ import {
 } from "../lib/transaction-write";
 import type { Transaction, TransactionFormInput, TransactionFormValues } from "../types/model";
 
+interface StoredQuote {
+  key: string;
+  quote: ExchangeRateQuote;
+}
+
 export function useTransactionConversion({
   control,
   defaultCurrency,
@@ -33,8 +38,9 @@ export function useTransactionConversion({
   const currency = useWatch({ control, name: "currency" }) ?? defaultCurrency;
   const transactionDate = useWatch({ control, name: "transactionDate" }) ?? "";
   const manualExchangeRate = useWatch({ control, name: "manualExchangeRate" }) ?? "";
-  const [quote, setQuote] = useState<ExchangeRateQuote | null>(null);
+  const [storedQuote, setStoredQuote] = useState<StoredQuote | null>(null);
   const date = quoteDateFromInput(transactionDate);
+  const quoteKey = `${currency}|${defaultCurrency}|${date}`;
   const showRateField = currency !== defaultCurrency;
   const usesLockedRate =
     Boolean(lockedRate) &&
@@ -43,13 +49,11 @@ export function useTransactionConversion({
     !manualExchangeRate.trim() &&
     (lockedRate?.variant === "pending" || Boolean(lockedRate?.originalDecimal));
 
-  useEffect(() => {
-    if (!showRateField || usesLockedRate) {
-      setQuote(null);
-      return;
-    }
+  const quote =
+    showRateField && !usesLockedRate && storedQuote?.key === quoteKey ? storedQuote.quote : null;
 
-    if (!date) {
+  useEffect(() => {
+    if (!showRateField || usesLockedRate || !date) {
       return;
     }
 
@@ -57,7 +61,7 @@ export function useTransactionConversion({
     const timer = window.setTimeout(() => {
       void getTransactionExchangeRateQuote(currency, defaultCurrency, date).then((result) => {
         if (!cancelled && Result.isSuccess(result)) {
-          setQuote(result.value);
+          setStoredQuote({ key: quoteKey, quote: result.value });
         }
       });
     }, 200);
@@ -66,7 +70,7 @@ export function useTransactionConversion({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [currency, date, defaultCurrency, showRateField, usesLockedRate]);
+  }, [currency, date, defaultCurrency, showRateField, usesLockedRate, quoteKey]);
 
   const parsed = parseAmountToMinor(amount, isoFractionDigits(currency));
   const lockedDecimal = usesLockedRate ? (lockedRate?.originalDecimal ?? null) : null;

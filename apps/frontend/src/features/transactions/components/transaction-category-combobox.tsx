@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -106,6 +106,7 @@ function TransactionCategoryCombobox({
   onBlur,
 }: TransactionCategoryComboboxProps) {
   const [open, setOpen] = useState(false);
+  const [prevParentOpen, setPrevParentOpen] = useState(parentOpen);
   const categoriesById = useMemo(
     () => new Map(categories.map((category) => [category.id, category] as const)),
     [categories],
@@ -124,9 +125,10 @@ function TransactionCategoryCombobox({
   );
   const selected = value ? (items.find((item) => item.value === value) ?? null) : null;
 
-  useEffect(() => {
-    if (!parentOpen) setOpen(false);
-  }, [parentOpen]);
+  if (prevParentOpen !== parentOpen) {
+    setPrevParentOpen(parentOpen);
+    setOpen(false);
+  }
 
   return (
     <Combobox<TransactionCategoryOption>

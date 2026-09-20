@@ -9,6 +9,10 @@
     {
       "name": "anti-slop",
       "specifier": "./tools/oxlint/anti-slop/index.ts"
+    },
+    {
+      "name": "shadcn",
+      "specifier": "@shadcn/lint"
     }
   ],
   "ignorePatterns": [

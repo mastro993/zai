@@ -10,7 +10,7 @@ import {
   Undo03Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { type ComponentProps, useEffect, useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { type Control, Controller } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -136,11 +136,13 @@ function BudgetRuleCombobox<T extends string>({
   onBlur,
 }: BudgetRuleComboboxProps<T>) {
   const [open, setOpen] = useState(false);
+  const [prevParentOpen, setPrevParentOpen] = useState(parentOpen);
   const selected = options.find((option) => option.value === value);
 
-  useEffect(() => {
-    if (!parentOpen) setOpen(false);
-  }, [parentOpen]);
+  if (prevParentOpen !== parentOpen) {
+    setPrevParentOpen(parentOpen);
+    setOpen(false);
+  }
 
   return (
     <Combobox

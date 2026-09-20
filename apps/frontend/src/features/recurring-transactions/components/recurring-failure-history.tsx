@@ -1,5 +1,5 @@
 import { Result } from "@praha/byethrow";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -23,12 +23,14 @@ export function RecurringFailureHistory({
   const [items, setItems] = useState(initialPage.items);
   const [nextCursor, setNextCursor] = useState(initialPage.nextCursor);
   const [isLoading, setIsLoading] = useState(false);
+  const [prevPage, setPrevPage] = useState(initialPage);
   const regionId = useId();
 
-  useEffect(() => {
+  if (prevPage !== initialPage) {
+    setPrevPage(initialPage);
     setItems(initialPage.items);
     setNextCursor(initialPage.nextCursor);
-  }, [initialPage.items, initialPage.nextCursor]);
+  }
 
   if (items.length === 0 && !nextCursor) {
     return null;

@@ -1,5 +1,5 @@
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -33,11 +33,13 @@ function CategoryRoleCombobox({
   onBlur,
 }: CategoryRoleComboboxProps) {
   const [open, setOpen] = useState(false);
+  const [prevParentOpen, setPrevParentOpen] = useState(parentOpen);
   const selected = CATEGORY_ROLE_OPTIONS.find((option) => option.value === value);
 
-  useEffect(() => {
-    if (!parentOpen) setOpen(false);
-  }, [parentOpen]);
+  if (prevParentOpen !== parentOpen) {
+    setPrevParentOpen(parentOpen);
+    setOpen(false);
+  }
 
   return (
     <Combobox

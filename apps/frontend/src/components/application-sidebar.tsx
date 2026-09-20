@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ArrowLeft01Icon,
@@ -35,6 +35,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { SettingsNav } from "@/features/settings/components/settings-nav";
 import { SettingsSearchStub } from "@/features/settings/components/settings-search-stub";
 import { useOpenSettings } from "@/features/settings/hooks/use-open-settings";
+import { useMounted } from "@/hooks/use-mounted";
 import { navigationItems, settingsItem } from "@/lib/navigation";
 import { useWorkspaceChrome } from "@/lib/workspace-chrome";
 import { applyStatusBarTheme, nextStatusBarTheme } from "@/lib/theme-toggle";
@@ -139,11 +140,7 @@ function SidebarFooterIconButton({ label, icon }: { label: string; icon: typeof 
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme, systemTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   const isDark = mounted && resolvedTheme === "dark";
   const label = isDark ? "Switch to light mode" : "Switch to dark mode";
