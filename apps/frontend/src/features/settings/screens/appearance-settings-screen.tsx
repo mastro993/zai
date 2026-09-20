@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 
 import { ScreenBase } from "@/components/screen-base";
@@ -10,6 +9,7 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useMounted } from "@/hooks/use-mounted";
 
 import { SettingsSection, SettingsSectionHeader } from "../components/settings-section";
 
@@ -45,11 +45,7 @@ export function AppearanceSettingsScreen() {
 
 function ThemeModeSetting() {
   const { resolvedTheme, setTheme, theme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   const selectedTheme = isThemeMode(theme) ? theme : "system";
   const activeTheme = mounted ? selectedTheme : "system";

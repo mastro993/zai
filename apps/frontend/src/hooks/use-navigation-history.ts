@@ -13,12 +13,10 @@ export const useNavigationHistory = (): NavigationHistoryAbility & {
   goForward: () => void;
 } => {
   const router = useRouter();
-  const forwardBoundRef = useRef(readHistoryIndex(router.history.location.state));
+  const initialIndex = readHistoryIndex(router.history.location.state);
+  const forwardBoundRef = useRef(initialIndex);
   const [ability, setAbility] = useState<NavigationHistoryAbility>(() =>
-    resolveNavigationHistoryAbility(
-      readHistoryIndex(router.history.location.state),
-      forwardBoundRef.current,
-    ),
+    resolveNavigationHistoryAbility(initialIndex, initialIndex),
   );
 
   useEffect(() => {
