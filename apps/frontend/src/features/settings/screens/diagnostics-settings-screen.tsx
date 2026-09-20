@@ -70,8 +70,7 @@ export function DiagnosticsSettingsScreen() {
   const isTauriBuild = import.meta.env.VITE_ZAI_BUILD_TARGET === "tauri";
   const appVersion = resolveAboutAppVersion(aboutPackageVersion());
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async () => {
     const result = await getDiagnostics();
     setLoading(false);
 
@@ -83,9 +82,16 @@ export function DiagnosticsSettingsScreen() {
     setDiagnostics(result.value);
   }, []);
 
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    await load();
+  }, [load]);
+
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    void (async () => {
+      await load();
+    })();
+  }, [load]);
 
   const initialLoading = loading && diagnostics === null;
   const database = diagnostics?.database;

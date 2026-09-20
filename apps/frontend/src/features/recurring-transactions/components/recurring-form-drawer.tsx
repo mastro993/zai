@@ -221,21 +221,20 @@ export function RecurringFormDrawer({
         ? Number.isInteger(every) && every >= 1
         : Number.isInteger(day) && day >= 1 && day <= 31;
     const totalValid = !totalOccurrences || (Number.isInteger(total) && total >= 1);
-    if (!scheduleValid || !totalValid) {
+
+    void (async () => {
       setLaterDueCount(null);
       setPreviewError(undefined);
-      return;
-    }
-
-    setLaterDueCount(null);
-    setPreviewError(undefined);
-    void previewRecurringAdoption(adoptTransactionId, {
-      scheduleKind,
-      intervalEvery: String(every || 1),
-      intervalUnit: intervalUnit ?? "month",
-      monthlyDay: String(day || 1),
-      totalOccurrences: totalOccurrences ?? "",
-    }).then((result) => {
+      if (!scheduleValid || !totalValid) {
+        return;
+      }
+      const result = await previewRecurringAdoption(adoptTransactionId, {
+        scheduleKind,
+        intervalEvery: String(every || 1),
+        intervalUnit: intervalUnit ?? "month",
+        monthlyDay: String(day || 1),
+        totalOccurrences: totalOccurrences ?? "",
+      });
       if (cancelled) {
         return;
       }
@@ -245,7 +244,7 @@ export function RecurringFormDrawer({
         return;
       }
       setLaterDueCount(result.value.laterDueCount);
-    });
+    })();
     return () => {
       cancelled = true;
     };

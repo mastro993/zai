@@ -70,7 +70,7 @@ export function CurrencySettingsScreen({
       return;
     }
     document.getElementById("currency-add")?.focus();
-  }, [catalog, currencies, focusAdd]);
+  }, [focusAdd]);
 
   const addable = useMemo(() => {
     const present = new Set(currencies.map((row) => row.code));

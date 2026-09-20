@@ -98,12 +98,12 @@ function ApplicationWorkspace({ buildTarget }: ApplicationShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
 
   useEffect(() => {
+    writeSidebarOpen(sidebarOpen);
     clearSidebarStateCookie();
   }, [sidebarOpen]);
 
   const handleSidebarOpenChange = useCallback((open: boolean) => {
     setSidebarOpen(open);
-    writeSidebarOpen(open);
   }, []);
 
   return (
