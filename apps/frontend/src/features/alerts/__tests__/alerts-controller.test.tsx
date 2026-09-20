@@ -7,7 +7,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CommandError } from "@/commands/errors";
@@ -51,22 +51,20 @@ const pageTwo: DomainAlertListPage = {
   nextCursor: null,
 };
 
-let hookChildren: ReactNode = null;
+const createAlertsRouter = (children: ReactNode) => {
+  function AlertsRouterRoot() {
+    return <AlertsControllerProvider>{children}</AlertsControllerProvider>;
+  }
 
-function AlertsRouterRoot() {
-  return <AlertsControllerProvider>{hookChildren}</AlertsControllerProvider>;
-}
+  return createRouter({
+    routeTree: createRootRoute({ component: AlertsRouterRoot }),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+};
 
 function AlertsHookWrapper({ children }: { children: ReactNode }) {
-  hookChildren = children;
-  const router = useMemo(
-    () =>
-      createRouter({
-        routeTree: createRootRoute({ component: AlertsRouterRoot }),
-        history: createMemoryHistory({ initialEntries: ["/"] }),
-      }),
-    [],
-  );
+  const [routedChildren] = useState(() => children);
+  const router = useMemo(() => createAlertsRouter(routedChildren), [routedChildren]);
 
   return <RouterProvider router={router} />;
 }
