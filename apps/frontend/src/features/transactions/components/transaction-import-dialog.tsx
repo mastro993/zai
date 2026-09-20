@@ -1,6 +1,6 @@
 import { CommandError } from "@/commands/errors";
 import { Result } from "@praha/byethrow";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "@/components/toaster/toast";
 
 import {
@@ -108,29 +108,29 @@ function TransactionImportDialog({
   const [needsProviderDisclosure, setNeedsProviderDisclosure] = useState(false);
   const [confirmProviderDisclosure, setConfirmProviderDisclosure] = useState(false);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    setStep(0);
-    setPreviewFilter("importable");
-    setPreview(null);
-    setNeedsProviderDisclosure(false);
-    setConfirmProviderDisclosure(false);
-    setFile(null);
-    setFileDigest(null);
-    setMapping(EMPTY_MAPPING);
-    setConfig(createDefaultConfig());
-    setIsPickingFile(false);
-    setIsPreviewing(false);
-    setIsImporting(false);
-  }, [open]);
+  const [prevOpen, setPrevOpen] = useState(open);
 
-  useEffect(() => {
-    if (!config.confirmedTransactionCurrency && defaultCurrency) {
-      setConfig((current) => ({ ...current, confirmedTransactionCurrency: defaultCurrency }));
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) {
+      setStep(0);
+      setPreviewFilter("importable");
+      setPreview(null);
+      setNeedsProviderDisclosure(false);
+      setConfirmProviderDisclosure(false);
+      setFile(null);
+      setFileDigest(null);
+      setMapping(EMPTY_MAPPING);
+      setConfig(createDefaultConfig());
+      setIsPickingFile(false);
+      setIsPreviewing(false);
+      setIsImporting(false);
     }
-  }, [config.confirmedTransactionCurrency, defaultCurrency]);
+  }
+
+  if (!config.confirmedTransactionCurrency && defaultCurrency) {
+    setConfig((current) => ({ ...current, confirmedTransactionCurrency: defaultCurrency }));
+  }
 
   const headers = useMemo(
     () => (file ? (parseTransactionCsv(file.content)[config.headerRowIndex] ?? []) : []),

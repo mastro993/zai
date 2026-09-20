@@ -57,10 +57,16 @@ function DrawerSelect<T extends string>({
   className,
 }: DrawerSelectProps<T>) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [prevParentOpen, setPrevParentOpen] = useState(parentOpen);
   const isOpenControlled = open !== undefined;
   const isDrawerOpen = isOpenControlled ? open : uncontrolledOpen;
   const listId = useId();
   const selected = value == null ? undefined : options.find((option) => option.value === value);
+
+  if (prevParentOpen !== parentOpen) {
+    setPrevParentOpen(parentOpen);
+    if (parentOpen === false && !isOpenControlled) setUncontrolledOpen(false);
+  }
 
   const setDrawerOpen = (next: boolean) => {
     if (!isOpenControlled) setUncontrolledOpen(next);
@@ -69,10 +75,8 @@ function DrawerSelect<T extends string>({
   };
 
   useEffect(() => {
-    if (parentOpen !== false) return;
-    if (!isOpenControlled) setUncontrolledOpen(false);
-    onOpenChange?.(false);
-  }, [parentOpen, isOpenControlled, onOpenChange]);
+    if (parentOpen === false) onOpenChange?.(false);
+  }, [parentOpen, onOpenChange]);
 
   const selectOption = (next: T) => {
     onChange(next);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -123,6 +123,7 @@ function BudgetCategoryCombobox({
   onBlur,
 }: BudgetCategoryComboboxProps) {
   const [open, setOpen] = useState(false);
+  const [prevParentOpen, setPrevParentOpen] = useState(parentOpen);
   const [query, setQuery] = useState("");
   const items = useMemo(() => getCategoryOptions(categories, ""), [categories]);
   const filteredItems = useMemo(
@@ -146,12 +147,11 @@ function BudgetCategoryCombobox({
     [categories],
   );
 
-  useEffect(() => {
-    if (!parentOpen) {
-      setOpen(false);
-      setQuery("");
-    }
-  }, [parentOpen]);
+  if (prevParentOpen !== parentOpen) {
+    setPrevParentOpen(parentOpen);
+    setOpen(false);
+    setQuery("");
+  }
 
   const handleValueChange = (nextItems: Array<BudgetCategoryOption>) => {
     const previousEffectiveIds = effectiveSelectedIds;

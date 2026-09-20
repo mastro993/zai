@@ -1,5 +1,5 @@
 import { Result } from "@praha/byethrow";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "@/components/toaster/toast";
 
 import { openCategoryImportFile, type CategoryImportFile } from "../commands/category-import";
@@ -55,13 +55,15 @@ function CategoryImportDialog({
   const [previewFilter, setPreviewFilter] = useState<ImportPreviewRowFilter>("importable");
   const [isPickingFile, setIsPickingFile] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [prevOpen, setPrevOpen] = useState(open);
 
-  useEffect(() => {
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (open) {
       setStep(0);
       setPreviewFilter("importable");
     }
-  }, [open]);
+  }
 
   const rowCount = useMemo(() => (file ? parseCsv(file.content).length : 0), [file]);
 

@@ -67,6 +67,7 @@ function CategoryDrawerSelect(props: CategoryDrawerSelectProps) {
   } = props;
 
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [prevParentOpen, setPrevParentOpen] = useState(parentOpen);
   const isOpenControlled = open !== undefined;
   const isDrawerOpen = isOpenControlled ? open : uncontrolledOpen;
   const [draftIds, setDraftIds] = useState<Array<string>>(EMPTY_IDS);
@@ -92,11 +93,14 @@ function CategoryDrawerSelect(props: CategoryDrawerSelectProps) {
     if (!next) onBlur?.();
   };
 
+  if (prevParentOpen !== parentOpen) {
+    setPrevParentOpen(parentOpen);
+    if (parentOpen === false && !isOpenControlled) setUncontrolledOpen(false);
+  }
+
   useEffect(() => {
-    if (parentOpen !== false) return;
-    if (!isOpenControlled) setUncontrolledOpen(false);
-    onOpenChange?.(false);
-  }, [parentOpen, isOpenControlled, onOpenChange]);
+    if (parentOpen === false) onOpenChange?.(false);
+  }, [parentOpen, onOpenChange]);
 
   const handleDone = () => {
     if (props.mode === "multiple") props.onChange(draftIds);
